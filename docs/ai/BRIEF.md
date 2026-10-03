@@ -7,6 +7,7 @@
 - 本文用于帮助下一位维护者或评审者理解当前程序。用户操作见 [README](../../README.md)，构建、数据隔离和 Git 规则见 [DEVELOPMENT](../../DEVELOPMENT.md)。
 - 第一轮独立评审、A-1修复和历次正式替换记录仍保留在 [迭代记录](ITERATION.md)。第三轮按用户后续范围实施，下面描述当前源码和正式程序；隔离候选试用入口仍可使用，但不会把试用书架或测试密钥带入正式资料。
 - 夜间开发接续同一仓库的 `codex/overnight-2026-10-04`，睡前分支和程序保留。第0次已实现可检索的分类收藏页：分类/所含作品/别名搜索、名称/数量/近期排序、封面与在玩/完成进度、全部标签搜索，以及小窗口图标导航的中文名称。此处仅为夜间源码成果，未替换正式程序；准确提交、原生窗口前后图和检查范围见 [OVERNIGHT](OVERNIGHT.md)。
+- 第1次夜间源码增加命名“常用筛选”：完整筛选/排序保存、实时匹配数量、书架/分类页直接打开，以及独立改名/更新条件/删除；过时分类/标签保持精确条件。记录位于当前profile的本机UI存储，不随书架备份导出；保存失败与损坏记录有明确反馈，应用时清除批量选择，批量写入中禁用操作。同profile重启与跨profile隔离已通过真实桌面合成回归，17项定向单元、构建、原有书架相关回归和10张修改后原生图通过；未验证真实大库性能。准确代码提交与比较图见 [第1次记录](OVERNIGHT.md#第1次自己的动态书架已完成)，仍未替换正式程序。
 
 ## 已实现的核心流程
 
@@ -35,6 +36,7 @@
 | --- | --- |
 | [src/App.vue](../../src/App.vue) | 页面、搜索分页、导入、识别、核对和详情编辑的异步状态；多数流程仍集中在此文件。 |
 | [src/components/GameCard.vue](../../src/components/GameCard.vue)、[LibraryOverview.vue](../../src/components/LibraryOverview.vue)、[PlayStatistics.vue](../../src/components/PlayStatistics.vue) | 封面卡片、继续游玩和统计；共享计算在 `src/library-workspace.ts`、`src/library-insights.ts`。 |
+| [LibrarySavedViews.vue](../../src/components/LibrarySavedViews.vue)、[saved-library-views.ts](../../src/saved-library-views.ts)、[LibraryCollections.vue](../../src/components/LibraryCollections.vue) | 夜间源码的命名动态筛选与分类浏览；UI存储的有界校验/显式失败、改名与更新区别、过时标签保留、实时匹配数量与键盘交互。 |
 | [CoverPicker.vue](../../src/components/CoverPicker.vue)、[DetailCover.vue](../../src/components/DetailCover.vue)、[cover-display.ts](../../src/cover-display.ts) | 详情封面草稿、原子保存、比例展示与共享个人选图/分级规则；默认预览须与恢复后实际图一致。 |
 | [local-cover.ts](../../electron/local-cover.ts)、[SectionSignature.vue](../../src/components/SectionSignature.vue) | 有界PNG/JPG读取、方向/透明处理与JPEG副本校验；主栏目小副标题及视觉主次。 |
 | [LibraryMaintenance.vue](../../src/components/LibraryMaintenance.vue)、[installation-attachment.ts](../../electron/installation-attachment.ts) | 常驻整理面板；明确安装附加的真实目录边界与有界独立编号冲突检查。 |
