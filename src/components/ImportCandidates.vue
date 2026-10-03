@@ -47,6 +47,7 @@ function toggle(id: string, checked: boolean) { if (!props.busy) emit('selection
 .kun-modal-panel.import-candidates-modal{display:flex;flex-direction:column;width:min(920px,calc(100vw - 32px));max-width:calc(100vw - 32px);height:min(820px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);overflow:hidden;padding:20px;background:var(--surface);color:var(--ink)}
 .import-candidates-modal>div:first-child{flex:none;margin-bottom:12px}
 .kun-dark-mode .import-candidates-modal .import-body{color-scheme:dark}
+@media(max-height:520px){.import-candidates-modal .import-intro,.import-candidates-modal .scan-common{display:none}}
 @media(max-width:700px){.kun-modal-panel.import-candidates-modal{padding:14px;min-width:0;width:calc(100vw - 24px);max-width:calc(100vw - 24px);height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}}
 </style>
 <style scoped>
