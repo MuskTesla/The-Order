@@ -1,0 +1,123 @@
+# The Order：当前实现与评审交接
+
+## 基线与用途
+
+- 正式项目：`D:\Projects\The-Order`，应用版本 **0.7.1**。
+- 本文对应的业务源码基线：`9c456115b0420513d25388463b8bb14a0f17d956`。后续文档提交不代表应用功能升级。
+- 本文用于帮助下一位维护者或评审者理解当前程序。用户操作见 [README](../../README.md)，构建、数据隔离和 Git 规则见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+- 本轮交接只整理文档和隔离演示证据，不开发新功能。下文严格区分已实现代码、演示数据和待验证事项。
+
+## 已实现的核心流程
+
+| 流程 | 当前行为 |
+| --- | --- |
+| 书架与整理 | 封面、列表两种视图；多字段搜索、状态、收藏、分类、标签和个人评分筛选；排序及视图偏好保存在本机。批量修改只处理当前可见的勾选项，支持追加、移除分类和标签。 |
+| 本地导入 | 扫描后显示候选及已入库数量，用户勾选确认；已有目录不会重复导入。多个安装可归入同一作品，分别设置启动程序并选择默认安装。 |
+| 补全资料 | 默认导入后自动补全；未配置密钥时仍可本地导入。书架的「补全资料」处理没有资料或缺少封面的本地游戏；已有绑定但缺封面时刷新原作品。 |
+| 重新识别 | 支持整库、所选、单个游戏和扫描范围内已入库游戏，包含已有完整资料的本地条目。重新读取独立本地线索，旧的自动生成标题不能证明旧关联正确。同 ID 且证据可靠时刷新，不同 ID 保留原关联并进入待核对，确认后才改绑。 |
+| 核对与取消 | 可查看候选及原因、确认、暂时跳过或手动搜索。进度与待核对队列持久化；退出中断的任务不会自动恢复联网。取消阻止尚未开始保存的结果，已开始的原子保存会完成。 |
+| 发现与详情 | NextMoe 搜索、分页、去重和原页重试；详情展示简介、角色、开发商、来源评分与链接。支持加入想玩清单、手动关联和刷新已关联作品。 |
+| 启动与记录 | 通过选定 EXE 和参数数组启动，记录被跟踪进程的运行时长；尝试接续同目录启动器产生的游戏进程。关闭窗口可留在托盘继续计时，「结束计时」不结束游戏进程。 |
+| 个人数据与统计 | 名称、状态、0–10 分个人评分、分类、标签、笔记、收藏、会话与总时长；继续游玩、近 14 天、最近会话及常玩榜。当前会话单独显示，不重复计入已保存检查点。 |
+| 配置与备份 | API 地址、加密密钥、成人分级、主题、程序内名称读取；书架 JSON 导入导出、原子保存及上一有效版本恢复。导出不含 API 密钥、游戏文件或图片文件。 |
+
+### 必须保持的行为
+
+- 个人名称、评分、笔记和时长不能因自动识别或迟到响应而丢失；编辑页的未保存草稿也有请求代次保护。
+- 资料提交在保存队列内重新检查身份。名称、关联、首选安装、安装 ID、目录或启动程序变化会使旧识别失效；启动参数和个人字段编辑不会无故取消有效结果。
+- 同批自动识别可以合并同一作品的多个安装；后来的明确人工操作会终止旧批次的合并权限。
+- 实际联网请求由 Electron 主进程发出。前端只获得是否保存密钥的状态；正式包忽略开发页面环境变量。
+
+## 模块入口
+
+| 文件 | 维护时先看什么 |
+| --- | --- |
+| [src/App.vue](../../src/App.vue) | 页面、搜索分页、导入、识别、核对和详情编辑的异步状态；多数流程仍集中在此文件。 |
+| [src/components/GameCard.vue](../../src/components/GameCard.vue)、[LibraryOverview.vue](../../src/components/LibraryOverview.vue)、[PlayStatistics.vue](../../src/components/PlayStatistics.vue) | 封面卡片、继续游玩和统计；共享计算在 `src/library-workspace.ts`、`src/library-insights.ts`。 |
+| [src/shared/types.ts](../../src/shared/types.ts)、[src/desktop-bridge.ts](../../src/desktop-bridge.ts)、[electron/preload.ts](../../electron/preload.ts) | 数据类型、Vue 响应式对象转普通数据快照、受限桌面 API。修改接口时三处需一致。 |
+| [electron/main.ts](../../electron/main.ts) | IPC 参数及来源校验、原生对话框、身份操作队列、窗口与托盘生命周期。 |
+| [electron/library.ts](../../electron/library.ts) | 本地扫描、安装、备份、原子事务、资料代次及合并保护；数据可靠性的关键入口。 |
+| [electron/metadata-matching.ts](../../electron/metadata-matching.ts) | `missing` / `reidentify` 模式、任务取消、来源时效、候选详情复核与待核对队列。 |
+| [electron/game-identification.ts](../../electron/game-identification.ts)、[evidence-matching.ts](../../electron/evidence-matching.ts)、[title-matching.ts](../../electron/title-matching.ts) | 本地线索、公开索引、候选排序、独立证据以及章节和版本冲突规则。 |
+| [electron/local-game-evidence.ts](../../electron/local-game-evidence.ts)、[local-text-evidence.ts](../../electron/local-text-evidence.ts) | 有界 PE 版本资源读取、Steam 配置、已知说明书或配置标题；不执行游戏或 HTML。 |
+| [electron/nextmoe.ts](../../electron/nextmoe.ts) | NextMoe v2 请求、鉴权、超时、错误脱敏、重试、游标、作品合并、作品和发行映射。 |
+| [electron/playtime.ts](../../electron/playtime.ts)、[settings.ts](../../electron/settings.ts) | 进程跟踪、累计检查点，以及设置队列和 Windows 密钥加密。 |
+| [src/bridge.ts](../../src/bridge.ts) | 无桌面桥时启用的浏览器演示；不能用此模式证明真实导入、识别或启动有效。 |
+| [tests](../../tests) | 单元测试与隔离 Electron 回归。重点先看 `metadata-concurrency`、`metadata-matching`、`desktop-reidentification`、`desktop-cancel-queue` 及各页面并发测试。 |
+
+样式主要分布在 `src/style.css`、`src/order-theme.css`、`src/library-layout.css` 和组件局部样式。保持 KunUI 组件、明暗主题和较小窗口下的可用性。
+
+## 真功能、演示数据与未实现内容
+
+### 真实桌面能力
+
+桌面应用通过 preload / IPC 操作本地 JSON 书架和安装，NextMoe 是作品目录 API。搜索先读取 `catalog/search`，再批量取作品卡片；详情、来源编号查询及有界发行列表也已接入。它没有 LLM 模型参数或 SSE 文本生成。
+
+识别使用文件名、已知小配置、标题索引和可选程序版本资源。正式标题、罗马字、机器翻译、缩写等来源有区别；旧 PotatoVN 编号不能单独证明身份，相关线索不会重复计作独立证据。
+
+### 演示与测试数据
+
+- `public/preview-data.json` 是 12 部公开作品的缓存资料；浏览器演示在内存中生成无本地安装的书架。它不是个人库，也不是实时搜索结果。
+- `tests/ui-fixtures/` 的封面为原创合成测试素材。桌面回归中的游戏、安装和会话为测试记录，联网结果由测试替换。
+- `data/title-index.json.gz` 是 PotatoDBMapper 公开数据的派生索引：56,064 条记录、97,038 个标题，只含标题与来源编号。来源和许可见 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md)。
+- 本轮截图使用独立合成 profile。截图展示真实程序界面；其中封面、评分、路径、时长和匹配结果不能解释为用户真实书架或线上识别率。
+
+### 尚未实现
+
+云同步、Steam 库自动扫描、自动补丁安装、压缩包解包、`.bat` / `.lnk` 启动、仅统计前台时间、PotatoVN 全量迁移、离线封面缓存，以及自动更新公开标题索引。不要在新设计稿或宣传文案中把这些描述为可用功能。
+
+## 已知边界与待办
+
+1. **识别仍需要核对。** 目录缩写、合集、版本差异和上游缺失可能没有唯一答案；来源编号及程序元数据都可能过时或被复制。排序系数不是正确概率，资料关联也不验证游戏本体或文件安全。
+2. **PE 读取有实际系统影响。** 新设置默认开启程序内名称读取，可在偏好设置关闭。即使不执行 EXE，读取也可能触发 Windows 扫描和隔离。隔离演示只使用合成程序夹具；本轮保留默认开启状态，只扫描合成惰性 EXE。不能据“仅被读取”认定检测为误报。
+3. **统计有明确范围。** 包括后台运行时间；一次跟踪一个游戏。跨日分布按会话区间分摊，未保存暂停发生位置，因此不是逐分钟精确活动日志。复杂外部启动器或目录外子进程仍需验证。
+4. **上游接口与数据会变化。** 请求已有错误、限流和超时处理；本轮没有实际联网核验账号权限、配额或最新目录覆盖。确认线上问题时再使用授权的测试账号，不从个人设置提取密钥。
+5. **开发依赖公告尚未处理。** 本机迁移审计记录 9 个受影响依赖条目（8 high、1 low；不等于 9 个独立漏洞），涉及 `electron-builder` 及下载/缓存依赖链和 `esbuild`。生产依赖审计当时为 0。这是迁移阶段的报告，本轮没有重新审计或升级；后续应单独评估升级并重跑打包回归。依据：[完整审计](../../.artifacts/migration/dependency-audit.json)、[生产依赖审计](../../.artifacts/migration/runtime-dependency-audit.json)。这些本机报告不进 Git，其他环境需重新生成。
+6. **资产许可分别保留。** 应用源代码、KunUI、公开索引和游戏资料各有原有许可或权利归属。当前纹章重建自用户提供的游戏截图，源码许可不包含底层游戏图案的权利；详见第三方说明。
+
+## 评审顺序
+
+| 优先页面 | 建议检查 |
+| --- | --- |
+| 1. 我的书架 | 1280×720 下首屏信息与可点击区域；长名称、完整封面、缺封面、无默认程序；搜索、筛选、列表切换及批量操作范围。 |
+| 2. 详情 → 管理 | 个人名称、笔记和评分的可读性；多安装和默认程序是否易懂；刷新、切换游戏或切换安装时未保存草稿是否稳定。 |
+| 3. 添加游戏 → 重新识别 → 待核对 | 区分新导入与已入库；区分补全、刷新和重新识别；进度、取消、不同候选的确认与跳过是否清楚。 |
+| 4. 发现、统计与偏好设置 | 分页重试和空状态、统计解释、密钥保存与连接测试反馈、程序内名称读取说明，以及明暗主题。 |
+
+先评审实际页面，再提出改版；保留上述数据与并发约束。截图无法替代键盘、滚动、窗口缩放和交互检查。
+
+## 验证记录与截图
+
+### 已有迁移记录，非本轮重跑
+
+已阅读本机 `.artifacts/migration/` 的报告和日志：395 项单元测试通过；迁移报告记录 13 个打包桌面测试套件及 26 项界面检查通过，新目录的安装、类型检查、构建、打包和隔离启动完成。测试使用临时 profile、合成游戏及模拟 API，没有据此证明真实游戏库识别率。
+
+依据：[迁移报告](../../.artifacts/migration/migration-report.md)、[单元日志](../../.artifacts/migration/unit-tests.log)、[打包日志](../../.artifacts/migration/packaged-tests.log)。这些结果属于迁移阶段；本轮文档交接没有重新运行整套测试。
+
+### 本轮页面证据
+
+证据目录：`D:\Projects\The-Order-Artifacts\review-current`。本轮于 **2026-10-03 14:06（北京时间）** 实际运行当前 `release/win-unpacked/The Order.exe`，应用版本 0.7.1、`packaged=true`；源码对应本文基线。manifest 记录的内容区域为 1440×960，6 张 PNG 实际像素均为 2882×1922。文件清单、SHA-256 和结果见 [manifest.json](../../../The-Order-Artifacts/review-current/manifest.json)，场景说明见 [截图 README](../../../The-Order-Artifacts/review-current/README.md)。
+
+| 本轮新截图 | 场景及数据性质 |
+| --- | --- |
+| [01-library.png](../../../The-Order-Artifacts/review-current/01-library.png) | 6 部虚构作品的明亮书架：状态、0 分、收藏、时长及未安装的想玩条目。 |
+| [02-detail-overview.png](../../../The-Order-Artifacts/review-current/02-detail-overview.png) | 作品详情：合成简介、开发商、来源评分和标签。 |
+| [03-detail-management.png](../../../The-Order-Artifacts/review-current/03-detail-management.png) | 管理表单：状态、个人评分、分类、标签、笔记和合成安装目录。 |
+| [04-import-selection.png](../../../The-Order-Artifacts/review-current/04-import-selection.png) | 真实扫描 4 个合成目录；1 个已有条目禁选，3 个新条目可导入，默认勾选自动补全。 |
+| [05-recognition-running.png](../../../The-Order-Artifacts/review-current/05-recognition-running.png) | 真实识别任务的进度横幅；测试暂挂模拟 API 响应以保留运行中状态。 |
+| [06-recognition-review.png](../../../The-Order-Artifacts/review-current/06-recognition-review.png) | 同名冲突产生的 2 个模拟作品候选，以及真实待核对界面和未匹配队列。 |
+
+管理与导入截图记录的是弹窗当时的滚动位置，下部操作需要继续滚动，不表示所有控件同时可见；弹窗可滚动本身不是已确认缺陷。
+
+**本轮实际覆盖：** 当前桌面程序、IPC、扫描、导入、持久化、识别算法、NextMoe 响应解析和候选手动确认。原生文件夹选择器和网络响应由测试驱动替换，8 次 API 请求均使用模拟响应；封面来自仓库 CC0 矢量夹具，标题、角色、评分、笔记和安装全部为合成数据，假 EXE 未执行。
+
+运行记录显示：初始 6 条，加上导入的 3 条后为 9 条；自动匹配 1 条，同名冲突有 2 个候选，手动关联已保存，另有 1 条未匹配记录保留待核对。`rendererErrors=[]`，真实 API 调用为 0，实际游戏运行次数为 0；合成密钥已清除。截图目录仅含 6 张图片、说明和 manifest，不含 profile、密钥、源码或安装包。
+
+**本轮没有覆盖：** 全量单元测试、重新构建、完整桌面回归、实时 NextMoe 服务、真实账号和游戏库、真实游戏启动与计时。本轮也没有修改正式版本。6 张截图不包含窄窗口、深色主题、完整键盘遍历或取消竞争验证；这些需在后续相应评审中单独检查。
+
+## 接手时的工作方式
+
+- 在正式仓库工作，不把历史输出、旧候选源码或发布目录作为开发入口。
+- 普通开发、`npm start` 和正式 EXE 默认共用 `%APPDATA%\KunGalManager`。调试先设置 `KGM_DATA_DIR` 为独立目录；具体命令见 DEVELOPMENT。
+- 不提交 profile、密钥、个人备份、构建、报告或截图；不运行真实游戏来验证纯界面改动。个人库兼容工具要求显式启用且不属于默认测试。
+- 改动匹配、保存或身份逻辑时，先补有行为意义的合成回归；修复后运行对应测试，再由维护者统一进行构建和必要的桌面验证。
