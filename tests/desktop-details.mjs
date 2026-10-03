@@ -76,9 +76,9 @@ try {
   checks.push('closing and reopening the same work invalidates its older details')
 
   await close(); await page.getByRole('button', { name: 'Detail work C', exact: true }).click(); await page.locator('.detail-tabs .spin').waitFor({ state: 'hidden' })
-  await hold('103'); await page.getByRole('button', { name: '加入想玩清单', exact: true }).click(); await held('103'); await close()
+  await hold('103'); await page.getByRole('button', { name: '加入愿望单', exact: true }).click(); await held('103'); await close()
   await openLibrary('B'); await note().fill('Fresh B draft during wishlist request'); await release()
-  await page.getByText('已加入想玩清单。', { exact: true }).waitFor()
+  await page.getByText('已加入愿望单。', { exact: true }).waitFor()
   assert.equal(await title(), 'Detail game B'); assert.equal(await note().inputValue(), 'Fresh B draft during wishlist request')
   assert.ok((await snapshot()).games.some(game => game.metadata?.id === '103'))
   checks.push('late wishlist addition persists C and preserves the newer B dialog')

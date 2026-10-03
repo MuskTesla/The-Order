@@ -148,6 +148,16 @@ async function beginAndWait(page, button, total) {
   await button.click()
   return waitState(page, state => state.matching?.id !== previousId && state.matching?.total === total && state.matching?.status === 'completed', 'Reidentification did not complete')
 }
+async function openMaintenance(page) {
+  await page.locator('.sidebar .maintenance-entry').click()
+  await page.locator('.maintenance-modal').waitFor()
+}
+async function openReviews(page) {
+  await openMaintenance(page)
+  await page.locator('.maintenance-review-link').click()
+  await page.locator('.matching-review-modal').waitFor()
+}
+const persistedReview = ({ decisionFingerprint: _decisionFingerprint, ...review }) => review
 
 try {
   let page = await start('pause-refs')
@@ -161,12 +171,15 @@ try {
   assert.deepEqual(await snapshot(page), beforeInvalidMode, 'Invalid mode does not change job or library state')
   assert.deepEqual(await application.evaluate(() => globalThis.__reidentification.requests), [], 'Invalid mode must not fetch')
   assert.ok((await snapshot(page)).games.every(game => game.metadata?.coverUrl))
-  const allButton = page.getByRole('button', { name: '重新识别', exact: true })
+  await openMaintenance(page)
+  const allButton = page.getByRole('button', { name: '重新识别全部本地游戏', exact: true })
   assert.equal(await allButton.isEnabled(), true, 'Complete covers must not disable reidentification')
   // Dispatch two same-turn activations against the real renderer handler. The
   // pending guard must prevent the second activation from creating another job.
   await allButton.evaluate(button => { button.click(); button.click() })
   await waitState(page, state => state.matching?.status === 'running' && state.matching.total === 2, 'All local games were not selected')
+  await page.keyboard.press('Escape')
+  await page.locator('.maintenance-modal').waitFor({ state: 'hidden' })
   await release()
   let state = await waitState(page, state => state.matching?.status === 'completed', 'Full library reidentification did not finish')
   assert.equal(state.games.length, 3)
@@ -182,9 +195,10 @@ try {
   // Pending corrections survive restart, including the existing association.
   page = await start()
   state = await snapshot(page)
-  assert.deepEqual(state.matching.reviews, savedReviews)
+  assert.deepEqual(state.matching.reviews.map(persistedReview), savedReviews.map(persistedReview))
+  assert.ok(state.matching.reviews.every(item => item.reviewId && item.decisionFingerprint), 'Reopened decisions have stable IDs and a fresh runtime identity guard')
   assert.equal(find(state, games[0].id).metadata.id, '901')
-  await page.getByRole('button', { name: /待核对 \d+ 项/ }).click()
+  await openReviews(page)
   await page.locator('.review-queue').getByRole('button', { name: games[0].name, exact: true }).click()
   await page.locator('.review-option').filter({ hasText: correctTitle }).click()
   await page.getByRole('button', { name: '确认关联', exact: true }).click()
@@ -235,8 +249,11 @@ try {
   // state. It preserves all records and the cancellation survives restart.
   await transport('stall')
   const beforeCancel = (await snapshot(page)).games
-  await page.getByRole('button', { name: '重新识别', exact: true }).click()
+  await openMaintenance(page)
+  await page.getByRole('button', { name: '重新识别全部本地游戏', exact: true }).click()
   await waitRequest()
+  await page.keyboard.press('Escape')
+  await page.locator('.maintenance-modal').waitFor({ state: 'hidden' })
   await page.locator('.sidebar nav').getByRole('button', { name: '游玩统计', exact: true }).click()
   await page.getByRole('button', { name: '取消识别', exact: true }).evaluate(button => { button.click(); button.click() })
   state = await waitState(page, state => state.matching.status === 'cancelled', 'Reidentification did not cancel')

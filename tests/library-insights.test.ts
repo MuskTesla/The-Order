@@ -22,8 +22,17 @@ test('continue story prefers playable playing games then valid recent installati
   assert.equal(getLaunchInstallation(invalid), null)
   assert.equal(getContinueStory([invalid, recent, playing])?.game.id, 'playing')
   assert.equal(getContinueStory([invalid, recent])?.game.id, 'recent')
-  assert.equal(getContinueStory([invalid])?.canPlay, false)
+  assert.equal(getContinueStory([invalid]), null)
   assert.equal(getContinueStory([game('unplayed')]), null)
+})
+
+test('continue story does not show an unlaunchable recent game, while an active session remains viewable', () => {
+  const unavailable = game('unavailable', { lastPlayedAt: date(2).toISOString(), installations: [] })
+  assert.equal(getContinueStory([unavailable]), null)
+  const choice = getContinueStory([unavailable], { gameId: unavailable.id, installationId: 'removed', startedAt: date(3).toISOString(), elapsedSeconds: 30 })
+  assert.equal(choice?.reason, 'active')
+  assert.equal(choice?.canPlay, false)
+  assert.equal(getContinueStory([game('another', { status: 'playing' })], { gameId: 'missing', installationId: 'removed', startedAt: date(3).toISOString(), elapsedSeconds: 30 }), null)
 })
 
 test('preferred-or-only selection matches the tracker and does not mutate library order', () => {

@@ -693,6 +693,259 @@ test('completed work status and review candidates survive restart; dismiss is pe
   assert.equal((await fs.readdir(env.dataDir)).some(name => name.endsWith('.tmp')), false)
 })
 
+async function reviewedGame(env: Environment) {
+  const works = [work('101', firstTitle, 'vndb:v101'), work('102', firstTitle, 'vndb:v101')]
+  const result = harness(env, { index: [indexRecord(firstTitle, 'vndb:v101')], works })
+  await result.matcher.initialize(); await result.matcher.start(undefined, 'reidentify'); await result.matcher.settle()
+  const review = result.matcher.getState().reviews[0]!
+  assert.ok(review.reviewId); assert.ok(review.decisionFingerprint)
+  return { ...result, review, game: env.library.getGame(review.gameId) }
+}
+
+test('a review records the actual preferred installation and every bounded recognition input, without changing the library', async t => {
+  const env = await environment(t, [firstTitle, `[汉化] ${firstTitle}`])
+  const [first, second] = env.library.getGames()
+  const previous = work('999', secondTitle, 'vndb:v999')
+  await env.library.linkMetadata(first!.id, previous); await env.library.linkMetadata(second!.id, previous)
+  const merged = env.library.getGame(second!.id)
+  const selected = merged.installations[1]!
+  await env.library.updateGame(merged.id, { preferredInstallationId: selected.id })
+  const before = env.library.getGame(merged.id)
+  const { matcher, review } = await reviewedGame(env)
+  assert.equal(review.folderPath, selected.folderPath)
+  assert.equal(review.source?.installationId, selected.id)
+  assert.equal(review.source?.executablePath, selected.executablePath)
+  assert.deepEqual(review.source?.installations, [selected, merged.installations[0]!].map(({ id, folderPath, executablePath }) => ({ installationId: id, folderPath, executablePath })))
+  assert.equal(review.sourceStatus, 'current')
+  assert.equal(matcher.captureReview(review.gameId, review.reviewId!, review.decisionFingerprint!).gameId, merged.id)
+  assert.deepEqual(env.library.getGame(merged.id), before)
+})
+
+test('legacy suggestions acquire a stable ID without inventing a source, and an explicit guarded decision survives restart', async t => {
+  const env = await environment(t, [firstTitle]), game = env.library.getGames()[0]!
+  const legacy = { gameId: game.id, name: game.name, folderPath: 'D:\\Historical\\UnknownSource', reason: '旧候选', options: [{ work: work('101', firstTitle, 'vndb:v101'), confidence: 0.8, reason: '旧格式' }] }
+  await fs.writeFile(path.join(env.dataDir, 'metadata-matching.json'), JSON.stringify({ id: 'legacy', status: 'completed', total: 1, processed: 1, matched: 0, unmatched: 1, failed: 0, currentName: null, reviews: [legacy] }))
+  const first = harness(env).matcher; await first.initialize()
+  const review = first.getState().reviews[0]!
+  assert.equal(review.folderPath, legacy.folderPath); assert.equal(review.source, undefined); assert.equal(review.sourceStatus, 'legacy')
+  assert.ok(review.reviewId)
+  const restarted = harness(env).matcher; await restarted.initialize()
+  const restored = restarted.getState().reviews[0]!
+  assert.equal(restored.reviewId, review.reviewId)
+  const guard = restarted.captureReview(game.id, restored.reviewId!, restored.decisionFingerprint!)
+  restarted.assertReviewCurrent(guard)
+  await restarted.dismiss(guard)
+  assert.deepEqual(restarted.getState().reviews, [])
+  assert.deepEqual(env.library.getGame(game.id), game)
+})
+
+test('persisted source snapshots remain reviewable after a clean application/library restart', async t => {
+  const env = await environment(t, [firstTitle]), { review, game } = await reviewedGame(env)
+  const reopened = new LibraryStore(env.dataDir); await reopened.initialize()
+  const matcher = new MetadataMatcher(env.dataDir, reopened, {
+    client: () => { throw new Error('restart must not use the catalog') },
+    capture: (item, batchId) => reopened.captureMetadataToken(item.id, batchId),
+    apply: async () => { throw new Error('restart must not update metadata') },
+    index: async () => [], changed() {},
+  })
+  env.matchers.push(matcher); await matcher.initialize()
+  const restored = matcher.getState().reviews[0]!
+  assert.equal(restored.reviewId, review.reviewId); assert.deepEqual(restored.source, review.source)
+  assert.equal(restored.sourceStatus, 'current')
+  assert.notEqual(restored.decisionFingerprint, review.decisionFingerprint, 'runtime lifecycles are deliberately fresh')
+  assert.throws(() => matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!), /已更新/)
+  matcher.assertReviewCurrent(matcher.captureReview(game.id, restored.reviewId!, restored.decisionFingerprint!))
+})
+
+for (const change of ['name', 'installation', 'association', 'restore'] as const) test(`a ${change} after review capture marks the source stale and blocks the old confirmation/dismissal`, async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  if (change === 'name') await env.library.updateGame(game.id, { name: '后来选择的名称' })
+  else if (change === 'installation') await env.library.updateGame(game.id, { preferredInstallationId: null })
+  else if (change === 'association') await env.library.linkMetadata(game.id, work('999', secondTitle, 'vndb:v999'))
+  else {
+    const backup = env.library.exportBackup()
+    await env.library.removeGame(game.id); await env.library.importBackup(backup)
+    assert.deepEqual(env.library.getGame(game.id), game, 'the restored same ID is a new lifecycle even with identical fields')
+  }
+  const current = matcher.getState().reviews[0]!
+  assert.equal(current.reviewId, review.reviewId); assert.equal(current.sourceStatus, 'stale')
+  assert.throws(() => matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!), /已更新/)
+  assert.throws(() => matcher.captureReview(game.id, current.reviewId!, current.decisionFingerprint!), /识别来源已变化/)
+  await assert.rejects(matcher.dismiss(guard), /已更新/)
+  assert.equal(matcher.getState().reviews.length, 1, 'an old Keep Current action cannot remove a changed decision')
+  const before = env.library.getGame(game.id)
+  await matcher.dismiss(matcher.captureReview(game.id, current.reviewId!, current.decisionFingerprint!, { allowStale: true }))
+  assert.deepEqual(matcher.getState().reviews, []); assert.deepEqual(env.library.getGame(game.id), before)
+})
+
+test('personal/argument edits remain compatible with a guarded association and are preserved through its commit', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  await env.library.updateGame(game.id, { notes: '新的个人笔记', personalRating: 0, status: 'paused', categories: ['分类'], customTags: ['自定义'], favorite: true })
+  await env.library.setLaunchArguments(game.id, game.installations[0]!.id, ['--windowed'])
+  const current = matcher.getState().reviews[0]!
+  assert.equal(current.sourceStatus, 'current'); assert.equal(current.decisionFingerprint, review.decisionFingerprint)
+  matcher.assertReviewCurrent(guard)
+  const request = await env.library.beginMetadataRequest(game.id, 'association')
+  matcher.assertReviewCurrent(guard, request.token)
+  const candidate = work('101', firstTitle, 'vndb:v101')
+  await env.library.linkMetadata(game.id, candidate, { requestToken: request.token, expectedName: request.game.name, expectedMetadataId: null })
+  await matcher.dismiss(guard, { afterCommit: true }); await env.library.finishMetadataRequest(request.token)
+  const linked = env.library.getGame(game.id)
+  assert.equal(linked.metadata?.id, candidate.id); assert.equal(linked.notes, '新的个人笔记'); assert.equal(linked.personalRating, 0)
+  assert.equal(linked.favorite, true); assert.equal(linked.status, 'paused'); assert.deepEqual(linked.categories, ['分类']); assert.deepEqual(linked.customTags, ['自定义'])
+  assert.deepEqual(linked.installations[0]!.arguments, ['--windowed']); assert.deepEqual(matcher.getState().reviews, [])
+})
+
+test('a newer same-game suggestion cannot be confirmed or removed by an old decision, even after a successful library commit', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const request = await env.library.beginMetadataRequest(game.id, 'association')
+  await matcher.start([game.id], 'reidentify'); await matcher.settle()
+  const newer = matcher.getState().reviews[0]!
+  assert.notEqual(newer.reviewId, review.reviewId)
+  assert.throws(() => matcher.assertReviewCurrent(guard, request.token), /核对建议已更新/)
+  await assert.rejects(matcher.dismiss(guard), /核对建议已更新/)
+  await env.library.linkMetadata(game.id, work('101', firstTitle, 'vndb:v101'), { requestToken: request.token })
+  await matcher.dismiss(guard, { afterCommit: true })
+  assert.equal(matcher.getState().reviews[0]!.reviewId, newer.reviewId, 'post-commit cleanup must never dismiss a newer item')
+  await env.library.finishMetadataRequest(request.token)
+})
+
+test('a review replaced while its association waits in the store queue is rejected before any atomic library write', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const request = await env.library.beginMetadataRequest(game.id, 'association')
+  const entered = deferred<void>(), release = deferred<void>()
+  const store = env.library as unknown as { atomicWrite(file: string, contents: string): Promise<void> }
+  const write = store.atomicWrite.bind(store)
+  let held = false, linkingWrites = 0
+  store.atomicWrite = async (file, contents) => {
+    if (!held) { held = true; entered.resolve(); await release.promise }
+    if (contents.includes('candidate write must never start')) linkingWrites++
+    await write(file, contents)
+  }
+  const edit = env.library.updateGame(game.id, { notes: '排队中的个人编辑' })
+  await entered.promise
+  const linking = env.library.linkMetadata(game.id, { ...work('101', firstTitle, 'vndb:v101'), description: 'candidate write must never start' }, {
+    requestToken: request.token, beforeCommit: () => matcher.assertReviewCurrent(guard, request.token),
+  })
+  const rejected = assert.rejects(linking, /核对建议已更新/)
+  await matcher.start([game.id], 'reidentify'); await matcher.settle()
+  const newer = matcher.getState().reviews[0]!
+  assert.notEqual(newer.reviewId, review.reviewId)
+  release.resolve(); await edit; await rejected
+  assert.equal(linkingWrites, 0); assert.equal(env.library.getGame(game.id).metadata, null)
+  assert.equal(env.library.getGame(game.id).notes, '排队中的个人编辑')
+  assert.equal(matcher.getState().reviews[0]!.reviewId, newer.reviewId)
+  await env.library.finishMetadataRequest(request.token)
+})
+
+test('a current different-ID suggestion can be deliberately confirmed, preserving later personal edits and dismissing only itself', async t => {
+  const env = await environment(t, [firstTitle]), game = env.library.getGames()[0]!
+  const original = work('999', secondTitle, 'vndb:v999'), candidate = work('101', firstTitle, 'vndb:v101')
+  await env.library.linkMetadata(game.id, original)
+  const { matcher } = harness(env, { index: [indexRecord(firstTitle, 'vndb:v101')], works: [candidate] })
+  await matcher.initialize(); await matcher.start([game.id], 'reidentify'); await matcher.settle()
+  const review = matcher.getState().reviews[0]!
+  assert.equal(review.sourceStatus, 'current'); assert.equal(env.library.getGame(game.id).metadata?.id, original.id)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const request = await env.library.beginMetadataRequest(game.id, 'association')
+  await env.library.updateGame(game.id, { notes: '获取详情期间的新笔记', personalRating: 9.2 })
+  matcher.assertReviewCurrent(guard, request.token)
+  await env.library.linkMetadata(game.id, candidate, {
+    requestToken: request.token, expectedName: request.game.name, expectedMetadataId: request.game.metadata?.id ?? null,
+    beforeCommit: () => matcher.assertReviewCurrent(guard, request.token),
+  })
+  await matcher.dismiss(guard, { afterCommit: true }); await env.library.finishMetadataRequest(request.token)
+  const linked = env.library.getGame(game.id)
+  assert.equal(linked.metadata?.id, candidate.id); assert.equal(linked.notes, '获取详情期间的新笔记'); assert.equal(linked.personalRating, 9.2)
+  assert.deepEqual(matcher.getState().reviews, [])
+})
+
+test('beginning a validated review decision does not make unchanged evidence stale when its detail request fails', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const request = await env.library.beginMetadataRequest(game.id, 'association')
+  matcher.assertReviewCurrent(guard, request.token)
+  assert.equal(matcher.getState().reviews[0]!.sourceStatus, 'current', 'progress refreshes must not turn this action into an obsolete source')
+  // No catalog result was committed. Finishing a failed request allows a new
+  // explicit attempt, using the new decision fingerprint from the snapshot.
+  await env.library.finishMetadataRequest(request.token)
+  const retry = matcher.getState().reviews[0]!
+  assert.equal(retry.sourceStatus, 'current'); assert.notEqual(retry.decisionFingerprint, review.decisionFingerprint)
+  const retryGuard = matcher.captureReview(game.id, retry.reviewId!, retry.decisionFingerprint!)
+  matcher.assertReviewCurrent(retryGuard)
+  assert.throws(() => matcher.assertReviewCurrent(guard), /已更新/, 'the old operation must remain superseded')
+  assert.deepEqual(env.library.getGame(game.id), game)
+})
+
+test('a real queue persistence failure keeps a dismissed suggestion and all library data available for retry', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const file = path.join(env.dataDir, 'metadata-matching.json'), original = `${file}.original`
+  await fs.rename(file, original); await fs.mkdir(file)
+  await assert.rejects(matcher.dismiss(guard), /EISDIR|EPERM|EACCES|ENOTEMPTY/)
+  const after = matcher.getState()
+  assert.equal(after.reviews[0]?.reviewId, review.reviewId)
+  assert.equal(after.reviews[0]?.sourceStatus, 'current')
+  matcher.assertReviewCurrent(guard)
+  assert.deepEqual(env.library.getGame(game.id), game)
+  assert.equal(JSON.parse(await fs.readFile(original, 'utf8')).reviews[0].reviewId, review.reviewId)
+  // Only the empty blocking directory created above is removed; no recursive
+  // cleanup or unrelated profile content is needed to restore the fixture.
+  await fs.rmdir(file); await fs.rename(original, file)
+  await matcher.dismiss(guard)
+  assert.deepEqual(matcher.getState().reviews, [])
+  const reopened = harness(env).matcher; await reopened.initialize()
+  assert.deepEqual(reopened.getState().reviews, [])
+})
+
+test('a delayed failed dismissal cannot restore an old suggestion over a later same-game job', async t => {
+  const env = await environment(t, [firstTitle]), { matcher, review, game } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const internal = matcher as unknown as { save(): Promise<void> }
+  const save = internal.save.bind(internal), entered = deferred<void>(), release = deferred<void>()
+  let first = true
+  internal.save = async () => {
+    if (first) { first = false; entered.resolve(); await release.promise; throw new Error('Synthetic delayed dismissal save failure') }
+    await save()
+  }
+  const rejected = assert.rejects(matcher.dismiss(guard), /delayed dismissal save failure/)
+  await entered.promise
+  await matcher.start([game.id], 'reidentify'); await matcher.settle()
+  const newer = matcher.getState().reviews[0]!
+  assert.notEqual(newer.reviewId, review.reviewId)
+  release.resolve(); await rejected
+  assert.equal(matcher.getState().reviews.length, 1)
+  assert.equal(matcher.getState().reviews[0]!.reviewId, newer.reviewId)
+  const reopened = harness(env).matcher; await reopened.initialize()
+  assert.equal(reopened.getState().reviews[0]!.reviewId, newer.reviewId)
+  assert.deepEqual(env.library.getGame(game.id), game)
+})
+
+test('changing an association away and back after capture cannot revive an old source or decision', async t => {
+  const env = await environment(t, [firstTitle]), game = env.library.getGames()[0]!
+  const original = work('999', secondTitle, 'vndb:v999')
+  await env.library.linkMetadata(game.id, original)
+  const { matcher, review } = await reviewedGame(env)
+  const guard = matcher.captureReview(game.id, review.reviewId!, review.decisionFingerprint!)
+  const before = env.library.getGame(game.id)
+  await env.library.linkMetadata(game.id, work('777', '临时关联', 'vndb:v777'))
+  await env.library.linkMetadata(game.id, original)
+  assert.deepEqual(env.library.getGame(game.id), before)
+  assert.equal(matcher.getState().reviews[0]!.sourceStatus, 'stale')
+  assert.throws(() => matcher.assertReviewCurrent(guard), /已更新/)
+  await assert.rejects(matcher.dismiss(guard), /已更新/)
+  assert.equal(matcher.getState().reviews[0]!.reviewId, review.reviewId)
+  await matcher.shutdown()
+  const reopened = harness(env).matcher; await reopened.initialize()
+  const restored = reopened.getState().reviews[0]!
+  assert.equal(restored.reviewId, review.reviewId); assert.equal(restored.sourceStatus, 'stale', 'a clean restart must retain an already obsolete suggestion')
+  assert.throws(() => reopened.captureReview(game.id, restored.reviewId!, restored.decisionFingerprint!), /识别来源已变化/)
+})
+
 test('a persisted running job reopens as cancelled without silently starting network work', async t => {
   const env = await environment(t, [firstTitle])
   const entered = deferred<void>(), response = deferred<WorkMetadata[]>()

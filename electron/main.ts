@@ -1,10 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session, shell, Tray, Menu, nativeImage } from 'electron'
 import { promises as fs } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { LibraryStore, scanFolder } from './library'
+import { LibraryStore, scanFolder, type InstallationAttachmentToken } from './library'
+import { inspectInstallationAttachment } from './installation-attachment'
 import { PlaytimeTracker } from './playtime'
 import { NextMoeClient } from './nextmoe'
 import { SettingsStore } from './settings'
@@ -34,6 +36,7 @@ const tracker = new PlaytimeTracker(library, notify, { onError: error => {
   if (mainWindow) void dialog.showMessageBox(mainWindow, { type: 'warning', title: '游玩记录提示', message: '游玩记录暂时无法保存。', detail: publicError(error) })
 } })
 let scanCandidates = new Map<string, ScanCandidate>()
+const attachmentRequests = new Map<string, { gameId: string; token: InstallationAttachmentToken; candidates: Map<string, ScanCandidate>; createdAt: number }>()
 const validId = (value: unknown): string => {
   if (typeof value !== 'string' || value.length < 1 || value.length > 100 || /[\r\n\0]/.test(value)) throw new Error('条目标识不正确。')
   return value
@@ -105,6 +108,37 @@ function registerIpc(): void {
     scanCandidates = new Map(candidates.map(candidate => [candidate.id, candidate]))
     return candidates
   })
+  handle('prepareInstallationAttachment', async (gameId: unknown) => {
+    const id = validId(gameId), token = library.captureInstallationAttachmentToken(id)
+    const result = await dialog.showOpenDialog(mainWindow!, { title: '选择这部游戏的根目录', properties: ['openDirectory'] })
+    if (result.canceled || !result.filePaths[0]) return null
+    const rootPath = await fs.realpath(result.filePaths[0])
+    const found = await scanFolder(rootPath)
+    // With one nested executable directory, the user explicitly selected its
+    // enclosing game root. Multiple discoveries still require a specific choice.
+    const candidates = found.map(candidate => ({ ...candidate, folderPath: found.length === 1 ? rootPath : candidate.folderPath }))
+    const requestId = randomUUID()
+    for (const [key, request] of attachmentRequests) if (Date.now() - request.createdAt > 600000) attachmentRequests.delete(key)
+    if (attachmentRequests.size >= 8) attachmentRequests.delete(attachmentRequests.keys().next().value!)
+    attachmentRequests.set(requestId, { gameId: id, token, candidates: new Map(candidates.map(candidate => [candidate.id, candidate])), createdAt: Date.now() })
+    return { requestId, rootPath, candidates }
+  })
+  handle('attachLocalInstallation', async (requestId: unknown, candidateId: unknown) => {
+    const key = validId(requestId), request = attachmentRequests.get(key)
+    const candidate = request?.candidates.get(validId(candidateId))
+    if (!request || !candidate || Date.now() - request.createdAt > 600000) throw new Error('目录选择已失效，请重新选择游戏根目录。')
+    const result = await dialog.showOpenDialog(mainWindow!, { title: '选择这个目录中的游戏程序', defaultPath: candidate.folderPath, filters: [{ name: 'Windows 程序', extensions: ['exe'] }], properties: ['openFile'] })
+    if (result.canceled || !result.filePaths[0]) return null
+    const assertActive = () => { if (attachmentRequests.get(key) !== request) throw new Error('这次目录选择已取消，请重新选择。') }
+    const updated = await withIdentityLock(async () => {
+      assertActive()
+      const inspected = await inspectInstallationAttachment(library.getGame(request.gameId), candidate.folderPath, result.filePaths[0]!)
+      assertActive()
+      return library.attachInstallation(request.gameId, { ...candidate, folderPath: inspected.folderPath, executables: [inspected.executablePath] }, request.token, assertActive, candidate.folderPath)
+    })
+    attachmentRequests.delete(key); notify(); return updated
+  })
+  handle('cancelInstallationAttachment', (requestId: unknown) => { attachmentRequests.delete(validId(requestId)) })
   handle('importLocalGames', async (ids: unknown, autoMatch: unknown = true) => {
     if (!Array.isArray(ids) || ids.length > 2000 || ids.some(id => typeof id !== 'string' || !scanCandidates.has(id))) throw new Error('请重新扫描后选择需要导入的游戏。')
     if (typeof autoMatch !== 'boolean') throw new Error('自动识别选项不正确。')
@@ -122,24 +156,35 @@ function registerIpc(): void {
     return matcher.start(ids as string[] | undefined, mode)
   })
   handle('cancelMetadataMatching', () => matcher.cancel())
-  handle('resolveMetadataMatch', async (gameId: unknown, workId: unknown) => {
+  handle('resolveMetadataMatch', async (gameId: unknown, workId: unknown, reviewId: unknown, decisionFingerprint: unknown) => {
     const id = validId(gameId)
-    if (!matcher.getState().reviews.some(review => review.gameId === id)) throw new Error('该条目已处理，请刷新核对列表。')
-    if (workId === null) return matcher.dismiss(id)
+    const guard = matcher.captureReview(id, validId(reviewId), validId(decisionFingerprint), { allowStale: workId === null })
+    if (workId === null) return withIdentityLock(() => matcher.dismiss(guard))
     const catalogId = validId(workId), request = await library.beginMetadataRequest(id, 'association')
     try {
+      matcher.assertReviewCurrent(guard, request.token)
       const work = await api().getWork(catalogId)
-      return await withIdentityLock(async () => { assertCanLink(id, work.id); await library.linkMetadata(id, work, { preserveMergedName: true, expectedName: request.game.name, expectedMetadataId: request.game.metadata?.id ?? null, requestToken: request.token }); notify(); return matcher.dismiss(id) })
+      return await withIdentityLock(async () => {
+        matcher.assertReviewCurrent(guard, request.token); assertCanLink(id, work.id)
+        await library.linkMetadata(id, work, { preserveMergedName: true, expectedName: request.game.name, expectedMetadataId: request.game.metadata?.id ?? null, requestToken: request.token, beforeCommit: () => matcher.assertReviewCurrent(guard, request.token) })
+        notify(); return matcher.dismiss(guard, { afterCommit: true })
+      })
     } finally { await library.finishMetadataRequest(request.token) }
   })
-  handle('linkGame', async (gameId: unknown, workId: unknown) => {
+  handle('linkGame', async (gameId: unknown, workId: unknown, reviewId?: unknown, decisionFingerprint?: unknown) => {
     const localId = validId(gameId), catalogId = validId(workId)
+    const review = matcher.getState().reviews.find(item => item.gameId === localId)
+    const guard = reviewId !== undefined
+      ? matcher.captureReview(localId, validId(reviewId), validId(decisionFingerprint), { allowStale: true })
+      : review?.reviewId && review.decisionFingerprint ? matcher.captureReview(localId, review.reviewId, review.decisionFingerprint, { allowStale: true }) : null
     const request = await library.beginMetadataRequest(localId, 'association')
     try {
+      if (guard) matcher.assertReviewCurrent(guard, request.token)
       const work = await api().getWork(catalogId)
       return await withIdentityLock(async () => {
         assertCanLink(localId, work.id)
-        const result = await library.linkMetadata(localId, work, { preserveMergedName: true, expectedName: request.game.name, expectedMetadataId: request.game.metadata?.id ?? null, requestToken: request.token }); await matcher.dismiss(localId); notify(); return result
+        const result = await library.linkMetadata(localId, work, { preserveMergedName: true, expectedName: request.game.name, expectedMetadataId: request.game.metadata?.id ?? null, requestToken: request.token, ...(guard ? { beforeCommit: () => matcher.assertReviewCurrent(guard, request.token) } : {}) })
+        if (guard) await matcher.dismiss(guard, { afterCommit: true }); notify(); return result
       })
     } finally { await library.finishMetadataRequest(request.token) }
   })

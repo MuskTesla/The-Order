@@ -9,7 +9,7 @@ import { reactive, type VNode } from 'vue'
 
 // Render the actual SFC's compiled template, including its real computed props
 // and native button handlers. No duplicate implementation of launch readiness.
-const require = createRequire(import.meta.url)
+const require = createRequire(new URL('../src/components/GameCard.vue', import.meta.url))
 const component = (async () => {
   const source = await fs.readFile(new URL('../src/components/GameCard.vue', import.meta.url), 'utf8')
   const { descriptor } = parse(source)
@@ -29,6 +29,7 @@ function nodes(root: VNode): VNode[] {
   return [root, ...(Array.isArray(root.children) ? root.children.flatMap(child => child && typeof child === 'object' ? nodes(child as VNode) : []) : [])]
 }
 function hasClass(node: VNode, name: string) { return String(node.props?.class ?? '').split(/\s+/).includes(name) }
+function nodeText(node: VNode): string { return Array.isArray(node.children) ? node.children.map(child => child && typeof child === 'object' ? nodeText(child as VNode) : String(child ?? '')).join('') : String(node.children ?? '') }
 async function mount(input: any) {
   const props = reactive({ selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, ...input })
   const events: unknown[][] = [], emit = (...args: unknown[]) => events.push(args)
@@ -74,12 +75,35 @@ test('selection is an independent labeled checkbox and does not emit open', asyn
   }
 })
 
-test('unlinked local games remain local, zero personal ratings remain visible, and list markup retains open actions', async () => {
-  const card = await mount({ game: { ...game([installation('one', null)]), personalRating: 0 }, layout: 'list' })
+test('unlinked local games show configuration, zero personal ratings take priority, and list markup retains open actions', async () => {
+  const card = await mount({ game: { ...game([installation('one', null)]), personalRating: 0, metadata: { ratings: [{source:'bangumi',score:8.5,scale:10}], developers:[], tags:[] } }, layout: 'list' })
   assert.ok(hasClass(card.tree(), 'card-list'))
-  assert.equal(nodes(card.find('card-location')!).some(node => String(node.children).includes('想玩清单')), false)
-  assert.ok(nodes(card.find('card-location')!).some(node => String(node.children).includes('本地')))
-  assert.ok(nodes(card.find('card-personal-rating')!).some(node => String(node.children).includes('0.0')))
+  assert.equal(nodeText(card.find('card-availability')!), '待设程序')
+  assert.equal(nodeText(card.find('card-configure')!), '设置启动程序')
+  assert.ok(nodeText(card.find('card-status')!).includes('未开始'))
+  assert.ok(nodeText(card.find('card-rating-summary')!).includes('0.0'))
+  assert.ok(nodeText(card.find('card-rating-summary')!).includes('我的'))
+  assert.equal(nodes(card.tree()).filter(node => hasClass(node, 'card-rating-summary') || hasClass(node, 'card-personal-rating') || hasClass(node, 'card-rating')).length, 1)
+  assert.equal(nodeText(card.find('card-rating-summary')!).includes('8.5'), false)
   card.find('card-title')!.props!.onClick(); card.find('card-image')!.props!.onClick()
   assert.deepEqual(card.events, [['open'], ['open']])
+})
+
+test('wishlist offers adding a local game, while launchable games omit a redundant local marker', async () => {
+  const wishlist = await mount({ game: game([]) })
+  assert.equal(nodeText(wishlist.find('card-availability')!), '未安装')
+  assert.equal(nodeText(wishlist.find('card-configure')!), '添加本地游戏')
+  wishlist.find('card-configure')!.props!.onClick()
+  assert.deepEqual(wishlist.events, [['configure']])
+  const local = await mount({ game: game([installation('one', 'C:/synthetic-only/Game.exe')]) })
+  assert.equal(local.find('card-availability'), undefined)
+  assert.equal(local.find('card-location'), undefined)
+})
+
+test('source rating is labeled when personal rating is absent, with no unrated or second score badge', async () => {
+  const card = await mount({ game: { ...game([]), metadata: { ratings: [{source:'bangumi',score:8.5,scale:10}], developers:[], tags:[] } } })
+  assert.ok(nodeText(card.find('card-rating-summary')!).includes('Bangumi'))
+  assert.ok(nodeText(card.find('card-rating-summary')!).includes('8.5'))
+  assert.equal(card.find('card-personal-rating'), undefined)
+  assert.equal(card.find('card-rating'), undefined)
 })

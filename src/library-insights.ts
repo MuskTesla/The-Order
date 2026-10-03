@@ -21,12 +21,12 @@ function lastPlayed(game: LibraryGame): number {
 export function getContinueStory(games: LibraryGame[], active?: ActiveSession | null): ContinueStory | null {
   const current = active && games.find(game => game.id === active.gameId)
   if (current) return { game: current, reason: 'active', canPlay: false }
+  if (active) return null
   const recentDates = new Map(games.map(game => [game.id, lastPlayed(game)]))
   const ordered = [...games].sort((a, b) => recentDates.get(b.id)! - recentDates.get(a.id)! || a.name.localeCompare(b.name, 'zh-CN'))
   const playing = ordered.filter(game => game.status === 'playing')
   const game = playing.find(game => getLaunchInstallation(game))
     ?? ordered.find(game => recentDates.get(game.id)! > 0 && getLaunchInstallation(game))
-    ?? playing[0] ?? ordered.find(game => recentDates.get(game.id)! > 0)
   return game ? { game, reason: game.status === 'playing' ? 'playing' : 'recent', canPlay: !active && !!getLaunchInstallation(game) } : null
 }
 

@@ -55,11 +55,19 @@ export interface ActiveSession { gameId: string; installationId: string; started
 export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean }
 export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata?: boolean }
 export interface MatchOption { work: WorkMetadata; confidence: number; reason: string }
-export interface MatchReview { gameId: string; name: string; folderPath: string; reason: string; options: MatchOption[] }
+export interface MatchReviewSource {
+  installationId: string; folderPath: string; executablePath: string | null; fingerprint: string
+  installations?: Array<{ installationId: string; folderPath: string; executablePath: string | null }>
+}
+export interface MatchReview {
+  gameId: string; name: string; folderPath: string; reason: string; options: MatchOption[]
+  reviewId?: string; source?: MatchReviewSource; sourceStatus?: 'current' | 'stale' | 'legacy'; decisionFingerprint?: string
+}
 export type MetadataMatchingMode = 'missing' | 'reidentify'
 export interface MetadataMatchingState { id: string | null; status: 'idle' | 'running' | 'completed' | 'cancelled'; total: number; processed: number; matched: number; unmatched: number; failed: number; currentName: string | null; reviews: MatchReview[]; mode?: MetadataMatchingMode }
 export interface AppSnapshot { games: LibraryGame[]; settings: PublicSettings; activeSession: ActiveSession | null; dataPath: string; version: string; matching?: MetadataMatchingState }
 export interface ScanCandidate { id: string; name: string; folderPath: string; executables: string[] }
+export interface InstallationAttachmentScan { requestId: string; rootPath: string; candidates: ScanCandidate[] }
 export interface SearchPage { items: WorkMetadata[]; nextCursor: string | null }
 export interface GamePatch { name?: string; status?: PlayStatus; personalRating?: number | null; favorite?: boolean; categories?: string[]; customTags?: string[]; notes?: string; preferredInstallationId?: string | null }
 export interface BulkGamePatch { status?: PlayStatus; favorite?: boolean; personalRating?: number | null; addCategories?: string[]; removeCategories?: string[]; addTags?: string[]; removeTags?: string[] }
@@ -73,11 +81,14 @@ export interface KunManagerAPI {
   getWork(id: string): Promise<WorkMetadata>
   addVirtualGame(workId: string): Promise<LibraryGame>
   scanFolder(): Promise<ScanCandidate[]>
+  prepareInstallationAttachment(gameId: string): Promise<InstallationAttachmentScan | null>
+  attachLocalInstallation(requestId: string, candidateId: string): Promise<LibraryGame | null>
+  cancelInstallationAttachment(requestId: string): Promise<void>
   importLocalGames(candidateIds: string[], autoMatch?: boolean): Promise<ImportResult>
   startMetadataMatching(gameIds?: string[], mode?: MetadataMatchingMode): Promise<MetadataMatchingState>
   cancelMetadataMatching(): Promise<MetadataMatchingState>
-  resolveMetadataMatch(gameId: string, workId: string | null): Promise<MetadataMatchingState>
-  linkGame(gameId: string, workId: string): Promise<LibraryGame>
+  resolveMetadataMatch(gameId: string, workId: string | null, reviewId?: string, decisionFingerprint?: string): Promise<MetadataMatchingState>
+  linkGame(gameId: string, workId: string, reviewId?: string, decisionFingerprint?: string): Promise<LibraryGame>
   refreshGame(gameId: string): Promise<LibraryGame>
   updateGame(gameId: string, patch: GamePatch): Promise<LibraryGame>
   updateGames(gameIds: string[], patch: BulkGamePatch): Promise<LibraryGame[]>

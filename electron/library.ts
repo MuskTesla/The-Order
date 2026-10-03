@@ -12,6 +12,7 @@ const EXCLUDED_EXECUTABLE = /^(?:unins\d*|uninstall(?:er)?|setup|install(?:er)?|
 const SKIP_DIRECTORIES = new Set(['node_modules', '.git', '.svn', '.potatovn', '$recycle.bin', 'system volume information', 'windows', 'redist', '_commonredist', '汉化补丁', '补丁', 'patches', '_patch', 'backup', 'beifen'])
 
 export interface MetadataRequestToken { epoch: string; gameId: string; generation: string; kind: 'refresh' | 'association' | 'automatic'; requestId: number; revision: number; automaticBatchId?: string }
+export interface InstallationAttachmentToken { epoch: string; gameId: string; generation: string }
 type MetadataState = { generation: string; latestRefresh: number; pendingAssociation: number | null; pendingRefresh: number | null; revision: number; automaticBatchId?: string }
 type Backup = { format: typeof FORMAT; version: 1; exportedAt: string; games: LibraryGame[] }
 const clone = <T>(value: T): T => structuredClone(value)
@@ -196,6 +197,17 @@ export class LibraryStore {
   getGame(id: string): LibraryGame { this.ready(); return clone(this.find(this.games, id)) }
   exportBackup(): Backup { this.ready(); return envelope(this.games) }
 
+  // Capture before showing native dialogs. Metadata generations also track
+  // lifecycle, name, binding and installation changes, but not personal edits
+  // or launch arguments; those edits can safely coexist with an attachment.
+  captureInstallationAttachmentToken(gameId: string): InstallationAttachmentToken {
+    this.ready(); this.find(this.games, gameId)
+    return { epoch: this.metadataEpoch, gameId, generation: this.metadataState(gameId).generation }
+  }
+  private assertInstallationAttachmentToken(gameId: string, token: InstallationAttachmentToken): void {
+    if (token.epoch !== this.metadataEpoch || token.gameId !== gameId || this.metadataStates.get(gameId)?.generation !== token.generation) throw new Error('条目的名称、关联或安装已变化，请重新添加本地游戏。')
+  }
+
   private metadataState(id: string): MetadataState {
     let state = this.metadataStates.get(id)
     if (!state) { state = { generation: randomUUID(), latestRefresh: 0, pendingAssociation: null, pendingRefresh: null, revision: 0 }; this.metadataStates.set(id, state) }
@@ -263,13 +275,19 @@ export class LibraryStore {
     if (!Array.isArray(candidates) || candidates.length > 2000) throw new Error('导入候选过多。')
     return this.mutate(async games => {
       const known = new Set<string>()
-      for (const item of games) for (const location of item.installations) known.add(await actualPathKey(location.folderPath))
+      const ranges: Array<{ key: string; name: string }> = []
+      for (const item of games) for (const location of item.installations) {
+        const key = await actualPathKey(location.folderPath)
+        known.add(key); ranges.push({ key, name: item.name })
+      }
       let added = 0, skipped = 0
       for (const candidate of candidates) {
         const folderPath = await fs.realpath(absolutePath(candidate.folderPath, '游戏目录'))
         if (!(await fs.stat(folderPath)).isDirectory()) throw new Error('游戏目录不存在。')
         const key = pathKey(folderPath)
         if (known.has(key)) { skipped++; continue }
+        const overlapping = ranges.find(existing => within(existing.key, key) || within(key, existing.key))
+        if (overlapping) throw new Error(`所选目录与「${overlapping.name}」的现有安装范围重叠，请先核对目录归属，不能重复导入。`)
         if (!Array.isArray(candidate.executables) || candidate.executables.length > 200) throw new Error('启动文件列表格式不正确。')
         const executables: string[] = []
         for (const file of candidate.executables) {
@@ -281,13 +299,13 @@ export class LibraryStore {
         const item = makeGame(text(candidate.name, '游戏名称', 2000, false))
         const location: GameInstallation = { id: randomUUID(), folderPath, executablePath: executables.length === 1 ? executables[0]! : null, arguments: [] }
         item.installations.push(location); item.preferredInstallationId = location.id
-        games.push(item); known.add(key); added++
+        games.push(item); known.add(key); ranges.push({ key, name: item.name }); added++
       }
       return { added, skipped }
     })
   }
 
-  async linkMetadata(gameId: string, value: WorkMetadata, options: { preserveName?: boolean; preserveMergedName?: boolean; expectedName?: string; expectedMetadataId?: string | null; requestToken?: MetadataRequestToken; signal?: AbortSignal } = {}): Promise<LibraryGame> {
+  async linkMetadata(gameId: string, value: WorkMetadata, options: { preserveName?: boolean; preserveMergedName?: boolean; expectedName?: string; expectedMetadataId?: string | null; requestToken?: MetadataRequestToken; signal?: AbortSignal; beforeCommit?: () => void } = {}): Promise<LibraryGame> {
     const work = metadata(value)
     const assertNotCancelled = () => options.signal?.throwIfAborted()
     return this.mutate(games => {
@@ -328,7 +346,7 @@ export class LibraryStore {
       else if (preserveName) item.nameIsCustom = true
       else { item.name = work.title; item.nameIsCustom = false }
       return item
-    }, [gameId], assertNotCancelled, options.requestToken?.kind === 'automatic' ? options.requestToken.automaticBatchId : undefined)
+    }, [gameId], () => { assertNotCancelled(); options.beforeCommit?.() }, options.requestToken?.kind === 'automatic' ? options.requestToken.automaticBatchId : undefined)
   }
 
   async updateGame(gameId: string, patch: GamePatch): Promise<LibraryGame> {
@@ -400,9 +418,48 @@ export class LibraryStore {
       const location = this.findInstallation(item, installationId)
       const root = await fs.realpath(location.folderPath)
       if (!within(root, executable) || path.extname(executable).toLowerCase() !== '.exe' || !(await fs.stat(executable)).isFile()) throw new Error('请选择游戏目录内的 exe 启动文件。')
-      location.executablePath = executable; item.preferredInstallationId = location.id
+      location.executablePath = executable
+      if (!item.installations.some(existing => existing.id === item.preferredInstallationId && existing.executablePath)) item.preferredInstallationId = location.id
       return item
     })
+  }
+
+  async attachInstallation(gameId: string, candidate: ScanCandidate, expected: InstallationAttachmentToken = this.captureInstallationAttachmentToken(gameId), beforeCommit?: () => void, authorizedRoot?: string): Promise<LibraryGame> {
+    // The main process supplies an authorized candidate and its explicit game
+    // root, after any directory/program choice. Freeze that input before it
+    // waits in the transaction queue; renderer paths are never accepted here.
+    const raw = object(candidate, '安装候选')
+    const folder = absolutePath(raw.folderPath, '游戏目录')
+    if (!Array.isArray(raw.executables) || raw.executables.length === 0 || raw.executables.length > 200) throw new Error('启动文件列表须包含 1 至 200 个候选。')
+    const files = raw.executables.map(file => absolutePath(file, '启动文件'))
+    const token = clone(expected)
+    const authorizedKey = authorizedRoot === undefined ? null : pathKey(absolutePath(authorizedRoot, '已授权根目录'))
+    return this.mutate(async games => {
+      this.assertInstallationAttachmentToken(gameId, token)
+      const item = this.find(games, gameId)
+      const folderPath = await fs.realpath(folder)
+      // Main already canonicalized the authorized scan root. Recheck after
+      // earlier transactions finish; a junction swap while queued must not
+      // silently grant access to a new external directory.
+      if (authorizedKey !== null && pathKey(folderPath) !== authorizedKey) throw new Error('游戏根目录的实际位置已变化，请重新选择根目录。')
+      if (!(await fs.stat(folderPath)).isDirectory()) throw new Error('游戏目录不存在。')
+      const key = pathKey(folderPath)
+      for (const other of games) for (const existing of other.installations) {
+        const known = await actualPathKey(existing.folderPath)
+        if (known === key) throw new Error(other.id === gameId ? '此目录已是当前条目的安装，不能重复添加。' : `此目录已属于「${other.name}」，请在已有条目中核对归属。`)
+        if (within(known, key) || within(key, known)) throw new Error(`所选目录与「${other.name}」的现有安装范围重叠，请选择不重叠的游戏目录或先核对归属。`)
+      }
+      const executables = new Map<string, string>()
+      for (const file of files) {
+        const executable = await fs.realpath(file)
+        if (!within(folderPath, executable) || path.extname(executable).toLowerCase() !== '.exe' || EXCLUDED_EXECUTABLE.test(path.basename(executable)) || !(await fs.stat(executable)).isFile()) throw new Error('候选启动文件必须是游戏根目录内的有效 exe。')
+        executables.set(pathKey(executable), executable)
+      }
+      const location: GameInstallation = { id: randomUUID(), folderPath, executablePath: executables.size === 1 ? [...executables.values()][0]! : null, arguments: [] }
+      item.installations.push(location)
+      if (!item.installations.some(existing => existing.id === item.preferredInstallationId && existing.executablePath)) item.preferredInstallationId = location.id
+      return item
+    }, [], () => { this.assertInstallationAttachmentToken(gameId, token); beforeCommit?.() })
   }
 
   async setLaunchArguments(gameId: string, installationId: string, args: string[]): Promise<LibraryGame> {

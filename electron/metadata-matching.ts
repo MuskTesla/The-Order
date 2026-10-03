@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
@@ -24,6 +24,21 @@ interface MatchingDependencies {
 }
 const empty = (): MetadataMatchingState => ({ id: null, status: 'idle', total: 0, processed: 0, matched: 0, unmatched: 0, failed: 0, currentName: null, reviews: [], mode: 'missing' })
 const clone = <T>(value: T): T => structuredClone(value)
+const preferredInstallation = (game: LibraryGame) => game.installations.find(item => item.id === game.preferredInstallationId) ?? game.installations[0]
+// A decision depends on local identity and the current association. Personal
+// records and launch arguments may change without invalidating that decision.
+const reviewIdentity = (game: LibraryGame): string => createHash('sha256').update(JSON.stringify([
+  game.name, game.nameIsCustom, game.metadata?.id ?? null, game.preferredInstallationId,
+  game.installations.map(({ id, folderPath, executablePath }) => [id, folderPath, executablePath]),
+])).digest('hex')
+const boundedText = (value: unknown, maximum: number): value is string => typeof value === 'string' && value.length <= maximum && !value.includes('\0')
+
+export interface MatchReviewGuard {
+  gameId: string
+  reviewId: string
+  identity: string
+  token?: MetadataRequestToken
+}
 
 export async function loadTitleIndex(file: string): Promise<TitleIndexRecord[]> {
   const bytes = await fs.readFile(file)
@@ -39,11 +54,20 @@ export class MetadataMatcher {
   private saveQueue: Promise<void> = Promise.resolve()
   private task: Promise<void> = Promise.resolve()
   private readonly file: string
+  private readonly reviewTokens = new Map<string, MetadataRequestToken>()
+  private readonly staleReviewIds = new Set<string>()
 
   constructor(dataDir: string, private readonly library: MatchingLibrary, private readonly dependencies: MatchingDependencies) { this.file = path.join(dataDir, 'metadata-matching.json') }
   getState(): MetadataMatchingState {
-    const games = new Set(this.library.getGames().map(game => game.id))
-    return clone({ ...this.state, reviews: this.state.reviews.filter(review => games.has(review.gameId)) })
+    const games = new Map(this.library.getGames().map(game => [game.id, game]))
+    const reviewIds = new Set(this.state.reviews.map(review => review.reviewId))
+    for (const id of this.reviewTokens.keys()) if (!reviewIds.has(id)) this.reviewTokens.delete(id)
+    for (const id of this.staleReviewIds) if (!reviewIds.has(id)) this.staleReviewIds.delete(id)
+    for (const review of this.state.reviews) if (review.source && review.reviewId && !games.has(review.gameId)) this.staleReviewIds.add(review.reviewId)
+    return clone({ ...this.state, reviews: this.state.reviews.filter(review => games.has(review.gameId)).map(review => {
+      const game = games.get(review.gameId)!
+      return { ...review, sourceStatus: this.reviewSourceStatus(review, game), decisionFingerprint: this.decisionFingerprint(game) }
+    }) })
   }
   async initialize(): Promise<void> {
     try {
@@ -54,8 +78,26 @@ export class MetadataMatcher {
       for (const field of ['total', 'processed', 'matched', 'unmatched', 'failed']) if (!Number.isInteger(saved[field]) || saved[field] < 0 || saved[field] > 10000) return
       if (saved.id !== null && typeof saved.id !== 'string') return
       if (saved.mode !== undefined && !['missing', 'reidentify'].includes(saved.mode)) return
-      saved.reviews = saved.reviews.filter((review: MatchReview) => typeof review.gameId === 'string' && typeof review.name === 'string' && typeof review.folderPath === 'string' && typeof review.reason === 'string' && Array.isArray(review.options) && review.options.length <= 5 && review.options.every(option => option.work && typeof option.work.id === 'string' && typeof option.work.title === 'string' && typeof option.work.originalTitle === 'string' && Array.isArray(option.work.developers) && typeof option.confidence === 'number'))
+      saved.reviews = saved.reviews.filter((review: MatchReview) => review && boundedText(review.gameId, 300) && boundedText(review.name, 2000) && boundedText(review.folderPath, 32768) && boundedText(review.reason, 2000) && Array.isArray(review.options) && review.options.length <= 5 && review.options.every(option => option?.work && typeof option.work.id === 'string' && typeof option.work.title === 'string' && typeof option.work.originalTitle === 'string' && Array.isArray(option.work.developers) && Number.isFinite(option.confidence)))
+      let upgraded = false
+      const seen = new Set<string>()
+      for (const review of saved.reviews as MatchReview[]) {
+        if (!boundedText(review.reviewId, 300) || !review.reviewId || seen.has(review.reviewId)) { review.reviewId = randomUUID(); upgraded = true }
+        seen.add(review.reviewId)
+        // Old queues did not record which installation produced the evidence.
+        // Keep their historical folder text, without inventing a source now.
+        if (review.source && !this.validSource(review.source)) { delete review.source; upgraded = true }
+        if (review.sourceStatus === 'stale') this.staleReviewIds.add(review.reviewId)
+        delete review.sourceStatus
+        delete review.decisionFingerprint
+        try {
+          const game = this.library.getGame(review.gameId)
+          const token = this.dependencies.capture?.(game, 'review')
+          if (token) this.reviewTokens.set(review.reviewId, token)
+        } catch { this.staleReviewIds.add(review.reviewId) }
+      }
       this.state = { ...saved, mode: saved.mode ?? 'missing', currentName: null, status: saved.status === 'running' ? 'cancelled' : saved.status }
+      if (upgraded) await this.save()
     } catch { /* Interrupted or corrupt job data never prevents the library opening. */ }
   }
   async start(ids?: string[], mode: MetadataMatchingMode = 'missing'): Promise<MetadataMatchingState> {
@@ -94,16 +136,119 @@ export class MetadataMatcher {
     if (this.state.status === 'running') { this.state.status = 'cancelled'; this.state.currentName = null; await this.save(); this.dependencies.changed() }
     return this.getState()
   }
-  async shutdown(): Promise<void> { await this.cancel(); await this.saveQueue }
+  async shutdown(): Promise<void> { await this.cancel(); await this.save() }
   async settle(): Promise<void> { await this.task }
-  async dismiss(gameId: string): Promise<MetadataMatchingState> {
-    this.state.reviews = this.state.reviews.filter(review => review.gameId !== gameId)
-    await this.save(); this.dependencies.changed(); return this.getState()
+  captureReview(gameId: string, reviewId: string, expectedDecisionFingerprint: string, options: { allowStale?: boolean } = {}): MatchReviewGuard {
+    const review = this.currentReview(gameId, reviewId)
+    const game = this.library.getGame(gameId)
+    if (this.decisionFingerprint(game) !== expectedDecisionFingerprint) throw new Error('当前游戏已更新，请重新打开核对后再决定。')
+    if (!options.allowStale && this.reviewSourceStatus(review, game) === 'stale') throw new Error('这项建议的识别来源已变化，请重新识别或手动搜索。')
+    const token = this.dependencies.capture?.(game, 'review')
+    return { gameId, reviewId, identity: reviewIdentity(game), ...(token ? { token } : {}) }
+  }
+  assertReviewCurrent(guard: MatchReviewGuard, associationToken?: MetadataRequestToken): void {
+    const review = this.currentReview(guard.gameId, guard.reviewId)
+    let game: LibraryGame
+    try { game = this.library.getGame(guard.gameId) } catch { throw new Error('游戏已移除，请重新打开资料整理。') }
+    if (reviewIdentity(game) !== guard.identity) throw new Error('当前游戏已更新，请重新打开核对后再决定。')
+    const token = this.dependencies.capture?.(game, 'review')
+    const expected = associationToken ?? guard.token
+    if (expected && (!token || token.gameId !== expected.gameId || token.epoch !== expected.epoch || token.generation !== expected.generation ||
+      token.requestId !== guard.token?.requestId)) throw new Error('当前游戏或核对操作已更新，请重新打开核对后再决定。')
+    const original = this.reviewTokens.get(guard.reviewId)
+    if (associationToken && token && guard.token && original && this.sourceMatches(review, game) &&
+      original.epoch === guard.token.epoch && original.generation === guard.token.generation && original.requestId === guard.token.requestId) {
+      // Beginning this validated decision records a new request generation; it
+      // has not changed the evidence. Keep this suggestion retryable if its
+      // detail request fails, while outside identity edits still invalidate it.
+      this.reviewTokens.set(guard.reviewId, token)
+      this.staleReviewIds.delete(guard.reviewId)
+    }
+  }
+  async dismiss(value: MatchReviewGuard | string, options: { afterCommit?: boolean } = {}): Promise<MetadataMatchingState> {
+    // Kept for internal callers that synchronously dismiss the current item.
+    // A renderer decision must always supply its captured guard instead.
+    const current = typeof value === 'string' ? this.state.reviews.find(review => review.gameId === value) : undefined
+    if (typeof value === 'string' && !current) return this.getState()
+    const guard = typeof value === 'string'
+      ? this.captureReview(value, current!.reviewId!, this.decisionFingerprint(this.library.getGame(value)), { allowStale: true })
+      : value
+    if (!options.afterCommit) this.assertReviewCurrent(guard)
+    // Linking intentionally changes the old source identity. After that atomic
+    // commit, remove only its exact suggestion; a later job owns a different ID.
+    const review = this.state.reviews.find(review => review.gameId === guard.gameId && review.reviewId === guard.reviewId)
+    if (!review) return this.getState()
+    const state = this.state, position = state.reviews.indexOf(review)
+    const originalToken = this.reviewTokens.get(guard.reviewId), originallyStale = this.staleReviewIds.has(guard.reviewId)
+    this.state.reviews = this.state.reviews.filter(item => item !== review)
+    this.reviewTokens.delete(guard.reviewId)
+    this.staleReviewIds.delete(guard.reviewId)
+    try { await this.save() }
+    catch (error) {
+      // A failed atomic save did not dismiss the persisted suggestion. Restore
+      // it for retry unless a newer job or same-game suggestion already owns
+      // this decision; never roll that later state back to the old review.
+      if (this.state === state && !state.reviews.some(item => item.gameId === guard.gameId)) {
+        state.reviews.splice(Math.min(position, state.reviews.length), 0, review)
+        if (originalToken) this.reviewTokens.set(guard.reviewId, originalToken)
+        if (originallyStale) this.staleReviewIds.add(guard.reviewId)
+        this.dependencies.changed()
+        // A concurrently queued snapshot may have observed the optimistic
+        // removal. Queue the restored/latest state after it, when writable.
+        await this.save().catch(() => undefined)
+      }
+      throw error
+    }
+    this.dependencies.changed(); return this.getState()
+  }
+  private currentReview(gameId: string, reviewId: string): MatchReview {
+    const review = this.state.reviews.find(review => review.gameId === gameId && review.reviewId === reviewId)
+    if (!review) throw new Error('这项核对建议已更新或结束，请重新打开资料整理。')
+    return review
+  }
+  private decisionFingerprint(game: LibraryGame): string {
+    const token = this.dependencies.capture?.(game, 'review')
+    return createHash('sha256').update(JSON.stringify([reviewIdentity(game), token?.epoch, token?.generation, token?.requestId])).digest('hex')
+  }
+  private validSource(source: NonNullable<MatchReview['source']>): boolean {
+    const installation = (item: { installationId: string; folderPath: string; executablePath: string | null }) => !!item && boundedText(item.installationId, 300) && !!item.installationId && boundedText(item.folderPath, 32768) && !!item.folderPath && (item.executablePath === null || boundedText(item.executablePath, 32768))
+    return installation(source) && typeof source.fingerprint === 'string' && /^[a-f\d]{64}$/.test(source.fingerprint) &&
+      (source.installations === undefined || Array.isArray(source.installations) && source.installations.length <= 100 && source.installations.every(installation))
+  }
+  private sourceMatches(review: MatchReview, game: LibraryGame): boolean {
+    const source = review.source, selected = preferredInstallation(game)
+    if (!source || !selected || source.fingerprint !== reviewIdentity(game) || source.installationId !== selected.id ||
+      review.folderPath !== source.folderPath || source.folderPath !== selected.folderPath || source.executablePath !== selected.executablePath) return false
+    if (source.installations) {
+      const installations = this.reviewInstallations(game)
+      if (JSON.stringify(installations) !== JSON.stringify(source.installations)) return false
+    }
+    return true
+  }
+  private reviewSourceStatus(review: MatchReview, game: LibraryGame): 'current' | 'stale' | 'legacy' {
+    if (!review.source) return 'legacy'
+    const stale = () => { if (review.reviewId) this.staleReviewIds.add(review.reviewId); return 'stale' as const }
+    if (review.reviewId && this.staleReviewIds.has(review.reviewId) || !this.sourceMatches(review, game)) return stale()
+    const original = review.reviewId ? this.reviewTokens.get(review.reviewId) : undefined
+    if (original) {
+      const token = this.dependencies.capture?.(game, 'review')
+      if (!token || original.epoch !== token.epoch || original.generation !== token.generation || original.requestId !== token.requestId) return stale()
+    }
+    return 'current'
+  }
+  private reviewInstallations(game: LibraryGame) {
+    return [...game.installations].sort((a, b) => Number(b.id === game.preferredInstallationId) - Number(a.id === game.preferredInstallationId)).slice(0, 100)
+      .map(({ id, folderPath, executablePath }) => ({ installationId: id, folderPath, executablePath }))
   }
   private message(error: unknown): string { return (error instanceof Error ? error.message : '资料获取失败，请稍后重试。').replace(/nmk_(?:live|test)_[\w-]+/g, '[密钥已隐藏]').replace(/Bearer\s+\S+/gi, 'Bearer [密钥已隐藏]').slice(0, 300) }
   private addReview(job: MetadataMatchingState, game: LibraryGame, options: MatchOption[], reason: string): void {
     job.reviews = job.reviews.filter(review => review.gameId !== game.id)
-    job.reviews.push({ gameId: game.id, name: game.name, folderPath: game.installations[0]?.folderPath ?? '', reason, options: options.slice(0, 5) })
+    const selected = preferredInstallation(game), reviewId = randomUUID()
+    const token = this.dependencies.capture?.(game, 'review')
+    if (token) this.reviewTokens.set(reviewId, token)
+    job.reviews.push({ gameId: game.id, reviewId, name: game.name, folderPath: selected?.folderPath ?? '', reason, options: options.slice(0, 5),
+      ...(selected ? { source: { installationId: selected.id, folderPath: selected.folderPath, executablePath: selected.executablePath,
+        fingerprint: reviewIdentity(game), installations: this.reviewInstallations(game) } } : {}) })
   }
   private sourceCurrent(original: LibraryGame, token: MetadataRequestToken | undefined, batchId: string): boolean {
     try {
@@ -128,7 +273,7 @@ export class MetadataMatcher {
     const readExecutableMetadata = this.dependencies.readExecutableMetadata?.() === true
     for (const game of games) {
       if (!alive()) return
-      const installation = game.installations.find(item => item.id === game.preferredInstallationId) ?? game.installations[0]
+      const installation = preferredInstallation(game)
       // An old provider title is not an independent local observation. Preserve
       // an explicitly personal title; otherwise derive the read-only input from
       // the preferred installation, without changing the actual library record.
@@ -264,7 +409,17 @@ export class MetadataMatcher {
     job.status = 'completed'; job.currentName = null; await this.save(); this.dependencies.changed()
   }
   private save(): Promise<void> {
-    const document = JSON.stringify(this.state)
+    // Remember evidence that became stale during this lifecycle. Otherwise an
+    // ABA edit could appear current after a clean restart reset runtime tokens.
+    const reviews = this.state.reviews.map(review => {
+      let stale = false
+      if (review.source) {
+        try { stale = this.reviewSourceStatus(review, this.library.getGame(review.gameId)) === 'stale' }
+        catch { stale = true }
+      }
+      return { ...review, ...(stale ? { sourceStatus: 'stale' } : {}) }
+    })
+    const document = JSON.stringify({ ...this.state, reviews })
     const run = this.saveQueue.then(async () => {
       await fs.mkdir(path.dirname(this.file), { recursive: true })
       const temporary = `${this.file}.${randomUUID()}.tmp`

@@ -212,7 +212,8 @@ try {
   assert.equal(state.matching.reviews.length, 2)
   const refsCalls = await application.evaluate(() => globalThis.__matchingFixture.requests.filter(url => url.includes('refs=')))
   assert.ok(refsCalls.some(url => new URL(url, 'https://api.nextmoe.dev').searchParams.get('refs').split(',').includes('vndb:v4')))
-  await page.getByRole('button', { name: /待核对 2 项/ }).click()
+  await page.locator('.maintenance-entry').click()
+  await page.locator('.maintenance-review-link').click()
   await page.locator('.review-queue').getByRole('button', { name: ambiguousName, exact: true }).click()
   assert.equal(await page.locator('.review-option').count(), 2)
   await page.locator('.review-option').filter({ hasText: '测试厂商甲' }).click()
@@ -230,7 +231,9 @@ try {
   assert.equal(state.matching.status, 'completed')
   assert.equal(state.matching.reviews.length, 1)
   assert.equal(state.matching.reviews[0].name, unknownName)
-  await page.getByRole('button', { name: '补全资料', exact: true }).click()
+  await page.locator('.maintenance-entry').click()
+  await page.getByRole('button', { name: /只补缺失/ }).click()
+  await page.keyboard.press('Escape')
   await page.locator('.matching-banner.running').waitFor()
   for (let attempt = 0; attempt < 100; attempt++) {
     if (await application.evaluate(() => globalThis.__matchingFixture.requests.length > 0)) break
@@ -273,7 +276,9 @@ try {
   // Switch on through the real UI, then use normal matching to read and resolve
   // that bounded PE title. No fixture program is ever launched.
   await setExecutableMetadata(page, true)
-  await page.getByRole('button', { name: '补全资料', exact: true }).click()
+  await page.locator('.maintenance-entry').click()
+  await page.getByRole('button', { name: /只补缺失/ }).click()
+  await page.keyboard.press('Escape')
   await waitSnapshot(page, state => state.matching?.status === 'completed' && state.games.find(game => game.id === peGame.id)?.metadata?.id === '301', 'Enabled synthetic PE metadata was not matched')
   state = await snapshot(page)
   const identified = state.games.find(game => game.id === peGame.id)

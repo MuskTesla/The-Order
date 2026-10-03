@@ -108,7 +108,7 @@ try {
   })
   await openManagement(page, 'Confirmed edition title')
   await field('游玩笔记').locator('textarea').fill('Picker draft')
-  await page.getByRole('button', { name: '选择程序', exact: true }).click()
+  await page.getByRole('button', { name: '设置启动程序', exact: true }).click()
   for (let attempt = 0; attempt < 100; attempt++) {
     if (await application.evaluate(() => globalThis.__pickerControl.held)) break
     await new Promise(resolve => setTimeout(resolve, 20))

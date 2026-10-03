@@ -67,10 +67,30 @@ const smart = (page, label) => page.getByRole('group', { name: '书架快捷视�
 try {
   let page = await start()
   const search = page.getByRole('textbox', { name: '搜索书架', exact: true })
-  for (const [label, count] of [['全部', 6], ['本地游戏', 4], ['想玩清单', 2], ['待补资料', 1], ['待设启动', 2]]) {
-    assert.equal(await smart(page, label).locator('small').innerText(), String(count))
+  for (const [label, count] of [['全部', 6], ['本地游戏', 4], ['愿望单', 2]]) {
     await smart(page, label).click()
     assert.equal(await page.locator('.library-card').count(), count)
+  }
+  // The stable maintenance entry is reachable from every existing page.
+  for (const label of ['我的书架', '发现作品', '分类收藏', '游玩统计', '偏好设置']) {
+    await page.locator('.sidebar').getByRole('button', { name: new RegExp(label) }).click()
+    await page.locator('.maintenance-entry').click()
+    await page.locator('.maintenance-modal').waitFor()
+    assert.match(await page.locator('.maintenance-sections section').first().innerText(), /缺资料 1/)
+    assert.match(await page.locator('.maintenance-sections section').nth(1).innerText(), /待设启动程序 2/)
+    await page.keyboard.press('Escape')
+    await page.locator('.maintenance-modal').waitFor({ state: 'hidden' })
+  }
+  // Missing data and launch setup retain a filtered shelf through maintenance.
+  for (const [section, count, resultLabel] of [[0, 1, '缺资料'], [1, 2, '待设启动程序']]) {
+    await page.locator('.maintenance-entry').click()
+    await page.locator('.maintenance-modal').waitFor()
+    await page.locator('.maintenance-sections section').nth(section).getByRole('button', { name:'在书架查看全部',exact:true }).click()
+    await page.locator('.maintenance-modal').waitFor({ state:'hidden' })
+    assert.equal(await page.locator('.library-card').count(), count)
+    assert.match(await page.locator('.library-result-bar').innerText(), new RegExp(resultLabel))
+    await page.getByRole('button', { name:'查看全部书架',exact:true }).click()
+    assert.equal(await page.locator('.library-card').count(), 6)
   }
   await smart(page, '全部').click()
   await search.fill('别名0 海风 日常')
@@ -120,16 +140,19 @@ try {
   assert.deepEqual((await state(page)).games, beforeInvalid, 'An invalid batch changes nothing')
 
   // A game with multiple installations and no preference can choose its first program.
-  await title(page, names[1]).getByRole('button', { name: `为 ${names[1]} 选择启动程序`, exact: true }).click()
+  await title(page, names[1]).getByRole('button', { name: `为 ${names[1]} 设置启动程序`, exact: true }).click()
   await page.locator('.manage-form').waitFor()
-  await page.getByRole('button', { name: '选择程序', exact: true }).click()
+  await page.locator('.manage-form .button-row').getByRole('button', { name: '设置启动程序', exact: true }).click()
   const firstConfigured = await waitState(page, value => value.games[1].preferredInstallationId === 'installation-1')
   assert.equal(firstConfigured.games[1].installations[0].executablePath, path.join(temporary, 'game-1', 'Chosen.exe'))
   assert.equal(firstConfigured.games[1].installations[1].executablePath, games[1].installations[1].executablePath)
   await page.locator('.installation-row').nth(1).getByRole('button', { name: '设置程序', exact: true }).click()
+  const configuredWithoutSwitch = await waitState(page, value => value.games[1].installations[1].executablePath === path.join(temporary, 'game-1-b', 'Chosen.exe'))
+  assert.equal(configuredWithoutSwitch.games[1].preferredInstallationId, 'installation-1', 'Configuring a second program preserves the valid first default')
+  assert.deepEqual(configuredWithoutSwitch.games[1].installations[1].arguments, ['--second'])
+  await page.locator('.installation-row').nth(1).getByRole('button', { name:'设为默认',exact:true }).click()
   const secondConfigured = await waitState(page, value => value.games[1].preferredInstallationId === 'installation-1-b')
   assert.equal(secondConfigured.games[1].installations[1].executablePath, path.join(temporary, 'game-1-b', 'Chosen.exe'))
-  assert.deepEqual(secondConfigured.games[1].installations[1].arguments, ['--second'])
   await page.keyboard.press('Escape')
   await page.locator('.kun-modal-panel').waitFor({ state: 'hidden' })
 
@@ -169,7 +192,7 @@ try {
   assert.deepEqual(persisted.games, secondConfigured.games)
   assert.equal(persisted.settings.hasApiKey, false)
   assert.equal(rendererErrors.length, 0, rendererErrors.join('\n'))
-  console.log(JSON.stringify({ status: 'passed', packaged, smartViews: 5, crossFieldSearch: true, scoreZero: true, visibleSelectionOnly: true, atomicBulk: true, relativeLabels: true, multiInstallationPicker: true, fourteenDayStatistics: true, systemThemeLive: true, keyboardSearch: true, restartPreserved: true, rendererErrors: 0, networkAllowed: 0, gameExecutions: 0 }))
+  console.log(JSON.stringify({ status: 'passed', packaged, smartViews: 3, maintenancePages:5, maintenanceShelfFilters:true, crossFieldSearch: true, scoreZero: true, visibleSelectionOnly: true, atomicBulk: true, relativeLabels: true, multiInstallationPicker: true, configuringPreservesDefault:true, explicitDefaultSwitch:true, fourteenDayStatistics: true, systemThemeLive: true, keyboardSearch: true, restartPreserved: true, rendererErrors: 0, networkAllowed: 0, gameExecutions: 0 }))
 } finally {
   if (application) await application.close()
   if (path.dirname(temporary) !== path.resolve(os.tmpdir()) || !path.basename(temporary).startsWith('the-order-workspace-')) throw new Error('Unexpected workspace fixture directory')

@@ -32,6 +32,8 @@ const preview: KunManagerAPI = {
   async getWork(id) { await loadPreview(); return clone(findWork(id)) },
   async addVirtualGame(id) { const existing = state.games.find(g => g.metadata?.id === id); if (existing) return clone(existing); const game = addWork(findWork(id)); state.games.push(game); changed(); return clone(game) },
   scanFolder: desktopOnly, importLocalGames: desktopOnly,
+  prepareInstallationAttachment: desktopOnly, attachLocalInstallation: desktopOnly,
+  cancelInstallationAttachment: desktopOnly,
   startMetadataMatching: desktopOnly, cancelMetadataMatching: desktopOnly, resolveMetadataMatch: desktopOnly,
   async linkGame(gameId, workId) { const game = findGame(gameId); game.metadata = clone(findWork(workId)); changed(); return clone(game) },
   async refreshGame(id) { return clone(findGame(id)) },
