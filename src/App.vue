@@ -649,9 +649,11 @@ let adoptingSettings = false
 let settingsSubmission: typeof settingsEdits | null = null
 let connectionEpoch = 0
 const settingsError = ref('')
+const settingsWarning = ref('')
 const connectionFeedback = ref<(ConnectionResult & { baseUrl: string }) | null>(null)
 const settingsDirty = computed(() => settingsFields.some(field => settingsForm[field] !== settingsBaseline[field]) || !!settingsForm.apiKey.trim())
 const connectionDraftDirty = computed(() => settingsForm.baseUrl !== settingsBaseline.baseUrl || settingsForm.includeNsfw !== settingsBaseline.includeNsfw || !!settingsForm.apiKey.trim())
+const recognitionSettingsDirty = computed(() => settingsForm.baseUrl.trim() !== settingsBaseline.baseUrl || settingsForm.includeNsfw !== settingsBaseline.includeNsfw || settingsForm.readExecutableMetadata !== settingsBaseline.readExecutableMetadata || !!settingsForm.apiKey.trim())
 function settingsValues(settings: PublicSettings) { return { baseUrl: settings.baseUrl, includeNsfw: settings.includeNsfw, theme: settings.theme, readExecutableMetadata: settings.readExecutableMetadata ?? true, nonPortraitCoverDisplay: settings.nonPortraitCoverDisplay ?? 'blur' } }
 function setSettingsField(field: SettingsField, value: typeof settingsForm[SettingsField]) { Object.assign(settingsForm, { [field]: value }) }
 function adoptSettings(action: () => void) { adoptingSettings = true; try { action() } finally { adoptingSettings = false } }
@@ -697,12 +699,13 @@ async function saveSettings(clear = false): Promise<boolean> {
     ...settingsValues({ ...settingsForm, hasApiKey: false }), baseUrl: settingsForm.baseUrl.trim(),
     ...(settingsForm.apiKey.trim() ? { apiKey: settingsForm.apiKey.trim() } : {})
   }
-  settingsError.value = ''; invalidateConnection(); settingsSubmission = edits
+  settingsError.value = ''; settingsWarning.value = ''; invalidateConnection(); settingsSubmission = edits
   return (await task('settings', async () => {
     let persisted = false
     try {
-      const saved = await api.saveSettings(input)
+      const { warning, ...saved } = await api.saveSettings(input)
       persisted = true
+      settingsWarning.value = warning ? settingsFailure(new Error(warning)) : ''
       const values = settingsValues(saved)
       adoptSettings(() => {
         if (!clear) {
@@ -713,7 +716,7 @@ async function saveSettings(clear = false): Promise<boolean> {
       })
       snapshot.value = { ...snapshot.value!, settings: saved }
       await reload()
-      useKunMessage(clear ? '已移除保存的密钥；未保存的输入仍保留。' : isPreview ? '预览偏好已更新；密钥不会保存在浏览器。' : settingsDirty.value ? '提交的设置已保存；之后的编辑尚未保存。' : '全部设置已保存。', 'success')
+      useKunMessage(settingsWarning.value || (clear ? '已移除保存的密钥；未保存的输入仍保留。' : isPreview ? '预览偏好已更新；密钥不会保存在浏览器。' : settingsDirty.value ? '提交的设置已保存；之后的编辑尚未保存。' : '全部设置已保存。'), settingsWarning.value ? 'warn' : 'success')
       return true
     } catch (error) {
       settingsError.value = persisted ? `设置已保存，但刷新失败：${settingsFailure(error)}` : `设置保存未确认：${settingsFailure(error)}`
@@ -827,7 +830,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
         <template v-else-if="page === 'settings'">
           <section class="page-heading"><div><h1>偏好设置</h1><SectionSignature name="Harmonia" /><p>连上喜欢的数据源，保留自己的使用习惯。</p></div></section>
-          <PreferencesSettings :draft="settingsForm" :saved="snapshot?.settings ?? null" :dirty="settingsDirty" :saving="busy.has('settings')" :testing="busy.has('connection')" :error="settingsError" :connection="connectionFeedback" :connection-dirty="connectionDraftDirty" :matching="matchingRunning" :data-path="snapshot?.dataPath ?? ''" :importing="busy.has('backup-import')" :preview="isPreview" @change="Object.assign(settingsForm, $event)" @save="saveSettings()" @save-test="saveAndTestConnection" @test="testConnection" @clear-key="saveSettings(true)" @reset="resetSettingsDraft" @export="exportBackup" @import="importBackup" @data="openDataFolder" @external="external" />
+          <PreferencesSettings :draft="settingsForm" :saved="snapshot?.settings ?? null" :dirty="settingsDirty" :saving="busy.has('settings')" :testing="busy.has('connection')" :error="settingsError" :warning="settingsWarning" :affects-matching="recognitionSettingsDirty" :connection="connectionFeedback" :connection-dirty="connectionDraftDirty" :matching="matchingRunning" :data-path="snapshot?.dataPath ?? ''" :importing="busy.has('backup-import')" :preview="isPreview" @change="Object.assign(settingsForm, $event)" @save="saveSettings()" @save-test="saveAndTestConnection" @test="testConnection" @clear-key="saveSettings(true)" @reset="resetSettingsDraft" @export="exportBackup" @import="importBackup" @data="openDataFolder" @external="external" />
         </template>
       </main>
       <div v-if="snapshot?.activeSession && page !== 'library'" class="session-player"><span class="playing-pulse"></span><div><strong>{{ activeGame?.name ?? '游戏运行中' }}</strong><small>正在计时 · {{ hours(activeSeconds) }} · 关闭窗口后在托盘继续</small></div><KunButton variant="flat" color="primary" size="sm" @click="finishSession"><Square :size="13" /> 结束计时（游戏继续）</KunButton></div>

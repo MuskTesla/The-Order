@@ -112,6 +112,7 @@ export class MetadataMatcher {
     const controller = new AbortController()
     // Validate credentials synchronously, before marking a job as running.
     const client = this.dependencies.client(controller.signal)
+    const readExecutableMetadata = this.dependencies.readExecutableMetadata?.() === true
     this.controller = controller
     const selected = new Set(games.map(game => game.id))
     this.state = { ...empty(), id: jobId, mode, status: 'running', total: games.length, reviews: this.state.reviews.filter(review => !selected.has(review.gameId)) }
@@ -119,7 +120,7 @@ export class MetadataMatcher {
     await this.save()
     if (this.state !== job || controller.signal.aborted) return this.getState()
     this.dependencies.changed()
-    this.task = this.run(job, games, client, controller.signal, tokens).catch(async error => {
+    this.task = this.run(job, games, client, controller.signal, tokens, readExecutableMetadata).catch(async error => {
       if (this.state !== job || controller.signal.aborted) return
       job.status = 'completed'; job.currentName = null
       for (const game of games.slice(job.processed)) {
@@ -263,14 +264,13 @@ export class MetadataMatcher {
       return true
     } catch { return false }
   }
-  private async run(job: MetadataMatchingState, games: LibraryGame[], client: MatchingClient, signal: AbortSignal, tokens: Map<string, MetadataRequestToken | undefined>): Promise<void> {
+  private async run(job: MetadataMatchingState, games: LibraryGame[], client: MatchingClient, signal: AbortSignal, tokens: Map<string, MetadataRequestToken | undefined>, readExecutableMetadata: boolean): Promise<void> {
     const alive = () => this.state === job && job.status === 'running' && !signal.aborted
     if (!alive()) return
     job.currentName = '读取本地名称与作品编号'; this.dependencies.changed()
     const index = await this.dependencies.index().catch(() => [] as TitleIndexRecord[])
     if (!alive()) return
     const identities: GameIdentity[] = []
-    const readExecutableMetadata = this.dependencies.readExecutableMetadata?.() === true
     for (const game of games) {
       if (!alive()) return
       const installation = preferredInstallation(game)

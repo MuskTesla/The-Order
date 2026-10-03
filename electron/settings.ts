@@ -45,6 +45,10 @@ export class SettingsStore {
   }
 
   async save(input: SettingsInput): Promise<PublicSettings> {
+    return (await this.saveWithEffects(input)).settings
+  }
+
+  async saveWithEffects(input: SettingsInput): Promise<{ settings: PublicSettings; matchingChanged: boolean }> {
     const run = this.queue.then(async () => {
       if (!input || typeof input !== 'object' || typeof input.includeNsfw !== 'boolean' || !['light', 'dark', 'system'].includes(input.theme) || input.readExecutableMetadata !== undefined && typeof input.readExecutableMetadata !== 'boolean') throw new Error('设置格式不正确。')
       const baseUrl = normalizeBaseUrl(input.baseUrl)
@@ -61,13 +65,17 @@ export class SettingsStore {
       // Changing the destination cannot silently forward the previous credential.
       if (new URL(baseUrl).origin !== new URL(this.value.baseUrl).origin && !input.apiKey?.trim()) encryptedKey = null
       const next: StoredSettings = { version: 1, baseUrl, encryptedKey, includeNsfw: input.includeNsfw, theme: input.theme, readExecutableMetadata: input.readExecutableMetadata ?? this.value.readExecutableMetadata, nonPortraitCoverDisplay }
+      // Compare normalized values inside this transaction. A submitted credential
+      // replacement counts even if hasApiKey stays true; never decrypt to compare.
+      const matchingChanged = next.baseUrl !== this.value.baseUrl || next.includeNsfw !== this.value.includeNsfw ||
+        next.readExecutableMetadata !== this.value.readExecutableMetadata || next.encryptedKey !== this.value.encryptedKey || !!input.apiKey?.trim()
       const temp = this.file + '.tmp'
       await fs.writeFile(temp, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 })
       await fs.rename(temp, this.file)
       this.value = next
+      return { settings: this.getPublic(), matchingChanged }
     })
-    this.queue = run.catch(() => undefined)
-    await run
-    return this.getPublic()
+    this.queue = run.then(() => undefined, () => undefined)
+    return run
   }
 }

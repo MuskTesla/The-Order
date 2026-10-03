@@ -44,6 +44,7 @@ const validId = (value: unknown): string => {
 }
 const api = () => new NextMoeClient(settings.getApiOptions())
 let identityQueue: Promise<void> = Promise.resolve()
+let matchingStartGeneration = 0
 function withIdentityLock<T>(action: () => Promise<T>, allowDuringShutdown = false): Promise<T> {
   const run = identityQueue.then(() => {
     if (shuttingDown && !allowDuringShutdown) throw new Error('管理器正在关闭。')
@@ -94,7 +95,16 @@ function registerIpc(): void {
     })
   }
   handle('getState', () => ({ games: library.getGames(), settings: settings.getPublic(), activeSession: tracker.getActiveSession(), dataPath: dataDir, version: app.getVersion(), matching: matcher.getState() }))
-  handle('saveSettings', async (input: SettingsInput) => { await matcher.cancel(); const result = await settings.save(input); notify(); return result })
+  handle('saveSettings', (input: SettingsInput) => withIdentityLock(async () => {
+    const committed = await settings.saveWithEffects(input)
+    let warning: string | undefined
+    if (committed.matchingChanged) {
+      try { await matcher.cancel() }
+      catch (error) { warning = `设置已保存，但停止识别状态暂未写入磁盘：${publicError(error)}` }
+    }
+    notify()
+    return { ...committed.settings, ...(warning ? { warning } : {}) }
+  }))
   handle('testConnection', () => api().testConnection())
   handle('searchWorks', (query: unknown, cursor: unknown) => {
     if (typeof query !== 'string' || query.length > 300 || cursor !== undefined && (typeof cursor !== 'string' || cursor.length > 4000)) throw new Error('搜索内容不正确。')
@@ -143,20 +153,28 @@ function registerIpc(): void {
   handle('importLocalGames', async (ids: unknown, autoMatch: unknown = true) => {
     if (!Array.isArray(ids) || ids.length > 2000 || ids.some(id => typeof id !== 'string' || !scanCandidates.has(id))) throw new Error('请重新扫描后选择需要导入的游戏。')
     if (typeof autoMatch !== 'boolean') throw new Error('自动识别选项不正确。')
+    const startGeneration = matchingStartGeneration
     const selected = ids.map(id => scanCandidates.get(id)!)
     const result = await library.importCandidates(selected); notify()
     const folders = new Set(selected.map(candidate => path.resolve(candidate.folderPath).toLowerCase()))
     const gameIds = library.getGames().filter(game => game.installations.some(installation => folders.has(path.resolve(installation.folderPath).toLowerCase())) && (!game.metadata || !game.metadata.coverUrl)).map(game => game.id)
     let matchingStarted = false
-    if (autoMatch && settings.getPublic().hasApiKey && gameIds.length && matcher.getState().status !== 'running') { await matcher.start(gameIds); matchingStarted = true }
+    if (autoMatch && gameIds.length) matchingStarted = await withIdentityLock(async () => {
+      if (startGeneration !== matchingStartGeneration || !settings.getPublic().hasApiKey || matcher.getState().status === 'running') return false
+      await matcher.start(gameIds)
+      return true
+    })
     return { ...result, matchingStarted }
   })
   handle('startMetadataMatching', (ids: unknown, mode: unknown = 'missing') => {
     if (ids !== undefined && (!Array.isArray(ids) || ids.length > 10000 || ids.some(id => typeof id !== 'string'))) throw new Error('资料补全列表不正确。')
     if (mode !== 'missing' && mode !== 'reidentify') throw new Error('游戏识别模式不正确。')
-    return matcher.start(ids as string[] | undefined, mode)
+    const startGeneration = matchingStartGeneration
+    return withIdentityLock(() => startGeneration === matchingStartGeneration ? matcher.start(ids as string[] | undefined, mode) : Promise.resolve(matcher.getState()))
   })
-  handle('cancelMetadataMatching', () => matcher.cancel())
+  // Explicit cancellation also withdraws starts already waiting in the queue.
+  // Settings cancellation must not withdraw later starts using the new config.
+  handle('cancelMetadataMatching', () => { matchingStartGeneration++; return matcher.cancel() })
   handle('resolveMetadataMatch', async (gameId: unknown, workId: unknown, reviewId: unknown, decisionFingerprint: unknown) => {
     const id = validId(gameId)
     const guard = matcher.captureReview(id, validId(reviewId), validId(decisionFingerprint), { allowStale: workId === null })

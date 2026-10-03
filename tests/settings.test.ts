@@ -7,6 +7,23 @@ import { SettingsStore } from '../electron/settings'
 import type { SettingsInput } from '../src/shared/types'
 
 const codec = { available: () => true, encrypt: (text: string) => Buffer.from(text.split('').reverse().join('')), decrypt: (buffer: Buffer) => buffer.toString().split('').reverse().join('') }
+test('matching effects use normalized transaction values and ignore appearance', async () => {
+  const { dir, store } = await fixture()
+  try {
+    assert.equal((await store.saveWithEffects({ ...store.getPublic(), apiKey: 'synthetic-effects-key' })).matchingChanged, true)
+    assert.equal((await store.saveWithEffects({ ...store.getPublic(), theme: 'dark', nonPortraitCoverDisplay: 'crop', baseUrl: 'https://api.nextmoe.dev/v2' })).matchingChanged, false)
+    for (const patch of [{ includeNsfw: false }, { readExecutableMetadata: false }, { baseUrl: 'https://api.nextmoe.dev/v3/' }, { apiKey: 'synthetic-effects-key' }, { clearApiKey: true }]) {
+      const result = await store.saveWithEffects({ ...store.getPublic(), ...patch })
+      assert.equal(result.matchingChanged, true)
+      assert.equal(JSON.stringify(result).includes('synthetic-effects-key'), false)
+    }
+    assert.equal((await store.saveWithEffects({ ...store.getPublic(), clearApiKey: true })).matchingChanged, false)
+    const first = store.saveWithEffects({ ...store.getPublic(), includeNsfw: true })
+    const second = store.saveWithEffects({ ...store.getPublic(), includeNsfw: true, theme: 'light' })
+    assert.equal((await first).matchingChanged, true)
+    assert.equal((await second).matchingChanged, false, 'the second queued transaction compares against the first committed settings')
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})
 async function fixture() { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kgm-settings-')); const store = new SettingsStore(dir, codec); await store.initialize(); return { dir, store } }
 
 test('credentials are excluded from public settings and survive reload through the codec', async () => {

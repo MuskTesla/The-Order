@@ -67,6 +67,18 @@ test('removing the saved credential submits saved preferences only and preserves
   assert.equal(a.snapshot.value.settings.hasApiKey, false); assert.equal(a.settingsForm.apiKey, 'synthetic-do-not-submit'); assert.equal(a.settingsForm.theme, 'dark'); assert.equal(a.settingsForm.baseUrl, 'https://draft.invalid/'); assert.equal(a.settingsForm.includeNsfw, true)
 })
 
+test('saved-with-warning confirms persistence and preserves later drafts', async t => {
+  const { a, api, initial, setSaved, messages } = await harness(t), response = deferred<PublicSettings & { warning?: string }>()
+  api.saveSettings = () => response.promise
+  a.settingsForm.theme = 'dark'; a.settingsForm.apiKey = 'synthetic-submitted'
+  const pending = a.saveSettings(); a.settingsForm.theme = 'system'; a.settingsForm.apiKey = 'synthetic-later'
+  const saved = { ...initial, theme: 'dark' as const }, warning = '设置已保存，但停止识别状态暂未写入磁盘。'
+  setSaved(saved); response.resolve({ ...saved, warning })
+  assert.equal(await pending, true); assert.equal(a.snapshot.value.settings.theme, 'dark'); assert.equal(a.snapshot.value.settings.warning, undefined)
+  assert.equal(a.settingsForm.theme, 'system'); assert.equal(a.settingsForm.apiKey, 'synthetic-later'); assert.equal(a.settingsDirty.value, true)
+  assert.equal(a.settingsError.value, ''); assert.ok(messages.includes(warning))
+})
+
 test('failed save retains drafts, never tests and can be retried without false success', async t => {
   const { a, api, messages } = await harness(t), original = api.saveSettings; let tests = 0
   api.testConnection = async () => { tests++; return { ok: true, message: 'Synthetic' } }

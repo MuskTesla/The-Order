@@ -50,6 +50,22 @@ async function environment(t: { after(callback: () => Promise<void>): void }, na
   return { root, dataDir, library, matchers }
 }
 type Environment = Awaited<ReturnType<typeof environment>>
+for (const enabled of [true, false]) test(`identity reads retain the ${enabled} setting captured before the index wait`, async t => {
+  const env = await environment(t, [firstTitle]), entered = deferred<void>(), release = deferred<void>()
+  let current = enabled, reads = 0
+  const opened: string[] = [], originalOpen = fs.open
+  t.mock.method(fs, 'open', (...args: Parameters<typeof fs.open>) => { if (/\.exe$/i.test(String(args[0]))) opened.push(String(args[0])); return originalOpen(...args) })
+  const matcher = new MetadataMatcher(env.dataDir, env.library, {
+    client: () => ({ resolveWorksByRefs: async () => [], searchWorks: async () => ({ items: [], nextCursor: null }), getWork: async () => { throw new Error('Unexpected detail request') } }),
+    index: async () => { entered.resolve(); await release.promise; return [] },
+    readExecutableMetadata: () => { reads++; return current },
+    apply: async () => { throw new Error('Unexpected apply') }, changed() {}
+  })
+  env.matchers.push(matcher); await matcher.initialize(); await matcher.start(); await entered.promise
+  assert.equal(reads, 1, 'capture the setting before waiting for the index')
+  current = !enabled; release.resolve(); await matcher.settle()
+  assert.equal(reads, 1); assert.equal(opened.length > 0, enabled); assert.equal(matcher.getState().status, 'completed'); assert.equal(matcher.getState().failed, 0)
+})
 interface HarnessOptions {
   index?: TitleIndexRecord[]
   works?: WorkMetadata[]

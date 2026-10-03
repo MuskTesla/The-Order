@@ -26,6 +26,7 @@ try {
       if (url.origin !== 'https://api.nextmoe.dev' || !url.pathname.endsWith('/catalog/works/101')) throw new Error('Unexpected synthetic request')
       const control = globalThis.__cancelQueue
       control.requests++
+      await new Promise(resolve => { control.releaseResponse = resolve })
       const raw = { object: 'work', id: '101', display_name: 'Queue refreshed work', images: { cover: { url: 'https://fixture.invalid/queue.png' } }, intros: [{ lang: 'zh-Hans', value: 'Updated synthetic metadata' }], refs: [], titles: [], tags: [], characters: [], ratings: [] }
       const bytes = new TextEncoder().encode(JSON.stringify(raw))
       let sent = false
@@ -44,9 +45,12 @@ try {
   const target = state => state.games.find(game => game.id === 'target')
   async function queueBehindRemoval(blocker) {
     await application.evaluate(() => { Object.assign(globalThis.__cancelQueue, { holdNext: true, responseConsumed: false }) })
+    const requests = await application.evaluate(() => globalThis.__cancelQueue.requests)
+    await page.evaluate(() => window.kunManager.startMetadataMatching(['target']))
+    await poll(() => application.evaluate(() => globalThis.__cancelQueue.requests), n => n > requests, 'held synthetic detail request')
     await page.evaluate(id => { globalThis.__blockedRemoval = window.kunManager.removeGame(id) }, blocker)
     await poll(() => application.evaluate(() => globalThis.__cancelQueue.held), Boolean, 'real identity queue blocker')
-    await page.evaluate(() => window.kunManager.startMetadataMatching(['target']))
+    await application.evaluate(() => globalThis.__cancelQueue.releaseResponse())
     await poll(() => application.evaluate(() => globalThis.__cancelQueue.responseConsumed), Boolean, 'synthetic response fully consumed')
     // Drain the main-process promise continuations after the response body closes;
     // the production apply callback is now waiting behind removeGame.

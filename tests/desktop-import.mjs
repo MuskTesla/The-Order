@@ -35,10 +35,10 @@ try {
   await page.waitForFunction(() => window.kunManager !== undefined)
   assert.equal((await page.evaluate(() => window.kunManager.getState())).settings.readExecutableMetadata, true)
   await page.locator('.sidebar').getByRole('button', { name: /偏好设置/ }).click()
-  const executableSetting = page.locator('.setting-line').filter({ hasText: '读取程序内的游戏名称' })
+  const executableSetting = page.locator('.setting-line, .preferences-option').filter({ hasText: '读取程序内的游戏名称' })
   assert.equal(await executableSetting.locator('input[type="checkbox"]').isChecked(), true)
   await executableSetting.locator('label').click()
-  await page.getByRole('button', { name: '保存设置', exact: true }).click()
+  await page.getByRole('button', { name: /^保存(?:全部)?设置$/ }).click()
   for (let attempt = 0; attempt < 100; attempt++) {
     if ((await page.evaluate(() => window.kunManager.getState())).settings.readExecutableMetadata === false) break
     await new Promise(resolve => setTimeout(resolve, 30))

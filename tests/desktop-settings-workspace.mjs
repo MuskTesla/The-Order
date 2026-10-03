@@ -8,8 +8,10 @@ import { _electron as electron } from '../node_modules/playwright/index.mjs'
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const baseline = process.argv.includes('--baseline'), phase = baseline ? 'before' : 'after'
-const root = path.join(project, '.artifacts/overnight-2026-10-04/round-3'), output = path.join(root, phase), profile = path.join(root, 'ui-profile')
-assert.equal(path.resolve(profile), path.resolve(project, '.artifacts/overnight-2026-10-04/round-3/ui-profile'))
+const roundArgument = process.argv.find(arg => arg.startsWith('--evidence-round='))
+assert.ok(!roundArgument || /^--evidence-round=[0-8]$/.test(roundArgument), 'Expected a bounded night evidence round')
+const root = path.join(project, '.artifacts/overnight-2026-10-04', roundArgument ? `round-${roundArgument.at(-1)}/settings-workspace` : 'round-3'), output = path.join(root, phase), profile = path.join(root, 'ui-profile')
+assert.equal(path.resolve(profile), path.resolve(root, 'ui-profile'))
 assert.equal(path.dirname(profile), root)
 const marker = path.join(profile, '.synthetic-test-profile')
 if (await fs.stat(profile).catch(error => { if (error.code === 'ENOENT') return null; throw error })) {

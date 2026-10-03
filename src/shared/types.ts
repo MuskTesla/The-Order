@@ -60,6 +60,7 @@ export interface LibraryGame {
 }
 export interface ActiveSession { gameId: string; installationId: string; startedAt: string; elapsedSeconds: number }
 export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
+export interface SettingsSaveResult extends PublicSettings { warning?: string }
 export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata?: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
 export interface MatchOption { work: WorkMetadata; confidence: number; reason: string }
 export interface MatchReviewSource {
@@ -82,7 +83,7 @@ export interface ConnectionResult { ok: boolean; message: string }
 export interface ImportResult { added: number; skipped: number; matchingStarted?: boolean }
 export interface KunManagerAPI {
   getState(): Promise<AppSnapshot>
-  saveSettings(input: SettingsInput): Promise<PublicSettings>
+  saveSettings(input: SettingsInput): Promise<SettingsSaveResult>
   testConnection(): Promise<ConnectionResult>
   searchWorks(query: string, cursor?: string): Promise<SearchPage>
   getWork(id: string): Promise<WorkMetadata>

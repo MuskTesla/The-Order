@@ -5,7 +5,7 @@ import { Check, Link2, Monitor, Upload, Download, FolderOpen, ArrowUpRight, Rota
 import type { PublicSettings, Theme, NonPortraitCoverDisplay, ConnectionResult } from '../shared/types'
 
 type Draft = { baseUrl: string; apiKey: string; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean; nonPortraitCoverDisplay: NonPortraitCoverDisplay }
-defineProps<{ draft: Draft; saved: PublicSettings | null; dirty: boolean; saving: boolean; testing: boolean; error: string; connection: (ConnectionResult & { baseUrl: string }) | null; connectionDirty: boolean; matching: boolean; dataPath: string; importing: boolean; preview: boolean }>()
+defineProps<{ draft: Draft; saved: PublicSettings | null; dirty: boolean; saving: boolean; testing: boolean; error: string; warning: string; affectsMatching: boolean; connection: (ConnectionResult & { baseUrl: string }) | null; connectionDirty: boolean; matching: boolean; dataPath: string; importing: boolean; preview: boolean }>()
 const emit = defineEmits<{ change: [patch: Partial<Draft>]; save: []; saveTest: []; test: []; clearKey: []; reset: []; export: []; import: []; data: []; external: [url: string] }>()
 async function keepSettingsFocusVisible(event: FocusEvent) {
   const target = event.target
@@ -26,6 +26,7 @@ async function keepSettingsFocusVisible(event: FocusEvent) {
         <label class="field-label">API 密钥<input :value="draft.apiKey" type="password" autocomplete="new-password" spellcheck="false" :placeholder="saved?.hasApiKey ? '留空保留已保存密钥' : '填写你的 NextMoe 密钥'" @input="emit('change', { apiKey: ($event.target as HTMLInputElement).value })" /></label>
         <p class="preferences-help">{{ preview ? '浏览器预览不保存密钥；连接需在桌面版设置。' : '密钥在本机加密保存。空白输入保留已保存密钥，新输入只有保存后才生效。目录读取需要 catalog:read 权限。' }}</p>
         <div class="preferences-actions"><button type="button" :disabled="saving || testing" @click="emit('saveTest')">{{ testing ? '正在测试连接…' : '保存并测试连接' }}</button><button type="button" :disabled="saving || testing || !saved?.hasApiKey" @click="emit('test')">测试已保存连接</button><button v-if="saved?.hasApiKey" type="button" :disabled="saving || testing" class="remove-key" @click="emit('clearKey')">移除已保存密钥</button></div>
+        <p v-if="matching && saved?.hasApiKey" class="preferences-help">移除已保存密钥会停止当前识别，已完成的结果保留。</p>
         <div v-if="testing || connection" class="connection-feedback" role="status"><template v-if="testing"><LoaderCircle :size="16" class="spin" />正在检查已保存的连接…</template><template v-else-if="connection"><strong>{{ connection.ok ? '已保存连接可用' : '连接未通过' }}</strong><span>{{ connection.message }}</span><small>测试地址：{{ connection.baseUrl }}</small></template></div>
         <p v-if="connectionDirty" class="preferences-help">连接有未保存的输入；测试只使用已保存配置。</p>
       </section>
@@ -37,9 +38,10 @@ async function keepSettingsFocusVisible(event: FocusEvent) {
         <div class="preferences-option"><div class="preference-copy"><strong>读取程序内的游戏名称</strong><p>仅读取有大小和范围限制的版本资源，不运行程序。读取仍可能触发 Windows 安全扫描；仅对可信游戏开启。</p></div><KunSwitch :model-value="draft.readExecutableMetadata" label="读取程序内的游戏名称" label-class-name="sr-only" @update:model-value="emit('change', { readExecutableMetadata: $event })" /></div>
       </section>
       <footer class="settings-save-bar">
-        <div><strong>{{ saving ? '正在保存提交的设置…' : error ? '保存需要重试' : dirty ? '有未保存的更改' : '所有设置已保存' }}</strong><span>保存资料源、外观、封面与识别偏好</span><p v-if="matching">保存会停止当前识别，已完成的结果会保留。</p></div>
+        <div><strong>{{ saving ? '正在保存提交的设置…' : error ? '保存需要重试' : dirty ? '有未保存的更改' : '所有设置已保存' }}</strong><span>保存资料源、外观、封面与识别偏好</span><p v-if="matching">{{ affectsMatching ? '资料源、密钥、分级或识别方式变更保存后会停止当前识别；已完成结果保留。' : '仅更改外观或封面展示不会停止当前识别。' }}</p></div>
         <div class="preferences-actions"><button type="button" :disabled="!dirty || saving || testing" @click="emit('reset')"><RotateCcw :size="15" />放弃未保存更改</button><button type="submit" class="preferences-save" :disabled="saving || testing || (!dirty && !error)"><Check :size="16" />保存全部设置</button></div>
         <p v-if="error" class="preferences-error" role="alert">{{ error }}</p>
+        <p v-if="warning" class="preferences-error" role="alert">{{ warning }}</p>
       </footer>
     </form>
     <section class="panel settings-panel settings-backup"><div class="preferences-heading"><Upload :size="21" /><div><h2>书架备份与帮助</h2><p>这些操作立即执行，不需要保存上面的偏好</p></div></div><p class="preferences-help">备份收藏、分类、笔记、游玩记录与本地封面副本；不包含密钥、全局设置或游戏文件。</p><div class="preferences-actions"><button type="button" @click="emit('export')"><Upload :size="16" />导出书架</button><button type="button" :disabled="importing" @click="emit('import')"><Download :size="16" />导入备份</button><button type="button" @click="emit('data')"><FolderOpen :size="16" />数据文件夹</button></div><details class="preferences-help-details"><summary>数据位置与使用帮助</summary><p class="preferences-data-path">{{ dataPath }}</p><div class="preferences-actions"><button type="button" @click="emit('external', 'https://developer.nextmoe.dev/')">获取 API 密钥 <ArrowUpRight :size="14" /></button><button type="button" @click="emit('external', 'https://developer.nextmoe.dev/docs/native-app')">NextMoe 接口文档 <ArrowUpRight :size="14" /></button><button type="button" @click="emit('external', 'https://ui.kungal.com/')">了解 KunUI <ArrowUpRight :size="14" /></button></div></details></section>

@@ -139,9 +139,9 @@ async function waitSnapshot(page, predicate, label) {
 async function close() { await application.close(); application = undefined }
 async function setExecutableMetadata(page, enabled) {
   await page.locator('.sidebar').getByRole('button', { name: /偏好设置/ }).click()
-  const setting = page.locator('.setting-line').filter({ hasText: '读取程序内的游戏名称' })
+  const setting = page.locator('.setting-line, .preferences-option').filter({ hasText: '读取程序内的游戏名称' })
   if (await setting.locator('input[type="checkbox"]').isChecked() !== enabled) await setting.locator('label').click()
-  await page.getByRole('button', { name: '保存设置', exact: true }).click()
+  await page.getByRole('button', { name: /^保存(?:全部)?设置$/ }).click()
   await waitSnapshot(page, state => state.settings.readExecutableMetadata === enabled, 'Executable metadata setting was not saved')
   await page.locator('.sidebar nav').getByRole('button', { name: /我的书架/ }).click()
 }
@@ -159,20 +159,20 @@ try {
   // New profiles start enabled. Explicitly save both choices, then keep reading
   // disabled throughout the original import/cancellation/restart regressions.
   await page.locator('.sidebar').getByRole('button', { name: /偏好设置/ }).click()
-  const executableSetting = page.locator('.setting-line').filter({ hasText: '读取程序内的游戏名称' })
+  const executableSetting = page.locator('.setting-line, .preferences-option').filter({ hasText: '读取程序内的游戏名称' })
   const executableSwitch = executableSetting.locator('input[type="checkbox"]')
   assert.equal(await executableSwitch.isChecked(), true)
   await executableSetting.locator('label').click()
   assert.equal(await executableSwitch.isChecked(), false)
-  await page.getByRole('button', { name: '保存设置', exact: true }).click()
+  await page.getByRole('button', { name: /^保存(?:全部)?设置$/ }).click()
   await waitSnapshot(page, state => state.settings.readExecutableMetadata === false, 'Initial executable metadata opt-out was not saved')
   await executableSetting.locator('label').click()
   assert.equal(await executableSwitch.isChecked(), true)
-  await page.getByRole('button', { name: '保存设置', exact: true }).click()
+  await page.getByRole('button', { name: /^保存(?:全部)?设置$/ }).click()
   await waitSnapshot(page, state => state.settings.readExecutableMetadata === true, 'Executable metadata opt-in was not saved')
   await executableSetting.locator('label').click()
   assert.equal(await executableSwitch.isChecked(), false)
-  await page.getByRole('button', { name: '保存设置', exact: true }).click()
+  await page.getByRole('button', { name: /^保存(?:全部)?设置$/ }).click()
   await waitSnapshot(page, state => state.settings.readExecutableMetadata === false, 'Executable metadata opt-out was not saved')
   assert.equal(JSON.parse(await fs.readFile(path.join(profile, 'settings.json'), 'utf8')).readExecutableMetadata, false)
   await page.locator('.sidebar nav').getByRole('button', { name: /我的书架/ }).click()
