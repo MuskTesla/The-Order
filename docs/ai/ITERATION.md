@@ -2,7 +2,7 @@
 
 ## 状态与授权
 
-- 日期：2026-10-03（北京时间）。状态：**A+B+C 已实施；候选程序已生成，等待 Claude 复审与用户验收，开发暂停**。
+- 日期：2026-10-03（北京时间）。状态：**A+B+C 已实施；Claude 候选复审完成，A-1 文案回归已修复；候选程序已更新，等待用户亲自试用，开发暂停**。
 - 用户明确授权本轮代码、测试、文档、候选提交及可试用候选程序；开发分支为 `codex/iteration-01-library`，修改前基线为 `9ca0587ab3047dd2606cff5ec1100f9f623b75ac`。不得替换正式版或推送。下文方案与验收不代表已通过，实际结果写入结果记录。
 - 本文件是本轮唯一迭代记录。实现基线与已有证据仍以 [BRIEF](BRIEF.md) 为准；后续批准、实施、验证及 Claude 复审结果继续追加到本文件，不另建重复交接文档。
 
@@ -138,13 +138,13 @@
 | 正确性补强 | 给非默认安装设置程序保留已有有效默认。目录父子重叠明确拒绝；已知独立同来源编号冲突阻止错误附加，未知允许用户明确选择。扫描后及事务排队中根目录被换成外部 junction 会拒绝，原始 junction 选择仍支持。重复激活不吞首个目录选择；核对保存失败恢复可重试建议，补偿不覆盖新建议。 |
 | 实际验证 | 最终类型检查/构建、447 项单元测试、受影响桌面链路、新安装/核对闭环、明暗和缩放截图、键盘/可读性与滚动检查通过，具体范围见下文。独立打包候选的真实 EXE 与 ASAR 入口已通过隔离启动检查。 |
 | 未执行 | 未读取正式书架、数据库、存档、个人密钥；未真实启动游戏或调用线上目录 API；未升级依赖/版本、重建索引、替换正式版或推送 GitHub。 |
-| Claude 复审 | 尚未开始。提供最终基线与差异，继续保留独立判断。 |
+| Claude 复审 | 已完整读取 `the-order-mutable-map.md`，基线为 `08e8f72`。仅按用户授权核实并修复 A-1，见下方复审修复记录；B/C 未处理，不把未独立运行的事项当作 Claude 已验证。 |
 
 ### 提交、程序与试用数据
 
 - 仓库：`D:\Projects\The-Order`；开发分支：`codex/iteration-01-library`。
 - 修改前基线：`9ca0587ab3047dd2606cff5ec1100f9f623b75ac`。
-- 最终候选代码提交：`40b355caf8a1b009f0eb436d60fe773a760f522b`。主实施提交为 `c004d8cb34bcc644e71e1d9c1225bfa650bead5a`，最后的 `40b355c` 仅修附加弹窗按钮不收缩及测试采图/边界断言。本文与 BRIEF 的交付记录单独提交，不改候选代码；评审差异为上述基线到最终候选提交。
+- 当前候选代码提交：`412dc12f12006af1cc57dc9ffd560a5ceb88beee`，仅在复审基线之后修正三处导入引导文案及对应测试。上一候选为 `40b355caf8a1b009f0eb436d60fe773a760f522b`，主实施提交为 `c004d8cb34bcc644e71e1d9c1225bfa650bead5a`，`40b355c` 仅修附加弹窗按钮不收缩及测试采图/边界断言。本文与 BRIEF 的交付记录单独提交，不改候选代码；评审差异为上述基线到当前候选提交。
 - 候选目录：`D:\Projects\The-Order\.artifacts\iteration-01\candidate\win-unpacked`。应用内部版本仍为 0.7.1，AppID 与备份格式保持；这是本轮候选，未发布为正式更新。
 - 用以下启动器试用，保留完整候选目录。启动器明确设置隔离目录并恢复父进程环境，不依赖终端之前的 `KGM_DATA_DIR`：
 
@@ -161,7 +161,7 @@
 
 | 检查 | 实际结果与边界 |
 | --- | --- |
-| 单元与构建 | 最终 447/447 通过，无失败/跳过；Vue/Electron 类型检查与生产构建通过。见 [单元日志](../../.artifacts/iteration-01/unit-final.log)、[构建日志](../../.artifacts/iteration-01/build-final.log)。 |
+| 单元与构建 | 上一候选 `40b355c` 的 447/447 通过，无失败/跳过；Vue/Electron 类型检查与生产构建通过。见 [单元日志](../../.artifacts/iteration-01/unit-final.log)、[构建日志](../../.artifacts/iteration-01/build-final.log)。`412dc12` 的定向检查另列于复审修复记录，不把旧日志重标为新提交。 |
 | 既有桌面保护 | 实施中实际通过 import、matching、reidentification、preservation、concurrency、reload、binding-pagination、details、workspace、cancel-queue 十套真实 Electron/IPC 回归。旧入口和默认安装断言按产品行为更新，数据、异步、取消与持久化断言保留。最终边界修正后重跑安装/核对专项及完整单元，不再反复重跑整套。 |
 | 安装专项 | 最终 12 组桌面闭环及相应单元通过：无密钥附加、launcher/bin 根、精确重复/重叠、选择取消、伪造授权、目录外程序、独立编号冲突、根替换、个人编辑共存、默认安装、重启和长路径下按钮完整文字边界。最后 CSS 修正后，只重跑受影响安装专项、前端构建及候选启动，不重跑已无必要的完整回归。网络、游戏进程启动、外部打开尝试均为 0。见 [安装报告](../../.artifacts/iteration-installation.json)。原生选择器由夹具提供路径，未宣称真实系统对话框的人工作业已验收。 |
 | 核对专项 | 9 个桌面验证域通过：实时关联与多安装、稍后/保持、独立详情保草稿、legacy/stale、手动搜索、新建议保护、最新确认保个人记录、快速完成提示及重启。实际 API 0、游戏执行 0、渲染错误 0。见 [流程 manifest](../../.artifacts/iteration-01/flows/manifest.json)。 |
@@ -182,7 +182,7 @@
 | [after/manifest.json](../../.artifacts/iteration-01/after/manifest.json)；[1280 明亮书架](../../.artifacts/iteration-01/after/shelf-1280x720-light-zoom1.png)、[1280 深色 150%](../../.artifacts/iteration-01/after/shelf-1280x720-dark-zoom1.5.png) | 主实施 `c004d8c`；15 图，包含相同条件及中性/柔化对照。采集后核对运行产物哈希未变，再写入该提交身份。最终 `40b355c` 只修附加弹窗按钮，书架样式/逻辑未再改变；原图保留准确版本，不重标为最后构建。 |
 | [flows/README.md](../../.artifacts/iteration-01/flows/README.md) 与 [manifest](../../.artifacts/iteration-01/flows/manifest.json) | 候选 `c004d8c` 的整理、实时关联/来源、独立详情、旧队列、过时队列 5 图。采集前后源码和运行文件 SHA 相同，提交后再次核对源码哈希。详情图通过测试控制叠加弹窗检验草稿隔离，不表示用户可穿过阻挡弹窗点击侧栏。 |
 | [附加安装](../../.artifacts/iteration-installation-ui.png)、[150% 长路径](../../.artifacts/iteration-01/attachment-zoom150.png) 与 [安装报告](../../.artifacts/iteration-installation.json) | 最终 `40b355c` 的无密钥根目录附加；测试选择器和目录均为合成，图在弹窗动画稳定后保存。实际文字 Range 证明默认/1280×720 的 100% 与 150% 下整句操作文字可见，未被按钮、祖先或视口裁切。 |
-| [candidate-smoke.png](../../.artifacts/iteration-01/candidate-smoke.png) 与 [报告](../../.artifacts/iteration-01/candidate-smoke.json) | 实际打包候选入口、五条公开虚构试用资料；与 200 条书架对照使用不同夹具，不能拿这张计算前后视觉改进。 |
+| [candidate-smoke.png](../../.artifacts/iteration-01/candidate-smoke.png) 与 [报告](../../.artifacts/iteration-01/candidate-smoke.json) | 当前 `412dc12` 实际打包候选入口、五条公开虚构试用资料；与 200 条书架对照使用不同夹具，不能拿这张计算前后视觉改进。上一候选报告和图片保存在 `copy-review/before-candidate-smoke.*`。 |
 
 对照使用一致的 Electron 内容 DIP 与应用缩放；本机 Windows 显示缩放为 200%，请求 1440×960 的实际 CSS 为 1441×961，PNG 为 2882×1922；请求 1280×720 的实际 CSS 为 1281×721，PNG 为 2562×1442。150% 时 CSS 视口缩小、DPR 从 2 变为 3，PNG物理尺寸不变。1 DIP 舍入已在两个 manifest 如实记录，不能混称操作系统 100% 截图。
 
@@ -190,13 +190,32 @@
 
 ### 复审起点与未验证范围
 
-Claude 原始观察不应继续用旧图判断当前首屏、卡片、整理入口、默认安装和核对决策；请从基线到 `40b355c` 的差异及上面新证据重新检查。原始评审全文和采纳/调整理由仍在本文件，没有新增另一套交接。
+Claude 原始观察不应继续用旧图判断当前首屏、卡片、整理入口、默认安装和核对决策；第一轮候选复审已基于 `08e8f72`（业务代码 `40b355c`）完成。其后的 `412dc12` 只改导入引导文字，文案证据见下方；其余原图仍保留实际对应版本。原始评审全文和采纳/调整理由仍在本文件，没有新增另一套交接。
 
 当前无阻碍合成试用的重要缺口。实时 NextMoe、真实账号、真实游戏识别率、真实启动器/子进程计时、正式私库兼容及用户在自己的显示器上主观体验未验证；本轮没有这些真实输入的授权，不将其写成已通过。候选未签名，沿用现有打包配置。
 
 **本轮明确不做：** 全项目重写、完整整理中心、详情信息架构重组、全站换色、新付费依赖、个人数据迁移、自动覆盖关联/存档/游玩状态、正式发布或 GitHub 推送。
 
-**需要用户决定：** 没有新的产品方向或成本选择。当前只等待 Claude 复审与用户试用验收；在其反馈/授权前停止开发，不继续实施或推荐新功能。
+**需要用户决定：** 没有新的产品方向或成本选择。当前只等待用户亲自试用验收；在其反馈/授权前停止开发，不继续实施或推荐新功能。
+
+### 候选复审后的 A-1 文案修复（2026-10-03）
+
+- 已直接完整读取复审原件：`C:\Users\MUSK\.claude\plans\the-order-mutable-map.md`；SHA-256：`3fa228f0acb21d182c1c67c20a6e5e5e64d09593bb05f10bb5460c489519f79e`。Claude 结论是主要目标落实、未发现可复现的数据正确性缺陷，A-1 建议试用前修复；其余为下一轮建议、偏好和未独立运行验证的事项。
+- 复审 HEAD 与本次修改前 HEAD 同为 `08e8f72e0f99f99eaccabdc39fc63e57b3fb7459`，起始工作区干净，无复审后源码变化。该 HEAD 相对 `40b355c` 只增加两份交付文档，旧候选程序仍对应 `40b355c`。
+- **确认并采纳 A-1：** `src/App.vue:464-465,596` 的两条导入成功提示和无密钥弹窗说明确实指向已移除的“补全资料”按钮。旧候选在独立 profile 中真实导入一个合成条目后复现，书架无该按钮，而侧栏“资料整理”及其“只补缺失”存在。
+- **最小修复：** 三处文字统一指向“资料整理”中的“只补缺失”，保留先配置密钥或等当前识别结束的前置条件。没有改识别、导入、安装、存储或界面样式逻辑。现有 workspace 测试增加实际入口/旧提示断言；无密钥夹具让刷新后的快照仍保持无密钥，避免旧夹具误走已配密钥分支。原有导入与并发保护断言保留。
+- **范围边界：** 没有核查或处理 B-1～B-5、C 的下一轮/审美建议，没有新增功能；启动器未改、没有整体执行。正式数据和密钥未读取或修改，独立试用书架未重置，未写 `release/`、替换正式程序或推送。
+- 新候选代码提交：`412dc12f12006af1cc57dc9ffd560a5ceb88beee`；已重新构建并仅更新 `.artifacts/iteration-01/candidate/win-unpacked`。ASAR SHA-256 为 `5824ada543f7cd43eeb39efb1d758b237d98300972bd27b78fcc631904a5028f`。启动方式和唯一试用目录仍为上方所列。
+
+| 本次实际检查 | 结果 / 准确证据 |
+| --- | --- |
+| 定向单元 | `node node_modules/tsx/dist/cli.mjs --test tests/workspace-concurrency.test.ts`，31/31 通过，0 失败/跳过，覆盖无密钥、已运行、启动待响应及真实异步待响应时的引导。见 [unit.log](../../.artifacts/iteration-01/copy-review/unit.log)。未重跑整套 447 项或十套桌面回归。 |
+| 类型与构建、候选打包 | `npm run build` 通过；使用显式 `.artifacts/iteration-01/candidate` 输出打包通过。见 [build.log](../../.artifacts/iteration-01/copy-review/build.log)、[package.log](../../.artifacts/iteration-01/copy-review/package.log)。依赖及版本未升级。 |
+| 实际桌面导入与入口 | `40b355c` 修复前、`412dc12` 修复后均启动真实候选 EXE，使用同一个专属 `copy-review/check-profile` 和同一合成目录，开始时空库、无密钥，不执行合成 EXE。目录选择器模拟，扫描/导入/IPC/持久化真实；分别核对弹窗、成功提示、资料整理按钮。结果与截图 SHA 见 [before.json](../../.artifacts/iteration-01/copy-review/before.json)、[after.json](../../.artifacts/iteration-01/copy-review/after.json)，渲染错误为 0。 |
+| 前后界面证据 | `.artifacts/iteration-01/copy-review/{before,after}-{import-hint,import-toast,maintenance-action}.png`，共六图，已打开核对相关文案。窗口请求 1440×960 DIP，实际 1441×961 CSS、DPR 2、应用缩放 1，相同夹具/路径/条件；这里只证明文案与入口，不作为整体视觉或性能改进对照。 |
+| 新包与正常入口 | 真实候选 smoke 通过，正常 ASAR 与应用协议、无密钥、隔离临时数据、开发页面变量被忽略。6 个包内运行文件（含当前 JS/CSS）与此次构建逐字节相同，三处新文字存在、旧引导不存在，截图哈希全部一致。见 [package-check.json](../../.artifacts/iteration-01/copy-review/package-check.json) 及当前 [candidate-smoke.json](../../.artifacts/iteration-01/candidate-smoke.json)。 |
+
+采集器首次因窗口尚未创建而失败，包内核对首次因 Windows 路径分隔符而失败；均修正本机验证工具后通过，没有据此修改产品行为。真实 API、正式私库、真实游戏与启动计时、原生选择器的人工作业仍未验证；识别忙碌提示本次由定向单元验证，没有重新搭建联网识别桌面场景。本次无残余检查失败或新增的试用阻碍，停止开发等待用户实际试用。
 
 ## 附录：Claude 原始评审
 
