@@ -12,10 +12,12 @@ import SectionSignature from './components/SectionSignature.vue'
 import OrderMark from './components/OrderMark.vue'
 import LibraryOverview from './components/LibraryOverview.vue'
 import LibraryCollections from './components/LibraryCollections.vue'
+import LibrarySavedViews from './components/LibrarySavedViews.vue'
 import LibraryMaintenance from './components/LibraryMaintenance.vue'
 import PlayStatistics from './components/PlayStatistics.vue'
 import { filterLibraryGames, folderKey, knownCandidateIds, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
-import type { LibraryLayout, LibrarySort, LibraryView } from './library-workspace'
+import type { LibraryFilters, LibraryLayout, LibrarySort, LibraryView } from './library-workspace'
+import { createSavedView, readSavedViews, writeSavedViews, type SavedLibraryView, type SavedViewEditor } from './saved-library-views'
 import { getLaunchInstallation } from './library-insights'
 
 type Page = 'library' | 'discover' | 'categories' | 'stats' | 'settings'
@@ -38,6 +40,13 @@ const sort = ref<LibrarySort>(libraryPreferences.sort)
 const libraryLayout = ref<LibraryLayout>(libraryPreferences.layout)
 const overviewVisible = ref(libraryPreferences.overview)
 const libraryView = ref<LibraryView>('all')
+const initialSavedViews = readSavedViews(uiStorage())
+const savedViews = ref(initialSavedViews.views)
+const savedViewError = ref(initialSavedViews.error)
+const savedViewsReadOnly = ref(!!initialSavedViews.error)
+const savedViewEditor = ref<SavedViewEditor | null>(null)
+const activeSavedViewId = ref<string | null>(null)
+let savedViewOrigin: HTMLElement | null = null
 const selectionMode = ref(false)
 const selectedIds = ref<string[]>([])
 let selectionGeneration = 0
@@ -86,7 +95,8 @@ watch(() => [currentReview.value?.gameId, currentReview.value?.reviewId, current
 watch(() => currentReview.value?.options.map(option => option.work.id).join(','), () => { if (!currentReview.value?.options.some(option => option.work.id === reviewChoice.value)) reviewChoice.value = '' })
 const allCategories = computed(() => [...new Set(games.value.flatMap(g => g.categories))].sort())
 const allTags = computed(() => [...new Set(games.value.flatMap(g => [...g.customTags, ...(g.metadata?.tags ?? [])]))].sort())
-const filteredGames = computed(() => filterLibraryGames(games.value, { query: libraryQuery.value, view: libraryView.value, status: statusFilter.value, favorites: favoritesOnly.value, category: categoryFilter.value, tag: tagFilter.value, minRating: minRating.value }, sort.value))
+const libraryFilters = computed<LibraryFilters>(() => ({ query: libraryQuery.value, view: libraryView.value, status: statusFilter.value, favorites: favoritesOnly.value, category: categoryFilter.value, tag: tagFilter.value, minRating: minRating.value }))
+const filteredGames = computed(() => filterLibraryGames(games.value, libraryFilters.value, sort.value))
 const viewCounts = computed(() => libraryViewCounts(games.value))
 const smartViews: { value: LibraryView; label: string }[] = [{ value: 'all', label: '全部' }, { value: 'local', label: '本地游戏' }, { value: 'wishlist', label: '愿望单' }]
 const activeFilterCount = computed(() => Number(statusFilter.value !== 'all') + Number(favoritesOnly.value) + Number(!!categoryFilter.value) + Number(!!tagFilter.value) + Number(minRating.value !== ''))
@@ -127,8 +137,59 @@ async function reload() {
     if (generation === reloadGeneration) throw error
   }
 }
-function navigate(target: Page) { if (target !== 'library') leaveSelection(); page.value = target }
-function resetFilters() { libraryQuery.value = ''; statusFilter.value = 'all'; favoritesOnly.value = false; categoryFilter.value = ''; tagFilter.value = ''; minRating.value = ''; libraryView.value = 'all' }
+function navigate(target: Page) { if (target !== 'library') leaveSelection(); if (target !== page.value) closeSavedViewEditor(); page.value = target }
+function resetFilters() { libraryQuery.value = ''; statusFilter.value = 'all'; favoritesOnly.value = false; categoryFilter.value = ''; tagFilter.value = ''; minRating.value = ''; libraryView.value = 'all'; activeSavedViewId.value = null }
+function openSavedViewEditor(event: MouseEvent, id: string | null = null) {
+  if (busy.has('bulk') || savedViewsReadOnly.value) return
+  const view = savedViews.value.find(item => item.id === id)
+  savedViewOrigin = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  savedViewError.value = null
+  savedViewEditor.value = { id, name: view?.name ?? '' }
+}
+function renameSavedView(id: string, event: MouseEvent) { openSavedViewEditor(event, id) }
+function closeSavedViewEditor() { savedViewEditor.value = null; if (savedViewOrigin?.isConnected) void nextTick(() => savedViewOrigin?.focus()) }
+function persistSavedViews(next: SavedLibraryView[]): boolean {
+  if (busy.has('bulk') || savedViewsReadOnly.value) return false
+  const result = writeSavedViews(uiStorage(), next)
+  if (!result.ok) { savedViewError.value = result.error; return false }
+  savedViews.value = result.views; savedViewError.value = null; return true
+}
+function saveNamedView(name: string) {
+  const editor = savedViewEditor.value
+  if (!editor) return
+  try {
+    const existing = savedViews.value.find(view => view.id === editor.id)
+    if (editor.id && !existing) throw Error('这个常用筛选已不存在，请重新打开。')
+    const next = createSavedView(name, existing?.filters ?? libraryFilters.value, existing?.sort ?? sort.value, existing?.id)
+    if (!persistSavedViews(existing ? savedViews.value.map(view => view.id === existing.id ? next : view) : [...savedViews.value, next])) return
+    if (!existing) activeSavedViewId.value = next.id
+    closeSavedViewEditor()
+  } catch (error) { savedViewError.value = error instanceof Error ? error.message : '常用筛选未能保存。' }
+}
+function updateSavedView(id: string) {
+  const view = savedViews.value.find(item => item.id === id)
+  if (!view) return
+  try {
+    const next = createSavedView(view.name, libraryFilters.value, sort.value, id)
+    if (persistSavedViews(savedViews.value.map(item => item.id === id ? next : item))) activeSavedViewId.value = id
+  } catch (error) { savedViewError.value = error instanceof Error ? error.message : '常用筛选未能更新。' }
+}
+function removeSavedView(id: string) {
+  if (persistSavedViews(savedViews.value.filter(view => view.id !== id))) {
+    if (activeSavedViewId.value === id) activeSavedViewId.value = null
+    if (savedViewEditor.value?.id === id) closeSavedViewEditor()
+  }
+}
+function retrySavedViews() { const result = readSavedViews(uiStorage()); savedViews.value = result.views; savedViewError.value = result.error; savedViewsReadOnly.value = !!result.error }
+async function applySavedView(view: SavedLibraryView) {
+  if (busy.has('bulk')) return
+  leaveSelection(); closeSavedViewEditor(); page.value = 'library'
+  const f = view.filters
+  libraryQuery.value = f.query; libraryView.value = f.view; statusFilter.value = f.status; favoritesOnly.value = f.favorites
+  categoryFilter.value = f.category; tagFilter.value = f.tag; minRating.value = f.minRating; sort.value = view.sort
+  activeSavedViewId.value = view.id
+  await nextTick(); window.scrollTo(0, 0); document.querySelector<HTMLElement>('.library-heading h1')?.focus()
+}
 async function favorite(game: LibraryGame) { await task(`favorite-${game.id}`, async () => { await api.updateGame(game.id, { favorite: !game.favorite }); await reload() }) }
 async function launch(game: LibraryGame) { await task('launch', async () => { await api.launchGame(game.id); await reload(); useKunMessage('游戏已启动，开始记录游玩时间。', 'success') }) }
 async function configureGame(game: LibraryGame) { if (!game.installations.length) { await prepareAttachment(game); return }; await showGame(game); detailTab.value = 'manage' }
@@ -553,7 +614,8 @@ watch(() => JSON.stringify([snapshot.value?.settings.baseUrl, snapshot.value?.se
 function applyTheme(theme: Theme) { document.documentElement.classList.toggle('kun-dark-mode', theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) }
 const systemThemeChanged = () => { if (snapshot.value?.settings.theme === 'system') applyTheme('system') }
 function workspaceShortcut(event: KeyboardEvent) {
-  if (detailOpen.value || bindOpen.value || scanOpen.value || reviewOpen.value || maintenanceOpen.value || attachmentOpen.value || reviewDetailOpen.value || event.altKey || event.isComposing) return
+  if (event.defaultPrevented || detailOpen.value || bindOpen.value || scanOpen.value || reviewOpen.value || maintenanceOpen.value || attachmentOpen.value || reviewDetailOpen.value || event.altKey || event.isComposing) return
+  if (savedViewEditor.value) { if (event.key === 'Escape') { event.preventDefault(); closeSavedViewEditor() }; return }
   if ((event.ctrlKey || event.metaKey) && ['f', 'k'].includes(event.key.toLowerCase())) {
     event.preventDefault(); navigate('library'); void nextTick(() => { const input = document.querySelector<HTMLInputElement>('input[aria-label="搜索书架"]'); input?.focus(); input?.select() })
   } else if (event.key === 'Escape' && selectionMode.value) { event.preventDefault(); leaveSelection() }
@@ -590,7 +652,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
     <div :class="['workspace', { 'library-workspace': page === 'library', 'library-busy': matchingRunning || !!snapshot?.activeSession }]">
       <div v-if="isPreview" class="preview-notice"><Monitor :size="14" /><span>界面预览 · 示例封面来自真实资料，书架操作仅在内存中生效。打开桌面版使用本地功能。</span></div>
-      <header class="topbar" :class="{ 'compact-library-topbar': page === 'library' }"><div v-if="page === 'library'" class="library-heading"><h1>我的书架 <span class="heading-count">{{ games.length }}</span></h1><SectionSignature name="Avalon" /></div><div v-else class="breadcrumb">The Order <ChevronRight :size="13" /> {{ page === 'settings' ? '偏好设置' : navigation.find(n => n.id === page)?.label }}</div>
+      <header class="topbar" :class="{ 'compact-library-topbar': page === 'library' }"><div v-if="page === 'library'" class="library-heading"><h1 tabindex="-1">我的书架 <span class="heading-count">{{ games.length }}</span></h1><SectionSignature name="Avalon" /></div><div v-else class="breadcrumb">The Order <ChevronRight :size="13" /> {{ page === 'settings' ? '偏好设置' : navigation.find(n => n.id === page)?.label }}</div>
         <div v-if="page === 'library'" class="library-tools"><label class="search-field"><Search :size="16" /><input v-model="libraryQuery" placeholder="搜索名称、别名、标签…" aria-label="搜索书架" /><button v-if="libraryQuery" aria-label="清空搜索" @click="libraryQuery = ''"><X :size="14" /></button></label><select v-model="sort" aria-label="游戏排序" class="sort-select"><option value="added">最近添加</option><option value="recent">最近游玩</option><option value="name">名称排序</option><option value="rating">我的评分</option><option value="playtime">游玩时长</option></select><div class="library-view-actions"><button aria-label="封面视图" :aria-pressed="libraryLayout === 'grid'" :class="{ active: libraryLayout === 'grid' }" @click="libraryLayout = 'grid'"><LayoutGrid :size="17" /></button><button aria-label="列表视图" :aria-pressed="libraryLayout === 'list'" :class="{ active: libraryLayout === 'list' }" @click="libraryLayout = 'list'"><Library :size="17" /></button></div></div>
         <div class="topbar-actions"><button v-if="page === 'library' && !selectionMode && games.length" class="filter-button" @click="enterSelection"><CheckCircle2 :size="16" /> 选择整理</button><span v-if="page !== 'library'" class="local-badge"><ShieldCheck :size="14" /> 本地书架</span><KunButton color="primary" variant="flat" size="sm" :loading="busy.has('scan')" @click="scan"><Plus :size="16" /> 添加游戏</KunButton></div></header>
       <section v-if="matchingVisible && matching" class="matching-banner" :class="{ running: matchingRunning }" :aria-label="reidentifying ? '游戏重新识别进度' : '游戏资料补全进度'">
@@ -608,9 +670,10 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
               <div class="status-tabs" role="group" aria-label="游玩状态"><button :class="{ active: statusFilter === 'all' }" :aria-pressed="statusFilter === 'all'" @click="statusFilter = 'all'">全部进度</button><button v-for="status in statuses" :key="status.value" :class="{ active: statusFilter === status.value }" :aria-pressed="statusFilter === status.value" @click="statusFilter = status.value">{{ status.label }}</button></div>
               <button :class="['filter-button', { selected: filtersOpen || activeFilterCount > 0 }]" :aria-expanded="filtersOpen" aria-controls="library-expanded-filters" @click="filtersOpen = !filtersOpen"><SlidersHorizontal :size="16" /> 筛选 <small v-if="activeFilterCount">{{ activeFilterCount }}</small></button>
             </div>
-            <div v-if="filtersOpen" class="expanded-filters" id="library-expanded-filters"><label>分类<select v-model="categoryFilter"><option value="">全部分类</option><option v-for="c in allCategories" :key="c">{{ c }}</option></select></label><label>标签<select v-model="tagFilter"><option value="">全部标签</option><option v-for="t in allTags" :key="t">{{ t }}</option></select></label><label>我的评分<select v-model="minRating"><option value="">不限</option><option value="8">8 分及以上</option><option value="6">6 分及以上</option><option value="0">已评分</option></select></label><label class="filter-check"><input v-model="favoritesOnly" type="checkbox" /> 只看收藏</label><label class="filter-check"><input v-model="overviewVisible" type="checkbox" /> 显示继续游玩</label><button class="text-button" @click="resetFilters">重置筛选</button></div>
+            <div v-if="filtersOpen" class="expanded-filters" id="library-expanded-filters"><label>分类<select v-model="categoryFilter"><option value="">全部分类</option><option v-if="categoryFilter &amp;&amp; !allCategories.includes(categoryFilter)" :value="categoryFilter">{{ categoryFilter }}（已不存在）</option><option v-for="c in allCategories" :key="c">{{ c }}</option></select></label><label>标签<select v-model="tagFilter"><option value="">全部标签</option><option v-if="tagFilter &amp;&amp; !allTags.includes(tagFilter)" :value="tagFilter">{{ tagFilter }}（已不存在）</option><option v-for="t in allTags" :key="t">{{ t }}</option></select></label><label>我的评分<select v-model="minRating"><option value="">不限</option><option value="8">8 分及以上</option><option value="6">6 分及以上</option><option value="0">已评分</option></select></label><label class="filter-check"><input v-model="favoritesOnly" type="checkbox" /> 只看收藏</label><label class="filter-check"><input v-model="overviewVisible" type="checkbox" /> 显示继续游玩</label><button class="text-button" @click="resetFilters">重置筛选</button><button class="text-button" :disabled="busy.has('bulk') || savedViewsReadOnly" @click="openSavedViewEditor($event)">保存当前筛选</button></div>
             <div v-if="activeFilterCount || libraryQuery" class="active-filter-chips" aria-label="当前筛选"><button v-if="libraryQuery" @click="libraryQuery = ''">搜索：{{ libraryQuery }} <X :size="12" /></button><button v-if="categoryFilter" aria-label="移除分类筛选" @click="categoryFilter = ''">分类：{{ categoryFilter }} <X :size="12" /></button><button v-if="tagFilter" aria-label="移除标签筛选" @click="tagFilter = ''">标签：{{ tagFilter }} <X :size="12" /></button><button v-if="favoritesOnly" @click="favoritesOnly = false">特别喜欢 <X :size="12" /></button><button v-if="minRating !== ''" @click="minRating = ''">{{ minRating === '0' ? '已评分' : `评分 ≥ ${minRating}` }} <X :size="12" /></button><button v-if="statusFilter !== 'all'" @click="statusFilter = 'all'">{{ statuses.find(status => status.value === statusFilter)?.label }} <X :size="12" /></button></div>
           </section>
+          <LibrarySavedViews :views="savedViews" :games="games" :filters="libraryFilters" :sort="sort" :active-id="activeSavedViewId" :editor="savedViewEditor" :error="savedViewError" :disabled="busy.has('bulk')" :read-only="savedViewsReadOnly" :can-save="true" @apply="applySavedView" @create="openSavedViewEditor" @rename="renameSavedView" @save="saveNamedView" @update="updateSavedView" @remove="removeSavedView" @close="closeSavedViewEditor" @retry="retrySavedViews" />
           <LibraryOverview v-if="games.length && overviewVisible && !snapshot?.activeSession && !selectionMode && libraryView === 'all' && !libraryQuery && statusFilter === 'all' && !favoritesOnly && !categoryFilter && !tagFilter && minRating === ''" :games="games" :include-nsfw="snapshot?.settings.includeNsfw ?? true" @open="showGame" @play="launch" @filter="applyOverviewFilter" />
           <div v-if="libraryQuery || libraryView !== 'all' || statusFilter !== 'all' || favoritesOnly || categoryFilter || tagFilter || minRating !== ''" class="library-result-bar"><span>{{ filteredGames.length }} 部作品<span v-if="libraryView === 'unmatched' || libraryView === 'unconfigured'"> · {{ libraryView === 'unmatched' ? '缺资料' : '待设启动程序' }}</span></span><button v-if="libraryView === 'unmatched' || libraryView === 'unconfigured'" class="text-button" @click="resetFilters">查看全部书架</button></div>
           <section v-if="selectionMode" class="selection-toolbar" aria-label="批量整理"><div><strong>已选择 {{ selectedIds.length }} 部</strong><small>只整理当前结果中的勾选项</small></div><button :disabled="busy.has('bulk')" @click="selectVisible">全选当前结果{{ filteredGames.length > 1000 ? '（前1000部）' : '' }}</button><button :disabled="matchingUnavailable || !selectedLocalIds.length" @click="identifySelected">识别所选</button><button @click="leaveSelection">取消整理</button></section>
@@ -641,6 +704,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
         <template v-else-if="page === 'categories'">
           <section class="page-heading"><div><h1>分类收藏</h1><SectionSignature name="Clover" /><p>用自己的方式，整理值得珍藏的故事。</p></div><KunButton v-if="games.length" variant="bordered" @click="applyOverviewFilter('all'); enterSelection()"><Tags :size="16" /> 批量整理书架</KunButton></section>
+          <LibrarySavedViews :views="savedViews" :games="games" :filters="libraryFilters" :sort="sort" :active-id="activeSavedViewId" :editor="savedViewEditor" :error="savedViewError" :disabled="busy.has('bulk')" :read-only="savedViewsReadOnly" :can-save="false" @apply="applySavedView" @create="openSavedViewEditor" @rename="renameSavedView" @save="saveNamedView" @update="updateSavedView" @remove="removeSavedView" @close="closeSavedViewEditor" @retry="retrySavedViews" />
           <LibraryCollections :games="games" :tags="allTags" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :global-display="globalCoverDisplay" @favorites="page = 'library'; resetFilters(); favoritesOnly = true" @category="value => { page = 'library'; resetFilters(); categoryFilter = value }" @tag="value => { page = 'library'; resetFilters(); tagFilter = value }" />
         </template>
 
