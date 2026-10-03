@@ -1,0 +1,26 @@
+# Attribution
+
+The Order (previously Kun Galgame Manager / 鲸屿) is an independent personal project. It is not an official product of Kun, NextMoe, PotatoVN, or the referenced game.
+
+- **KunUI** — official `@kungal/ui-vue`, `@kungal/ui-core`, and `@kungal/ui-tokens`, version 2.56.2. Copyright the KunUI contributors. Licensed under AGPL-3.0-only. [Upstream source](https://github.com/kungal/kun-ui). The original application source is licensed under AGPL-3.0-or-later; KunUI retains its own AGPL-3.0-only license. Complete corresponding application source is supplied alongside the Windows application in this delivery.
+- **PotatoVN** — functional and architectural reference, version v1.10.2.0, commit d877bbe166e5b71d6520784f9d268e6df7eb4487. Apache-2.0. [Upstream source](https://github.com/GoldenPotato137/PotatoVN). No PotatoVN application source code, logo, artwork, or private user data is bundled. The separate PotatoDBMapper data reuse is described below.
+- **NextMoe** — online game information provider. [Developer documentation](https://developer.nextmoe.dev/). Metadata and images retain their source attribution; they are not original artwork owned by this application.
+- **Vue**, **Electron**, **Tailwind CSS**, **Lucide** and build dependencies retain their respective upstream licenses. The locked package manifest records exact dependency versions. Electron's distribution includes its own licenses and Chromium notices.
+
+The application emblem is a transparent reconstruction of the user-provided screenshots of 结城希亚's Artifact “The Order”. It is based on the referenced game's artwork and is not original application artwork; the source-code license does not grant rights to that underlying artwork. Screenshots and preview fixtures contain game information returned by the connected NextMoe service; they are interface previews, not a prefilled personal library.
+
+## PotatoDBMapper title index
+
+Version 0.3.0 continues to bundle `data/title-index.json.gz`, derived from the public database of [PotatoDBMapper](https://github.com/GoldenPotato137/PotatoDBMapper), an Apache-2.0 project. Attribution belongs to the PotatoDBMapper authors and contributors. The upstream license is included unchanged in [data/LICENSE-PotatoDBMapper.txt](data/LICENSE-PotatoDBMapper.txt); this derived data retains that license rather than adopting the application's AGPL license.
+
+The bundled snapshot contains **56,064 work records and 97,038 titles**. This application modifies the upstream database representation using [scripts/build-title-index.py](scripts/build-title-index.py): it extracts titles and VNDB references, retains Bangumi and Steam mappings only when the upstream similarity is at least 0.95, removes empty or invalid titles, and writes a compact gzip-compressed JSON index. The index records its upstream URL and the SHA-256 of the input database. It contains no cover images or descriptions.
+
+The runtime uses this index to identify candidate source references, resolves them in batches through NextMoe, and rechecks full work details before applying an automatic match. The converted index is reused upstream data, distinct from the PotatoVN application used as an architectural reference.
+
+## Recognition format references
+
+The application's recognition modules use the public [Microsoft VERSIONINFO resource format](https://learn.microsoft.com/en-us/windows/win32/menurc/versioninfo-resource), [Steamworks App ID documentation](https://partner.steamgames.com/doc/sdk/api), and [NextMoe API contract](https://api.nextmoe.dev/v2/catalog/openapi.json). These references describe the formats being read; they do not imply endorsement of the recognition results.
+
+Recognition uses directory and file names, small known Steam configuration files, and selected README headings. Reading executable version resources is enabled by default for new configurations; existing explicit choices are preserved. It can be disabled with “读取程序内的游戏名称” in Preferences. When enabled, the application reads bounded metadata without executing the game. Opening a file for reading can still trigger Windows security scanning and quarantine; execution is not required. This does not establish that a detection is a false positive. Suspected incorrect detections can be submitted through [Microsoft's file analysis portal](https://www.microsoft.com/en-us/wdsi/filesubmission).
+
+The application does not redistribute game binaries, README contents, or artwork as part of its title index. Recognition preserves the distinction between upstream title types and their machine-translation flags; bounded metadata hashes are not used to establish game identity.

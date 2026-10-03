@@ -1,0 +1,1899 @@
+[
+  {
+    "id": "86",
+    "title": "CLANNAD | 克兰纳德",
+    "originalTitle": "クラナド",
+    "aliases": [
+      "CLANNAD",
+      "团子大家族",
+      "小镇家族"
+    ],
+    "coverUrl": "https://image.kungal.iloveren.link/63/c3/63c3d779b6dece534242fa7cfa4724c91f3d2f1c63ecb91572ea21401daf3e2f.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/34/bb/34bb7fe6b84fe2623cb4331fd9ffd8fe76693784ffb7e90740913f825b0843fa.webp",
+    "description": "季节是春天，故事从快乐而真实地度过的学园日常开始，不久后剧情将发展为与女主角们的恋爱。\n以深远的世界观为背景所讲述的，是居住在一个小镇上的人们各自的思念，以及在那前方的“生存”这件事。\n另一方面，又以幻想般的意象描绘出仿佛包容着人们思念般存在的小镇本身。\n-----------------------------------------------------------------------------------------------------------\n《CLANNAD》为2004年key社所发行的文字冒险游戏（AVG），和key社以往游戏不同的是，这款是以全年龄版PC的形式发行。CLANNAD在凯尔特语中代表的是“家族”。正如其名，这款游戏的核心价值及在描写各类的家族温暖，是个感动人心的落泪游戏。",
+    "releaseDate": "2004-04-28",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Key"
+    ],
+    "tags": [
+      "key",
+      "CLANNAD",
+      "麻枝准",
+      "催泪弹",
+      "家族",
+      "人生",
+      "亲情",
+      "泣きゲー",
+      "爱情",
+      "暖人心田/泣",
+      "家庭",
+      "无色情内容",
+      "恋爱",
+      "戏剧",
+      "笨蛋朋友",
+      "高中",
+      "校园生活喜剧",
+      "害羞的女主角",
+      "喜剧",
+      "天才女主角",
+      "学生女主角",
+      "日期显示",
+      "游戏早期出现分支剧情",
+      "主人公可命名",
+      "多分支结局",
+      "娇羞女主角",
+      "胆小女主角",
+      "现代傲娇女主角",
+      "现代日本",
+      "主人公的学妹/后辈女主角",
+      "核心女主角",
+      "白毛女主角",
+      "有呆毛的女主角",
+      "三无女主角",
+      "书呆子女主角",
+      "纯爱故事",
+      "男性主人公",
+      "双胞胎女主角",
+      "戏剧社团",
+      "双胞胎妹妹配角",
+      "父亲配角",
+      "进气口发型的女主角",
+      "母亲型配角",
+      "幼稚暴力女主角",
+      "春天",
+      "学生社团成员女主角",
+      "日常片段",
+      "宿舍管理员女主角",
+      "友谊线路",
+      "跳转到选择",
+      "多于七个结局",
+      "不良主人公",
+      "友情",
+      "友谊终结",
+      "算命师女主角",
+      "可解锁路线",
+      "超过七位女主角",
+      "可解锁的事件",
+      "可解锁的结局篇章",
+      "可解锁的选项",
+      "大量选项",
+      "成长剧",
+      "可解锁画廊",
+      "高中生主人公",
+      "高中生女主角",
+      "内置百科全书",
+      "生活片段喜剧",
+      "萝莉女主角",
+      "多种标题画面",
+      "成就系统",
+      "初中生女主角",
+      "被吐槽的笨蛋女主角",
+      "2000年代",
+      "主人公露过正脸",
+      "平成时代",
+      "成年男主角",
+      "盲目选择",
+      "插入歌曲",
+      "男性朋友",
+      "虚构的现代日本城镇",
+      "傻白甜男主角",
+      "家庭伦理",
+      "家庭生活喜剧",
+      "音乐欣赏",
+      "PS3",
+      "Xbox360"
+    ],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 8.72,
+        "scale": 10,
+        "votes": 11443
+      },
+      {
+        "source": "bangumi",
+        "score": 8.9,
+        "scale": 10,
+        "votes": 6478
+      },
+      {
+        "source": "erogamescape",
+        "score": 90,
+        "scale": 100,
+        "votes": 3297
+      }
+    ],
+    "characters": [
+      {
+        "id": "92921",
+        "name": "一之濑琴美",
+        "originalName": "一ノ瀬 ことみ",
+        "imageUrl": "https://image.kungal.iloveren.link/0c/09/0c097e881dacd2356cc3156a85ff21330e898a119e28d493b2147295eddaf7b5.webp",
+        "role": "main",
+        "voiceActors": [
+          "能登 麻美子"
+        ]
+      },
+      {
+        "id": "85797",
+        "name": "伊吹 風子",
+        "originalName": "伊吹 風子",
+        "imageUrl": "https://image.kungal.iloveren.link/e6/fd/e6fd4c9020cd0ea42ff0a1e88901d0f728a0fc70a3ae6a898127c4f3cee8d84a.webp",
+        "role": "main",
+        "voiceActors": [
+          "野中 藍"
+        ]
+      },
+      {
+        "id": "181760",
+        "name": "古河 渚",
+        "originalName": "古河 渚",
+        "imageUrl": "https://image.kungal.iloveren.link/e9/92/e992b59977a8867793b12e47ba42a7471e207cfe981d6dc41d10ca0b310576bd.webp",
+        "role": "main",
+        "voiceActors": [
+          "中原麻衣"
+        ]
+      },
+      {
+        "id": "140673",
+        "name": "坂上 智代",
+        "originalName": "坂上 智代",
+        "imageUrl": "https://image.kungal.iloveren.link/c8/93/c89388621f083c54c49a812f261d6209728df2af5a0afd63668f32185d9e7eba.webp",
+        "role": "main",
+        "voiceActors": [
+          "桑島法子"
+        ]
+      },
+      {
+        "id": "106494",
+        "name": "宮沢 有紀寧",
+        "originalName": "宮沢 有紀寧",
+        "imageUrl": "https://image.kungal.iloveren.link/db/10/db10d74f788905cbbd003e1fd63d0c899685fac6a74e53886d45cf7eb147a961.webp",
+        "role": "main",
+        "voiceActors": [
+          "榎本温子"
+        ]
+      },
+      {
+        "id": "89972",
+        "name": "岡崎 朋也",
+        "originalName": "岡崎 朋也",
+        "imageUrl": "https://image.kungal.iloveren.link/07/a6/07a6e392aa99c5658203c0336d0d936d923c585ed4e35a3d84d279974c07f953.webp",
+        "role": "main",
+        "voiceActors": []
+      },
+      {
+        "id": "99141",
+        "name": "藤林 杏",
+        "originalName": "藤林 杏",
+        "imageUrl": "https://image.kungal.iloveren.link/80/69/8069e484d3abf1de1b39cda695b070050c1f9553b85b31f808f0138d09d3d83b.webp",
+        "role": "main",
+        "voiceActors": [
+          "広橋 涼"
+        ]
+      },
+      {
+        "id": "85340",
+        "name": "藤林 椋",
+        "originalName": "藤林 椋",
+        "imageUrl": "https://image.kungal.iloveren.link/2d/2b/2d2b3c2f202de82c2587e378d786dee379bff9aec660f376733c53a71e8515ba.webp",
+        "role": "main",
+        "voiceActors": [
+          "神田 朱未"
+        ]
+      },
+      {
+        "id": "134987",
+        "name": "牡丹",
+        "originalName": "ボタン",
+        "imageUrl": "https://image.kungal.iloveren.link/4c/eb/4ceb42fd3126b81e4d3fbe65f8ac32f3d10f561e92a669e1936b064a60aaf711.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "川名 真知子"
+        ]
+      },
+      {
+        "id": "105381",
+        "name": "伊吹 公子",
+        "originalName": "伊吹 公子",
+        "imageUrl": "https://image.kungal.iloveren.link/b7/11/b711fadf61e7aee9d2841cd25ee51010dd18ea8d688973206e989ed8ff960971.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "皆口 裕子"
+        ]
+      },
+      {
+        "id": "98498",
+        "name": "古河 早苗",
+        "originalName": "古河 早苗",
+        "imageUrl": "https://image.kungal.iloveren.link/11/74/11746d015eaff2251b149116e15fe8a73a74b19e96a4f8f099c795c251962923.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "井上喜久子"
+        ]
+      },
+      {
+        "id": "95348",
+        "name": "古河 秋生",
+        "originalName": "古河 秋生",
+        "imageUrl": "https://image.kungal.iloveren.link/2b/54/2b541ee45853dafcf7b028e2366d4c8e730396eb39dfe4a5d1180ec0d0767e74.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "置鮎龍太郎"
+        ]
+      },
+      {
+        "id": "107698",
+        "name": "岡崎 直幸",
+        "originalName": "岡崎 直幸",
+        "imageUrl": "https://image.kungal.iloveren.link/91/b2/91b260cf852346251486099864a0c62a96e9f88c49c6c64a2079b3da369dc5d3.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "中博史"
+        ]
+      },
+      {
+        "id": "94658",
+        "name": "幸村 俊夫",
+        "originalName": "幸村 俊夫",
+        "imageUrl": "https://image.kungal.iloveren.link/26/3e/263e3f73bf42dcc3eadc59d19138d1658af8e06a964d5559e9a41e8536707a10.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "青野 武"
+        ]
+      },
+      {
+        "id": "90970",
+        "name": "春原 芽衣",
+        "originalName": "春原 芽衣",
+        "imageUrl": "https://image.kungal.iloveren.link/4d/6d/4d6d03b0d456832b86d07348435809ed22772a9a6d210fdb88f1524062ec0a07.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "田村 ゆかり"
+        ]
+      },
+      {
+        "id": "139708",
+        "name": "春原 陽平",
+        "originalName": "春原 陽平",
+        "imageUrl": "https://image.kungal.iloveren.link/02/3b/023b540dda620739beec9e997d64c61b4a72cb9a0fa16d357f45961fe36b2e10.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "阪口 大助"
+        ]
+      },
+      {
+        "id": "161615",
+        "name": "柊 勝平",
+        "originalName": "柊 勝平",
+        "imageUrl": "https://image.kungal.iloveren.link/80/d1/80d1e148327fda5e85b8323efb92aa508e8d4d67fb2bbacbed92ebd75dffa304.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "白石 涼子"
+        ]
+      },
+      {
+        "id": "150093",
+        "name": "相楽 美佐枝",
+        "originalName": "相楽 美佐枝",
+        "imageUrl": "https://image.kungal.iloveren.link/c1/dc/c1dc2a10035670968c1bdb996600f22fd0057ee3675b87fcf277a4c73c9f214a.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "雪野 五月"
+        ]
+      },
+      {
+        "id": "145553",
+        "name": "芳野 祐介",
+        "originalName": "芳野 祐介",
+        "imageUrl": "https://image.kungal.iloveren.link/7c/8e/7c8e5a3122a3d330355743dd45b8fbeff36f157bafbf6f528eda6b034611474e.webp",
+        "role": "secondary",
+        "voiceActors": [
+          "绿川光"
+        ]
+      },
+      {
+        "id": "124419",
+        "name": "仁科 理惠",
+        "originalName": "仁科 りえ",
+        "imageUrl": null,
+        "role": "appears",
+        "voiceActors": [
+          "相沢舞"
+        ]
+      },
+      {
+        "id": "148683",
+        "name": "坂上 鷹文",
+        "originalName": "坂上 鷹文",
+        "imageUrl": "https://image.kungal.iloveren.link/40/3d/403d9c2493810790504b16183547301b2a6b1fe00ba229b01cb3b596ebb993a6.webp",
+        "role": "appears",
+        "voiceActors": []
+      },
+      {
+        "id": "168055",
+        "name": "岡崎 敦子",
+        "originalName": "岡崎 敦子",
+        "imageUrl": null,
+        "role": "appears",
+        "voiceActors": []
+      },
+      {
+        "id": "212811",
+        "name": "牡丹",
+        "originalName": "ボタン",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "川名真知子"
+        ]
+      },
+      {
+        "id": "213126",
+        "name": "一之濑琴美",
+        "originalName": "一ノ瀬ことみ",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "能登 麻美子"
+        ]
+      },
+      {
+        "id": "213652",
+        "name": "伊吹公子",
+        "originalName": "伊吹公子",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "皆口 裕子"
+        ]
+      },
+      {
+        "id": "212191",
+        "name": "伊吹风子",
+        "originalName": "伊吹風子",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "野中 藍"
+        ]
+      },
+      {
+        "id": "213397",
+        "name": "古河早苗",
+        "originalName": "古河早苗",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "井上喜久子"
+        ]
+      },
+      {
+        "id": "214548",
+        "name": "古河渚",
+        "originalName": "古河渚",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "中原麻衣"
+        ]
+      },
+      {
+        "id": "214906",
+        "name": "古河秋生",
+        "originalName": "古河秋生",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "置鮎龍太郎"
+        ]
+      },
+      {
+        "id": "213711",
+        "name": "坂上智代",
+        "originalName": "坂上智代",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "桑島法子"
+        ]
+      },
+      {
+        "id": "215323",
+        "name": "宫泽有纪宁",
+        "originalName": "宮沢有紀寧",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "榎本温子"
+        ]
+      },
+      {
+        "id": "211595",
+        "name": "冈崎朋也",
+        "originalName": "岡崎朋也",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "中村悠一"
+        ]
+      },
+      {
+        "id": "214057",
+        "name": "冈崎汐",
+        "originalName": "岡崎汐",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "兴梠里美"
+        ]
+      },
+      {
+        "id": "212104",
+        "name": "冈崎直幸",
+        "originalName": "岡崎直幸",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "中博史"
+        ]
+      },
+      {
+        "id": "213859",
+        "name": "幸村俊夫",
+        "originalName": "幸村俊夫",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "青野武"
+        ]
+      },
+      {
+        "id": "216628",
+        "name": "春原阳平",
+        "originalName": "春原陽平",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "阪口 大助"
+        ]
+      },
+      {
+        "id": "215108",
+        "name": "柊胜平",
+        "originalName": "柊勝平",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "白石 涼子"
+        ]
+      },
+      {
+        "id": "214518",
+        "name": "相乐美佐枝",
+        "originalName": "相楽美佐枝",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "ゆきのさつき"
+        ]
+      },
+      {
+        "id": "213656",
+        "name": "芳野佑介",
+        "originalName": "芳野祐介",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "绿川光"
+        ]
+      },
+      {
+        "id": "216111",
+        "name": "藤林杏",
+        "originalName": "藤林杏",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "広橋 涼"
+        ]
+      },
+      {
+        "id": "215848",
+        "name": "藤林椋",
+        "originalName": "藤林椋",
+        "imageUrl": null,
+        "role": "unknown",
+        "voiceActors": [
+          "神田 朱未"
+        ]
+      }
+    ],
+    "references": [
+      {
+        "source": "bangumi",
+        "id": "13",
+        "url": "https://bgm.tv/subject/13"
+      },
+      {
+        "source": "curated",
+        "id": "86"
+      },
+      {
+        "source": "dmm",
+        "id": "1041ksla0030"
+      },
+      {
+        "source": "erogamescape",
+        "id": "3454",
+        "url": "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=3454"
+      },
+      {
+        "source": "howlongtobeat",
+        "id": "1736",
+        "url": "https://howlongtobeat.com/game/1736"
+      },
+      {
+        "source": "steam",
+        "id": "324160",
+        "url": "https://store.steampowered.com/app/324160/"
+      },
+      {
+        "source": "vndb",
+        "id": "v4",
+        "url": "https://vndb.org/v4"
+      },
+      {
+        "source": "vndb",
+        "id": "r9435",
+        "url": "https://vndb.org/r9435"
+      },
+      {
+        "source": "vndb",
+        "id": "r21446",
+        "url": "https://vndb.org/r21446"
+      },
+      {
+        "source": "vndb",
+        "id": "r3748",
+        "url": "https://vndb.org/r3748"
+      },
+      {
+        "source": "vndb",
+        "id": "r70500",
+        "url": "https://vndb.org/r70500"
+      },
+      {
+        "source": "vndb",
+        "id": "r36069",
+        "url": "https://vndb.org/r36069"
+      },
+      {
+        "source": "vndb",
+        "id": "r64839",
+        "url": "https://vndb.org/r64839"
+      },
+      {
+        "source": "vndb",
+        "id": "r64849",
+        "url": "https://vndb.org/r64849"
+      },
+      {
+        "source": "vndb",
+        "id": "r7897",
+        "url": "https://vndb.org/r7897"
+      },
+      {
+        "source": "getchu",
+        "id": "36101"
+      },
+      {
+        "source": "vndb",
+        "id": "r302",
+        "url": "https://vndb.org/r302"
+      },
+      {
+        "source": "vndb",
+        "id": "r33730",
+        "url": "https://vndb.org/r33730"
+      },
+      {
+        "source": "vndb",
+        "id": "r66916",
+        "url": "https://vndb.org/r66916"
+      },
+      {
+        "source": "vndb",
+        "id": "r71682",
+        "url": "https://vndb.org/r71682"
+      },
+      {
+        "source": "vndb",
+        "id": "r5587",
+        "url": "https://vndb.org/r5587"
+      },
+      {
+        "source": "vndb",
+        "id": "r1441",
+        "url": "https://vndb.org/r1441"
+      },
+      {
+        "source": "vndb",
+        "id": "r138201",
+        "url": "https://vndb.org/r138201"
+      },
+      {
+        "source": "vndb",
+        "id": "r121674",
+        "url": "https://vndb.org/r121674"
+      },
+      {
+        "source": "vndb",
+        "id": "r107527",
+        "url": "https://vndb.org/r107527"
+      },
+      {
+        "source": "vndb",
+        "id": "r21520",
+        "url": "https://vndb.org/r21520"
+      },
+      {
+        "source": "vndb",
+        "id": "r140052",
+        "url": "https://vndb.org/r140052"
+      },
+      {
+        "source": "vndb",
+        "id": "r61228",
+        "url": "https://vndb.org/r61228"
+      },
+      {
+        "source": "vndb",
+        "id": "r11075",
+        "url": "https://vndb.org/r11075"
+      },
+      {
+        "source": "vndb",
+        "id": "r27053",
+        "url": "https://vndb.org/r27053"
+      },
+      {
+        "source": "vndb",
+        "id": "r113484",
+        "url": "https://vndb.org/r113484"
+      },
+      {
+        "source": "vndb",
+        "id": "r24967",
+        "url": "https://vndb.org/r24967"
+      },
+      {
+        "source": "vndb",
+        "id": "r156531",
+        "url": "https://vndb.org/r156531"
+      },
+      {
+        "source": "getchu",
+        "id": "502245"
+      },
+      {
+        "source": "vndb",
+        "id": "r13",
+        "url": "https://vndb.org/r13"
+      },
+      {
+        "source": "vndb",
+        "id": "r82218",
+        "url": "https://vndb.org/r82218"
+      },
+      {
+        "source": "vndb",
+        "id": "r117943",
+        "url": "https://vndb.org/r117943"
+      },
+      {
+        "source": "vndb",
+        "id": "r56131",
+        "url": "https://vndb.org/r56131"
+      },
+      {
+        "source": "vndb",
+        "id": "r4784",
+        "url": "https://vndb.org/r4784"
+      },
+      {
+        "source": "vndb",
+        "id": "r430",
+        "url": "https://vndb.org/r430"
+      },
+      {
+        "source": "vndb",
+        "id": "r31544",
+        "url": "https://vndb.org/r31544"
+      },
+      {
+        "source": "vndb",
+        "id": "r301",
+        "url": "https://vndb.org/r301"
+      },
+      {
+        "source": "vndb",
+        "id": "r1629",
+        "url": "https://vndb.org/r1629"
+      },
+      {
+        "source": "vndb",
+        "id": "r13119",
+        "url": "https://vndb.org/r13119"
+      },
+      {
+        "source": "vndb",
+        "id": "r30397",
+        "url": "https://vndb.org/r30397"
+      },
+      {
+        "source": "vndb",
+        "id": "r71147",
+        "url": "https://vndb.org/r71147"
+      },
+      {
+        "source": "vndb",
+        "id": "r57493",
+        "url": "https://vndb.org/r57493"
+      },
+      {
+        "source": "vndb",
+        "id": "r35593",
+        "url": "https://vndb.org/r35593"
+      },
+      {
+        "source": "vndb",
+        "id": "r121163",
+        "url": "https://vndb.org/r121163"
+      },
+      {
+        "source": "vndb",
+        "id": "r40704",
+        "url": "https://vndb.org/r40704"
+      },
+      {
+        "source": "vndb",
+        "id": "r64841",
+        "url": "https://vndb.org/r64841"
+      },
+      {
+        "source": "vndb",
+        "id": "r114447",
+        "url": "https://vndb.org/r114447"
+      },
+      {
+        "source": "vndb",
+        "id": "r22866",
+        "url": "https://vndb.org/r22866"
+      },
+      {
+        "source": "vndb",
+        "id": "r25238",
+        "url": "https://vndb.org/r25238"
+      },
+      {
+        "source": "vndb",
+        "id": "r142112",
+        "url": "https://vndb.org/r142112"
+      },
+      {
+        "source": "vndb",
+        "id": "r75470",
+        "url": "https://vndb.org/r75470"
+      },
+      {
+        "source": "vndb",
+        "id": "r60209",
+        "url": "https://vndb.org/r60209"
+      },
+      {
+        "source": "vndb",
+        "id": "r86843",
+        "url": "https://vndb.org/r86843"
+      },
+      {
+        "source": "vndb",
+        "id": "r84771",
+        "url": "https://vndb.org/r84771"
+      },
+      {
+        "source": "vndb",
+        "id": "r117946",
+        "url": "https://vndb.org/r117946"
+      },
+      {
+        "source": "vndb",
+        "id": "r136619",
+        "url": "https://vndb.org/r136619"
+      },
+      {
+        "source": "vndb",
+        "id": "r144537",
+        "url": "https://vndb.org/r144537"
+      },
+      {
+        "source": "vndb",
+        "id": "r76829",
+        "url": "https://vndb.org/r76829"
+      },
+      {
+        "source": "vndb",
+        "id": "r109579",
+        "url": "https://vndb.org/r109579"
+      },
+      {
+        "source": "vndb",
+        "id": "r104131",
+        "url": "https://vndb.org/r104131"
+      },
+      {
+        "source": "vndb",
+        "id": "r117947",
+        "url": "https://vndb.org/r117947"
+      },
+      {
+        "source": "vndb",
+        "id": "r71051",
+        "url": "https://vndb.org/r71051"
+      },
+      {
+        "source": "vndb",
+        "id": "r142279",
+        "url": "https://vndb.org/r142279"
+      },
+      {
+        "source": "vndb",
+        "id": "r122124",
+        "url": "https://vndb.org/r122124"
+      },
+      {
+        "source": "getchu",
+        "id": "81021"
+      },
+      {
+        "source": "vndb",
+        "id": "r303",
+        "url": "https://vndb.org/r303"
+      },
+      {
+        "source": "vndb",
+        "id": "r27166",
+        "url": "https://vndb.org/r27166"
+      },
+      {
+        "source": "getchu",
+        "id": "681794"
+      },
+      {
+        "source": "vndb",
+        "id": "r8856",
+        "url": "https://vndb.org/r8856"
+      },
+      {
+        "source": "vndb",
+        "id": "r161423",
+        "url": "https://vndb.org/r161423"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/86",
+    "contentRating": "all_ages",
+    "fetchedAt": "2026-10-02T13:19:05.671Z"
+  },
+  {
+    "id": "8526",
+    "title": "Clannad: 光芒守护的小镇 上卷",
+    "originalTitle": "CLANNAD -クラナド- 光見守る坂道で",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/25/45/2545415914428cba6b69fae56e7eb53b7dbccf51926f59c45c1311ff2f7c0f2e.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/21/fe/21fe7c20b42c9075a1733e43bed71c6720ce52de11bdcaa08a868620d45f9bca.webp",
+    "description": "",
+    "releaseDate": "2008-01-08",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Key"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 6.91,
+        "scale": 10,
+        "votes": 700
+      },
+      {
+        "source": "bangumi",
+        "score": 7.5,
+        "scale": 10,
+        "votes": 391
+      },
+      {
+        "source": "erogamescape",
+        "score": 70,
+        "scale": 100,
+        "votes": 41
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "bangumi",
+        "id": "6312",
+        "url": "https://bgm.tv/subject/6312"
+      },
+      {
+        "source": "curated",
+        "id": "8705"
+      },
+      {
+        "source": "erogamescape",
+        "id": "13877",
+        "url": "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=13877"
+      },
+      {
+        "source": "howlongtobeat",
+        "id": "38394",
+        "url": "https://howlongtobeat.com/game/38394"
+      },
+      {
+        "source": "steam",
+        "id": "420100",
+        "url": "https://store.steampowered.com/app/420100/"
+      },
+      {
+        "source": "vndb",
+        "id": "r102728",
+        "url": "https://vndb.org/r102728"
+      },
+      {
+        "source": "vndb",
+        "id": "r103955",
+        "url": "https://vndb.org/r103955"
+      },
+      {
+        "source": "vndb",
+        "id": "r11205",
+        "url": "https://vndb.org/r11205"
+      },
+      {
+        "source": "vndb",
+        "id": "r114046",
+        "url": "https://vndb.org/r114046"
+      },
+      {
+        "source": "vndb",
+        "id": "r114418",
+        "url": "https://vndb.org/r114418"
+      },
+      {
+        "source": "vndb",
+        "id": "r117948",
+        "url": "https://vndb.org/r117948"
+      },
+      {
+        "source": "vndb",
+        "id": "r117950",
+        "url": "https://vndb.org/r117950"
+      },
+      {
+        "source": "vndb",
+        "id": "r117951",
+        "url": "https://vndb.org/r117951"
+      },
+      {
+        "source": "vndb",
+        "id": "r117952",
+        "url": "https://vndb.org/r117952"
+      },
+      {
+        "source": "vndb",
+        "id": "r117953",
+        "url": "https://vndb.org/r117953"
+      },
+      {
+        "source": "vndb",
+        "id": "r121775",
+        "url": "https://vndb.org/r121775"
+      },
+      {
+        "source": "vndb",
+        "id": "r136801",
+        "url": "https://vndb.org/r136801"
+      },
+      {
+        "source": "vndb",
+        "id": "r147910",
+        "url": "https://vndb.org/r147910"
+      },
+      {
+        "source": "vndb",
+        "id": "r150391",
+        "url": "https://vndb.org/r150391"
+      },
+      {
+        "source": "vndb",
+        "id": "r156529",
+        "url": "https://vndb.org/r156529"
+      },
+      {
+        "source": "vndb",
+        "id": "r37412",
+        "url": "https://vndb.org/r37412"
+      },
+      {
+        "source": "vndb",
+        "id": "r44547",
+        "url": "https://vndb.org/r44547"
+      },
+      {
+        "source": "vndb",
+        "id": "r54990",
+        "url": "https://vndb.org/r54990"
+      },
+      {
+        "source": "vndb",
+        "id": "r57836",
+        "url": "https://vndb.org/r57836"
+      },
+      {
+        "source": "vndb",
+        "id": "r57837",
+        "url": "https://vndb.org/r57837"
+      },
+      {
+        "source": "vndb",
+        "id": "r74846",
+        "url": "https://vndb.org/r74846"
+      },
+      {
+        "source": "vndb",
+        "id": "r78521",
+        "url": "https://vndb.org/r78521"
+      },
+      {
+        "source": "vndb",
+        "id": "r7898",
+        "url": "https://vndb.org/r7898"
+      },
+      {
+        "source": "vndb",
+        "id": "r7899",
+        "url": "https://vndb.org/r7899"
+      },
+      {
+        "source": "vndb",
+        "id": "r79778",
+        "url": "https://vndb.org/r79778"
+      },
+      {
+        "source": "vndb",
+        "id": "r84695",
+        "url": "https://vndb.org/r84695"
+      },
+      {
+        "source": "vndb",
+        "id": "r91942",
+        "url": "https://vndb.org/r91942"
+      },
+      {
+        "source": "vndb",
+        "id": "v4060",
+        "url": "https://vndb.org/v4060"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8526",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  },
+  {
+    "id": "8496",
+    "title": "Adastra",
+    "originalTitle": "Adastra",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/00/ca/00ca066e0bb23fca8af160d79239261d2e0360ee4216414f450145848195f4e7.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/48/fa/48fad80d2998baa2fabef3f387b6de5ed4ab0aab3c6bf21e599c9cb6bb075145.webp",
+    "description": "",
+    "releaseDate": "2020-06-12",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Echo Project"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 7.73,
+        "scale": 10,
+        "votes": 132
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8675"
+      },
+      {
+        "source": "vndb",
+        "id": "r124704",
+        "url": "https://vndb.org/r124704"
+      },
+      {
+        "source": "vndb",
+        "id": "r139836",
+        "url": "https://vndb.org/r139836"
+      },
+      {
+        "source": "vndb",
+        "id": "r165421",
+        "url": "https://vndb.org/r165421"
+      },
+      {
+        "source": "vndb",
+        "id": "r70434",
+        "url": "https://vndb.org/r70434"
+      },
+      {
+        "source": "vndb",
+        "id": "r70435",
+        "url": "https://vndb.org/r70435"
+      },
+      {
+        "source": "vndb",
+        "id": "r90655",
+        "url": "https://vndb.org/r90655"
+      },
+      {
+        "source": "vndb",
+        "id": "r90656",
+        "url": "https://vndb.org/r90656"
+      },
+      {
+        "source": "vndb",
+        "id": "v28157",
+        "url": "https://vndb.org/v28157"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8496",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.515Z"
+  },
+  {
+    "id": "8497",
+    "title": "Khemia",
+    "originalTitle": "Khemia",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/a5/d0/a5d04cd6d2e0940aa2f5caa65ae89ac4be3b3d840fce5d5905874ce2a500f25f.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/7e/b5/7eb508f48199831677d9ae0b3325fa4728ed2006ede8bda03604f4d2749e48d8.webp",
+    "description": "",
+    "releaseDate": "2021-01-26",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Echo Project"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 6.58,
+        "scale": 10,
+        "votes": 11
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8676"
+      },
+      {
+        "source": "vndb",
+        "id": "r132171",
+        "url": "https://vndb.org/r132171"
+      },
+      {
+        "source": "vndb",
+        "id": "r73794",
+        "url": "https://vndb.org/r73794"
+      },
+      {
+        "source": "vndb",
+        "id": "r90657",
+        "url": "https://vndb.org/r90657"
+      },
+      {
+        "source": "vndb",
+        "id": "r90658",
+        "url": "https://vndb.org/r90658"
+      },
+      {
+        "source": "vndb",
+        "id": "r92236",
+        "url": "https://vndb.org/r92236"
+      },
+      {
+        "source": "vndb",
+        "id": "v28975",
+        "url": "https://vndb.org/v28975"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8497",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.515Z"
+  },
+  {
+    "id": "8498",
+    "title": "Echo",
+    "originalTitle": "Echo",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/1e/55/1e55bdb14e9ed945314cfb955bfa0ac326a0cf356ab8f8814c5503c7d4ac4172.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/2d/7f/2d7fa5d3ceecdcdeca09f1c5cbe004763df00dc413517db88a8472d33432f483.webp",
+    "description": "",
+    "releaseDate": "2021-03-06",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Echo Project"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 8.19,
+        "scale": 10,
+        "votes": 202
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8677"
+      },
+      {
+        "source": "vndb",
+        "id": "r122791",
+        "url": "https://vndb.org/r122791"
+      },
+      {
+        "source": "vndb",
+        "id": "r131630",
+        "url": "https://vndb.org/r131630"
+      },
+      {
+        "source": "vndb",
+        "id": "r139837",
+        "url": "https://vndb.org/r139837"
+      },
+      {
+        "source": "vndb",
+        "id": "r150606",
+        "url": "https://vndb.org/r150606"
+      },
+      {
+        "source": "vndb",
+        "id": "r157240",
+        "url": "https://vndb.org/r157240"
+      },
+      {
+        "source": "vndb",
+        "id": "r42119",
+        "url": "https://vndb.org/r42119"
+      },
+      {
+        "source": "vndb",
+        "id": "r89006",
+        "url": "https://vndb.org/r89006"
+      },
+      {
+        "source": "vndb",
+        "id": "r89299",
+        "url": "https://vndb.org/r89299"
+      },
+      {
+        "source": "vndb",
+        "id": "r90662",
+        "url": "https://vndb.org/r90662"
+      },
+      {
+        "source": "vndb",
+        "id": "r92229",
+        "url": "https://vndb.org/r92229"
+      },
+      {
+        "source": "vndb",
+        "id": "v18157",
+        "url": "https://vndb.org/v18157"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8498",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.515Z"
+  },
+  {
+    "id": "8500",
+    "title": "Interea",
+    "originalTitle": "Interea",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/4d/72/4d7263886f10a2cbcd7bfa3bdbdcc9859a8d60a9fc48d441d553f04fc46351fa.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/82/35/82359ed9339e28c4d0849f4ef8c28930e582d1ee5d26fc66423ae885427feb78.webp",
+    "description": "",
+    "releaseDate": "2021-05-05",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Echo Project"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 6.08,
+        "scale": 10,
+        "votes": 7
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8679"
+      },
+      {
+        "source": "vndb",
+        "id": "r79301",
+        "url": "https://vndb.org/r79301"
+      },
+      {
+        "source": "vndb",
+        "id": "r90659",
+        "url": "https://vndb.org/r90659"
+      },
+      {
+        "source": "vndb",
+        "id": "r90660",
+        "url": "https://vndb.org/r90660"
+      },
+      {
+        "source": "vndb",
+        "id": "r90661",
+        "url": "https://vndb.org/r90661"
+      },
+      {
+        "source": "vndb",
+        "id": "r92237",
+        "url": "https://vndb.org/r92237"
+      },
+      {
+        "source": "vndb",
+        "id": "v30953",
+        "url": "https://vndb.org/v30953"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8500",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.515Z"
+  },
+  {
+    "id": "8502",
+    "title": "Arches",
+    "originalTitle": "Arches",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/01/4b/014bab211b26ed190fc997778d12c60fa9a601dac6dba6260c29c883cfd38d91.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/9a/12/9a126fe81a5e235caeebf34c047fe24c1b648e18153580aef0d4ea7c4165f500.webp",
+    "description": "",
+    "releaseDate": "2023-09-25",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Echo Project"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 8.1,
+        "scale": 10,
+        "votes": 58
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8681"
+      },
+      {
+        "source": "vndb",
+        "id": "r115727",
+        "url": "https://vndb.org/r115727"
+      },
+      {
+        "source": "vndb",
+        "id": "r131977",
+        "url": "https://vndb.org/r131977"
+      },
+      {
+        "source": "vndb",
+        "id": "r144955",
+        "url": "https://vndb.org/r144955"
+      },
+      {
+        "source": "vndb",
+        "id": "r79371",
+        "url": "https://vndb.org/r79371"
+      },
+      {
+        "source": "vndb",
+        "id": "r92240",
+        "url": "https://vndb.org/r92240"
+      },
+      {
+        "source": "vndb",
+        "id": "v30992",
+        "url": "https://vndb.org/v30992"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8502",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  },
+  {
+    "id": "9176",
+    "title": "Sugar's Delight",
+    "originalTitle": "Sugar's Delight",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/57/02/570203fce80f5da9159d61e60485bc7b939f9cc2dbe43ee48010380c920577aa.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/20/43/20437e48025394931af898d9c4e4dbc6ec5f29f908d36c06fc7726ad9b83642c.webp",
+    "description": "",
+    "releaseDate": "2011-12-03",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "Neko ☆ Soft"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 5.89,
+        "scale": 10,
+        "votes": 825
+      },
+      {
+        "source": "bangumi",
+        "score": 6,
+        "scale": 10,
+        "votes": 1
+      },
+      {
+        "source": "erogamescape",
+        "score": 65,
+        "scale": 100,
+        "votes": 5
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "bangumi",
+        "id": "417986",
+        "url": "https://bgm.tv/subject/417986"
+      },
+      {
+        "source": "curated",
+        "id": "9359"
+      },
+      {
+        "source": "erogamescape",
+        "id": "18919",
+        "url": "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=18919"
+      },
+      {
+        "source": "howlongtobeat",
+        "id": "42522",
+        "url": "https://howlongtobeat.com/game/42522"
+      },
+      {
+        "source": "vndb",
+        "id": "r122158",
+        "url": "https://vndb.org/r122158"
+      },
+      {
+        "source": "vndb",
+        "id": "r139072",
+        "url": "https://vndb.org/r139072"
+      },
+      {
+        "source": "vndb",
+        "id": "r17363",
+        "url": "https://vndb.org/r17363"
+      },
+      {
+        "source": "vndb",
+        "id": "r20504",
+        "url": "https://vndb.org/r20504"
+      },
+      {
+        "source": "vndb",
+        "id": "r20766",
+        "url": "https://vndb.org/r20766"
+      },
+      {
+        "source": "vndb",
+        "id": "r22342",
+        "url": "https://vndb.org/r22342"
+      },
+      {
+        "source": "vndb",
+        "id": "r25361",
+        "url": "https://vndb.org/r25361"
+      },
+      {
+        "source": "vndb",
+        "id": "r35270",
+        "url": "https://vndb.org/r35270"
+      },
+      {
+        "source": "vndb",
+        "id": "r37681",
+        "url": "https://vndb.org/r37681"
+      },
+      {
+        "source": "vndb",
+        "id": "r56063",
+        "url": "https://vndb.org/r56063"
+      },
+      {
+        "source": "vndb",
+        "id": "r57157",
+        "url": "https://vndb.org/r57157"
+      },
+      {
+        "source": "vndb",
+        "id": "r88757",
+        "url": "https://vndb.org/r88757"
+      },
+      {
+        "source": "vndb",
+        "id": "v8527",
+        "url": "https://vndb.org/v8527"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/9176",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  },
+  {
+    "id": "9327",
+    "title": "Operation Eventide",
+    "originalTitle": "Operation Eventide",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/ae/b6/aeb688c00cdc1eaa022c0896683a98b112a9c20e1473e490e5a842056c08d594.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/14/56/1456b9a39af918665a4ee9135b93608a77ec0954009ac521e36579353342d372.webp",
+    "description": "",
+    "releaseDate": "2025-03-29",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "kolulu"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 7.88,
+        "scale": 10,
+        "votes": 24
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "9511"
+      },
+      {
+        "source": "steam",
+        "id": "4200970",
+        "url": "https://store.steampowered.com/app/4200970/"
+      },
+      {
+        "source": "steam",
+        "id": "4256180",
+        "url": "https://store.steampowered.com/app/4256180/"
+      },
+      {
+        "source": "vndb",
+        "id": "r133436",
+        "url": "https://vndb.org/r133436"
+      },
+      {
+        "source": "vndb",
+        "id": "r146764",
+        "url": "https://vndb.org/r146764"
+      },
+      {
+        "source": "vndb",
+        "id": "r147021",
+        "url": "https://vndb.org/r147021"
+      },
+      {
+        "source": "vndb",
+        "id": "r149179",
+        "url": "https://vndb.org/r149179"
+      },
+      {
+        "source": "vndb",
+        "id": "r165751",
+        "url": "https://vndb.org/r165751"
+      },
+      {
+        "source": "vndb",
+        "id": "v51178",
+        "url": "https://vndb.org/v51178"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/9327",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  },
+  {
+    "id": "8477",
+    "title": "Beary the Hatchet",
+    "originalTitle": "Beary the Hatchet",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/f7/a4/f7a4f3d8298e82cee6f2d82c117e391e422f74b8047f397d808a670f581f17fb.webp",
+    "bannerUrl": null,
+    "description": "",
+    "releaseDate": "2023-10-01",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "kirvias",
+      "mokadevs",
+      "Cetacity"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 6.98,
+        "scale": 10,
+        "votes": 12
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "curated",
+        "id": "8656"
+      },
+      {
+        "source": "howlongtobeat",
+        "id": "143653",
+        "url": "https://howlongtobeat.com/game/143653"
+      },
+      {
+        "source": "vndb",
+        "id": "r113659",
+        "url": "https://vndb.org/r113659"
+      },
+      {
+        "source": "vndb",
+        "id": "r126717",
+        "url": "https://vndb.org/r126717"
+      },
+      {
+        "source": "vndb",
+        "id": "v47297",
+        "url": "https://vndb.org/v47297"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8477",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.515Z"
+  },
+  {
+    "id": "8930",
+    "title": "余香",
+    "originalTitle": "余香",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/a4/89/a4892a67b08839b70658a9d2926c22449209acc92cf573bf736157e3e752f5ac.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/88/2d/882d79d5e5eab127501f059bf216e6998c7785eaf99ad8560612c8968a72ddc0.webp",
+    "description": "",
+    "releaseDate": "2018-08-11",
+    "releaseDatePrecision": "day",
+    "developers": [
+      "BLESTWORKS",
+      "橘子班"
+    ],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 6.4,
+        "scale": 10,
+        "votes": 56
+      },
+      {
+        "source": "bangumi",
+        "score": 6,
+        "scale": 10,
+        "votes": 166
+      },
+      {
+        "source": "erogamescape",
+        "score": 60,
+        "scale": 100,
+        "votes": 1
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "bangumi",
+        "id": "256920",
+        "url": "https://bgm.tv/subject/256920"
+      },
+      {
+        "source": "curated",
+        "id": "9111"
+      },
+      {
+        "source": "erogamescape",
+        "id": "40710",
+        "url": "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=40710"
+      },
+      {
+        "source": "howlongtobeat",
+        "id": "62434",
+        "url": "https://howlongtobeat.com/game/62434"
+      },
+      {
+        "source": "steam",
+        "id": "880400",
+        "url": "https://store.steampowered.com/app/880400/"
+      },
+      {
+        "source": "vndb",
+        "id": "r109578",
+        "url": "https://vndb.org/r109578"
+      },
+      {
+        "source": "vndb",
+        "id": "r58570",
+        "url": "https://vndb.org/r58570"
+      },
+      {
+        "source": "vndb",
+        "id": "v23751",
+        "url": "https://vndb.org/v23751"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/8930",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  },
+  {
+    "id": "9111",
+    "title": "爱茶。",
+    "originalTitle": "らぶちゃ。",
+    "aliases": [],
+    "coverUrl": "https://image.kungal.iloveren.link/61/d7/61d71c1817694481a9d4e51c1950b1f69e47a905d994c09a17c2c31a5d7245b9.webp",
+    "bannerUrl": "https://image.kungal.iloveren.link/16/e7/16e7503cb6402e509e42a0edb894850493dd86336ed7db3f5faa5199aa058802.webp",
+    "description": "",
+    "releaseDate": "2006-05-02",
+    "releaseDatePrecision": "day",
+    "developers": [],
+    "tags": [],
+    "ratings": [
+      {
+        "source": "vndb",
+        "score": 5.62,
+        "scale": 10,
+        "votes": 5
+      },
+      {
+        "source": "dlsite",
+        "score": 4.11,
+        "scale": 5,
+        "votes": 1746
+      },
+      {
+        "source": "erogamescape",
+        "score": 60,
+        "scale": 100,
+        "votes": 20
+      }
+    ],
+    "characters": [],
+    "references": [
+      {
+        "source": "bangumi",
+        "id": "223939",
+        "url": "https://bgm.tv/subject/223939"
+      },
+      {
+        "source": "curated",
+        "id": "9294"
+      },
+      {
+        "source": "dlsite",
+        "id": "RJ023237"
+      },
+      {
+        "source": "dmm",
+        "id": "50ktpg070"
+      },
+      {
+        "source": "dmm",
+        "id": "d_010583"
+      },
+      {
+        "source": "erogamescape",
+        "id": "7732",
+        "url": "https://erogamescape.dyndns.org/~ap2/ero/toukei_kaiseki/game.php?game=7732"
+      },
+      {
+        "source": "getchu",
+        "id": "488585"
+      },
+      {
+        "source": "getchu",
+        "id": "577465"
+      },
+      {
+        "source": "getchu",
+        "id": "742820"
+      },
+      {
+        "source": "vndb",
+        "id": "r13935",
+        "url": "https://vndb.org/r13935"
+      },
+      {
+        "source": "vndb",
+        "id": "r13936",
+        "url": "https://vndb.org/r13936"
+      },
+      {
+        "source": "vndb",
+        "id": "r74148",
+        "url": "https://vndb.org/r74148"
+      },
+      {
+        "source": "vndb",
+        "id": "r74355",
+        "url": "https://vndb.org/r74355"
+      },
+      {
+        "source": "vndb",
+        "id": "v7032",
+        "url": "https://vndb.org/v7032"
+      }
+    ],
+    "webUrl": "https://www.kungal.com/galgame/9111",
+    "contentRating": "r18",
+    "fetchedAt": "2026-10-02T13:19:04.516Z"
+  }
+]
