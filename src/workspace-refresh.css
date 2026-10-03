@@ -63,6 +63,7 @@
 .maintenance-empty { font-size:13px; color:var(--muted); padding:14px 0; }
 .attachment-root { display:flex; flex-direction:column; gap:5px; font-size:13px; overflow-wrap:anywhere; padding:12px; background:var(--blue-soft); border-radius:8px; margin:14px 0; }
 .attachment-candidate { display:flex; justify-content:space-between; align-items:center; gap:14px; border:1px solid var(--line); border-radius:8px; padding:14px; margin:10px 0; }
+.attachment-candidate>button { flex:0 0 auto; }
 .attachment-candidate>div { display:flex; flex-direction:column; gap:7px; min-width:0; }.attachment-candidate strong { font-size:15px; }.attachment-candidate span,.attachment-candidate small { font-size:12px; overflow-wrap:anywhere; color:var(--muted); }
 .matching-review-modal .review-layout { align-items:start; grid-template-columns:minmax(145px,.6fr) minmax(0,2fr); }
 .matching-review-modal .review-queue-heading,.matching-review-modal .review-queue button,.matching-review-modal .review-local-game>span,.matching-review-modal .review-local-game p,.matching-review-modal .review-reason p { font-size:13px; }
