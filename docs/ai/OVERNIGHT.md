@@ -10,7 +10,7 @@
 - 关联对话：「核对 The Order 本地仓库」，ID `01a1006a-bbdb-76c1-8673-ff32187e95b1`，host `local`，cwd `D:\Projects\The-Order`；继续同一对话，不建立独立会话或 worktree。
 - 创建：北京时间2026-10-04 01:20:17。用户随后要求现在执行第0次，每小时一次到第8次，共9次。**第0次于01:34:18由用户直接启动；已实际更新定时器为剩余8次，第1次02:34:18，第8次09:34:18。**旧02:20:17日程已替代。原生计划保存开始时间和剩余次数，不额外重复投递第0次、不用无限后台脚本。跳过也算计划槽位，不补额外轮次；未触发不得写成完成。第8次停止/暂停自身，不开启新大改动。
 - 模型继承本对话设置，预检为 `gpt-6.1-sol`；未更换模型、开付费服务或购买额度。
-- 电脑需开机、保持登录、应用运行且可联网。当前权限及写入探针通过；未来若权限或服务不可用，记录阻塞并停止，不绕过限制。第0次已完成产品实施与相关验证；未来轮次**未执行/未验证**。
+- 电脑需开机、保持登录、应用运行且可联网。当前权限及写入探针通过；未来若权限或服务不可用，记录阻塞并停止，不绕过限制。已执行轮次和实际结果见下方连续记录；尚未触发的轮次**未执行/未验证**。
 
 ## 睡前基线与保护
 
@@ -45,7 +45,7 @@
 | --- | --- | --- |
 | 0 | 01:34:18 | 已完成分类收藏改进与定向验证；提交见下文 |
 | 1 | 02:34:18 | 02:35:01实际触发；已完成常用筛选与相关验证，提交见下文 |
-| 2 | 03:34:18 | 待触发 |
+| 2 | 03:34:18 | 03:35:32实际触发；已完成详情个人记录、小窗口资料与键盘操作，提交见下文 |
 | 3 | 04:34:18 | 待触发 |
 | 4 | 05:34:18 | 待触发 |
 | 5 | 06:34:18 | 待触发 |
@@ -115,6 +115,46 @@
 | 长名称快捷入口与管理、1000×700/150%，滚动到目标 | 不作旧版对照 | `after/saved-long-name-1000x700-zoom1.5.png`；`after/saved-long-manager-1000x700-zoom1.5.png` |
 | 写失败与零匹配、1440×940/100% | 不作旧版对照 | `after/save-failure-1440x940-zoom1.png`；`after/saved-empty-1440x940-zoom1.png` |
 | 过时分类、深色、损坏记录、1000×700/150%，滚动到目标 | 不作旧版对照 | `after/stale-category-1000x700-zoom1.5.png`；`after/saved-dark-1000x700-zoom1.5.png`；`after/corrupt-storage-1000x700-zoom1.5.png` |
+
+### 第2次：详情里的个人记录（已完成）
+
+- 进入基线：`8db702a0bcde0b085f261d264629ad009e0eeffe`，实际root为`D:\Projects\The-Order`，继续`codex/overnight-2026-10-04`，进入时工作区干净，第1次没有未收尾文件。同cwd其它对话idle、无Git/写锁后取得本轮锁；按计划03:34:18、实际03:35:32接续第2次。仅主代理写入，两个GPT子代理作定向只读复核；没有调用其它模型。
+- 目标和事实：此前状态、个人评分和笔记只能到管理整表修改，收藏已有详情快捷操作。实际旧版1000×700/150%详情隐藏了发行日期和制作公司（`factsVisible=false`），不是凭旧截图猜测。新增“我的记录”直接放在作品资料页，两个入口使用同一草稿，单独保存状态/个人评分/笔记；不附带提交名称、分类、标签和启动参数草稿。明确保存、保存中禁用重复提交、失败保留输入并可重试；晚输入仍留在编辑器，旧请求完成不对后来打开的详情宣称保存成功。只读复核发现的未完成评分输入误清分，已真实复现并修正。
+- 产品判断：选择“看作品时顺手记录”的完整流程，继续把安装、关联、启动参数等维护操作留在管理页。发行日期/公司在小窗口保留，封面与动作并排，原名与书架名相同时不重复显示；不同原名仍显示。打开封面选择立即聚焦收起按钮，收起后回到原按钮，并检查详情代次，保留离线展示方式保存。笔记默认折叠为预览，展开后编辑；没有自动保存，小窗口长标题仍需正常纵向滚动，没有声称所有内容一屏显示。
+- 定向比较：2026-10-04读取[Vnite官方元数据说明](https://vnite.ximu.dev/zh-CN/guide/metadata)，其基本资料可在概览页修改，媒体由游戏设置修改；[Playnite官方元数据说明](https://api.playnite.link/docs/manual/library/games/metadata.html)说明编辑对话框及多选编辑。概览就地编辑已有成熟先例，本轮价值是补上The Order具体路径，而不是宣称发明此能力。两者本轮未安装运行；不凭文档比较声称全面优于它们。范围没有扩到媒体裁剪、自定义元数据或架构重写。
+- 落实与调整：复用现有`updateGame`桥和串行事务，无新增IPC、资料格式或数据库迁移。窄补丁只写三个字段；0分与清除为null分别验证。真实键盘输入`1e`时，试作数字控件报告`value='' / badInput=true`并将已有0分误存null，故概览与管理评分都改为保留原字符串的十进制文本输入，应用继续校验0–10，未完成输入明确拒绝；代价是不用浏览器数字微调箭头。成功写入但刷新失败给“已保存，但刷新失败”提示，不伪称写入失败；此分支只完成模拟单元验证。看原生图后修正继承旧表单的控件底部间距，避免保存按钮错位。未引入独立编辑草稿或自动保存的试作。
+- 代码提交：**`33f5c9fd780553c9c4549a281b98c0669ce30773`**（8个明确代码/测试文件）。文档单独提交；准确文档提交可由本节之后当前分支历史追溯。睡前分支仍`d82bcb6409563931e27fbe36d31a7f1a0c30b3eb`，睡前候选和正式ASAR均保持`867f6175fdcf63a17a70aaac4b9f89ec56bf6eb711f57f8e377c11cc776a0274`。本轮没有打包、替换正式程序、合并或推送。
+
+实际检查：
+
+| 检查 | 实际结果与范围 |
+| --- | --- |
+| 5组App脚本并发/分页回归 | `npx tsx --test tests/detail-concurrency.test.ts tests/editor-concurrency.test.ts tests/workspace-concurrency.test.ts tests/binding-pagination.test.ts tests/discovery-pagination.test.ts`，77项通过；8项新增记录保存回归，包括刷新失败，既有有效断言保留。 |
+| 封面选择与桥参数 | `npx tsx --test tests/cover-picker.test.ts tests/desktop-bridge.test.ts`，26项通过。 |
+| 类型与构建 | `npm run build`通过，包含Vue/Electron类型检查。 |
+| 新详情桌面场景 | `node tests/desktop-detail-workspace.mjs`通过；真实Electron/preload/IPC三字段事务及隔离library.json读回；共享草稿、零分/清除、两个入口的非法及未完成评分、合成IPC失败后真实重试、提交延迟和保存期间输入、切详情迟到回包、缺资料/空笔记、Enter保存、封面焦点往返及真实离线展示保存、旧管理保存、深色与页面重载均通过，渲染错误0。 |
+| 既有资料保留桌面回归 | 最终构建上`node tests/desktop-preservation.mjs`通过；原关联保留、旧刷新拒绝、后来手动关联与进程重启保留。API和安装目录均合成，未执行游戏。 |
+| 原生窗口与证据校验 | 修改前7张、修改后13张；7组配对使用完全相同合成书架散列、同目标和窗口/缩放。实际1441×941 CSS/dpr2/PNG2882×1882，以及667×467 CSS/dpr3/PNG2002×1402。20张PNG散列、尺寸、修改后源码提交LF散列及实际构建散列均校验；小窗口factsVisible由false变true，详情/文档没有横溢。 |
+
+测试均用临时`the-order-detail-workspace-*\profile`、`the-order-preservation-*\profile`，前者已校验应用实际dataPath并在退出后清理。封面是测试许可下原创合成SVG，安装目录是不可执行的合成样例，真实作品目录API和真实游戏启动均**未验证**。桌面保存失败是一次合成IPC负返回，不冒充真实磁盘故障；延迟用例放行原IPC处理器，成功和读盘不是模拟成功。记录重载检查是渲染页重载；既有资料保留回归另检查真实进程重启，但本轮没有独立验证新记录在进程重启后的恢复。真实大库、其它缩放组合及真实用户长期输入行为仍未验证；未重跑整套测试。
+
+失败与证据纠正：进入时15项既有编辑/详情用例因上轮新增模块未注入VM脚本环境失败（`readSavedViews is not a function`），将真实模块接入5个相关环境后恢复；不是删断言或更换期望。新mock错误的跨VM Error判断由统一Error构造器修正。首轮采集用排序后位置误选作品，改成准确标题，并保留`initial-driver-target-error.json`；原生滚动采图等待两次布局帧及合成器，修正迟帧。`1e`误清分是本轮试作中实际发现的产品缺陷，失败记录`incomplete-rating-reproduction.log`和`incomplete-rating-reproduction-manifest.json`保留，最终两个入口均拒绝并保留旧分。连续快速操作的提示消息会遮住截图；验证反馈后用消息自身关闭按钮收起，不隐藏页面或伪造状态。早期指针关闭消息遇到退出动画超时，保留`transient-message-capture-error.log`，改用正常关闭控件的点击处理，再等待消息退出，最终采集通过。
+
+日志和版本凭据在`.artifacts/overnight-2026-10-04/round-2/`：`targeted-tests.log`、`cover-bridge-tests.log`、`build.log`、`desktop-detail-workspace.log`、`desktop-preservation.log`及`committed-evidence.json`。后者连接真实采集时HEAD/dirty状态、旧业务提交`28b4b50`、本轮提交、源码/构建/图片散列；原manifest的采集HEAD没有篡改成后来的提交。前后书架fixture SHA256都为`00fb5c13982aa1c3b24805e30b2f328ed952ef798d60199c729cc36349a7a2df`。
+
+截图索引（相对`D:\Projects\The-Order\.artifacts\overnight-2026-10-04\round-2`；before对应`28b4b50`，after对应`33f5c9f`）：
+
+| 页面与条件 | 修改前 | 修改后 |
+| --- | --- | --- |
+| 长标题作品资料、1440×940/100% | `before/detail-overview-1440x940-zoom1.png` | `after/detail-overview-1440x940-zoom1.png` |
+| 长标题作品资料、1000×700/150% | `before/detail-overview-1000x700-zoom1.5.png` | `after/detail-overview-1000x700-zoom1.5.png` |
+| 管理页，两种条件 | `before/detail-manage-1440x940-zoom1.png`；`before/detail-manage-1000x700-zoom1.5.png` | 同文件名位于`after/` |
+| 封面选择，两种条件 | `before/detail-cover-picker-1440x940-zoom1.png`；`before/detail-cover-picker-1000x700-zoom1.5.png` | 同文件名位于`after/` |
+| 设置页准确小窗口（本轮未改设置） | `before/settings-1000x700-zoom1.5.png` | `after/settings-1000x700-zoom1.5.png` |
+| 非法分/保存失败/保存中，1000×700/150% | 无旧版对应 | `after/record-invalid-1000x700-zoom1.5.png`；`after/record-save-failure-1000x700-zoom1.5.png`；`after/record-saving-1000x700-zoom1.5.png` |
+| 无关联/空笔记/深色，1000×700/150% | 无旧版对应 | `after/record-unassociated-1000x700-zoom1.5.png`；`after/record-empty-notes-1000x700-zoom1.5.png`；`after/record-dark-1000x700-zoom1.5.png` |
+
+接续：本轮业务与测试文件已经验证并提交，没有未收尾试作；连续文档在退出前提交，全部写入结束后释放本轮锁。下一轮可核实设置底部与顶部保存的职责和可见性，或基于现有导入/核对证据选择更有价值的完整流程，不把建议当成预先批准的固定清单。第3次仍按04:34:18计划触发；本轮不提前启动它。
 
 后续各轮追加：目标/验收、已核实事实、落实与调整、为什么值得做、放弃试作、提交、实际检查与结果、截图准确路径/版本、未验证或剩余问题、自己的未提交文件、下一轮接续事项。
 
