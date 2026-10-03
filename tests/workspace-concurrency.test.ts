@@ -86,6 +86,91 @@ test('cover options refuse merged work details and close on reassociation or rem
   a.snapshot.value = state([]); await vue.nextTick()
   assert.equal(a.coverPickerOpen.value, false)
 })
+test('unlinked local cover selection captures null identity, keeps editor drafts and skips remote requests', async t => {
+  const { a, api, state, messages } = await harness(t), A = game('A'), B = game('B')
+  a.snapshot.value = state([A, B]); await vue.nextTick(); await a.showGame(B)
+  let fetches = 0
+  api.getWork = async () => { fetches++; throw new Error('No linked work to fetch') }
+  await a.toggleCoverPicker()
+  a.editor.name = 'Unfinished local name'; a.editor.notes = 'Unfinished local notes'
+  const local = { dataUrl: 'data:image/jpeg;base64,synthetic', width: 800, height: 500 }
+  const updated = { ...B, localCover: local }, calls: unknown[][] = []
+  api.pickLocalCover = async (...args: unknown[]) => { calls.push(args); return updated }
+  api.getState = async () => state([A, updated])
+  await a.pickLocalCover(null); await vue.nextTick()
+  assert.deepEqual(structuredClone(calls), [[B.id, null, null]])
+  assert.equal(fetches, 0); assert.equal(a.selectedGameId.value, B.id)
+  assert.equal(a.detailCoverUrl.value, local.dataUrl)
+  assert.equal(a.editor.name, 'Unfinished local name'); assert.equal(a.editor.notes, 'Unfinished local notes')
+  assert.equal(messages.at(-1)?.kind, 'success')
+  api.setGameCover = async (...args: unknown[]) => { calls.push(args); return B }
+  api.getState = async () => state([A, B])
+  await a.saveCover(null, 'crop'); await vue.nextTick()
+  assert.deepEqual(structuredClone(calls.at(-1)), [B.id, null, null, 'crop'])
+  assert.equal(a.detailCoverUrl.value, null)
+  a.snapshot.value = state([A]); await vue.nextTick()
+  assert.equal(a.coverPickerOpen.value, false, 'removing B cannot silently target another unlinked game')
+})
+
+test('native cancellation has no success, reload or write and failed decode leaves current cover', async t => {
+  const { a, api, state, messages } = await harness(t), A = completeGame('A')
+  a.snapshot.value = state([A]); await vue.nextTick(); await a.showGame(A)
+  api.getWork = async () => A.metadata!; await a.toggleCoverPicker()
+  let reloads = 0
+  api.getState = async () => { reloads++; return state([A]) }
+  api.pickLocalCover = async () => null
+  await a.pickLocalCover('plain')
+  assert.equal(reloads, 0); assert.equal(messages.length, 0); assert.equal(a.busy.has('cover-save'), false)
+  assert.equal(a.detailCoverUrl.value, A.metadata!.coverUrl)
+  api.pickLocalCover = async () => { throw Error('invalid raster') }
+  await a.pickLocalCover(null)
+  assert.equal(reloads, 0); assert.equal(messages.length, 0)
+  assert.equal(a.detailCoverUrl.value, A.metadata!.coverUrl); assert.match(a.coverError.value, /本地图片保存失败/)
+})
+
+test('late native dialog replies cannot alter a reopened picker or clear a later pending cover operation', async t => {
+  const { a, api, state, messages } = await harness(t), A = game('A'), B = game('B')
+  a.snapshot.value = state([A, B]); await vue.nextTick(); await a.showGame(A); await a.toggleCoverPicker()
+  const old = deferred<LibraryGame | null>(), fresh = deferred<LibraryGame | null>(), calls: unknown[][] = [], responses = [old, fresh]
+  api.pickLocalCover = (...args: unknown[]) => { calls.push(args); return responses.shift()!.promise }
+  const previous = a.pickLocalCover('plain')
+  await a.showGame(B); await a.toggleCoverPicker()
+  const current = a.pickLocalCover(null)
+  old.reject(Error('stale A failure')); await previous
+  assert.equal(a.coverError.value, ''); assert.equal(a.busy.has('cover-save'), true)
+  fresh.resolve(null); await current
+  assert.equal(a.busy.has('cover-save'), false); assert.equal(messages.length, 0)
+  assert.deepEqual(structuredClone(calls), [[A.id, null, 'plain'], [B.id, null, null]])
+  api.getWork = async () => completeGame('A').metadata!
+  await a.showGame(A); await a.toggleCoverPicker()
+  const late = deferred<LibraryGame | null>(); api.pickLocalCover = () => late.promise
+  const afterRelink = a.pickLocalCover('crop')
+  a.snapshot.value = state([completeGame('A'), B]); await vue.nextTick()
+  assert.equal(a.coverPickerOpen.value, false)
+  late.reject(Error('stale linkage')); await afterRelink
+  assert.equal(a.coverError.value, '')
+})
+
+test('global cover defaults only affect followers after a saved snapshot and explicit preferences remain intact', async t => {
+  const { a, api, state } = await harness(t), A = completeGame('A')
+  a.snapshot.value = state([A]); await vue.nextTick(); await a.showGame(A)
+  assert.equal(a.globalCoverDisplay.value, 'blur'); assert.equal(a.detailCoverDisplay.value, 'blur')
+  a.settingsForm.nonPortraitCoverDisplay = 'crop'
+  assert.equal(a.detailCoverDisplay.value, 'blur', 'unsaved preference does not change the library')
+  const calls: unknown[] = []
+  api.saveSettings = async (input: unknown) => { calls.push(structuredClone(input)) }
+  api.getState = async () => ({ ...state([A]), settings: { ...state().settings, nonPortraitCoverDisplay: 'crop' } })
+  await a.saveSettings(); await vue.nextTick()
+  assert.equal((calls[0] as any).nonPortraitCoverDisplay, 'crop')
+  assert.equal(a.detailCoverDisplay.value, 'crop')
+  a.snapshot.value = { ...state([{ ...A, nonPortraitCoverDisplay: 'plain' }]), settings: { ...state().settings, nonPortraitCoverDisplay: 'crop' } }
+  await vue.nextTick()
+  assert.equal(a.detailCoverDisplay.value, 'plain')
+  a.snapshot.value = { ...state([{ ...A, nonPortraitCoverDisplay: null }]), settings: { ...state().settings, nonPortraitCoverDisplay: 'crop' } }
+  await vue.nextTick()
+  assert.equal(a.detailCoverDisplay.value, 'crop')
+})
+
 import type { AppSnapshot, BulkGamePatch, LibraryGame, MetadataMatchingState, ScanCandidate, WorkMetadata } from '../src/shared/types'
 
 function deferred<T>() {
@@ -110,7 +195,7 @@ function job(id = 'fixture-job', status: MetadataMatchingState['status'] = 'runn
 const compiledHarness = (async () => {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
-  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, selectedWork, editor, detailCoverUrl, coverPickerOpen, coverOptionsWork, coverError, toggleCoverPicker, closeCoverPicker, loadCoverOptions, saveCover, reload };'
+  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, selectedWork, editor, detailCoverUrl, coverPickerOpen, coverOptionsWork, coverError, toggleCoverPicker, closeCoverPicker, loadCoverOptions, saveCover, pickLocalCover, globalCoverDisplay, detailCoverDisplay, settingsForm, saveSettings, reload };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
   return { script, compiled }
 })()

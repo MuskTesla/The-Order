@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { LibraryGame, NonPortraitCoverDisplay, WorkCover, WorkMetadata } from '../src/shared/types'
-import { gameCoverUrl, shouldBlurCover, shouldPreserveCover, workCoverUrl } from '../src/cover-display'
+import { gameCoverDisplay, gameCoverUrl, shouldBlurCover, shouldPreserveCover, workCoverUrl } from '../src/cover-display'
 
 const cover = (id: string, sexual: WorkCover['sexual'] = 'safe'): WorkCover => ({ id, url: `https://synthetic-cover.invalid/${id}.png`, width: 800, height: 600, votes: null, sexual })
 const metadata = (): WorkMetadata => ({ id: 'work-one', title: 'Synthetic work', originalTitle: '', aliases: [], coverUrl: cover('default').url, bannerUrl: null, description: '', releaseDate: null, releaseDatePrecision: null, developers: [], tags: [], ratings: [], characters: [], references: [], webUrl: null, contentRating: null, fetchedAt: '2026-10-03T00:00:00.000Z' })
@@ -12,6 +12,29 @@ test('no personal choice uses the upstream default independently of cover votes'
   entry.metadata!.covers = [{ ...cover('popular'), votes: 999 }, { ...cover('default'), votes: 1 }]
   assert.equal(gameCoverUrl(entry), cover('default').url)
   assert.equal(entry.metadata!.coverUrl, cover('default').url)
+})
+
+test('local photos take priority regardless of remote classification and do not require metadata', () => {
+  const entry = game()
+  entry.localCover = { dataUrl: 'data:image/jpeg;base64,c3ludGhldGlj', width: 800, height: 600 }
+  entry.coverChoice = { workId: 'work-one', cover: cover('chosen', 'explicit') }
+  entry.metadata!.covers = [cover('default', 'explicit')]
+  assert.equal(gameCoverUrl(entry, false), entry.localCover.dataUrl)
+  entry.metadata = null
+  assert.equal(gameCoverUrl(entry, false), entry.localCover.dataUrl)
+  delete entry.localCover
+  assert.equal(gameCoverUrl(entry, false), null)
+})
+
+test('missing and cleared per-game display follow global defaults while existing overrides remain', () => {
+  const entry = game()
+  assert.equal(gameCoverDisplay(entry), 'blur')
+  assert.equal(gameCoverDisplay(entry, 'crop'), 'crop')
+  entry.nonPortraitCoverDisplay = 'plain'
+  assert.equal(gameCoverDisplay(entry, 'crop'), 'plain')
+  entry.nonPortraitCoverDisplay = null
+  assert.equal(gameCoverDisplay(entry, 'crop'), 'crop')
+  assert.equal(gameCoverDisplay(undefined, 'plain'), 'plain')
 })
 
 test('personal choices apply only to their associated work and do not replace its default metadata', () => {

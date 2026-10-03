@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { KunButton, KunModal } from '@kungal/ui-vue'
 import { CheckCircle2, CircleHelp, FolderOpen, RefreshCw, Sparkles } from 'lucide-vue-next'
+import SectionSignature from './SectionSignature.vue'
 import type { LibraryGame, MetadataMatchingState } from '../shared/types'
 
 const props = defineProps<{ modelValue: boolean; matching?: MetadataMatchingState; missing: LibraryGame[]; unconfigured: LibraryGame[]; unavailable: boolean; hasLocal: boolean }>()
@@ -12,6 +13,7 @@ const reviews = computed(() => props.matching?.reviews.length ?? 0)
 
 <template>
   <KunModal v-model="open" title="资料整理" size="xl" scroll-behavior="inside" inner-class-name="maintenance-modal">
+    <SectionSignature name="Rewrite" />
     <p class="modal-help">找到需要补充或核对的作品。这里的操作不会覆盖你的个人记录。</p>
     <section class="maintenance-task" aria-label="资料识别任务">
       <div><h3>资料识别</h3><p v-if="matching?.status === 'running'" role="status">{{ matching.mode === 'reidentify' ? '正在重新识别' : '正在补全缺项' }} · {{ matching.processed }} / {{ matching.total }}<br />{{ matching.currentName || '正在准备…' }}</p>

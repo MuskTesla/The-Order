@@ -18,6 +18,7 @@ export function createDesktopBridge(desktop: KunManagerAPI): KunManagerAPI {
     startMetadataMatching: (ids, mode) => desktop.startMetadataMatching(ids === undefined ? undefined : snapshotDto(ids), mode),
     saveSettings: input => desktop.saveSettings(snapshotDto(input)),
     setGameCover: (id, workId, coverId, display) => desktop.setGameCover(id, workId, coverId, display),
+    pickLocalCover: (id, workId, display) => desktop.pickLocalCover(id, workId, display),
     updateGame: (id, patch) => desktop.updateGame(id, snapshotDto(patch)),
     updateGames: (ids, patch) => desktop.updateGames(snapshotDto(ids), snapshotDto(patch)),
     setLaunchArguments: (id, installationId, args) => desktop.setLaunchArguments(id, installationId, snapshotDto(args))

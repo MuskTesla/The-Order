@@ -4,6 +4,7 @@
 .sidebar .brand small,.sidebar .source-badge,.sidebar .version,.sidebar .sidebar-section-label,.sidebar .sidebar-hint { font-size:12px; }
 .sidebar .nav-count,.sidebar .collection-link small { font-size:12px; }
 .library-workspace .compact-library-topbar { height:auto; min-height:64px; padding:12px 24px; gap:16px; flex-wrap:wrap; }
+.library-workspace .library-heading { flex-direction:column; align-items:flex-start; gap:0; flex-wrap:nowrap; }
 .library-workspace .library-heading h1 { font-size:22px; white-space:nowrap; }
 .library-workspace .library-heading h1 { color:var(--ink); }
 .library-workspace .search-field input::placeholder { color:#566781; opacity:1; }

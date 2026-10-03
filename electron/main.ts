@@ -5,13 +5,14 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { LibraryStore, scanFolder, type InstallationAttachmentToken } from './library'
+import { LibraryStore, scanFolder, validateLibraryBackup, type InstallationAttachmentToken } from './library'
 import { inspectInstallationAttachment } from './installation-attachment'
 import { PlaytimeTracker } from './playtime'
 import { NextMoeClient } from './nextmoe'
 import { SettingsStore } from './settings'
 import { MetadataMatcher, loadTitleIndex } from './metadata-matching'
 import { hasExplicitGameVersion } from './title-matching'
+import { assertLocalCoverDecodes, normalizePhoto, readPhotoFile } from './local-cover'
 import type { BulkGamePatch, GamePatch, NonPortraitCoverDisplay, ScanCandidate, SettingsInput, WorkCover } from '../src/shared/types'
 
 app.setName('The Order')
@@ -202,20 +203,34 @@ function registerIpc(): void {
   })
   handle('setGameCover', async (gameId: unknown, expectedWorkId: unknown, coverId: unknown, display: unknown) => {
     const id = validId(gameId)
-    if (typeof expectedWorkId !== 'string' || !/^[0-9]{1,20}$/.test(expectedWorkId)) throw new Error('封面作品编号不正确。')
+    if (expectedWorkId !== null && (typeof expectedWorkId !== 'string' || !/^[0-9]{1,20}$/.test(expectedWorkId))) throw new Error('封面作品编号不正确。')
     if (coverId !== undefined && coverId !== null && (typeof coverId !== 'string' || !/^[0-9]{1,20}$/.test(coverId))) throw new Error('封面编号不正确。')
-    if (display !== undefined && display !== 'blur' && display !== 'plain' && display !== 'crop') throw new Error('封面展示方式不正确。')
+    if (display !== undefined && display !== null && display !== 'blur' && display !== 'plain' && display !== 'crop') throw new Error('封面展示方式不正确。')
+    if (typeof coverId === 'string' && expectedWorkId === null) throw new Error('请先关联作品，再选择资料封面。')
     const token = library.captureCoverRequest(id, expectedWorkId)
     let cover: WorkCover | null | undefined = coverId === null ? null : undefined
     if (typeof coverId === 'string') {
-      const work = await api().getWork(expectedWorkId)
+      const work = await api().getWork(expectedWorkId!)
       cover = work.id === expectedWorkId ? work.covers?.find(item => item.id === coverId) : undefined
       if (!cover) throw new Error('该封面已不可用或不属于当前作品，请重新载入。')
     }
     return withIdentityLock(async () => {
-      const result = await library.setGameCover(id, expectedWorkId, cover, display as NonPortraitCoverDisplay | undefined, token, () => {
+      const result = await library.setGameCover(id, expectedWorkId, cover, display as NonPortraitCoverDisplay | null | undefined, token, () => {
         if (cover?.sexual === 'explicit' && !settings.getPublic().includeNsfw) throw new Error('当前设置不允许选取成人封面。')
       })
+      notify(); return result
+    })
+  })
+  handle('pickLocalCover', async (gameId: unknown, expectedWorkId: unknown, display: unknown) => {
+    const id = validId(gameId)
+    if (expectedWorkId !== null && (typeof expectedWorkId !== 'string' || !/^[0-9]{1,20}$/.test(expectedWorkId))) throw new Error('封面作品编号不正确。')
+    if (display !== undefined && display !== null && display !== 'blur' && display !== 'plain' && display !== 'crop') throw new Error('封面展示方式不正确。')
+    const token = library.captureCoverRequest(id, expectedWorkId)
+    const selected = await dialog.showOpenDialog(mainWindow!, { title: '选择本地封面照片', filters: [{ name: 'PNG / JPG 图片', extensions: ['png', 'jpg', 'jpeg'] }], properties: ['openFile'] })
+    if (selected.canceled || !selected.filePaths[0]) return null
+    const cover = normalizePhoto(await readPhotoFile(selected.filePaths[0]), nativeImage)
+    return withIdentityLock(async () => {
+      const result = await library.setLocalCover(id, expectedWorkId, cover, display as NonPortraitCoverDisplay | null | undefined, token)
       notify(); return result
     })
   })
@@ -255,6 +270,10 @@ function registerIpc(): void {
     const stat = await fs.stat(result.filePaths[0]); if (stat.size > 32 * 1024 * 1024) throw new Error('备份文件超过 32 MB。')
     let contents: unknown
     try { contents = JSON.parse(await fs.readFile(result.filePaths[0], 'utf8')) } catch { throw new Error('备份文件不是有效 JSON。') }
+    // Validate embedded raster data with Electron as well as the bounded
+    // structural validator, before any imported records enter a transaction.
+    const importGames = validateLibraryBackup(contents)
+    for (const game of importGames) if (game.localCover) assertLocalCoverDecodes(game.localCover, nativeImage)
     return withIdentityLock(async () => {
       if (tracker.getActiveSession()) throw new Error('请先结束计时，再导入书架备份。')
       const imported = await library.importBackup(contents); notify(); return imported

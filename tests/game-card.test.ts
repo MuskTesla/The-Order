@@ -34,7 +34,7 @@ function nodes(root: VNode): VNode[] {
 function hasClass(node: VNode, name: string) { return String(node.props?.class ?? '').split(/\s+/).includes(name) }
 function nodeText(node: VNode): string { return Array.isArray(node.children) ? node.children.map(child => child && typeof child === 'object' ? nodeText(child as VNode) : String(child ?? '')).join('') : String(node.children ?? '') }
 async function mount(input: any) {
-  const props = reactive({ selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true, ...input })
+  const props = reactive({ selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true, globalDisplay: 'blur', ...input })
   const events: unknown[][] = [], emit = (...args: unknown[]) => events.push(args)
   const render = (await component).setup(props, { expose() {}, emit })
   const tree = () => render({ $emit: emit }, []) as VNode
@@ -171,6 +171,40 @@ test('square artwork switches blur, plain, and crop immediately without reloadin
   await nextTick()
   assert.ok(card.find('cover-backdrop'))
   assert.equal(hasClass(card.find('cover-foreground')!, 'cover-loading'), false)
+})
+
+test('nonportrait covers follow saved global preferences until a per-game override is supplied or cleared', async () => {
+  const card = await mount({ game: coveredGame(), globalDisplay: 'plain' })
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  card.props.globalDisplay = 'crop'; await nextTick()
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), false)
+  card.props.game.nonPortraitCoverDisplay = 'blur'; await nextTick()
+  assert.ok(card.find('cover-backdrop'))
+  card.props.globalDisplay = 'plain'; await nextTick()
+  assert.ok(card.find('cover-backdrop'), 'existing per-game preferences retain their effect')
+  card.props.game.nonPortraitCoverDisplay = null; await nextTick()
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], false)
+})
+
+test('local covers display for unassociated books and take priority over filtered remote images', async () => {
+  const localCover = { dataUrl: 'data:image/jpeg;base64,c3ludGhldGlj', width: 1200, height: 600 }
+  const card = await mount({ game: { ...game([]), localCover }, includeNsfw: false, globalDisplay: 'plain' })
+  assert.equal(card.find('cover-foreground')!.props!.src, localCover.dataUrl)
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  card.props.game.metadata = { ...coveredGame().metadata, covers: [{ id: '1', url: 'https://cover-fixture.invalid/explicit.svg', width: 1200, height: 600, votes: 1, sexual: 'explicit' }] }
+  card.props.game.coverChoice = { workId: 'fixture-work', cover: card.props.game.metadata.covers[0] }
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, localCover.dataUrl)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], false)
+  delete card.props.game.localCover; await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, card.props.game.metadata.coverUrl)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
 })
 
 test('a changed personal choice resets image loading and clearing or reassociating it returns to the default', async () => {

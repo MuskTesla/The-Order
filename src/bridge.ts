@@ -3,7 +3,7 @@ import { createDesktopBridge } from './desktop-bridge'
 
 export const isPreview = !window.kunManager
 const listeners = new Set<() => void>()
-const state: AppSnapshot = { games: [], settings: { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: false, includeNsfw: false, theme: 'light', readExecutableMetadata: true }, activeSession: null, dataPath: '浏览器预览 · 仅保存在内存', version: '0.7.1' }
+const state: AppSnapshot = { games: [], settings: { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: false, includeNsfw: false, theme: 'light', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }, activeSession: null, dataPath: '浏览器预览 · 仅保存在内存', version: '0.7.1' }
 let works: WorkMetadata[] = []
 let loaded: Promise<void> | undefined
 const clone = <T>(value: T): T => structuredClone(value)
@@ -27,7 +27,7 @@ async function loadPreview() {
 }
 const preview: KunManagerAPI = {
   async getState() { await loadPreview(); return clone(state) },
-  async saveSettings(input) { state.settings = { baseUrl: input.baseUrl, hasApiKey: false, includeNsfw: input.includeNsfw, theme: input.theme, readExecutableMetadata: input.readExecutableMetadata ?? state.settings.readExecutableMetadata }; changed(); return clone(state.settings) },
+  async saveSettings(input) { const display = input.nonPortraitCoverDisplay === undefined ? state.settings.nonPortraitCoverDisplay ?? 'blur' : validDisplay(input.nonPortraitCoverDisplay); state.settings = { baseUrl: input.baseUrl, hasApiKey: false, includeNsfw: input.includeNsfw, theme: input.theme, readExecutableMetadata: input.readExecutableMetadata ?? state.settings.readExecutableMetadata, nonPortraitCoverDisplay: display }; changed(); return clone(state.settings) },
   async testConnection() { return { ok: false, message: '界面预览不连接 API，也不保存密钥。请在桌面版测试。' } },
   async searchWorks(query) { await loadPreview(); const q = query.toLocaleLowerCase(); return { items: clone(works.filter(w => [w.title, w.originalTitle, ...w.aliases].some(s => s.toLocaleLowerCase().includes(q)))), nextCursor: null } },
   async getWork(id) { await loadPreview(); return clone(findWork(id)) },
@@ -40,17 +40,18 @@ const preview: KunManagerAPI = {
   async refreshGame(id) { return clone(findGame(id)) },
   async setGameCover(id, workId, coverId, display) {
     const game = findGame(id)
-    if (!/^[0-9]{1,20}$/.test(workId) || game.metadata?.id !== workId) throw new Error('作品关联已变化，请重新打开封面选择。')
+    if (workId !== null && !/^[0-9]{1,20}$/.test(workId) || (game.metadata?.id ?? null) !== workId) throw new Error('作品关联已变化，请重新打开封面选择。')
     if (coverId !== undefined && coverId !== null && (typeof coverId !== 'string' || !/^[0-9]{1,20}$/.test(coverId))) throw new Error('封面编号不正确。')
-    const mode = display === undefined ? undefined : validDisplay(display)
-    const cover = typeof coverId === 'string' ? findWork(workId).covers?.find(item => item.id === coverId && (state.settings.includeNsfw || item.sexual !== 'explicit')) : undefined
+    const mode = display === undefined || display === null ? display : validDisplay(display)
+    const cover = typeof coverId === 'string' && workId !== null ? findWork(workId).covers?.find(item => item.id === coverId && (state.settings.includeNsfw || item.sexual !== 'explicit')) : undefined
     if (typeof coverId === 'string' && !cover) throw new Error('该封面已不可用或不属于当前作品，请重新载入。')
-    if (coverId === null) delete game.coverChoice
-    else if (cover) game.coverChoice = { workId, cover: clone(cover) }
+    if (coverId === null) { delete game.coverChoice; delete game.localCover }
+    else if (cover) { game.coverChoice = { workId: workId!, cover: clone(cover) }; delete game.localCover }
     if (mode !== undefined) game.nonPortraitCoverDisplay = mode
     changed(); return clone(game)
   },
-  async updateGame(id, patch) { const game = findGame(id); if ('nonPortraitCoverDisplay' in patch || 'coverChoice' in patch) throw new Error('修改包含不支持的字段。'); Object.assign(game, clone(patch)); changed(); return clone(game) },
+  pickLocalCover: desktopOnly,
+  async updateGame(id, patch) { const game = findGame(id); if ('nonPortraitCoverDisplay' in patch || 'coverChoice' in patch || 'localCover' in patch) throw new Error('修改包含不支持的字段。'); Object.assign(game, clone(patch)); changed(); return clone(game) },
   async updateGames(ids, patch) {
     if (!ids.length || ids.length > 1000 || new Set(ids).size !== ids.length) throw new Error('请选择 1 至 1000 部不同的游戏。')
     const targets = ids.map(id => clone(findGame(id)))

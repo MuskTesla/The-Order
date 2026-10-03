@@ -34,7 +34,7 @@ const work = (covers: WorkCover[] | undefined = [cover('1'), cover('2', 1200, 60
 })
 const game = (metadata = work()): LibraryGame => ({ id: 'synthetic', name: 'Synthetic cover selection', metadata, installations: [], preferredInstallationId: null, status: 'planned', personalRating: null, favorite: false, categories: [], customTags: [], notes: '', totalPlaySeconds: 0, playCount: 0, sessions: [], addedAt: '2026-10-03T00:00:00.000Z', lastPlayedAt: null })
 async function mount(input: Record<string, unknown> = {}) {
-  const props = reactive({ game: game() as LibraryGame | null, work: work() as WorkMetadata | null, loading: false, saving: false, error: '', includeNsfw: false, ...input })
+  const props = reactive({ game: game() as LibraryGame | null, work: work() as WorkMetadata | null, loading: false, saving: false, error: '', includeNsfw: false, globalDisplay: 'blur', ...input })
   const events: unknown[][] = [], emit = (...args: unknown[]) => events.push(args)
   const render = (await component).setup(props, { expose() {}, emit })
   const tree = () => render({ $emit: emit }, []) as VNode
@@ -51,7 +51,7 @@ test('the initial selection is the source default even when another image has mo
   assert.equal(picker.find('picker-save').props!.disabled, true)
   picker.radios()[2]!.props!.onClick()
   picker.find('picker-save').props!.onClick()
-  assert.deepEqual(picker.events, [['save', '2', 'blur']])
+  assert.deepEqual(picker.events, [['save', '2', null]])
 })
 
 test('display-only edits explicitly preserve the current cover; restoring default is a distinct action', async () => {
@@ -114,14 +114,14 @@ test('radio keyboard navigation wraps and supports Home and End with one tab sto
   assert.equal(prevented, 3)
 })
 
-test('explicit thumbnails are excluded and saving is unavailable during loading or for external works', async () => {
+test('explicit thumbnails are excluded, and presentation can be saved while covers load but external works cannot save', async () => {
   const explicit = { ...cover('3'), sexual: 'explicit' as const }
   const picker = await mount({ work: work([cover('1'), explicit]) })
   assert.equal(picker.radios().length, 2)
   assert.equal(nodes(picker.tree()).some(node => node.props?.src === explicit.url), false)
   picker.setDisplay('plain'); picker.props.loading = true
-  assert.equal(picker.find('picker-save').props!.disabled, true)
-  picker.find('picker-save').props!.onClick(); assert.deepEqual(picker.events, [])
+  assert.equal(picker.find('picker-save').props!.disabled, false)
+  picker.find('picker-save').props!.onClick(); assert.deepEqual(picker.events, [['save', undefined, 'plain']])
   picker.props.loading = false; picker.props.game = null; await nextTick()
   assert.equal(picker.find('picker-save').props!.disabled, true)
   assert.match(text(picker.tree()), /加入愿望单后/)
@@ -173,7 +173,90 @@ test('default preview agrees with the stored source default when the fresh catal
   assert.notEqual(picker.find('preview-art').props!.src, latest.coverUrl)
   assert.match(text(picker.tree()), /默认封面会随“刷新资料”更新/)
   picker.find('picker-save').props!.onClick()
-  assert.deepEqual(picker.events, [['save', null, 'blur']])
+  assert.deepEqual(picker.events, [['save', null, null]])
+})
+
+test('following global updates the preview without resetting an unsaved cover or per-game display draft', async () => {
+  const picker = await mount({ globalDisplay: 'crop' })
+  picker.radios()[2]!.props!.onClick()
+  assert.equal(hasClass(picker.find('picker-preview'), 'preserve-preview'), false)
+  picker.props.globalDisplay = 'plain'; await nextTick()
+  assert.equal(picker.radios()[2]!.props!['aria-checked'], true)
+  assert.equal(hasClass(picker.find('picker-preview'), 'preserve-preview'), true)
+  assert.equal(picker.find('preview-backdrop'), undefined)
+  picker.setDisplay('blur'); picker.props.globalDisplay = 'crop'; await nextTick()
+  assert.ok(picker.find('preview-backdrop'))
+  picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events, [['save', '2', 'blur']])
+})
+
+test('a fresh snapshot object with unchanged saved settings does not discard cover or display drafts', async () => {
+  for (const localCover of [undefined, { dataUrl: 'data:image/jpeg;base64,c3ludGhldGlj', width: 1200, height: 600 }]) {
+    const picker = await mount({ game: { ...game(), ...(localCover ? { localCover } : {}) } })
+    const remote = picker.radios().find(node => node.props!['aria-label'] === '封面 2')!
+    remote.props!.onClick(); picker.setDisplay('plain')
+    picker.props.game = { ...picker.props.game!, metadata: { ...picker.props.game!.metadata! }, notes: 'An unrelated change returned in a new snapshot' }
+    await nextTick()
+    assert.equal(picker.radios().find(node => node.props!['aria-label'] === '封面 2')!.props!['aria-checked'], true)
+    picker.find('picker-save').props!.onClick()
+    assert.deepEqual(picker.events, [['save', '2', 'plain']])
+  }
+})
+
+test('existing per-game overrides can return to following global even when both render the same way', async () => {
+  const picker = await mount({ game: { ...game(), nonPortraitCoverDisplay: 'plain' }, globalDisplay: 'plain' })
+  assert.equal(picker.find('picker-save').props!.disabled, true)
+  picker.setDisplay('global')
+  assert.equal(picker.find('picker-save').props!.disabled, false)
+  picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events, [['save', undefined, null]])
+})
+
+test('unassociated local entries can choose photos and save display settings without catalog data', async () => {
+  const picker = await mount({ game: { ...game(), metadata: null }, work: null, error: '', loading: false })
+  assert.equal(picker.radios().length, 1)
+  assert.equal(picker.radios()[0]!.props!['aria-label'], '不使用封面')
+  assert.equal(picker.find('picker-local-action').props!.disabled, false)
+  assert.match(text(picker.tree()), /尚未关联作品/)
+  picker.setDisplay('plain'); picker.find('picker-local-action').props!.onClick()
+  assert.deepEqual(picker.events, [['pickLocal', 'plain']])
+  assert.equal(picker.find('picker-save').props!.disabled, false)
+  picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events[1], ['save', undefined, 'plain'])
+})
+
+test('local images remain visible with explicit remote filtering and can switch back to remote or default', async () => {
+  const localCover = { dataUrl: 'data:image/jpeg;base64,c3ludGhldGlj', width: 1200, height: 600 }
+  const picker = await mount({ game: { ...game(), localCover }, globalDisplay: 'plain', includeNsfw: false })
+  assert.equal(picker.radios()[0]!.props!['aria-checked'], true)
+  assert.equal(picker.find('preview-art').props!.src, localCover.dataUrl)
+  assert.equal(picker.find('preview-backdrop'), undefined)
+  assert.ok(hasClass(picker.find('picker-preview'), 'preserve-preview'))
+  picker.setDisplay('crop'); picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events, [['save', undefined, 'crop']])
+  picker.radios()[3]!.props!.onClick(); picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events[1], ['save', '2', 'crop'])
+  picker.radios()[1]!.props!.onClick(); picker.find('picker-save').props!.onClick()
+  assert.deepEqual(picker.events[2], ['save', null, 'crop'])
+})
+
+test('choosing a local file leaves the draft intact until a successful save changes props; external works cannot open the file picker', async () => {
+  const picker = await mount()
+  picker.radios()[2]!.props!.onClick(); picker.setDisplay('plain')
+  picker.find('picker-local-action').props!.onClick()
+  picker.props.saving = true; await nextTick()
+  assert.equal(picker.find('picker-local-action').props!.disabled, true)
+  picker.props.saving = false; await nextTick()
+  assert.equal(picker.radios()[2]!.props!['aria-checked'], true, 'cancellation does not reset the unfinished choice')
+  picker.props.game!.localCover = { dataUrl: 'data:image/jpeg;base64,bmV3', width: 600, height: 900 }
+  picker.props.game!.nonPortraitCoverDisplay = 'plain'; await nextTick()
+  assert.equal(picker.radios()[0]!.props!['aria-checked'], true)
+  assert.equal(picker.find('picker-save').props!.disabled, true)
+  picker.props.game = null; await nextTick()
+  const priorEvents = picker.events.length
+  assert.equal(picker.find('picker-local-action').props!.disabled, true)
+  picker.find('picker-local-action').props!.onClick()
+  assert.equal(picker.events.length, priorEvents)
 })
 
 test('a filtered fresh list cannot erase an explicit classification already present in this game metadata', async () => {

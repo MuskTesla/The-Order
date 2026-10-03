@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Heart, Star, Play, Check, Clock3, FolderPlus, ArrowUpRight } from 'lucide-vue-next'
-import type { LibraryGame, WorkMetadata } from '../shared/types'
+import type { LibraryGame, NonPortraitCoverDisplay, WorkMetadata } from '../shared/types'
 import { getLaunchInstallation } from '../library-insights'
-import { gameCoverUrl, shouldBlurCover, shouldPreserveCover, workCoverUrl } from '../cover-display'
+import { gameCoverDisplay, gameCoverUrl, shouldBlurCover, shouldPreserveCover, workCoverUrl } from '../cover-display'
 import OrderMark from './OrderMark.vue'
 
 const props = withDefaults(defineProps<{
@@ -14,12 +14,13 @@ const props = withDefaults(defineProps<{
   layout?: 'grid' | 'list'
   launchDisabled?: boolean
   includeNsfw?: boolean
-}>(), { selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true })
+  globalDisplay?: NonPortraitCoverDisplay
+}>(), { selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true, globalDisplay: 'blur' })
 defineEmits<{ open: []; favorite: []; play: []; configure: []; toggleSelected: [] }>()
 
 const metadata = computed(() => props.work ?? props.game?.metadata)
 const coverUrl = computed(() => props.game ? gameCoverUrl(props.game, props.includeNsfw) : workCoverUrl(props.work, props.includeNsfw))
-const coverDisplay = computed(() => props.game?.nonPortraitCoverDisplay ?? 'blur')
+const coverDisplay = computed(() => gameCoverDisplay(props.game, props.globalDisplay))
 const title = computed(() => props.game?.name ?? metadata.value?.title ?? '未命名作品')
 const rating = computed(() => metadata.value?.ratings.find(item => item.source === 'bangumi') ?? metadata.value?.ratings[0])
 const local = computed(() => !!props.game?.installations.length)

@@ -25,6 +25,7 @@ const api: KunManagerAPI = {
   linkGame: (gameId, workId, reviewId, fingerprint) => invoke('linkGame', gameId, workId, reviewId, fingerprint),
   refreshGame: gameId => invoke('refreshGame', gameId),
   setGameCover: (gameId, workId, coverId, display) => invoke('setGameCover', gameId, workId, coverId, display),
+  pickLocalCover: (gameId, workId, display) => invoke('pickLocalCover', gameId, workId, display),
   updateGame: (id, patch) => invoke('updateGame', id, patch),
   updateGames: (ids, patch) => invoke('updateGames', ids, patch),
   pickExecutable: (id, installationId) => invoke('pickExecutable', id, installationId),

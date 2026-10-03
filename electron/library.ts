@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { hasExplicitGameVersion } from './title-matching'
-import type { BulkGamePatch, GameInstallation, GamePatch, ImportResult, LibraryGame, NonPortraitCoverDisplay, PlaySession, ScanCandidate, WorkCover, WorkMetadata } from '../src/shared/types'
+import { validateLocalCover } from './local-cover'
+import type { BulkGamePatch, GameInstallation, GamePatch, ImportResult, LibraryGame, LocalCover, NonPortraitCoverDisplay, PlaySession, ScanCandidate, WorkCover, WorkMetadata } from '../src/shared/types'
 
 const FORMAT = 'kun-gal-manager'
 const MAX_GAMES = 10000
@@ -13,7 +14,7 @@ const SKIP_DIRECTORIES = new Set(['node_modules', '.git', '.svn', '.potatovn', '
 
 export interface MetadataRequestToken { epoch: string; gameId: string; generation: string; kind: 'refresh' | 'association' | 'automatic'; requestId: number; revision: number; automaticBatchId?: string }
 export interface InstallationAttachmentToken { epoch: string; gameId: string; generation: string }
-export interface CoverRequestToken { epoch: string; gameId: string; generation: string; requestId: number; workId: string }
+export interface CoverRequestToken { epoch: string; gameId: string; generation: string; requestId: number; workId: string | null }
 type MetadataState = { generation: string; latestRefresh: number; pendingAssociation: number | null; pendingRefresh: number | null; revision: number; automaticBatchId?: string }
 type Backup = { format: typeof FORMAT; version: 1; exportedAt: string; games: LibraryGame[] }
 const clone = <T>(value: T): T => structuredClone(value)
@@ -161,7 +162,9 @@ function game(value: unknown): LibraryGame {
     if (workId !== choice.workId || !/^[0-9]{1,20}$/.test(workId) || result.metadata?.id !== workId) throw new Error('个人封面与关联作品不一致。')
     result.coverChoice = { workId, cover: workCover(choice.cover) }
   }
-  if (raw.nonPortraitCoverDisplay !== undefined) result.nonPortraitCoverDisplay = coverDisplay(raw.nonPortraitCoverDisplay)
+  if (raw.localCover !== undefined) result.localCover = validateLocalCover(raw.localCover)
+  if (result.localCover && result.coverChoice) throw new Error('本地照片与资料封面不能同时作为个人封面。')
+  if (raw.nonPortraitCoverDisplay !== undefined) result.nonPortraitCoverDisplay = raw.nonPortraitCoverDisplay === null ? null : coverDisplay(raw.nonPortraitCoverDisplay)
   if (result.totalPlaySeconds < sessions.reduce((sum, current) => sum + current.seconds, 0)) throw new Error('总时长小于已保存的游玩记录。')
   return result
 }
@@ -180,6 +183,9 @@ function parseBackup(value: unknown): LibraryGame[] {
   }
   return games
 }
+// Import preflight shared with the desktop boundary. Validate all envelope,
+// record and image-header limits before native raster decoding or persistence.
+export function validateLibraryBackup(value: unknown): LibraryGame[] { return parseBackup(value) }
 function makeGame(name: string, work: WorkMetadata | null = null): LibraryGame {
   return { id: randomUUID(), name, nameIsCustom: false, metadata: work, installations: [], preferredInstallationId: null, status: 'planned', personalRating: null, favorite: false, categories: [], customTags: [], notes: '', totalPlaySeconds: 0, playCount: 0, sessions: [], addedAt: new Date().toISOString(), lastPlayedAt: null }
 }
@@ -253,25 +259,36 @@ export class LibraryStore {
     if (!state) { state = { generation: randomUUID(), latestRequest: 0 }; this.coverStates.set(id, state) }
     return state
   }
-  captureCoverRequest(gameId: string, workId: string): CoverRequestToken {
+  captureCoverRequest(gameId: string, workId: string | null): CoverRequestToken {
     this.ready()
-    if (this.find(this.games, gameId).metadata?.id !== workId || this.metadataState(gameId).pendingAssociation !== null) throw new Error('作品关联已变化或正在更新，请重新打开封面选择。')
+    if ((this.find(this.games, gameId).metadata?.id ?? null) !== workId || this.metadataState(gameId).pendingAssociation !== null) throw new Error('作品关联已变化或正在更新，请重新打开封面选择。')
     const state = this.coverState(gameId)
     state.latestRequest = ++this.coverRequestId
     return { epoch: this.metadataEpoch, gameId, generation: state.generation, requestId: state.latestRequest, workId }
   }
-  private assertCoverRequest(gameId: string, workId: string, token: CoverRequestToken): void {
+  private assertCoverRequest(gameId: string, workId: string | null, token: CoverRequestToken): void {
     const state = this.coverStates.get(gameId)
-    if (token.epoch !== this.metadataEpoch || token.gameId !== gameId || token.workId !== workId || state?.generation !== token.generation || state.latestRequest !== token.requestId || this.find(this.games, gameId).metadata?.id !== workId) throw new Error('条目或封面选择已变化，请重新打开封面选择。')
+    if (token.epoch !== this.metadataEpoch || token.gameId !== gameId || token.workId !== workId || state?.generation !== token.generation || state.latestRequest !== token.requestId || (this.find(this.games, gameId).metadata?.id ?? null) !== workId) throw new Error('条目或封面选择已变化，请重新打开封面选择。')
   }
-  async setGameCover(gameId: string, workId: string, cover: WorkCover | null | undefined, display?: NonPortraitCoverDisplay, token = this.captureCoverRequest(gameId, workId), beforeCommit?: () => void): Promise<LibraryGame> {
+  async setGameCover(gameId: string, workId: string | null, cover: WorkCover | null | undefined, display?: NonPortraitCoverDisplay | null, token = this.captureCoverRequest(gameId, workId), beforeCommit?: () => void): Promise<LibraryGame> {
     const selected = cover === undefined || cover === null ? cover : workCover(cover)
-    const mode = display === undefined ? undefined : coverDisplay(display)
+    if (selected && workId === null) throw new Error('请先关联作品，再选择资料封面。')
+    const mode = display === undefined || display === null ? display : coverDisplay(display)
     return this.mutate(games => {
       this.assertCoverRequest(gameId, workId, token)
       const item = this.find(games, gameId)
-      if (selected === null) delete item.coverChoice
-      else if (selected !== undefined) item.coverChoice = { workId, cover: selected }
+      if (selected === null) { delete item.coverChoice; delete item.localCover }
+      else if (selected !== undefined) { item.coverChoice = { workId: workId!, cover: selected }; delete item.localCover }
+      if (mode !== undefined) item.nonPortraitCoverDisplay = mode
+      return item
+    }, [], () => { this.assertCoverRequest(gameId, workId, token); beforeCommit?.() })
+  }
+  async setLocalCover(gameId: string, workId: string | null, cover: LocalCover, display?: NonPortraitCoverDisplay | null, token = this.captureCoverRequest(gameId, workId), beforeCommit?: () => void): Promise<LibraryGame> {
+    const selected = validateLocalCover(cover), mode = display === undefined || display === null ? display : coverDisplay(display)
+    return this.mutate(games => {
+      this.assertCoverRequest(gameId, workId, token)
+      const item = this.find(games, gameId)
+      item.localCover = selected; delete item.coverChoice
       if (mode !== undefined) item.nonPortraitCoverDisplay = mode
       return item
     }, [], () => { this.assertCoverRequest(gameId, workId, token); beforeCommit?.() })
@@ -383,7 +400,10 @@ export class LibraryStore {
       if (item.coverChoice?.workId !== work.id) delete item.coverChoice
       if (existing) {
         this.assertMergeTargetCurrent(existing.id, options.requestToken)
-        if (!item.coverChoice && existing.coverChoice?.workId === work.id) item.coverChoice = clone(existing.coverChoice)
+        if (!item.localCover && !item.coverChoice) {
+          if (existing.localCover) item.localCover = clone(existing.localCover)
+          else if (existing.coverChoice?.workId === work.id) item.coverChoice = clone(existing.coverChoice)
+        }
         if (item.nonPortraitCoverDisplay === undefined && existing.nonPortraitCoverDisplay !== undefined) item.nonPortraitCoverDisplay = existing.nonPortraitCoverDisplay
         item.installations.push(...existing.installations)
         item.preferredInstallationId ??= existing.preferredInstallationId

@@ -126,3 +126,20 @@ test('invalid opt-in types are rejected atomically and do not alter settings, cr
     assert.equal(store.getPublic().readExecutableMetadata, false, 'invalid requests must not poison the serialized save queue')
   } finally { await fs.rm(dir, { recursive: true, force: true }) }
 })
+
+test('global non-portrait mode defaults to blur, persists, and omitted saves retain the explicit mode', async () => {
+  const { dir, store } = await fixture()
+  try {
+    assert.equal(store.getPublic().nonPortraitCoverDisplay, 'blur')
+    for (const mode of ['plain', 'crop', 'blur'] as const) {
+      await store.save({ ...store.getPublic(), nonPortraitCoverDisplay: mode })
+      await store.save({ baseUrl: store.getPublic().baseUrl, includeNsfw: false, theme: 'dark' })
+      assert.equal(store.getPublic().nonPortraitCoverDisplay, mode)
+      const reloaded = new SettingsStore(dir, codec); await reloaded.initialize()
+      assert.equal(reloaded.getPublic().nonPortraitCoverDisplay, mode)
+    }
+    const previous = store.getPublic(), disk = await fs.readFile(path.join(dir, 'settings.json'), 'utf8')
+    for (const invalid of [null, 'fill', false, 0, {}, []]) await assert.rejects(store.save({ ...store.getPublic(), clearApiKey: true, nonPortraitCoverDisplay: invalid } as any))
+    assert.deepEqual(store.getPublic(), previous); assert.equal(await fs.readFile(path.join(dir, 'settings.json'), 'utf8'), disk)
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})

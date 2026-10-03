@@ -1,6 +1,7 @@
 export type PlayStatus = 'planned' | 'playing' | 'completed' | 'paused' | 'dropped'
 export type Theme = 'light' | 'dark' | 'system'
 export type NonPortraitCoverDisplay = 'blur' | 'plain' | 'crop'
+export interface LocalCover { dataUrl: string; width: number; height: number }
 export interface WorkCover { id: string; url: string; width: number | null; height: number | null; votes: number | null; sexual: 'safe' | 'suggestive' | 'explicit' | null }
 
 export interface SourceRating { source: string; score: number; scale: number; votes: number | null }
@@ -41,7 +42,8 @@ export interface LibraryGame {
   nameIsCustom?: boolean
   metadata: WorkMetadata | null
   coverChoice?: { workId: string; cover: WorkCover }
-  nonPortraitCoverDisplay?: NonPortraitCoverDisplay
+  localCover?: LocalCover
+  nonPortraitCoverDisplay?: NonPortraitCoverDisplay | null
   installations: GameInstallation[]
   preferredInstallationId: string | null
   status: PlayStatus
@@ -57,8 +59,8 @@ export interface LibraryGame {
   lastPlayedAt: string | null
 }
 export interface ActiveSession { gameId: string; installationId: string; startedAt: string; elapsedSeconds: number }
-export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean }
-export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata?: boolean }
+export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
+export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata?: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
 export interface MatchOption { work: WorkMetadata; confidence: number; reason: string }
 export interface MatchReviewSource {
   installationId: string; folderPath: string; executablePath: string | null; fingerprint: string
@@ -95,7 +97,8 @@ export interface KunManagerAPI {
   resolveMetadataMatch(gameId: string, workId: string | null, reviewId?: string, decisionFingerprint?: string): Promise<MetadataMatchingState>
   linkGame(gameId: string, workId: string, reviewId?: string, decisionFingerprint?: string): Promise<LibraryGame>
   refreshGame(gameId: string): Promise<LibraryGame>
-  setGameCover(gameId: string, expectedWorkId: string, coverId: string | null | undefined, display?: NonPortraitCoverDisplay): Promise<LibraryGame>
+  setGameCover(gameId: string, expectedWorkId: string | null, coverId: string | null | undefined, display?: NonPortraitCoverDisplay | null): Promise<LibraryGame>
+  pickLocalCover(gameId: string, expectedWorkId: string | null, display?: NonPortraitCoverDisplay | null): Promise<LibraryGame | null>
   updateGame(gameId: string, patch: GamePatch): Promise<LibraryGame>
   updateGames(gameIds: string[], patch: BulkGamePatch): Promise<LibraryGame[]>
   pickExecutable(gameId: string, installationId?: string): Promise<LibraryGame | null>

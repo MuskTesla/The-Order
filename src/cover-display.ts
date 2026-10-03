@@ -13,6 +13,8 @@ export function workCoverUrl(work: WorkMetadata | null | undefined, includeNsfw 
 
 /** A personal selection belongs to one work, never to a later reassociation. */
 export function gameCoverUrl(game: LibraryGame, includeNsfw = true): string | null {
+  // The user explicitly chose this local image. It has no remote classification.
+  if (game.localCover) return game.localCover.dataUrl
   const work = game.metadata
   const choice = work && game.coverChoice && game.coverChoice.workId === work.id ? game.coverChoice.cover : null
   if (choice && (includeNsfw || choice.sexual !== 'explicit')) {
@@ -23,6 +25,11 @@ export function gameCoverUrl(game: LibraryGame, includeNsfw = true): string | nu
   // identical image, even when the older metadata has no covers collection.
   if (!includeNsfw && choice?.sexual === 'explicit' && choice.url === work?.coverUrl) return null
   return workCoverUrl(work, includeNsfw)
+}
+
+/** Missing per-game preferences follow the current global default. */
+export function gameCoverDisplay(game: LibraryGame | null | undefined, globalDisplay: NonPortraitCoverDisplay = 'blur'): NonPortraitCoverDisplay {
+  return game?.nonPortraitCoverDisplay ?? globalDisplay
 }
 
 export function shouldPreserveCover(imageRatio: number, frameRatio: number, display: NonPortraitCoverDisplay = 'blur'): boolean {
