@@ -159,7 +159,7 @@ test('global cover defaults only affect followers after a saved snapshot and exp
   a.settingsForm.nonPortraitCoverDisplay = 'crop'
   assert.equal(a.detailCoverDisplay.value, 'blur', 'unsaved preference does not change the library')
   const calls: unknown[] = []
-  api.saveSettings = async (input: unknown) => { calls.push(structuredClone(input)) }
+  api.saveSettings = async (input: unknown) => { calls.push(structuredClone(input)); return { ...state().settings, nonPortraitCoverDisplay: 'crop' } }
   api.getState = async () => ({ ...state([A]), settings: { ...state().settings, nonPortraitCoverDisplay: 'crop' } })
   await a.saveSettings(); await vue.nextTick()
   assert.equal((calls[0] as any).nonPortraitCoverDisplay, 'crop')

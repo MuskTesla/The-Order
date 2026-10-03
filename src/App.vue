@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { KunButton, KunChip, KunSwitch, KunModal, KunMessageProvider, KunAlertProvider, useKunMessage, useKunAlert } from '@kungal/ui-vue'
 import { Library, Compass, LayoutGrid, BarChart3, Settings, Search, Plus, FolderPlus, ArrowUpRight, ChevronRight, Heart, Star, SlidersHorizontal, X, Play, Clock3, BookOpen, Download, Upload, FolderOpen, Link2, RefreshCw, Check, CheckCircle2, ShieldCheck, Monitor, Tags, Sparkles, Square, CircleHelp, HardDrive, ArrowLeft, LoaderCircle } from 'lucide-vue-next'
 import { api, isPreview } from './bridge'
-import type { AppSnapshot, BulkGamePatch, LibraryGame, PlayStatus, WorkMetadata, ScanCandidate, Theme, MatchReview, InstallationAttachmentScan, NonPortraitCoverDisplay } from './shared/types'
+import type { AppSnapshot, BulkGamePatch, LibraryGame, PlayStatus, WorkMetadata, ScanCandidate, Theme, MatchReview, InstallationAttachmentScan, NonPortraitCoverDisplay, PublicSettings, ConnectionResult } from './shared/types'
 import GameCard from './components/GameCard.vue'
 import CoverPicker from './components/CoverPicker.vue'
 import DetailCover from './components/DetailCover.vue'
@@ -14,6 +14,7 @@ import LibraryOverview from './components/LibraryOverview.vue'
 import LibraryCollections from './components/LibraryCollections.vue'
 import LibrarySavedViews from './components/LibrarySavedViews.vue'
 import PersonalRecord from './components/PersonalRecord.vue'
+import PreferencesSettings from './components/PreferencesSettings.vue'
 import LibraryMaintenance from './components/LibraryMaintenance.vue'
 import PlayStatistics from './components/PlayStatistics.vue'
 import { filterLibraryGames, folderKey, knownCandidateIds, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
@@ -640,7 +641,37 @@ async function importSelected() {
 }
 
 const settingsForm = reactive({ baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: '', includeNsfw: false, theme: 'light' as Theme, readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' as NonPortraitCoverDisplay })
-watch(() => JSON.stringify(snapshot.value?.settings), () => { const settings = snapshot.value?.settings; if (settings) Object.assign(settingsForm, { baseUrl: settings.baseUrl, includeNsfw: settings.includeNsfw, theme: settings.theme, readExecutableMetadata: settings.readExecutableMetadata, nonPortraitCoverDisplay: settings.nonPortraitCoverDisplay ?? 'blur' }); applyTheme(settings?.theme ?? 'light') })
+const settingsFields = ['baseUrl', 'includeNsfw', 'theme', 'readExecutableMetadata', 'nonPortraitCoverDisplay'] as const
+type SettingsField = typeof settingsFields[number]
+const settingsBaseline = reactive({ ...settingsForm })
+const settingsEdits = { baseUrl: 0, includeNsfw: 0, theme: 0, readExecutableMetadata: 0, nonPortraitCoverDisplay: 0, apiKey: 0 }
+let adoptingSettings = false
+let settingsSubmission: typeof settingsEdits | null = null
+let connectionEpoch = 0
+const settingsError = ref('')
+const connectionFeedback = ref<(ConnectionResult & { baseUrl: string }) | null>(null)
+const settingsDirty = computed(() => settingsFields.some(field => settingsForm[field] !== settingsBaseline[field]) || !!settingsForm.apiKey.trim())
+const connectionDraftDirty = computed(() => settingsForm.baseUrl !== settingsBaseline.baseUrl || settingsForm.includeNsfw !== settingsBaseline.includeNsfw || !!settingsForm.apiKey.trim())
+function settingsValues(settings: PublicSettings) { return { baseUrl: settings.baseUrl, includeNsfw: settings.includeNsfw, theme: settings.theme, readExecutableMetadata: settings.readExecutableMetadata ?? true, nonPortraitCoverDisplay: settings.nonPortraitCoverDisplay ?? 'blur' } }
+function setSettingsField(field: SettingsField, value: typeof settingsForm[SettingsField]) { Object.assign(settingsForm, { [field]: value }) }
+function adoptSettings(action: () => void) { adoptingSettings = true; try { action() } finally { adoptingSettings = false } }
+function invalidateConnection() { connectionEpoch++; connectionFeedback.value = null }
+for (const field of [...settingsFields, 'apiKey'] as const) watch(() => settingsForm[field], () => { if (!adoptingSettings) { settingsEdits[field]++; settingsError.value = '' } }, { flush: 'sync' })
+watch(() => JSON.stringify(snapshot.value?.settings), (_current, previous) => {
+  const settings = snapshot.value?.settings
+  if (!settings) return
+  const values = settingsValues(settings)
+  adoptSettings(() => {
+    for (const field of settingsFields) {
+      // Notifications may arrive before a save acknowledgement. Keep subsequent edits,
+      // including a deliberate return to the value that was saved before this request.
+      if (settingsForm[field] === settingsBaseline[field] && (!settingsSubmission || settingsEdits[field] === settingsSubmission[field])) setSettingsField(field, values[field])
+    }
+    Object.assign(settingsBaseline, values)
+  })
+  if (previous !== undefined && _current !== previous) invalidateConnection()
+  applyTheme(settings.theme)
+}, { flush: 'sync' })
 watch(() => JSON.stringify([snapshot.value?.settings.baseUrl, snapshot.value?.settings.includeNsfw, snapshot.value?.settings.hasApiKey]), (_current, previous) => { if (previous !== undefined) { searchGeneration++; searchResults.value = []; searchCursor.value = null; submittedQuery.value = ''; hasSearched.value = false; searchError.value = ''; busy.delete('search') } })
 function applyTheme(theme: Theme) { document.documentElement.classList.toggle('kun-dark-mode', theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) }
 const systemThemeChanged = () => { if (snapshot.value?.settings.theme === 'system') applyTheme('system') }
@@ -651,8 +682,58 @@ function workspaceShortcut(event: KeyboardEvent) {
     event.preventDefault(); navigate('library'); void nextTick(() => { const input = document.querySelector<HTMLInputElement>('input[aria-label="搜索书架"]'); input?.focus(); input?.select() })
   } else if (event.key === 'Escape' && selectionMode.value) { event.preventDefault(); leaveSelection() }
 }
-async function saveSettings(clear = false) { await task('settings', async () => { await api.saveSettings({ baseUrl: settingsForm.baseUrl.trim(), includeNsfw: settingsForm.includeNsfw, theme: settingsForm.theme, readExecutableMetadata: settingsForm.readExecutableMetadata, nonPortraitCoverDisplay: settingsForm.nonPortraitCoverDisplay, ...(settingsForm.apiKey.trim() ? { apiKey: settingsForm.apiKey.trim() } : {}), ...(clear ? { clearApiKey: true } : {}) }); settingsForm.apiKey = ''; await reload(); useKunMessage(isPreview ? '预览偏好已更新；密钥不会保存在浏览器。' : '设置已保存。', 'success') }) }
-async function testConnection() { await task('connection', async () => { const result = await api.testConnection(); useKunMessage(result.message, result.ok ? 'success' : 'warn', 6000) }) }
+function settingsFailure(error: unknown) { return (error instanceof Error ? error.message : '操作失败，请重试。').replace(/nmk_(?:live|test)_[\w-]+/g, '[已隐藏密钥]') }
+function resetSettingsDraft() {
+  if (busy.has('settings') || busy.has('connection')) return
+  adoptSettings(() => { for (const field of settingsFields) setSettingsField(field, settingsBaseline[field]); settingsForm.apiKey = '' })
+  settingsError.value = ''
+}
+async function saveSettings(clear = false): Promise<boolean> {
+  if (busy.has('settings') || busy.has('connection') || !snapshot.value) return false
+  if (!clear && !settingsDirty.value && !settingsError.value) return true
+  const edits = { ...settingsEdits }
+  // Removing a saved credential is independent of every unsaved form field.
+  const input = clear ? { ...settingsValues(snapshot.value.settings), clearApiKey: true } : {
+    ...settingsValues({ ...settingsForm, hasApiKey: false }), baseUrl: settingsForm.baseUrl.trim(),
+    ...(settingsForm.apiKey.trim() ? { apiKey: settingsForm.apiKey.trim() } : {})
+  }
+  settingsError.value = ''; invalidateConnection(); settingsSubmission = edits
+  return (await task('settings', async () => {
+    let persisted = false
+    try {
+      const saved = await api.saveSettings(input)
+      persisted = true
+      const values = settingsValues(saved)
+      adoptSettings(() => {
+        if (!clear) {
+          for (const field of settingsFields) if (settingsEdits[field] === edits[field]) setSettingsField(field, values[field])
+          if (settingsEdits.apiKey === edits.apiKey) settingsForm.apiKey = ''
+        }
+        Object.assign(settingsBaseline, values)
+      })
+      snapshot.value = { ...snapshot.value!, settings: saved }
+      await reload()
+      useKunMessage(clear ? '已移除保存的密钥；未保存的输入仍保留。' : isPreview ? '预览偏好已更新；密钥不会保存在浏览器。' : settingsDirty.value ? '提交的设置已保存；之后的编辑尚未保存。' : '全部设置已保存。', 'success')
+      return true
+    } catch (error) {
+      settingsError.value = persisted ? `设置已保存，但刷新失败：${settingsFailure(error)}` : `设置保存未确认：${settingsFailure(error)}`
+      return false
+    } finally { settingsSubmission = null }
+  })) ?? false
+}
+async function testConnection() {
+  if (busy.has('settings') || busy.has('connection')) return
+  const epoch = connectionEpoch, baseUrl = snapshot.value?.settings.baseUrl ?? settingsBaseline.baseUrl
+  await task('connection', async () => {
+    try {
+      const result = await api.testConnection()
+      if (epoch === connectionEpoch) connectionFeedback.value = { ...result, message: settingsFailure(new Error(result.message)), baseUrl }
+    } catch (error) {
+      if (epoch === connectionEpoch) connectionFeedback.value = { ok: false, message: settingsFailure(error), baseUrl }
+    }
+  })
+}
+async function saveAndTestConnection() { if (await saveSettings()) await testConnection() }
 async function importBackup() { await task('backup-import', async () => { const result = await api.importLibrary(); if (result) { await reload(); useKunMessage(`已导入 ${result.added} 条书架记录，跳过 ${result.skipped} 条。`, 'success') } }) }
 async function exportBackup() { await task('export', async () => { if (await api.exportLibrary()) useKunMessage('书架已导出。', 'success') }) }
 async function openDataFolder() { await task('data', () => api.openDataFolder()) }
@@ -724,7 +805,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
         <template v-else-if="page === 'discover'">
           <section class="page-heading"><div><h1>发现作品</h1><SectionSignature name="Planetarian" /><p>从鲲的多源资料中，找到下一次心动。</p></div><span class="connection-pill" :class="{ ready: snapshot?.settings.hasApiKey }"><span></span>{{ isPreview ? '预览资料' : snapshot?.settings.hasApiKey ? 'NextMoe 已配置' : '等待配置密钥' }}</span></section>
           <form class="discovery-search" @submit.prevent="search()"><Search :size="23" /><input v-model="searchQuery" placeholder="输入中文名、日文名或游戏别名…" aria-label="搜索作品名称" /><KunButton type="submit" color="primary" :loading="busy.has('search')" :disabled="!searchQuery.trim()">搜索作品 <ArrowUpRight :size="16" /></KunButton></form>
-          <div class="discovery-note"><span>游戏资料来自 NextMoe · 鲲 Galgame</span><span>{{ settingsForm.includeNsfw ? '包含成人分级作品' : '全年龄内容优先' }}</span></div>
+          <div class="discovery-note"><span>游戏资料来自 NextMoe · 鲲 Galgame</span><span>{{ snapshot?.settings.includeNsfw ? '包含成人分级作品' : '全年龄内容优先' }}</span></div>
           <div v-if="searchError" class="inline-error"><CircleHelp :size="18" /><span>{{ searchError }}</span><button @click="page = 'settings'">检查设置</button></div>
           <div v-if="busy.has('search') && !searchResults.length" class="loading-grid"><div v-for="i in 6" :key="i" class="skeleton-card"></div></div>
           <div v-else-if="searchResults.length" class="game-grid"><GameCard v-for="work in searchResults" :key="work.id" :work="work" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :global-display="globalCoverDisplay" @open="showWork(work)" /></div>
@@ -746,9 +827,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
         <template v-else-if="page === 'settings'">
           <section class="page-heading"><div><h1>偏好设置</h1><SectionSignature name="Harmonia" /><p>连上喜欢的数据源，保留自己的使用习惯。</p></div></section>
-          <div class="settings-layout"><div><section class="panel settings-panel"><div class="panel-heading"><span class="panel-icon"><Link2 :size="20" /></span><div><h2>NextMoe · 鲲数据源</h2><p>游戏资料与多源评分</p></div><span class="connection-pill" :class="{ ready: snapshot?.settings.hasApiKey }"><span></span>{{ snapshot?.settings.hasApiKey ? '已保存密钥' : '未配置' }}</span></div><label class="field-label">API Base URL<input v-model="settingsForm.baseUrl" spellcheck="false" placeholder="https://api.nextmoe.dev/v2/" /></label><label class="field-label">API 密钥<input v-model="settingsForm.apiKey" type="password" autocomplete="new-password" spellcheck="false" :placeholder="snapshot?.settings.hasApiKey ? '已安全保存；留空保留现有密钥' : '填写你的 nmk_live_… 密钥'" /></label><p class="field-help">密钥加密保存在本机，保存后不再显示。目录读取需要 catalog:read 权限。</p><div class="button-row"><KunButton color="primary" :loading="busy.has('settings')" @click="saveSettings()">保存设置</KunButton><KunButton variant="bordered" :loading="busy.has('connection')" @click="testConnection">测试已保存的连接</KunButton><button v-if="snapshot?.settings.hasApiKey" class="text-button danger" @click="saveSettings(true)">移除密钥</button></div><div class="settings-divider"></div><div class="setting-line"><div><strong>显示成人分级作品</strong><p>同时应用于搜索与资料获取；保存设置后生效。</p></div><KunSwitch v-model="settingsForm.includeNsfw" label="" aria-label="显示成人分级作品" /></div></section>
-          <section class="panel settings-panel"><div class="panel-heading"><span class="panel-icon"><Monitor :size="20" /></span><div><h2>界面与数据</h2><p>你的收藏，由你掌握</p></div></div><label class="field-label">外观主题<select v-model="settingsForm.theme"><option value="light">明亮</option><option value="dark">深色</option><option value="system">跟随系统</option></select></label><label class="field-label">非竖版封面默认展示<select v-model="settingsForm.nonPortraitCoverDisplay" aria-label="非竖版封面默认展示"><option value="blur">完整显示＋柔化填边</option><option value="plain">完整显示＋纯色填边</option><option value="crop">铺满（裁切边缘）</option></select></label><p class="field-help">横版与方形封面默认使用此方式。详情中单独指定的选择优先；竖版继续自动适配。保存后生效。</p><div class="button-row"><KunButton variant="flat" color="primary" :loading="busy.has('settings')" @click="saveSettings()">应用界面设置</KunButton></div><div class="settings-divider"></div><div class="setting-line"><div><strong>读取程序内的游戏名称</strong><p>新用户默认开启，保留已保存的关闭选择。仅读取程序中有大小和范围限制的版本资源，提取名称等线索，不会运行程序。读取仍可能触发 Windows 安全扫描及隔离；仅对可信游戏启用。更改后点击“保存设置”。</p></div><KunSwitch v-model="settingsForm.readExecutableMetadata" label="" aria-label="读取程序内的游戏名称" /></div><div class="settings-divider"></div><div class="setting-line"><div><strong>书架备份</strong><p>导出你的收藏、分类、笔记、游玩记录与本地封面副本。</p></div></div><div class="button-row"><KunButton variant="bordered" @click="exportBackup"><Upload :size="16" /> 导出书架</KunButton><KunButton variant="bordered" :loading="busy.has('backup-import')" @click="importBackup"><Download :size="16" /> 导入备份</KunButton><KunButton variant="light" @click="openDataFolder"><FolderOpen :size="16" /> 数据文件夹</KunButton></div><p class="data-path">{{ snapshot?.dataPath }}</p></section></div>
-          <aside class="settings-aside"><OrderMark /><h3>欢迎使用 The Order</h3><p>一个使用 KunUI 构建的小小书架，和 NextMoe 一起收好你的 Galgame。</p><button @click="external('https://developer.nextmoe.dev/')">获取 API 密钥 <ArrowUpRight :size="15" /></button><button @click="external('https://developer.nextmoe.dev/docs/native-app')">NextMoe 接口文档 <ArrowUpRight :size="15" /></button><button @click="external('https://ui.kungal.com/')">了解 KunUI <ArrowUpRight :size="15" /></button><div class="aside-note"><ShieldCheck :size="18" /><p>游戏文件留在原来的位置。书架只保存你选择的路径与游戏资料。</p></div></aside></div>
+          <PreferencesSettings :draft="settingsForm" :saved="snapshot?.settings ?? null" :dirty="settingsDirty" :saving="busy.has('settings')" :testing="busy.has('connection')" :error="settingsError" :connection="connectionFeedback" :connection-dirty="connectionDraftDirty" :matching="matchingRunning" :data-path="snapshot?.dataPath ?? ''" :importing="busy.has('backup-import')" :preview="isPreview" @change="Object.assign(settingsForm, $event)" @save="saveSettings()" @save-test="saveAndTestConnection" @test="testConnection" @clear-key="saveSettings(true)" @reset="resetSettingsDraft" @export="exportBackup" @import="importBackup" @data="openDataFolder" @external="external" />
         </template>
       </main>
       <div v-if="snapshot?.activeSession && page !== 'library'" class="session-player"><span class="playing-pulse"></span><div><strong>{{ activeGame?.name ?? '游戏运行中' }}</strong><small>正在计时 · {{ hours(activeSeconds) }} · 关闭窗口后在托盘继续</small></div><KunButton variant="flat" color="primary" size="sm" @click="finishSession"><Square :size="13" /> 结束计时（游戏继续）</KunButton></div>

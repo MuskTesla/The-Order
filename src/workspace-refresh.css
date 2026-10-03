@@ -1,4 +1,6 @@
 /* Library controls and the small maintenance/review surfaces share one scale. */
+/* Keep every navigation action reachable when zoom reduces the available height. */
+.sidebar { overflow-y:auto; overscroll-behavior:contain; }
 .library-workspace { --muted:#566781; }
 :root.kun-dark-mode .library-workspace { --muted:#b1bed0; }
 .sidebar .brand small,.sidebar .source-badge,.sidebar .version,.sidebar .sidebar-section-label,.sidebar .sidebar-hint { font-size:12px; }
