@@ -235,16 +235,22 @@ test('import failure preserves choices for retry, while all-known scans never su
 })
 
 for (const condition of ['missing-key', 'already-running', 'start-pending'] as const) test(`import skips starting a second recognition job when ${condition}`, async t => {
-  const { a, api, messages } = await harness(t), calls: unknown[] = []
-  if (condition === 'missing-key') a.snapshot.value.settings.hasApiKey = false
-  else if (condition === 'already-running') a.snapshot.value.matching = { id: 'existing', status: 'running', total: 1, processed: 0, matched: 0, unmatched: 0, failed: 0, currentName: null, reviews: [] }
+  const { a, api, messages, state } = await harness(t), calls: unknown[] = []
+  if (condition === 'missing-key') {
+    a.snapshot.value.settings.hasApiKey = false
+    api.getState = async () => { const snapshot = state(); snapshot.settings.hasApiKey = false; return snapshot }
+  } else if (condition === 'already-running') a.snapshot.value.matching = { id: 'existing', status: 'running', total: 1, processed: 0, matched: 0, unmatched: 0, failed: 0, currentName: null, reviews: [] }
   else a.busy.add('matching-start')
   api.scanFolder = async () => [candidate('fresh', 'Fresh')]
   api.importLocalGames = async (ids: string[], match: boolean) => { calls.push({ ids, match }); return { added: 1, skipped: 0 } }
   await a.scan(); await a.importSelected()
   assert.deepEqual(structuredClone(calls[0]), { ids: ['fresh'], match: false })
   assert.ok(!messages.some(message => message.message.includes('正在自动识别封面与资料')))
-  if (condition !== 'missing-key') assert.match(messages.at(-1)!.message, /当前识别任务结束后，请点击“补全资料”/)
+  const importMessage = messages.at(-1)!.message
+  assert.match(importMessage, /“资料整理”.*“只补缺失”/, 'both deferred recognition paths point to the current maintenance action')
+  assert.doesNotMatch(importMessage, /补全资料/, 'the import hint must not direct users to the removed library button')
+  if (condition === 'missing-key') assert.match(importMessage, /配置 API 密钥后/)
+  else assert.match(importMessage, /当前识别任务结束后/)
 })
 
 test('an actual pending recognition start allows local import but never starts a second automatic job', async t => {
@@ -258,7 +264,7 @@ test('an actual pending recognition start allows local import but never starts a
   await a.scan(); await a.importSelected()
   assert.deepEqual(structuredClone(imported[0]), { ids: ['fresh'], match: false })
   assert.match(messages.at(-1)!.message, /已添加 1 部游戏/)
-  assert.match(messages.at(-1)!.message, /当前识别任务结束后，请点击“补全资料”/)
+  assert.match(messages.at(-1)!.message, /当前识别任务结束后.*“资料整理”.*“只补缺失”/)
   assert.ok(!messages.at(-1)!.message.includes('正在自动识别封面与资料'))
   assert.equal(a.busy.has('matching-start'), true)
   api.getState = async () => ({ ...state(games), matching: job('original') })

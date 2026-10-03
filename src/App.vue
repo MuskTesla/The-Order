@@ -461,8 +461,8 @@ async function importSelected() {
     await reload()
     if (generation === scanGeneration) { scanOpen.value = false; page.value = 'library' }
     const nextStep = result.matchingStarted ? '识别进度和结果可在资料整理中查看。'
-      : requestedMatch && !snapshot.value?.settings.hasApiKey ? '本地游戏已保留，配置 API 密钥后可点击“补全资料”。'
-      : requestedMatch && waitingForMatching ? '本地游戏已保留，当前识别任务结束后，请点击“补全资料”。' : ''
+      : requestedMatch && !snapshot.value?.settings.hasApiKey ? '本地游戏已保留，配置 API 密钥后，可在“资料整理”中点击“只补缺失”。'
+      : requestedMatch && waitingForMatching ? '本地游戏已保留，当前识别任务结束后，可在“资料整理”中点击“只补缺失”。' : ''
     useKunMessage(`已添加 ${result.added} 部游戏，跳过 ${result.skipped} 个重复条目。${nextStep}`, 'success', 6000)
   })
 }
@@ -593,7 +593,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
   <KunModal v-model="scanOpen" title="确认导入本地游戏" size="lg">
     <p class="modal-help">扫描发现 {{ candidates.length }} 个游戏目录。先导入本地记录，再自动补全封面与资料；无法确定的作品集中核对。</p>
     <div class="scanning-summary"><span><strong>{{ newCandidates.length }}</strong> 部可导入</span><span><CheckCircle2 :size="16" /><strong>{{ alreadyInLibrary.size }}</strong> 部已在书架</span></div>
-    <div class="import-match-option"><div><strong><Sparkles :size="16" /> 导入后自动补全封面和资料</strong><p v-if="!snapshot?.settings.hasApiKey">未配置密钥也能先导入。保存密钥后，点击书架的“补全资料”。</p><p v-else-if="matchingUnavailable">当前识别任务结束后，可继续补全新导入的作品。</p><p v-else>结合目录、名称与本地线索识别；证据有冲突时保留候选供你确认。</p></div><KunSwitch v-model="autoMatchOnImport" label="" aria-label="导入后自动补全封面和资料" :disabled="!snapshot?.settings.hasApiKey || matchingUnavailable || busy.has('import')" /></div>
+    <div class="import-match-option"><div><strong><Sparkles :size="16" /> 导入后自动补全封面和资料</strong><p v-if="!snapshot?.settings.hasApiKey">未配置密钥也能先导入。保存密钥后，在“资料整理”中点击“只补缺失”。</p><p v-else-if="matchingUnavailable">当前识别任务结束后，可继续补全新导入的作品。</p><p v-else>结合目录、名称与本地线索识别；证据有冲突时保留候选供你确认。</p></div><KunSwitch v-model="autoMatchOnImport" label="" aria-label="导入后自动补全封面和资料" :disabled="!snapshot?.settings.hasApiKey || matchingUnavailable || busy.has('import')" /></div>
     <label class="scan-search"><Search :size="17" /><input v-model="scanQuery" aria-label="筛选扫描结果" placeholder="筛选名称或目录…" /></label>
     <div class="scan-selection"><button class="text-button" :disabled="busy.has('import')" @click="chosen = newCandidates.map(candidate => candidate.id)">全选新游戏</button><button class="text-button" :disabled="busy.has('import')" @click="chosen = []">清空选择</button><span>已选择 {{ selectedScanIds.length }} 项</span></div>
     <div class="scan-list"><label v-for="candidate in visibleCandidates" :key="candidate.id" :class="{ 'scan-known': alreadyInLibrary.has(candidate.id), 'scan-conflict': conflictingCandidates.has(candidate.id) }"><input v-model="chosen" type="checkbox" :value="candidate.id" :disabled="alreadyInLibrary.has(candidate.id) || conflictingCandidates.has(candidate.id) || busy.has('import')" /><FolderOpen :size="22" /><div><strong>{{ candidate.name }} <small v-if="alreadyInLibrary.has(candidate.id)">已在书架</small></strong><small>{{ candidate.folderPath }}</small><small v-if="conflictingCandidates.has(candidate.id)">与「{{ candidateOwner(candidate)?.name }}」的安装目录重叠，请先核对已有条目。</small><span>{{ candidate.executables.length === 1 ? '发现 1 个启动程序' : `发现 ${candidate.executables.length} 个程序，导入后可选择默认启动` }}</span></div></label><p v-if="!visibleCandidates.length" class="modal-help">没有符合筛选的目录。</p></div>
