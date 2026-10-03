@@ -3,12 +3,14 @@ import { computed, ref, watch } from 'vue'
 import { ArrowUpRight, BookOpen, Play, Radio } from 'lucide-vue-next'
 import type { ActiveSession, LibraryGame } from '../shared/types'
 import { formatPlayTime, getContinueStory } from '../library-insights'
+import { gameCoverUrl } from '../cover-display'
 
-const props = defineProps<{ games: LibraryGame[]; activeSession?: ActiveSession | null }>()
+const props = withDefaults(defineProps<{ games: LibraryGame[]; activeSession?: ActiveSession | null; includeNsfw?: boolean }>(), { includeNsfw: true })
 const emit = defineEmits<{ open: [game: LibraryGame]; play: [game: LibraryGame]; filter: [value: string] }>()
 const story = computed(() => getContinueStory(props.games, props.activeSession))
+const coverUrl = computed(() => story.value ? gameCoverUrl(story.value.game, props.includeNsfw) : null)
 const brokenCover = ref(false)
-watch(() => story.value?.game.metadata?.coverUrl, () => { brokenCover.value = false })
+watch(coverUrl, () => { brokenCover.value = false })
 function primaryAction() {
   const current = story.value
   if (!current) return
@@ -20,7 +22,7 @@ function primaryAction() {
 <template>
   <section v-if="story" class="library-overview" :class="{ 'has-active-story': story.reason === 'active' }" aria-label="继续游玩">
     <button type="button" class="story-cover" :aria-label="`查看 ${story.game.name}`" @click="emit('open', story.game)">
-      <img v-if="story.game.metadata?.coverUrl && !brokenCover" :src="story.game.metadata.coverUrl" alt="" loading="lazy" referrerpolicy="no-referrer" @error="brokenCover = true" />
+      <img v-if="coverUrl && !brokenCover" :src="coverUrl" alt="" loading="lazy" referrerpolicy="no-referrer" @error="brokenCover = true" />
       <BookOpen v-else :size="23" />
     </button>
     <div class="story-copy">

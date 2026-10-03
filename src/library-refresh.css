@@ -1,4 +1,4 @@
-/* Library cards: fill ordinary portraits; preserve unusual proportions. */
+/* Fill ordinary portraits; non-portraits follow each game's display choice. */
 .game-card .card-image { position:relative; overflow:hidden; isolation:isolate; }
 .game-card .card-image>.cover-foreground {
   position:absolute; inset:0; z-index:1; width:100%; height:100%;

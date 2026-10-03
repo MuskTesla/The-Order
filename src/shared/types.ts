@@ -1,5 +1,7 @@
 export type PlayStatus = 'planned' | 'playing' | 'completed' | 'paused' | 'dropped'
 export type Theme = 'light' | 'dark' | 'system'
+export type NonPortraitCoverDisplay = 'blur' | 'plain' | 'crop'
+export interface WorkCover { id: string; url: string; width: number | null; height: number | null; votes: number | null; sexual: 'safe' | 'suggestive' | 'explicit' | null }
 
 export interface SourceRating { source: string; score: number; scale: number; votes: number | null }
 export interface WorkReference { source: string; id: string; url?: string }
@@ -12,6 +14,7 @@ export interface WorkMetadata {
   aliases: string[]
   titleEvidence?: Array<{ text: string; kind: string; isMachine: boolean; language: string | null }>
   coverUrl: string | null
+  covers?: WorkCover[]
   bannerUrl: string | null
   description: string
   releaseDate: string | null
@@ -37,6 +40,8 @@ export interface LibraryGame {
   name: string
   nameIsCustom?: boolean
   metadata: WorkMetadata | null
+  coverChoice?: { workId: string; cover: WorkCover }
+  nonPortraitCoverDisplay?: NonPortraitCoverDisplay
   installations: GameInstallation[]
   preferredInstallationId: string | null
   status: PlayStatus
@@ -90,6 +95,7 @@ export interface KunManagerAPI {
   resolveMetadataMatch(gameId: string, workId: string | null, reviewId?: string, decisionFingerprint?: string): Promise<MetadataMatchingState>
   linkGame(gameId: string, workId: string, reviewId?: string, decisionFingerprint?: string): Promise<LibraryGame>
   refreshGame(gameId: string): Promise<LibraryGame>
+  setGameCover(gameId: string, expectedWorkId: string, coverId: string | null | undefined, display?: NonPortraitCoverDisplay): Promise<LibraryGame>
   updateGame(gameId: string, patch: GamePatch): Promise<LibraryGame>
   updateGames(gameIds: string[], patch: BulkGamePatch): Promise<LibraryGame[]>
   pickExecutable(gameId: string, installationId?: string): Promise<LibraryGame | null>

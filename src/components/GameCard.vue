@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Heart, Star, Play, Check, Clock3, FolderPlus, ArrowUpRight } from 'lucide-vue-next'
 import type { LibraryGame, WorkMetadata } from '../shared/types'
 import { getLaunchInstallation } from '../library-insights'
+import { gameCoverUrl, shouldBlurCover, shouldPreserveCover, workCoverUrl } from '../cover-display'
 import OrderMark from './OrderMark.vue'
 
 const props = withDefaults(defineProps<{
@@ -12,10 +13,13 @@ const props = withDefaults(defineProps<{
   selectionMode?: boolean
   layout?: 'grid' | 'list'
   launchDisabled?: boolean
-}>(), { selected: false, selectionMode: false, layout: 'grid', launchDisabled: false })
+  includeNsfw?: boolean
+}>(), { selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true })
 defineEmits<{ open: []; favorite: []; play: []; configure: []; toggleSelected: [] }>()
 
 const metadata = computed(() => props.work ?? props.game?.metadata)
+const coverUrl = computed(() => props.game ? gameCoverUrl(props.game, props.includeNsfw) : workCoverUrl(props.work, props.includeNsfw))
+const coverDisplay = computed(() => props.game?.nonPortraitCoverDisplay ?? 'blur')
 const title = computed(() => props.game?.name ?? metadata.value?.title ?? '未命名作品')
 const rating = computed(() => metadata.value?.ratings.find(item => item.source === 'bangumi') ?? metadata.value?.ratings[0])
 const local = computed(() => !!props.game?.installations.length)
@@ -38,9 +42,9 @@ const loaded = ref(false)
 const imageFrame = ref<HTMLButtonElement | null>(null)
 const imageRatio = ref(0)
 const frameRatio = ref(3 / 4)
-// Preserve the complete artwork when filling the actual frame would lose over 20%.
 const preserveCover = computed(() => loaded.value && !broken.value && imageRatio.value > 0
-  && Math.min(imageRatio.value / frameRatio.value, frameRatio.value / imageRatio.value) < .8)
+  && shouldPreserveCover(imageRatio.value, frameRatio.value, coverDisplay.value))
+const blurCover = computed(() => preserveCover.value && shouldBlurCover(imageRatio.value, frameRatio.value, coverDisplay.value))
 let frameObserver: ResizeObserver | undefined
 onMounted(() => {
   const frame = imageFrame.value
@@ -59,18 +63,18 @@ function coverLoaded(event: Event) {
   imageRatio.value = image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : 0
   loaded.value = true
 }
-watch(() => metadata.value?.coverUrl, () => { broken.value = false; loaded.value = false; imageRatio.value = 0 })
+watch(coverUrl, () => { broken.value = false; loaded.value = false; imageRatio.value = 0 })
 const labels = { planned: '未开始', playing: '在玩', completed: '已完成', paused: '搁置', dropped: '放弃' }
 </script>
 
 <template>
   <article :class="['game-card', { 'library-card': !!game, 'card-list': layout === 'list', 'is-selected': selected, 'selection-mode': selectionMode }]">
     <button v-if="game && selectionMode" type="button" class="card-select" role="checkbox" :aria-checked="selected" :aria-label="`${selected ? '取消选择' : '选择'} ${title}`" @click="$emit('toggleSelected')"><Check v-if="selected" :size="16" :stroke-width="2.8" /></button>
-    <button ref="imageFrame" type="button" class="card-image" :class="{ 'is-loading': metadata?.coverUrl && !broken && !loaded, 'preserve-cover': preserveCover }" :aria-busy="!!metadata?.coverUrl && !broken && !loaded" :aria-label="`查看 ${title}`" @click="$emit('open')">
-      <img v-if="metadata?.coverUrl && !broken" class="cover-foreground" :src="metadata.coverUrl" :alt="title" loading="lazy" referrerpolicy="no-referrer" @load="coverLoaded" @error="broken = true" :class="{ 'cover-loading': !loaded }" />
-      <img v-if="preserveCover && metadata?.coverUrl" class="cover-backdrop" :src="metadata.coverUrl" alt="" aria-hidden="true" loading="lazy" referrerpolicy="no-referrer" />
-      <div v-if="!metadata?.coverUrl || broken" class="cover-placeholder"><span class="cover-placeholder-mark"><OrderMark /></span><strong>{{ title }}</strong><span>{{ broken ? '封面暂不可用' : '等待一段故事' }}</span><i aria-hidden="true"></i></div>
-      <span v-if="metadata?.coverUrl && !broken && !loaded" class="cover-loading-label" role="status">封面加载中</span>
+    <button ref="imageFrame" type="button" class="card-image" :class="{ 'is-loading': coverUrl && !broken && !loaded, 'preserve-cover': preserveCover }" :aria-busy="!!coverUrl && !broken && !loaded" :aria-label="`查看 ${title}`" @click="$emit('open')">
+      <img v-if="coverUrl && !broken" class="cover-foreground" :src="coverUrl" :alt="title" loading="lazy" referrerpolicy="no-referrer" @load="coverLoaded" @error="broken = true" :class="{ 'cover-loading': !loaded }" />
+      <img v-if="blurCover && coverUrl" class="cover-backdrop" :src="coverUrl" alt="" aria-hidden="true" loading="lazy" referrerpolicy="no-referrer" />
+      <div v-if="!coverUrl || broken" class="cover-placeholder"><span class="cover-placeholder-mark"><OrderMark /></span><strong>{{ title }}</strong><span>{{ broken ? '封面暂不可用' : '等待一段故事' }}</span><i aria-hidden="true"></i></div>
+      <span v-if="coverUrl && !broken && !loaded" class="cover-loading-label" role="status">封面加载中</span>
       <span class="card-open">作品详情 <ArrowUpRight :size="13" /></span>
     </button>
     <button v-if="game" type="button" class="favorite-button" :class="{ active: game.favorite }" :aria-label="`${game.favorite ? '取消收藏' : '收藏游戏'} ${title}`" :aria-pressed="game.favorite" @click="$emit('favorite')"><Heart :size="16" :fill="game.favorite ? 'currentColor' : 'none'" /></button>

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { hasExplicitGameVersion } from './title-matching'
-import type { BulkGamePatch, GameInstallation, GamePatch, ImportResult, LibraryGame, PlaySession, ScanCandidate, WorkMetadata } from '../src/shared/types'
+import type { BulkGamePatch, GameInstallation, GamePatch, ImportResult, LibraryGame, NonPortraitCoverDisplay, PlaySession, ScanCandidate, WorkCover, WorkMetadata } from '../src/shared/types'
 
 const FORMAT = 'kun-gal-manager'
 const MAX_GAMES = 10000
@@ -13,6 +13,7 @@ const SKIP_DIRECTORIES = new Set(['node_modules', '.git', '.svn', '.potatovn', '
 
 export interface MetadataRequestToken { epoch: string; gameId: string; generation: string; kind: 'refresh' | 'association' | 'automatic'; requestId: number; revision: number; automaticBatchId?: string }
 export interface InstallationAttachmentToken { epoch: string; gameId: string; generation: string }
+export interface CoverRequestToken { epoch: string; gameId: string; generation: string; requestId: number; workId: string }
 type MetadataState = { generation: string; latestRefresh: number; pendingAssociation: number | null; pendingRefresh: number | null; revision: number; automaticBatchId?: string }
 type Backup = { format: typeof FORMAT; version: 1; exportedAt: string; games: LibraryGame[] }
 const clone = <T>(value: T): T => structuredClone(value)
@@ -60,6 +61,31 @@ function url(value: unknown, label: string): string | null {
   if (!['https:', 'http:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error(`${label}只支持 HTTP/HTTPS 网址。`)
   return parsed.href
 }
+function coverDisplay(value: unknown): NonPortraitCoverDisplay {
+  if (value !== 'blur' && value !== 'plain' && value !== 'crop') throw new Error('封面展示方式不正确。')
+  return value
+}
+function workCover(value: unknown): WorkCover {
+  const raw = object(value, '封面选项'), id = text(raw.id, '封面 ID', 20, false)
+  const image = url(raw.url, '封面选项网址')
+  if (id !== raw.id || !/^[0-9]{1,20}$/.test(id) || !image || !image.startsWith('https:')) throw new Error('封面选项须为有效编号和 HTTPS 网址。')
+  const dimension = (value: unknown) => {
+    if (value === null) return null
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0 || value > 65535) throw new Error('封面尺寸格式不正确。')
+    return value
+  }
+  if (raw.votes !== null && (typeof raw.votes !== 'number' || !Number.isSafeInteger(raw.votes) || raw.votes < 0)) throw new Error('封面票数格式不正确。')
+  if (raw.sexual !== null && raw.sexual !== 'safe' && raw.sexual !== 'suggestive' && raw.sexual !== 'explicit') throw new Error('封面分级格式不正确。')
+  return { id, url: image, width: dimension(raw.width), height: dimension(raw.height), votes: raw.votes as number | null, sexual: raw.sexual as WorkCover['sexual'] }
+}
+function coverList(value: unknown): WorkCover[] {
+  if (!Array.isArray(value) || value.length > 500) throw new Error('封面列表格式不正确。')
+  const seenIds = new Set<string>(), seenUrls = new Set<string>()
+  return value.map(workCover).filter(cover => {
+    if (seenIds.has(cover.id) || seenUrls.has(cover.url)) return false
+    seenIds.add(cover.id); seenUrls.add(cover.url); return true
+  })
+}
 function metadata(value: unknown): WorkMetadata {
   const raw = object(value, '作品资料')
   // An aggregated work can legitimately contain many edition references (for
@@ -73,6 +99,7 @@ function metadata(value: unknown): WorkMetadata {
       return raw.titleEvidence.map(item => { const title = object(item, '标题证据'); if (typeof title.isMachine !== 'boolean') throw new Error('标题来源标记不正确。'); return { text: text(title.text, '作品标题', 500, false), kind: text(title.kind, '标题类型', 100, false), isMachine: title.isMachine, language: title.language === null ? null : text(title.language, '标题语言', 100) } })
     })() }),
     coverUrl: url(raw.coverUrl, '封面'), bannerUrl: url(raw.bannerUrl, '横幅'),
+    ...(raw.covers === undefined ? {} : { covers: coverList(raw.covers) }),
     description: text(raw.description, '简介', 200000), releaseDate: raw.releaseDate === null ? null : text(raw.releaseDate, '发行日期', 100),
     releaseDatePrecision: raw.releaseDatePrecision === null ? null : text(raw.releaseDatePrecision, '日期精度', 100),
     developers: list(raw.developers, '开发商'), tags: list(raw.tags, '标签', 1000),
@@ -129,6 +156,12 @@ function game(value: unknown): LibraryGame {
     totalPlaySeconds: Math.floor(number(raw.totalPlaySeconds, '总时长')), playCount: Math.floor(number(raw.playCount, '游玩次数', 1e8)), sessions,
     addedAt: date(raw.addedAt, '加入时间'), lastPlayedAt: raw.lastPlayedAt === null ? null : date(raw.lastPlayedAt, '上次游玩时间'),
   }
+  if (raw.coverChoice !== undefined) {
+    const choice = object(raw.coverChoice, '个人封面'), workId = text(choice.workId, '封面作品 ID', 20, false)
+    if (workId !== choice.workId || !/^[0-9]{1,20}$/.test(workId) || result.metadata?.id !== workId) throw new Error('个人封面与关联作品不一致。')
+    result.coverChoice = { workId, cover: workCover(choice.cover) }
+  }
+  if (raw.nonPortraitCoverDisplay !== undefined) result.nonPortraitCoverDisplay = coverDisplay(raw.nonPortraitCoverDisplay)
   if (result.totalPlaySeconds < sessions.reduce((sum, current) => sum + current.seconds, 0)) throw new Error('总时长小于已保存的游玩记录。')
   return result
 }
@@ -156,6 +189,8 @@ export class LibraryStore {
   private games: LibraryGame[] = []
   private readonly metadataEpoch = randomUUID()
   private readonly metadataStates = new Map<string, MetadataState>()
+  private readonly coverStates = new Map<string, { generation: string; latestRequest: number }>()
+  private coverRequestId = 0
   private metadataRequestId = 0
   private metadataRevision = 0
   private queue: Promise<unknown> = Promise.resolve()
@@ -213,6 +248,34 @@ export class LibraryStore {
     if (!state) { state = { generation: randomUUID(), latestRefresh: 0, pendingAssociation: null, pendingRefresh: null, revision: 0 }; this.metadataStates.set(id, state) }
     return state
   }
+  private coverState(id: string) {
+    let state = this.coverStates.get(id)
+    if (!state) { state = { generation: randomUUID(), latestRequest: 0 }; this.coverStates.set(id, state) }
+    return state
+  }
+  captureCoverRequest(gameId: string, workId: string): CoverRequestToken {
+    this.ready()
+    if (this.find(this.games, gameId).metadata?.id !== workId || this.metadataState(gameId).pendingAssociation !== null) throw new Error('作品关联已变化或正在更新，请重新打开封面选择。')
+    const state = this.coverState(gameId)
+    state.latestRequest = ++this.coverRequestId
+    return { epoch: this.metadataEpoch, gameId, generation: state.generation, requestId: state.latestRequest, workId }
+  }
+  private assertCoverRequest(gameId: string, workId: string, token: CoverRequestToken): void {
+    const state = this.coverStates.get(gameId)
+    if (token.epoch !== this.metadataEpoch || token.gameId !== gameId || token.workId !== workId || state?.generation !== token.generation || state.latestRequest !== token.requestId || this.find(this.games, gameId).metadata?.id !== workId) throw new Error('条目或封面选择已变化，请重新打开封面选择。')
+  }
+  async setGameCover(gameId: string, workId: string, cover: WorkCover | null | undefined, display?: NonPortraitCoverDisplay, token = this.captureCoverRequest(gameId, workId), beforeCommit?: () => void): Promise<LibraryGame> {
+    const selected = cover === undefined || cover === null ? cover : workCover(cover)
+    const mode = display === undefined ? undefined : coverDisplay(display)
+    return this.mutate(games => {
+      this.assertCoverRequest(gameId, workId, token)
+      const item = this.find(games, gameId)
+      if (selected === null) delete item.coverChoice
+      else if (selected !== undefined) item.coverChoice = { workId, cover: selected }
+      if (mode !== undefined) item.nonPortraitCoverDisplay = mode
+      return item
+    }, [], () => { this.assertCoverRequest(gameId, workId, token); beforeCommit?.() })
+  }
   captureMetadataToken(gameId: string, automaticBatchId?: string): MetadataRequestToken {
     this.ready(); this.find(this.games, gameId)
     const state = this.metadataState(gameId)
@@ -223,7 +286,7 @@ export class LibraryStore {
       const game = this.find(this.games, gameId), state = this.metadataState(gameId)
       if (kind === 'refresh' && state.pendingAssociation !== null) throw new Error('资料关联正在更新，请稍后刷新。')
       const requestId = ++this.metadataRequestId
-      if (kind === 'association') { state.generation = randomUUID(); state.pendingAssociation = requestId; state.pendingRefresh = null }
+      if (kind === 'association') { state.generation = randomUUID(); state.pendingAssociation = requestId; state.pendingRefresh = null; this.coverState(gameId).generation = randomUUID() }
       else { state.latestRefresh = requestId; state.pendingRefresh = requestId }
       // Beginning a request records the user's latest intent even if it later
       // fails. An older request on another row must not merge this row away.
@@ -317,8 +380,11 @@ export class LibraryStore {
       // An explicit source-ID match can join installations; names never imply identity.
       const existing = games.find(other => other.id !== gameId && other.metadata?.id === work.id)
       const mergedName = options.preserveMergedName && !preserveName && existing?.metadata && this.protectsName(existing) ? existing.name : undefined
+      if (item.coverChoice?.workId !== work.id) delete item.coverChoice
       if (existing) {
         this.assertMergeTargetCurrent(existing.id, options.requestToken)
+        if (!item.coverChoice && existing.coverChoice?.workId === work.id) item.coverChoice = clone(existing.coverChoice)
+        if (item.nonPortraitCoverDisplay === undefined && existing.nonPortraitCoverDisplay !== undefined) item.nonPortraitCoverDisplay = existing.nonPortraitCoverDisplay
         item.installations.push(...existing.installations)
         item.preferredInstallationId ??= existing.preferredInstallationId
         item.categories = [...new Set([...item.categories, ...existing.categories])]
@@ -523,8 +589,10 @@ export class LibraryStore {
       const previous = new Map(this.games.map(game => [game.id, game]))
       const currentIds = new Set(validated.map(game => game.id))
       for (const id of this.metadataStates.keys()) if (!currentIds.has(id)) this.metadataStates.delete(id)
+      for (const id of this.coverStates.keys()) if (!currentIds.has(id)) this.coverStates.delete(id)
       for (const game of validated) {
         const old = previous.get(game.id)
+        if (!old || old.metadata?.id !== game.metadata?.id) this.coverState(game.id).generation = randomUUID()
         if (!old || metadataChanges.includes(game.id) || old.name !== game.name || old.nameIsCustom !== game.nameIsCustom || JSON.stringify(old.metadata) !== JSON.stringify(game.metadata) || installationIdentity(old) !== installationIdentity(game)) {
           const state = this.metadataState(game.id)
           state.generation = randomUUID(); state.revision = ++this.metadataRevision

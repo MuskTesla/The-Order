@@ -571,197 +571,110 @@ test('maps source-native scores, developers, aliases and safe source links', asy
   assert.deepEqual(result.characters[0].voiceActors, ['中原麻衣'])
 })
 
-test('selects the highest voted detail cover over the elected portrait without another request', async () => {
+test('detail keeps upstream elected artwork regardless of votes and shape without extra requests', async () => {
   let calls = 0
-  const elected = { url: 'https://images.example/elected.webp', sexual: 'safe' }
+  const elected = { id: '1', url: 'https://images.example/default.webp', width: 900, height: 600, sexual: 'safe', vote_count: 0 }
+  const alternative = { id: '2', url: 'https://images.example/portrait.webp', width: 500, height: 700, vote_count: 99, sexual: 'safe' }
   const client = new NextMoeClient(options, { fetch: async input => {
     calls++
     const url = new URL(String(input))
     assert.equal(url.pathname, '/v2/catalog/works/86')
     assert.ok(url.searchParams.get('include')?.split(',').includes('covers'))
-    return json({ ...work, cover: elected, covers: [
-      { id: '7645', ...elected, vote_count: 0, portrait_pinned: true, width: 618, height: 1080 },
-      { id: '7640', url: 'https://images.example/second.webp', vote_count: 6, width: 733, height: 1024 },
-      { id: '7624', url: 'https://images.example/winner.webp', vote_count: 9, width: 256, height: 360 }
-    ] })
+    return json({ ...work, cover: elected, covers: [alternative, elected] })
   } })
-  assert.equal((await client.getWork('86')).coverUrl, 'https://images.example/winner.webp')
+  const detail = await client.getWork('86')
+  assert.equal(detail.coverUrl, elected.url)
+  assert.deepEqual(detail.covers?.map(cover => [cover.id, cover.votes]), [['2', 99], ['1', 0]])
   assert.equal(calls, 1)
 })
 
-test('votes are ranked within available portraits before landscape or unknown-shape images', async () => {
-  const landscape = { id: '1', url: 'https://images.example/landscape.webp', width: 900, height: 600, vote_count: 9 }
-  const portrait = { id: '2', url: 'https://images.example/portrait.webp', width: 500, height: 501, vote_count: 2 }
-  const client = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: landscape, covers: [
-    landscape, { id: '3', url: 'https://images.example/unknown.webp', vote_count: 100 }, portrait,
-    { id: '4', url: 'https://images.example/second-portrait.webp', width: 500, height: 700, vote_count: 1 }
+test('unavailable defaults fall back to the first permitted HTTPS artwork regardless of votes', async () => {
+  const first = { id: '1', url: 'https://images.example/first.webp', vote_count: 0 }
+  const highVote = { id: '2', url: 'https://images.example/second.webp', vote_count: 99 }
+  for (const cover of [undefined, { url: 'http://images.example/default.webp' }, { url: 'https://user:secret@images.example/default.webp' }, { url: 'https://images.example/adult.webp', sexual: 'explicit' }]) {
+    const client = new NextMoeClient({ ...options, includeNsfw: false }, { fetch: async () => json({
+      ...work, cover, covers: [{ id: '3', url: 'javascript:alert(1)' }, first, highVote]
+    }) })
+    assert.equal((await client.getWork('86')).coverUrl, first.url)
+  }
+})
+
+test('cover choices expose only bounded safe IDs and HTTPS images with normalized optional information', async () => {
+  const first = { id: '1', url: 'https://images.example/first.webp', width: 500, height: 700, vote_count: 0, sexual: 'safe' }
+  const second = { id: '2', url: 'https://images.example/second.webp', width: 0, height: '700', vote_count: '9', sexual: 'unknown' }
+  const client = new NextMoeClient(options, { fetch: async () => json({ ...work, covers: [
+    first, second, { ...first, id: '3' }, { ...second, url: 'https://images.example/duplicate-id.webp' },
+    { ...first, id: '../other', url: 'https://images.example/traversal.webp' },
+    { ...first, id: ' 4', url: 'https://images.example/spaces.webp' },
+    { ...first, id: '123456789012345678901', url: 'https://images.example/oversized-id.webp' },
+    { ...first, id: '5', url: 'http://images.example/insecure.webp' },
+    { ...first, id: '6', url: 'https://name:secret@images.example/private.webp' },
+    { ...first, id: '7', url: 'https://images.example/' + 'x'.repeat(8192) },
+    { id: '8', url: 'https://images.example/invalid-metrics.webp', width: Number.MAX_SAFE_INTEGER + 1, height: -1, vote_count: 1.5, sexual: null },
+    { id: '9', url: 'https://images.example/suggestive.webp', width: 600, height: 500, vote_count: 2, sexual: 'suggestive' }
   ] }) })
-  assert.equal((await client.getWork('86')).coverUrl, portrait.url)
+  assert.deepEqual((await client.getWork('86')).covers, [
+    { id: '1', url: first.url, width: 500, height: 700, votes: 0, sexual: 'safe' },
+    { id: '2', url: second.url, width: null, height: null, votes: null, sexual: null },
+    { id: '8', url: 'https://images.example/invalid-metrics.webp', width: null, height: null, votes: null, sexual: null },
+    { id: '9', url: 'https://images.example/suggestive.webp', width: 600, height: 500, votes: 2, sexual: 'suggestive' }
+  ])
 })
 
-test('zero, missing or untrusted portrait ballots never fall back to a higher-voted landscape', async () => {
-  const landscape = { id: '1', url: 'https://images.example/landscape.webp', width: 900, height: 600, vote_count: 9 }
-  for (const vote_count of [0, undefined, null, '20', -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-    const portrait = { id: '2', url: 'https://images.example/portrait.webp', width: 500, height: 700, vote_count }
-    const client = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: landscape, covers: [landscape, portrait] }) })
-    assert.equal((await client.getWork('86')).coverUrl, portrait.url)
-  }
-  const electedPortrait = { url: 'https://images.example/elected-portrait.webp', width: 500, height: 700 }
-  const missingRow = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: electedPortrait, covers: [landscape] }) })
-  assert.equal((await missingRow.getWork('86')).coverUrl, electedPortrait.url)
-})
-
-test('other images are eligible only when every portrait is unavailable or excluded by adult settings', async () => {
-  const landscape = { id: '1', url: 'https://images.example/landscape.webp', width: 900, height: 600, vote_count: 9 }
-  const explicit = { id: '2', url: 'https://images.example/adult-portrait.webp', sexual: 'explicit', width: 500, height: 700, vote_count: 1 }
-  const unsafePortraits = ['http://images.example/portrait.webp', 'https://name:secret@images.example/portrait.webp', 'javascript:alert(1)']
-    .map((url, index) => ({ id: String(index + 3), url, width: 500, height: 700, vote_count: 100 }))
+test('adult settings filter the default and the entire personal choice pool', async () => {
+  const explicit = { id: '1', url: 'https://images.example/adult.webp', sexual: 'explicit', vote_count: 99 }
+  const safe = { id: '2', url: 'https://images.example/safe.webp', sexual: 'safe', vote_count: 0 }
   for (const includeNsfw of [false, true]) {
-    const client = new NextMoeClient({ ...options, includeNsfw }, { fetch: async () => json({
-      ...work, cover: explicit, covers: [...unsafePortraits, explicit, landscape]
-    }) })
-    assert.equal((await client.getWork('86')).coverUrl, includeNsfw ? explicit.url : landscape.url)
+    const client = new NextMoeClient({ ...options, includeNsfw }, { fetch: async () => json({ ...work, cover: explicit, covers: [explicit, safe] }) })
+    const detail = await client.getWork('86')
+    assert.equal(detail.coverUrl, includeNsfw ? explicit.url : safe.url)
+    assert.deepEqual(detail.covers?.map(cover => cover.id), includeNsfw ? ['1', '2'] : ['2'])
+    const noFallback = new NextMoeClient({ ...options, includeNsfw }, { fetch: async () => json({ ...work, cover: explicit, covers: [explicit] }) })
+    assert.equal((await noFallback.getWork('86')).coverUrl, includeNsfw ? explicit.url : null)
   }
-  const noPortrait = new NextMoeClient(options, { fetch: async () => json({ ...work, covers: [...unsafePortraits, landscape] }) })
-  assert.equal((await noPortrait.getWork('86')).coverUrl, landscape.url)
+  const malformed = new NextMoeClient({ ...options, includeNsfw: false }, { fetch: async () => json({ ...work, cover: { ...explicit, sexual: ' explicit ' }, covers: [{ ...explicit, sexual: ' explicit ' }, safe] }) })
+  const detail = await malformed.getWork('86')
+  assert.equal(detail.coverUrl, safe.url)
+  assert.deepEqual(detail.covers?.map(cover => cover.id), ['2'])
 })
 
-test('missing, square, malformed or out-of-contract dimensions do not establish a portrait', async () => {
-  const invalidDimensions = [
-    {}, { width: 500 }, { width: 500, height: 500 }, { width: '500', height: 700 },
-    { width: 0, height: 700 }, { width: -1, height: 700 }, { width: 500.5, height: 700 },
-    { width: 500, height: null }, { width: 500, height: 65536 }, { width: 500, height: Number.MAX_SAFE_INTEGER + 1 }
-  ]
-  for (const dimensions of invalidDimensions) {
-    const unknown = { id: '1', url: 'https://images.example/unknown.webp', vote_count: 99, portrait_pinned: true, ...dimensions }
-    const portrait = { id: '2', url: 'https://images.example/portrait.webp', width: 500, height: 700, vote_count: 0 }
-    const client = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: unknown, covers: [unknown, portrait] }) })
-    assert.equal((await client.getWork('86')).coverUrl, portrait.url)
-    const withoutPortrait = new NextMoeClient(options, { fetch: async () => json({ ...work, covers: [
-      { id: '3', url: 'https://images.example/landscape.webp', width: 900, height: 600, vote_count: 2 }, unknown
-    ] }) })
-    assert.equal((await withoutPortrait.getWork('86')).coverUrl, unknown.url)
+test('malformed or oversized personal cover lists fail as invalid responses', async () => {
+  for (const covers of [null, {}, Array.from({ length: 501 }, (_, id) => ({ id: String(id), url: `https://images.example/${id}.webp` }))]) {
+    const client = new NextMoeClient(options, { fetch: async () => json({ ...work, covers }) })
+    await assert.rejects(client.getWork('86'), errorCode('INVALID_RESPONSE'))
   }
 })
 
-test('portrait vote ties stay stable and never retain an elected landscape', async () => {
-  const landscape = { id: '1', url: 'https://images.example/landscape.webp', width: 900, height: 600, vote_count: 4 }
-  const portraits = [
-    { id: '100', url: 'https://images.example/portrait-100.webp', width: 500, height: 700, vote_count: 4 },
-    { id: '20', url: 'https://images.example/portrait-20.webp', width: 500, height: 700, vote_count: 4 }
-  ]
-  for (const covers of [portraits, [...portraits].reverse()]) {
-    const stable = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: landscape, covers: [landscape, ...covers] }) })
-    assert.equal((await stable.getWork('86')).coverUrl, portraits[1].url)
-    const familiar = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: portraits[0], covers }) })
-    assert.equal((await familiar.getWork('86')).coverUrl, portraits[0].url)
-  }
-})
-
-test('allowed slot and cover rows share portrait dimensions by URL without borrowing filtered evidence', async () => {
-  const elected = { url: 'https://images.example/elected.webp', sexual: 'safe', width: 500, height: 700 }
-  const electedBallot = { id: '1', ...elected, vote_count: 9, width: null, height: null }
-  const other = { id: '2', url: 'https://images.example/other.webp', sexual: 'safe', width: 500, height: 700, vote_count: 2 }
-  const cases = [
-    { cover: elected, covers: [electedBallot, other], expected: elected.url },
-    { cover: { ...elected, width: null, height: null }, covers: [{ ...electedBallot, width: 500, height: 700 }, other], expected: elected.url },
-    { cover: { ...elected, sexual: 'explicit' }, covers: [electedBallot, other], expected: other.url },
-    { cover: { ...elected, width: null, height: null }, covers: [{ ...electedBallot, sexual: 'explicit', width: 500, height: 700 }, other], expected: other.url },
-    { cover: { ...elected, url: 'http://images.example/elected.webp' }, covers: [electedBallot, other], expected: other.url }
-  ]
-  for (const { expected, ...images } of cases) {
-    const client = new NextMoeClient({ ...options, includeNsfw: false }, { fetch: async () => json({ ...work, ...images }) })
-    assert.equal((await client.getWork('86')).coverUrl, expected)
-  }
-})
-
-test('tied cover votes retain the elected image or use the lower decimal row id independent of order', async () => {
-  const elected = { url: 'https://images.example/elected.webp' }
-  const tied = [
-    { id: '99999999999999999999', url: 'https://images.example/large-id.webp', vote_count: 4 },
-    { id: '100', ...elected, vote_count: 4 },
-    { id: '20', url: 'https://images.example/small-id.webp', vote_count: 4 }
-  ]
-  for (const covers of [tied, [...tied].reverse()]) {
-    const familiar = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: elected, covers }) })
-    assert.equal((await familiar.getWork('86')).coverUrl, elected.url)
-    const stable = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: { url: 'https://images.example/unvoted.webp' }, covers }) })
-    assert.equal((await stable.getWork('86')).coverUrl, 'https://images.example/small-id.webp')
-  }
-})
-
-test('untrusted or all-zero cover votes preserve the existing elected and first-image fallbacks', async () => {
-  const elected = { url: 'https://images.example/elected.webp' }
-  const untrusted = [
-    { id: '1', url: 'https://images.example/first.webp' },
-    ...['100', -1, 1.5, Number.MAX_SAFE_INTEGER + 1, null].map((vote_count, index) => ({
-      id: String(index + 2), url: `https://images.example/invalid-${index}.webp`, vote_count
-    })),
-    { id: '../foreign-cover', url: 'https://images.example/bad-id.webp', vote_count: 100 },
-    { id: '9', url: 'https://images.example/zero.webp', vote_count: 0 }
-  ]
-  for (const covers of [untrusted, [{ id: '1', url: 'https://images.example/zero.webp', vote_count: 0 }], []]) {
-    const client = new NextMoeClient(options, { fetch: async () => json({ ...work, cover: elected, covers }) })
-    assert.equal((await client.getWork('86')).coverUrl, elected.url)
-  }
-  const fallback = new NextMoeClient(options, { fetch: async () => json({ ...work, covers: untrusted }) })
-  assert.equal((await fallback.getWork('86')).coverUrl, 'https://images.example/first.webp')
-})
-
-test('cover vote selection rejects unsafe URLs and respects adult-image settings for every fallback', async () => {
-  const safe = { id: '1', url: 'https://images.example/safe.webp', sexual: 'safe', vote_count: 2 }
-  const explicit = { id: '2', url: 'https://images.example/adult.webp', sexual: 'explicit', vote_count: 9 }
-  const unsafe = ['http://images.example/insecure.webp', 'https://name:secret@images.example/private.webp', 'javascript:alert(1)']
-    .map((url, index) => ({ id: String(index + 3), url, vote_count: 100 }))
-  for (const includeNsfw of [false, true]) {
-    const client = new NextMoeClient({ ...options, includeNsfw }, { fetch: async () => json({
-      ...work, cover: explicit, covers: [...unsafe, safe, explicit]
-    }) })
-    assert.equal((await client.getWork('86')).coverUrl, includeNsfw ? explicit.url : safe.url)
-    const noVotes = new NextMoeClient({ ...options, includeNsfw }, { fetch: async () => json({
-      ...work, cover: explicit, covers: [{ ...explicit, vote_count: 0 }]
-    }) })
-    assert.equal((await noVotes.getWork('86')).coverUrl, includeNsfw ? explicit.url : null)
-  }
-  const safeFallback = new NextMoeClient({ ...options, includeNsfw: false }, { fetch: async () => json({
-    ...work, cover: explicit, covers: [{ ...explicit, vote_count: 0 }, { ...safe, vote_count: 0 }]
-  }) })
-  assert.equal((await safeFallback.getWork('86')).coverUrl, safe.url)
-})
-
-test('collection search and ref reads keep elected covers when vote rows are absent, then details elect votes', async () => {
+test('collection search and reference reads keep upstream defaults and omit unavailable choice pools', async () => {
   const elected = { url: 'https://images.example/collection.webp' }
-  const winner = { id: '1', url: 'https://images.example/detail-winner.webp', vote_count: 3 }
+  const alternative = { id: '1', url: 'https://images.example/alternative.webp', vote_count: 99 }
   const calls: string[] = []
   const client = new NextMoeClient(options, { fetch: async input => {
-    const url = new URL(String(input))
-    calls.push(url.pathname)
+    const url = new URL(String(input)); calls.push(url.pathname)
     if (url.pathname.endsWith('/catalog/search')) return json({ object: 'list', items: [hit('86')] })
-    if (url.pathname.endsWith('/catalog/works')) return json({ object: 'list', items: [
-      { ...work, cover: elected, refs: [{ source: 'vndb', external_id: 'v4' }] }
-    ] })
-    return json({ ...work, cover: elected, covers: [winner] })
+    if (url.pathname.endsWith('/catalog/works')) return json({ object: 'list', items: [{ ...work, cover: elected, refs: [{ source: 'vndb', external_id: 'v4' }] }] })
+    return json({ ...work, cover: elected, covers: [alternative] })
   } })
-  assert.equal((await client.searchWorks('CLANNAD')).items[0].coverUrl, elected.url)
+  const search = (await client.searchWorks('CLANNAD')).items[0]
+  assert.equal(search.coverUrl, elected.url)
+  assert.equal(search.covers, undefined)
   assert.equal((await client.resolveWorksByRefs(['vndb:v4']))[0].coverUrl, elected.url)
-  assert.equal((await client.getWork('86')).coverUrl, winner.url)
+  const detail = await client.getWork('86')
+  assert.equal(detail.coverUrl, elected.url)
+  assert.equal(detail.covers?.[0].id, '1')
   assert.deepEqual(calls, ['/v2/catalog/search', '/v2/catalog/works', '/v2/catalog/works', '/v2/catalog/works/86'])
 })
 
-test('collection search and ref mapping also hide an explicit elected image when adult content is disabled', async () => {
+test('collection search and reference mapping hide explicit defaults when adult content is disabled', async () => {
   const client = new NextMoeClient({ ...options, includeNsfw: false }, { fetch: async input => {
     const url = new URL(String(input))
     assert.equal(url.searchParams.get('nsfw'), 'false')
     if (url.pathname.endsWith('/catalog/search')) return json({ object: 'list', items: [hit('86')] })
-    return json({ object: 'list', items: [{
-      ...work, cover: { url: 'https://images.example/adult.webp', sexual: 'explicit' },
-      refs: [{ source: 'vndb', external_id: 'v4' }]
-    }] })
+    return json({ object: 'list', items: [{ ...work, cover: { url: 'https://images.example/adult.webp', sexual: 'explicit' }, refs: [{ source: 'vndb', external_id: 'v4' }] }] })
   } })
   assert.equal((await client.searchWorks('CLANNAD')).items[0].coverUrl, null)
   assert.equal((await client.resolveWorksByRefs(['vndb:v4']))[0].coverUrl, null)
 })
-
 test('keeps elected collection romanization and full WorkTitle title/latin aliases', async () => {
   const calls: URL[] = []
   // WorkTitle uses title and latin; value belongs to LocalizedText, not titles[].

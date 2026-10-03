@@ -3,8 +3,9 @@ import { computed, ref } from 'vue'
 import { Activity, BookOpen, CalendarDays, CheckCheck, Clock3, History, Radio, Trophy } from 'lucide-vue-next'
 import type { ActiveSession, LibraryGame } from '../shared/types'
 import { formatPlayTime, getLibraryInsights } from '../library-insights'
+import { gameCoverUrl } from '../cover-display'
 
-const props = defineProps<{ games: LibraryGame[]; activeSession?: ActiveSession | null }>()
+const props = withDefaults(defineProps<{ games: LibraryGame[]; activeSession?: ActiveSession | null; includeNsfw?: boolean }>(), { includeNsfw: true })
 const emit = defineEmits<{ open: [game: LibraryGame] }>()
 const insights = computed(() => getLibraryInsights(props.games, props.activeSession))
 const maximum = computed(() => Math.max(60, ...insights.value.days.map(day => day.seconds)))
@@ -12,6 +13,11 @@ const selectedDay = ref<string | null>(null)
 const selected = computed(() => insights.value.days.find(day => day.key === selectedDay.value))
 const failedImages = ref(new Set<string>())
 function broken(url: string) { failedImages.value = new Set([...failedImages.value, url]) }
+function coverUrl(game: LibraryGame) { return gameCoverUrl(game, props.includeNsfw) }
+function coverFailed(event: Event) {
+  const url = (event.currentTarget as HTMLImageElement).getAttribute('src')
+  if (url) broken(url)
+}
 function dateTime(value: string) {
   const parsed = new Date(value)
   return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '日期未知'
@@ -47,7 +53,7 @@ function dateTime(value: string) {
       <section class="detail-panel" aria-labelledby="most-played-heading">
         <header class="panel-heading"><h2 id="most-played-heading"><Trophy :size="17" />投入最多的故事</h2><span>累计时长</span></header>
         <ol v-if="insights.mostPlayed.length" class="most-played">
-          <li v-for="(game, index) in insights.mostPlayed" :key="game.id"><span class="rank">{{ String(index + 1).padStart(2, '0') }}</span><div class="small-cover"><img v-if="game.metadata?.coverUrl && !failedImages.has(game.metadata.coverUrl)" :src="game.metadata.coverUrl" alt="" referrerpolicy="no-referrer" loading="lazy" @error="broken(game.metadata.coverUrl)" /><BookOpen v-else :size="16" /></div><div class="rank-copy"><button class="work-title" :title="game.name" :aria-label="`查看 ${game.name}`" @click="emit('open', game)">{{ game.name }}</button><div class="rank-meter" aria-hidden="true"><i :style="{ width: `${Math.max(2, game.totalPlaySeconds / insights.mostPlayed[0]!.totalPlaySeconds * 100)}%` }"></i></div></div><span class="rank-time">{{ formatPlayTime(game.totalPlaySeconds) }}</span></li>
+          <li v-for="(game, index) in insights.mostPlayed" :key="game.id"><span class="rank">{{ String(index + 1).padStart(2, '0') }}</span><div class="small-cover"><img v-if="coverUrl(game) && !failedImages.has(coverUrl(game) ?? '')" :src="coverUrl(game) ?? undefined" alt="" referrerpolicy="no-referrer" loading="lazy" @error="coverFailed" /><BookOpen v-else :size="16" /></div><div class="rank-copy"><button class="work-title" :title="game.name" :aria-label="`查看 ${game.name}`" @click="emit('open', game)">{{ game.name }}</button><div class="rank-meter" aria-hidden="true"><i :style="{ width: `${Math.max(2, game.totalPlaySeconds / insights.mostPlayed[0]!.totalPlaySeconds * 100)}%` }"></i></div></div><span class="rank-time">{{ formatPlayTime(game.totalPlaySeconds) }}</span></li>
         </ol>
         <div v-else class="panel-empty"><Trophy :size="25" /><p>还没有游玩时长</p><span>每次从书架启动，都会留下真实记录。</span></div>
       </section>

@@ -34,7 +34,7 @@ function nodes(root: VNode): VNode[] {
 function hasClass(node: VNode, name: string) { return String(node.props?.class ?? '').split(/\s+/).includes(name) }
 function nodeText(node: VNode): string { return Array.isArray(node.children) ? node.children.map(child => child && typeof child === 'object' ? nodeText(child as VNode) : String(child ?? '')).join('') : String(node.children ?? '') }
 async function mount(input: any) {
-  const props = reactive({ selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, ...input })
+  const props = reactive({ selected: false, selectionMode: false, layout: 'grid', launchDisabled: false, includeNsfw: true, ...input })
   const events: unknown[][] = [], emit = (...args: unknown[]) => events.push(args)
   const render = (await component).setup(props, { expose() {}, emit })
   const tree = () => render({ $emit: emit }, []) as VNode
@@ -111,7 +111,7 @@ test('source rating is labeled when personal rating is absent, with no unrated o
   assert.equal(card.find('card-rating'), undefined)
 })
 
-const coveredGame = () => ({ ...game([]), metadata: { title: 'Synthetic cover', coverUrl: 'https://cover-fixture.invalid/portrait.svg', ratings: [], developers: [], tags: [] } })
+const coveredGame = () => ({ ...game([]), metadata: { id: 'fixture-work', title: 'Synthetic cover', coverUrl: 'https://cover-fixture.invalid/portrait.svg', ratings: [], developers: [], tags: [] } })
 
 test('loading covers do not display a placeholder or eagerly request a backdrop; ordinary portraits fill', async () => {
   const card = await mount({ game: coveredGame() })
@@ -150,4 +150,72 @@ test('unusual proportions preserve the artwork with a decorative same-image back
   assert.ok(nodeText(card.find('cover-placeholder')!).includes('封面暂不可用'))
   card.find('card-image')!.props!.onClick()
   assert.deepEqual(card.events, [['open']])
+})
+
+test('square artwork switches blur, plain, and crop immediately without reloading its foreground', async () => {
+  const card = await mount({ game: coveredGame() })
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 800, naturalHeight: 800 } })
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  assert.ok(card.find('cover-backdrop'))
+  card.props.game.nonPortraitCoverDisplay = 'plain'
+  await nextTick()
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(hasClass(card.find('cover-foreground')!, 'cover-loading'), false)
+  card.props.game.nonPortraitCoverDisplay = 'crop'
+  await nextTick()
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), false)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], false)
+  card.props.game.nonPortraitCoverDisplay = 'blur'
+  await nextTick()
+  assert.ok(card.find('cover-backdrop'))
+  assert.equal(hasClass(card.find('cover-foreground')!, 'cover-loading'), false)
+})
+
+test('a changed personal choice resets image loading and clearing or reassociating it returns to the default', async () => {
+  const card = await mount({ game: coveredGame() })
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 600, naturalHeight: 900 } })
+  const personal = { id: 'chosen-cover', url: 'https://cover-fixture.invalid/chosen.svg', width: 1200, height: 600, votes: 9, sexual: 'safe' }
+  card.props.game.coverChoice = { workId: 'fixture-work', cover: personal }
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, personal.url)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  assert.equal(card.find('cover-backdrop')!.props!.src, personal.url)
+  card.props.game.coverChoice = undefined
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, card.props.game.metadata.coverUrl)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  card.props.game.coverChoice = { workId: 'fixture-work', cover: personal }
+  await nextTick()
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  card.props.game.metadata.id = 'reassociated-work'
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, card.props.game.metadata.coverUrl)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
+})
+
+test('saved NSFW filtering hides explicit personal and known cached default artwork in both layers', async () => {
+  const entry = coveredGame()
+  const explicit = { id: 'explicit-cover', url: 'https://cover-fixture.invalid/explicit.svg', width: 1200, height: 600, votes: 9, sexual: 'explicit' }
+  const card = await mount({ game: { ...entry, coverChoice: { workId: 'fixture-work', cover: explicit } } })
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  assert.ok(card.find('cover-backdrop'))
+  card.props.includeNsfw = false
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, entry.metadata.coverUrl)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  card.props.game.metadata.coverUrl = explicit.url
+  card.props.game.metadata.covers = [explicit]
+  await nextTick()
+  assert.equal(card.find('cover-foreground'), undefined)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.ok(card.find('cover-placeholder'))
+  card.props.includeNsfw = true
+  await nextTick()
+  assert.equal(card.find('cover-foreground')!.props!.src, explicit.url)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
 })

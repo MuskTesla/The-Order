@@ -6,6 +6,86 @@ import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
 import * as libraryInsights from '../src/library-insights'
+import * as coverDisplay from '../src/cover-display'
+test('cover lists cannot leak across A-B-A navigation, retry or picker reopen', async t => {
+  const { a, api, state } = await harness(t), A = completeGame('A'), B = completeGame('B')
+  a.snapshot.value = state([A, B]); await vue.nextTick(); await a.showGame(A)
+  const first = deferred<WorkMetadata>(), second = deferred<WorkMetadata>(), third = deferred<WorkMetadata>()
+  const requests = [first, second, third]
+  api.getWork = () => requests.shift()!.promise
+  const old = a.toggleCoverPicker()
+  await a.showGame(B); const middle = a.toggleCoverPicker()
+  await a.showGame(A); const newest = a.toggleCoverPicker()
+  first.resolve({ ...A.metadata!, description: 'stale A' }); await old
+  assert.equal(a.coverOptionsWork.value, null)
+  assert.equal(a.busy.has('cover-options'), true)
+  second.reject(new Error('stale B error')); await middle
+  assert.equal(a.coverError.value, '')
+  third.resolve({ ...A.metadata!, description: 'fresh A', covers: [] }); await newest
+  assert.equal(a.coverOptionsWork.value.description, 'fresh A')
+  assert.equal(a.busy.has('cover-options'), false)
+  const closed = deferred<WorkMetadata>(); api.getWork = () => closed.promise
+  const pending = a.loadCoverOptions(); a.closeCoverPicker()
+  api.getWork = async () => ({ ...A.metadata!, description: 'reopened A', covers: [] })
+  await a.toggleCoverPicker(); closed.reject(new Error('late closed error')); await pending
+  assert.equal(a.coverOptionsWork.value.description, 'reopened A')
+  assert.equal(a.coverError.value, '')
+})
+
+test('cover save captures plain arguments, preserves unsaved management drafts and reflects effective artwork', async t => {
+  const { a, api, state, messages } = await harness(t), A = completeGame('A')
+  const cover = { id: '301', url: 'https://fixture.invalid/chosen.png', width: 1000, height: 600, votes: 0, sexual: 'safe' as const }
+  a.snapshot.value = state([A]); await vue.nextTick(); await a.showGame(A)
+  api.getWork = async () => ({ ...A.metadata!, covers: [cover] })
+  await a.toggleCoverPicker()
+  a.editor.notes = 'unsaved notes'; a.editor.name = 'unfinished name'; a.editor.personalRating = '8'
+  const response = deferred<LibraryGame>(), calls: unknown[][] = []
+  api.setGameCover = (...args: unknown[]) => { calls.push(args); return response.promise }
+  api.getState = async () => state([{ ...A, coverChoice: { workId: A.metadata!.id, cover }, nonPortraitCoverDisplay: 'plain' }])
+  const pending = a.saveCover('301', 'plain')
+  assert.deepEqual(structuredClone(calls), [[A.id, A.metadata!.id, '301', 'plain']])
+  await a.saveCover(null, 'crop')
+  assert.equal(calls.length, 1)
+  response.resolve(A); await pending; await vue.nextTick()
+  assert.equal(a.editor.notes, 'unsaved notes'); assert.equal(a.editor.name, 'unfinished name')
+  assert.equal(a.editor.personalRating, '8')
+  assert.equal(a.detailCoverUrl.value, cover.url)
+  assert.equal(a.busy.has('cover-save'), false)
+  assert.equal(messages.at(-1)?.kind, 'success')
+})
+
+test('late cover save failures cannot pollute a reopened picker or clear its new pending save', async t => {
+  const { a, api, state, messages } = await harness(t), A = completeGame('A')
+  a.snapshot.value = state([A]); await vue.nextTick(); await a.showGame(A)
+  api.getWork = async () => ({ ...A.metadata!, covers: [] }); await a.toggleCoverPicker()
+  const old = deferred<LibraryGame>(), fresh = deferred<LibraryGame>(), requests = [old, fresh]
+  api.setGameCover = () => requests.shift()!.promise
+  const first = a.saveCover(undefined, 'plain'); a.closeCoverPicker(); await a.toggleCoverPicker()
+  const second = a.saveCover(undefined, 'crop')
+  old.reject(new Error('old save error')); await first
+  assert.equal(a.coverError.value, ''); assert.equal(a.busy.has('cover-save'), true)
+  fresh.reject(new Error('disk write failed')); await second
+  assert.equal(a.coverError.value, '封面保存失败，请重试。')
+  assert.equal(a.busy.has('cover-save'), false)
+  assert.equal(messages.length, 0)
+  api.setGameCover = async () => A; api.getState = async () => state([A])
+  await a.saveCover(null, 'blur')
+  assert.equal(a.coverError.value, '')
+  assert.equal(messages.at(-1)?.kind, 'success')
+})
+
+test('cover options refuse merged work details and close on reassociation or removal', async t => {
+  const { a, api, state } = await harness(t), A = completeGame('A')
+  a.snapshot.value = state([A]); await vue.nextTick(); await a.showGame(A)
+  api.getWork = async () => ({ ...A.metadata!, id: 'merged-work' }); await a.toggleCoverPicker()
+  assert.equal(a.coverOptionsWork.value, null)
+  assert.match(a.coverError.value, /已合并/)
+  a.selectedWork.value = { ...A.metadata!, id: 'different-work' }
+  assert.equal(a.coverPickerOpen.value, false)
+  await a.showGame(A); api.getWork = async () => A.metadata!; await a.toggleCoverPicker()
+  a.snapshot.value = state([]); await vue.nextTick()
+  assert.equal(a.coverPickerOpen.value, false)
+})
 import type { AppSnapshot, BulkGamePatch, LibraryGame, MetadataMatchingState, ScanCandidate, WorkMetadata } from '../src/shared/types'
 
 function deferred<T>() {
@@ -30,14 +110,14 @@ function job(id = 'fixture-job', status: MetadataMatchingState['status'] = 'runn
 const compiledHarness = (async () => {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
-  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, editor };'
+  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, selectedWork, editor, detailCoverUrl, coverPickerOpen, coverOptionsWork, coverError, toggleCoverPicker, closeCoverPicker, loadCoverOptions, saveCover, reload };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
   return { script, compiled }
 })()
 async function harness(t: { after(callback: () => void): void }) {
   const { script, compiled } = await compiledHarness
   const messages: Array<{ message: string; kind: string }> = []
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...coverDisplay, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
     useKunMessage: (message: string, kind: string) => messages.push({ message, kind }), useKunAlert: async () => true, api: {},
     document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name

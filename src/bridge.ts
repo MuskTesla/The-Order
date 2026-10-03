@@ -1,4 +1,4 @@
-import type { AppSnapshot, KunManagerAPI, LibraryGame, WorkMetadata } from './shared/types'
+import type { AppSnapshot, KunManagerAPI, LibraryGame, NonPortraitCoverDisplay, WorkMetadata } from './shared/types'
 import { createDesktopBridge } from './desktop-bridge'
 
 export const isPreview = !window.kunManager
@@ -11,6 +11,7 @@ const changed = () => listeners.forEach(fn => fn())
 const desktopOnly = async (): Promise<never> => { throw new Error('请打开桌面版使用这项本地功能。') }
 const findGame = (id: string) => { const game = state.games.find(g => g.id === id); if (!game) throw new Error('游戏不在书架中。'); return game }
 const findWork = (id: string) => { const work = works.find(w => w.id === id); if (!work) throw new Error('预览资料中没有这部作品。'); return work }
+const validDisplay = (value: unknown): NonPortraitCoverDisplay => { if (value !== 'blur' && value !== 'plain' && value !== 'crop') throw new Error('封面展示方式不正确。'); return value }
 const addWork = (work: WorkMetadata): LibraryGame => ({ id: `preview-${work.id}`, name: work.title, metadata: clone(work), installations: [], preferredInstallationId: null, status: 'planned', personalRating: null, favorite: false, categories: [], customTags: [], notes: '', totalPlaySeconds: 0, playCount: 0, sessions: [], addedAt: new Date().toISOString(), lastPlayedAt: null })
 async function loadPreview() {
   loaded ??= (async () => {
@@ -35,9 +36,21 @@ const preview: KunManagerAPI = {
   prepareInstallationAttachment: desktopOnly, attachLocalInstallation: desktopOnly,
   cancelInstallationAttachment: desktopOnly,
   startMetadataMatching: desktopOnly, cancelMetadataMatching: desktopOnly, resolveMetadataMatch: desktopOnly,
-  async linkGame(gameId, workId) { const game = findGame(gameId); game.metadata = clone(findWork(workId)); changed(); return clone(game) },
+  async linkGame(gameId, workId) { const game = findGame(gameId); game.metadata = clone(findWork(workId)); if (game.coverChoice?.workId !== workId) delete game.coverChoice; changed(); return clone(game) },
   async refreshGame(id) { return clone(findGame(id)) },
-  async updateGame(id, patch) { const game = findGame(id); Object.assign(game, clone(patch)); changed(); return clone(game) },
+  async setGameCover(id, workId, coverId, display) {
+    const game = findGame(id)
+    if (!/^[0-9]{1,20}$/.test(workId) || game.metadata?.id !== workId) throw new Error('作品关联已变化，请重新打开封面选择。')
+    if (coverId !== undefined && coverId !== null && (typeof coverId !== 'string' || !/^[0-9]{1,20}$/.test(coverId))) throw new Error('封面编号不正确。')
+    const mode = display === undefined ? undefined : validDisplay(display)
+    const cover = typeof coverId === 'string' ? findWork(workId).covers?.find(item => item.id === coverId && (state.settings.includeNsfw || item.sexual !== 'explicit')) : undefined
+    if (typeof coverId === 'string' && !cover) throw new Error('该封面已不可用或不属于当前作品，请重新载入。')
+    if (coverId === null) delete game.coverChoice
+    else if (cover) game.coverChoice = { workId, cover: clone(cover) }
+    if (mode !== undefined) game.nonPortraitCoverDisplay = mode
+    changed(); return clone(game)
+  },
+  async updateGame(id, patch) { const game = findGame(id); if ('nonPortraitCoverDisplay' in patch || 'coverChoice' in patch) throw new Error('修改包含不支持的字段。'); Object.assign(game, clone(patch)); changed(); return clone(game) },
   async updateGames(ids, patch) {
     if (!ids.length || ids.length > 1000 || new Set(ids).size !== ids.length) throw new Error('请选择 1 至 1000 部不同的游戏。')
     const targets = ids.map(id => clone(findGame(id)))

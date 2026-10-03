@@ -12,7 +12,7 @@ import { NextMoeClient } from './nextmoe'
 import { SettingsStore } from './settings'
 import { MetadataMatcher, loadTitleIndex } from './metadata-matching'
 import { hasExplicitGameVersion } from './title-matching'
-import type { BulkGamePatch, GamePatch, ScanCandidate, SettingsInput } from '../src/shared/types'
+import type { BulkGamePatch, GamePatch, NonPortraitCoverDisplay, ScanCandidate, SettingsInput, WorkCover } from '../src/shared/types'
 
 app.setName('The Order')
 const developmentUrl = !app.isPackaged && process.env.KGM_DEV_URL === 'http://127.0.0.1:5173' ? process.env.KGM_DEV_URL : null
@@ -199,6 +199,25 @@ function registerIpc(): void {
         const result = await library.linkMetadata(game.id, work, { preserveMergedName: true, expectedName: game.name, expectedMetadataId: game.metadata!.id, requestToken: request.token }); notify(); return result
       })
     } finally { await library.finishMetadataRequest(request.token) }
+  })
+  handle('setGameCover', async (gameId: unknown, expectedWorkId: unknown, coverId: unknown, display: unknown) => {
+    const id = validId(gameId)
+    if (typeof expectedWorkId !== 'string' || !/^[0-9]{1,20}$/.test(expectedWorkId)) throw new Error('封面作品编号不正确。')
+    if (coverId !== undefined && coverId !== null && (typeof coverId !== 'string' || !/^[0-9]{1,20}$/.test(coverId))) throw new Error('封面编号不正确。')
+    if (display !== undefined && display !== 'blur' && display !== 'plain' && display !== 'crop') throw new Error('封面展示方式不正确。')
+    const token = library.captureCoverRequest(id, expectedWorkId)
+    let cover: WorkCover | null | undefined = coverId === null ? null : undefined
+    if (typeof coverId === 'string') {
+      const work = await api().getWork(expectedWorkId)
+      cover = work.id === expectedWorkId ? work.covers?.find(item => item.id === coverId) : undefined
+      if (!cover) throw new Error('该封面已不可用或不属于当前作品，请重新载入。')
+    }
+    return withIdentityLock(async () => {
+      const result = await library.setGameCover(id, expectedWorkId, cover, display as NonPortraitCoverDisplay | undefined, token, () => {
+        if (cover?.sexual === 'explicit' && !settings.getPublic().includeNsfw) throw new Error('当前设置不允许选取成人封面。')
+      })
+      notify(); return result
+    })
   })
   handle('updateGame', async (id: unknown, patch: GamePatch) => { const result = await library.updateGame(validId(id), patch); notify(); return result })
   handle('updateGames', async (ids: unknown, patch: BulkGamePatch) => {

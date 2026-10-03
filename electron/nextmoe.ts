@@ -1,4 +1,4 @@
-import type { ConnectionResult, ReleaseIdentity, SearchPage, SourceRating, WorkMetadata, WorkReference } from '../src/shared/types'
+import type { ConnectionResult, ReleaseIdentity, SearchPage, SourceRating, WorkCover, WorkMetadata, WorkReference } from '../src/shared/types'
 
 export const DEFAULT_BASE_URL = 'https://api.nextmoe.dev/v2/'
 const DECIMAL_ID = /^[0-9]{1,20}$/
@@ -75,40 +75,24 @@ function selectedCoverUrl(work: JsonObject, includeNsfw: boolean): string | null
   // covers[] contains the whole media pool, even when the work is SFW. The
   // nsfw request flag alone does not filter explicit cover rows.
   const allowedUrl = (cover: JsonObject) =>
-    !includeNsfw && cover.sexual === 'explicit' ? null : imageUrl(cover)
-  const electedCover = object(work.cover)
-  const elected = allowedUrl(electedCover)
-  const candidates = [...rows(work.covers), electedCover].flatMap(cover => {
-    const url = allowedUrl(cover)
-    return url ? [{ cover, url }] : []
+    !includeNsfw && text(cover.sexual) === 'explicit' ? null : imageUrl(cover)
+  // Keep the upstream election. Votes and shape are information for personal
+  // selection, never a reason to replace the service's default artwork.
+  return allowedUrl(object(work.cover)) ?? rows(work.covers).map(allowedUrl).find(Boolean) ?? null
+}
+
+function mapCovers(value: unknown, includeNsfw: boolean): WorkCover[] {
+  if (!Array.isArray(value) || value.length > 500) throw new NextMoeError('API 返回的封面列表格式不正确。', 'INVALID_RESPONSE')
+  const dimension = (value: unknown) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0 && value <= 65535 ? value : null
+  const seenIds = new Set<string>(), seenUrls = new Set<string>()
+  return rows(value).flatMap(cover => {
+    const id = text(cover.id), url = imageUrl(cover), sexual = text(cover.sexual)
+    if (!DECIMAL_ID.test(id) || id !== cover.id || !url || url.length > 8192 || !includeNsfw && sexual === 'explicit' || seenIds.has(id) || seenUrls.has(url)) return []
+    seenIds.add(id); seenUrls.add(url)
+    return [{ id, url, width: dimension(cover.width), height: dimension(cover.height),
+      votes: typeof cover.vote_count === 'number' && Number.isSafeInteger(cover.vote_count) && cover.vote_count >= 0 ? cover.vote_count : null,
+      sexual: ['safe', 'suggestive', 'explicit'].includes(sexual) ? sexual as WorkCover['sexual'] : null }]
   })
-  const portraitUrls = new Set(candidates.filter(({ cover }) => {
-    const { width, height } = cover
-    // Only documented, measured positive pixel dimensions establish a portrait.
-    // Unknown dimensions and pins cannot establish the image's shape.
-    return typeof width === 'number' && typeof height === 'number' &&
-      Number.isSafeInteger(width) && Number.isSafeInteger(height) &&
-      width > 0 && height > width && width <= 65535 && height <= 65535
-  }).map(candidate => candidate.url))
-  // Slot and ballot dimensions may arrive independently. Shape evidence from
-  // an allowed occurrence of the same URL also applies to its vote-bearing row.
-  const pool = portraitUrls.size ? candidates.filter(candidate => portraitUrls.has(candidate.url)) : candidates
-  let best: { id: string; url: string; votes: number } | undefined
-  for (const { cover, url } of pool) {
-    const id = text(cover.id)
-    const votes = cover.vote_count
-    if (!DECIMAL_ID.test(id) || typeof votes !== 'number' || !Number.isSafeInteger(votes) || votes <= 0) continue
-    // A tied elected image stays familiar; otherwise the lower cover-row id
-    // makes a tie stable across upstream ordering changes. A pin is not a vote.
-    if (!best || votes > best.votes || (votes === best.votes &&
-      (url === elected && best.url !== elected || ((url === elected) === (best.url === elected) && BigInt(id) < BigInt(best.id))))) {
-      best = { id, url, votes }
-    }
-  }
-  // Collection reads only elect a cover; detail include=covers supplies vote
-  // rows. Every fallback remains inside the portrait pool whenever it exists,
-  // including a measured elected portrait that is absent from covers[].
-  return best?.url ?? pool.find(candidate => candidate.url === elected)?.url ?? pool[0]?.url ?? null
 }
 
 function referenceUrl(source: string, id: string): string | undefined {
@@ -205,6 +189,7 @@ function mapWork(value: unknown, includeNsfw: boolean): WorkMetadata {
       .filter(item => item !== title && item !== originalTitle)),
     titleEvidence: mapTitleEvidence(work, titles),
     coverUrl: selectedCoverUrl(work, includeNsfw),
+    ...(work.covers === undefined ? {} : { covers: mapCovers(work.covers, includeNsfw) }),
     bannerUrl: imageUrl(work.banner),
     description: text(description?.value),
     releaseDate: /^\d{4}-\d{2}-\d{2}$/.test(releaseDate) ? releaseDate : null,
