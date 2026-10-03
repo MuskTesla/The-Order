@@ -73,7 +73,7 @@ try {
   }
   // The stable maintenance entry is reachable from every existing page.
   for (const label of ['我的书架', '发现作品', '分类收藏', '游玩统计', '偏好设置']) {
-    await page.locator('.sidebar').getByRole('button', { name: new RegExp(label) }).click()
+    await page.locator('.sidebar').getByRole('button', { name: label, exact: true }).click()
     await page.locator('.maintenance-entry').click()
     await page.locator('.maintenance-modal').waitFor()
     assert.match(await page.locator('.maintenance-sections section').first().innerText(), /缺资料 1/)

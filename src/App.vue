@@ -11,6 +11,7 @@ import { gameCoverDisplay, gameCoverUrl, workCoverUrl } from './cover-display'
 import SectionSignature from './components/SectionSignature.vue'
 import OrderMark from './components/OrderMark.vue'
 import LibraryOverview from './components/LibraryOverview.vue'
+import LibraryCollections from './components/LibraryCollections.vue'
 import LibraryMaintenance from './components/LibraryMaintenance.vue'
 import PlayStatistics from './components/PlayStatistics.vue'
 import { filterLibraryGames, folderKey, knownCandidateIds, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
@@ -576,15 +577,15 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 <template>
   <div class="app-shell" :class="{ 'library-page': page === 'library' }">
     <aside class="sidebar">
-      <button class="brand" @click="navigate('library')"><span class="brand-mark"><OrderMark /></span><span class="brand-copy"><strong>The Order</strong><small>GALGAME LIBRARY</small></span></button>
+      <button class="brand" aria-label="The Order，返回我的书架" @click="navigate('library')"><span class="brand-mark"><OrderMark /></span><span class="brand-copy"><strong>The Order</strong><small>GALGAME LIBRARY</small></span></button>
       <div class="sidebar-section-label">你的游戏时光</div>
-      <nav><button v-for="item in navigation" :key="item.id" :class="['nav-item', { active: page === item.id }]" :aria-current="page === item.id ? 'page' : undefined" @click="navigate(item.id)"><component :is="item.icon" :size="19" /><span>{{ item.label }}</span><span v-if="item.id === 'library'" class="nav-count">{{ games.length }}</span></button><button class="nav-item maintenance-entry" @click="maintenanceOpen = true"><Sparkles :size="19" /><span>资料整理</span><span v-if="matchReviews.length" class="nav-count">{{ matchReviews.length }}</span></button></nav>
+      <nav aria-label="主导航"><button v-for="item in navigation" :key="item.id" :class="['nav-item', { active: page === item.id }]" :aria-label="item.label" :title="item.label" :aria-current="page === item.id ? 'page' : undefined" @click="navigate(item.id)"><component :is="item.icon" :size="19" /><span>{{ item.label }}</span><span v-if="item.id === 'library'" class="nav-count">{{ games.length }}</span></button><button class="nav-item maintenance-entry" aria-label="资料整理" title="资料整理" @click="maintenanceOpen = true"><Sparkles :size="19" /><span>资料整理</span><span v-if="matchReviews.length" class="nav-count">{{ matchReviews.length }}</span></button></nav>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section-label">快捷收藏 <span>{{ allCategories.length }}</span></div>
       <button class="collection-link" @click="page = 'library'; resetFilters(); favoritesOnly = true"><Heart :size="16" /><span>特别喜欢</span><small>{{ games.filter(g => g.favorite).length }}</small></button>
       <button v-for="category in allCategories.slice(0, 6)" :key="category" class="collection-link" @click="page = 'library'; resetFilters(); categoryFilter = category"><span class="category-dot"></span><span>{{ category }}</span><small>{{ games.filter(g => g.categories.includes(category)).length }}</small></button>
       <p v-if="!allCategories.length" class="sidebar-hint">在游戏详情中创建分类，<br />收好每一种心动。</p>
-      <div class="sidebar-bottom"><div class="source-badge"><span class="source-dot"></span><span>数据来自 NextMoe · 鲲</span><button aria-label="打开开发者平台" @click="external('https://developer.nextmoe.dev/')"><ArrowUpRight :size="14" /></button></div><button :class="['nav-item', { active: page === 'settings' }]" @click="navigate('settings')"><Settings :size="18" /><span>偏好设置</span><span class="version">v{{ snapshot?.version ?? '0.7.1' }}</span></button></div>
+      <div class="sidebar-bottom"><div class="source-badge"><span class="source-dot"></span><span>数据来自 NextMoe · 鲲</span><button aria-label="打开开发者平台" @click="external('https://developer.nextmoe.dev/')"><ArrowUpRight :size="14" /></button></div><button :class="['nav-item', { active: page === 'settings' }]" aria-label="偏好设置" title="偏好设置" :aria-current="page === 'settings' ? 'page' : undefined" @click="navigate('settings')"><Settings :size="18" /><span>偏好设置</span><span class="version">v{{ snapshot?.version ?? '0.7.1' }}</span></button></div>
     </aside>
 
     <div :class="['workspace', { 'library-workspace': page === 'library', 'library-busy': matchingRunning || !!snapshot?.activeSession }]">
@@ -640,7 +641,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
         <template v-else-if="page === 'categories'">
           <section class="page-heading"><div><h1>分类收藏</h1><SectionSignature name="Clover" /><p>用自己的方式，整理值得珍藏的故事。</p></div><KunButton v-if="games.length" variant="bordered" @click="applyOverviewFilter('all'); enterSelection()"><Tags :size="16" /> 批量整理书架</KunButton></section>
-          <div class="collection-grid"><button class="collection-card favorites" @click="page = 'library'; resetFilters(); favoritesOnly = true"><Heart :size="27" /><h2>特别喜欢</h2><p>那些让你念念不忘的故事</p><span>{{ games.filter(g => g.favorite).length }} 部作品 <ArrowUpRight :size="17" /></span></button><button v-for="category in allCategories" :key="category" class="collection-card" @click="page = 'library'; resetFilters(); categoryFilter = category"><LayoutGrid :size="27" /><h2>{{ category }}</h2><p>{{ games.filter(g => g.categories.includes(category)).slice(0, 2).map(g => g.name).join(' · ') }}</p><span>{{ games.filter(g => g.categories.includes(category)).length }} 部作品 <ArrowUpRight :size="17" /></span></button></div><div class="soft-info"><Tags :size="18" /><span>打开任意游戏的「管理」页，可以添加多个分类和个人标签。</span></div><section v-if="allTags.length" class="tag-section"><h2>按标签逛逛</h2><div class="tag-cloud"><button v-for="tag in allTags.slice(0, 80)" :key="tag" @click="page = 'library'; resetFilters(); tagFilter = tag">{{ tag }}</button></div></section>
+          <LibraryCollections :games="games" :tags="allTags" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :global-display="globalCoverDisplay" @favorites="page = 'library'; resetFilters(); favoritesOnly = true" @category="value => { page = 'library'; resetFilters(); categoryFilter = value }" @tag="value => { page = 'library'; resetFilters(); tagFilter = value }" />
         </template>
 
         <template v-else-if="page === 'stats'">
