@@ -114,7 +114,7 @@ function registerIpc(): void {
   handle('addVirtualGame', async (id: unknown) => { const result = await library.addVirtual(await api().getWork(validId(id))); notify(); return result })
   handle('scanFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow!, { title: '选择游戏目录或包含多个游戏的文件夹', properties: ['openDirectory'] })
-    if (result.canceled || !result.filePaths[0]) return []
+    if (result.canceled || !result.filePaths[0]) return null
     const candidates = await scanFolder(result.filePaths[0])
     scanCandidates = new Map(candidates.map(candidate => [candidate.id, candidate]))
     return candidates
@@ -159,12 +159,22 @@ function registerIpc(): void {
     const folders = new Set(selected.map(candidate => path.resolve(candidate.folderPath).toLowerCase()))
     const gameIds = library.getGames().filter(game => game.installations.some(installation => folders.has(path.resolve(installation.folderPath).toLowerCase())) && (!game.metadata || !game.metadata.coverUrl)).map(game => game.id)
     let matchingStarted = false
-    if (autoMatch && gameIds.length) matchingStarted = await withIdentityLock(async () => {
-      if (startGeneration !== matchingStartGeneration || !settings.getPublic().hasApiKey || matcher.getState().status === 'running') return false
-      await matcher.start(gameIds)
-      return true
-    })
-    return { ...result, matchingStarted }
+    let warning: string | undefined
+    if (autoMatch && gameIds.length) {
+      try {
+        matchingStarted = await withIdentityLock(async () => {
+          if (startGeneration !== matchingStartGeneration || !settings.getPublic().hasApiKey || matcher.getState().status === 'running') return false
+          await matcher.start(gameIds)
+          return true
+        })
+      } catch {
+        // The library transaction is already committed. Report that result even
+        // when the independent recognition startup cannot complete.
+        warning = '本地游戏已导入，但资料补全未能启动。请检查连接设置和资料目录后，在资料整理中重试。'
+        notify()
+      }
+    }
+    return { ...result, matchingStarted, ...(warning ? { warning } : {}) }
   })
   handle('startMetadataMatching', (ids: unknown, mode: unknown = 'missing') => {
     if (ids !== undefined && (!Array.isArray(ids) || ids.length > 10000 || ids.some(id => typeof id !== 'string'))) throw new Error('资料补全列表不正确。')

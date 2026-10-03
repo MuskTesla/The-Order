@@ -113,11 +113,27 @@ export class MetadataMatcher {
     // Validate credentials synchronously, before marking a job as running.
     const client = this.dependencies.client(controller.signal)
     const readExecutableMetadata = this.dependencies.readExecutableMetadata?.() === true
+    const previousState = this.state, previousController = this.controller
+    const previousReviewTokens = new Map(this.reviewTokens), previousStaleReviewIds = new Set(this.staleReviewIds)
     this.controller = controller
     const selected = new Set(games.map(game => game.id))
     this.state = { ...empty(), id: jobId, mode, status: 'running', total: games.length, reviews: this.state.reviews.filter(review => !selected.has(review.gameId)) }
     const job = this.state
-    await this.save()
+    try { await this.save() }
+    catch (error) {
+      controller.abort()
+      if (this.state === job) {
+        this.state = previousState; this.controller = previousController
+        // A snapshot during the pending write may prune guards for reviews
+        // hidden by this new job. Restore them with the state, retaining any
+        // newer guard or stale evidence observed while the write was pending.
+        const restoredIds = new Set(previousState.reviews.map(review => review.reviewId))
+        for (const [id, token] of previousReviewTokens) if (restoredIds.has(id) && !this.reviewTokens.has(id)) this.reviewTokens.set(id, token)
+        for (const id of previousStaleReviewIds) if (restoredIds.has(id)) this.staleReviewIds.add(id)
+        this.dependencies.changed()
+      }
+      throw error
+    }
     if (this.state !== job || controller.signal.aborted) return this.getState()
     this.dependencies.changed()
     this.task = this.run(job, games, client, controller.signal, tokens, readExecutableMetadata).catch(async error => {

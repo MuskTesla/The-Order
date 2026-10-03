@@ -15,12 +15,15 @@ import LibraryCollections from './components/LibraryCollections.vue'
 import LibrarySavedViews from './components/LibrarySavedViews.vue'
 import PersonalRecord from './components/PersonalRecord.vue'
 import PreferencesSettings from './components/PreferencesSettings.vue'
+import ImportCandidates from './components/ImportCandidates.vue'
 import LibraryMaintenance from './components/LibraryMaintenance.vue'
 import PlayStatistics from './components/PlayStatistics.vue'
-import { filterLibraryGames, folderKey, knownCandidateIds, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
+import { filterLibraryGames, folderKey, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
 import type { LibraryFilters, LibraryLayout, LibrarySort, LibraryView } from './library-workspace'
 import { createSavedView, readSavedViews, writeSavedViews, type SavedLibraryView, type SavedViewEditor } from './saved-library-views'
 import { getLaunchInstallation } from './library-insights'
+import { buildScanRows, filterScanRows, validScanSelection } from './import-workspace'
+import type { ScanView } from './import-workspace'
 
 type Page = 'library' | 'discover' | 'categories' | 'stats' | 'settings'
 const page = ref<Page>('library')
@@ -601,42 +604,81 @@ const candidates = ref<ScanCandidate[]>([])
 const chosen = ref<string[]>([])
 const autoMatchOnImport = ref(true)
 const scanQuery = ref('')
-const alreadyInLibrary = computed(() => knownCandidateIds(candidates.value, games.value))
+const scanView = ref<ScanView>('all')
+const importError = ref('')
+const scanReloadNeeded = ref(false)
+const scanRows = computed(() => buildScanRows(candidates.value, games.value))
+const alreadyInLibrary = computed(() => new Set(scanRows.value.filter(row => row.status === 'known').map(row => row.candidate.id)))
 function candidateOwner(candidate: ScanCandidate): LibraryGame | undefined {
   const root = folderKey(candidate.folderPath)
   return games.value.find(game => game.installations.some(installation => { const owned = folderKey(installation.folderPath); return root === owned || root.startsWith(owned + '/') || owned.startsWith(root + '/') }))
 }
-const conflictingCandidates = computed(() => new Set(candidates.value.filter(candidate => !alreadyInLibrary.value.has(candidate.id) && candidateOwner(candidate)).map(candidate => candidate.id)))
+const conflictingCandidates = computed(() => new Set(scanRows.value.filter(row => row.status === 'conflict').map(row => row.candidate.id)))
 const scannedLibraryIds = computed(() => {
   const folders = new Set(candidates.value.map(candidate => folderKey(candidate.folderPath)))
   return games.value.filter(game => game.installations.some(installation => folders.has(folderKey(installation.folderPath)))).map(game => game.id)
 })
-const newCandidates = computed(() => candidates.value.filter(candidate => !alreadyInLibrary.value.has(candidate.id) && !conflictingCandidates.value.has(candidate.id)))
-const selectedScanIds = computed(() => chosen.value.filter(id => !alreadyInLibrary.value.has(id) && !conflictingCandidates.value.has(id)))
-const visibleCandidates = computed(() => { const q = scanQuery.value.trim().toLocaleLowerCase(); return candidates.value.filter(candidate => !q || candidate.name.toLocaleLowerCase().includes(q) || candidate.folderPath.toLocaleLowerCase().includes(q)) })
-watch(() => [...alreadyInLibrary.value, ...conflictingCandidates.value].join('|'), () => { chosen.value = [...selectedScanIds.value] }, { flush: 'sync' })
+const newCandidates = computed(() => scanRows.value.filter(row => row.status === 'new').map(row => row.candidate))
+const selectedScanIds = computed(() => validScanSelection(chosen.value, scanRows.value))
+const visibleCandidates = computed(() => filterScanRows(scanRows.value, scanQuery.value, scanView.value).map(row => row.candidate))
+watch(() => scanRows.value.map(row => `${row.candidate.id}:${row.status}`).join('|'), () => { chosen.value = [...selectedScanIds.value] }, { flush: 'sync' })
+function setScanSelection(ids: string[]) { if (!busy.has('import')) chosen.value = validScanSelection(ids, scanRows.value) }
 let scanGeneration = 0
-watch(scanOpen, value => { if (!value) scanGeneration++ }, { flush: 'sync' })
-async function scan() { await task('scan', async () => { const result = await api.scanFolder(); if (!result.length) { useKunMessage('没有找到可导入的游戏程序，或未选择文件夹。', 'info'); return } scanGeneration++; candidates.value = result; chosen.value = newCandidates.value.map(candidate => candidate.id); scanQuery.value = ''; scanOpen.value = true }) }
+let scanOrigin: HTMLElement | null = null
+watch(scanOpen, value => {
+  if (value) return
+  const generation = ++scanGeneration, origin = scanOrigin
+  // The entry is temporarily disabled during the native scan, so the modal's
+  // focus trap may have captured the document body instead of the entry.
+  if (typeof requestAnimationFrame !== 'undefined') void nextTick(() => requestAnimationFrame(() => {
+    if (generation === scanGeneration && !scanOpen.value && !detailOpen.value && !bindOpen.value && !reviewOpen.value && !attachmentOpen.value && origin?.isConnected) origin.focus({ preventScroll: true })
+  }))
+}, { flush: 'sync' })
+async function scan(event?: MouseEvent) {
+  if (busy.has('scan')) return
+  if (!scanOpen.value && typeof HTMLElement !== 'undefined') scanOrigin = event?.currentTarget instanceof HTMLElement ? event.currentTarget : document.activeElement instanceof HTMLElement ? document.activeElement : null
+  await task('scan', async () => { const result = await api.scanFolder(); if (result === null) return; scanGeneration++; candidates.value = result; chosen.value = newCandidates.value.map(candidate => candidate.id); scanQuery.value = ''; scanView.value = 'all'; importError.value = ''; scanReloadNeeded.value = false; scanOpen.value = true })
+}
 async function identifyScannedGames() {
   const generation = scanGeneration, ids = [...scannedLibraryIds.value]
   const started = await startMatching(ids, 'reidentify')
   if (started && scanOpen.value && generation === scanGeneration && !newCandidates.value.length) { scanOpen.value = false; page.value = 'library' }
 }
 async function importSelected() {
-  const generation = scanGeneration, ids = chosen.value.filter(id => !alreadyInLibrary.value.has(id) && !conflictingCandidates.value.has(id))
+  const generation = scanGeneration, ids = [...selectedScanIds.value]
+  if (scanReloadNeeded.value) {
+    await task('import', async () => {
+      try {
+        await reload()
+        if (generation === scanGeneration) { scanReloadNeeded.value = false; importError.value = ''; scanOpen.value = false; page.value = 'library' }
+      } catch (error) {
+        if (generation === scanGeneration) importError.value = '导入已完成，书架仍未能读取。请重新读取，或稍后重启程序。'
+        throw error
+      }
+    })
+    return
+  }
   if (!ids.length) return
   await task('import', async () => {
+    if (generation === scanGeneration) importError.value = ''
     const requestedMatch = autoMatchOnImport.value, waitingForMatching = matchingUnavailable.value
     const canMatch = requestedMatch && !!snapshot.value?.settings.hasApiKey && !waitingForMatching
-    const result = await api.importLocalGames(ids, canMatch)
-    dismissedMatchingId.value = null
-    await reload()
-    if (generation === scanGeneration) { scanOpen.value = false; page.value = 'library' }
-    const nextStep = result.matchingStarted ? '识别进度和结果可在资料整理中查看。'
-      : requestedMatch && !snapshot.value?.settings.hasApiKey ? '本地游戏已保留，配置 API 密钥后，可在“资料整理”中点击“只补缺失”。'
-      : requestedMatch && waitingForMatching ? '本地游戏已保留，当前识别任务结束后，可在“资料整理”中点击“只补缺失”。' : ''
-    useKunMessage(`已添加 ${result.added} 部游戏，跳过 ${result.skipped} 个重复条目。${nextStep}`, 'success', 6000)
+    let saved = false
+    try {
+      const result = await api.importLocalGames(ids, canMatch)
+      saved = true
+      dismissedMatchingId.value = null
+      if (generation === scanGeneration) scanReloadNeeded.value = true
+      await reload()
+      if (generation === scanGeneration) { scanReloadNeeded.value = false; scanOpen.value = false; page.value = 'library' }
+      const nextStep = result.matchingStarted ? '识别进度和结果可在资料整理中查看。'
+        : requestedMatch && !snapshot.value?.settings.hasApiKey ? '本地游戏已保留，配置 API 密钥后，可在“资料整理”中点击“只补缺失”。'
+        : requestedMatch && waitingForMatching ? '本地游戏已保留，当前识别任务结束后，可在“资料整理”中点击“只补缺失”。' : ''
+      useKunMessage(`已添加 ${result.added} 部游戏，跳过 ${result.skipped} 个重复条目。${result.warning || nextStep}`, result.warning ? 'info' : 'success', result.warning ? 8000 : 6000)
+    } catch (error) {
+      if (generation === scanGeneration) importError.value = saved ? '导入已完成，但书架读取失败。请重新读取，无需再次导入。' : '导入未完成，选择已保留。请检查目录与磁盘后重试。'
+      throw error
+    }
   })
 }
 
@@ -847,14 +889,8 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
   </KunModal>
 
   <KunModal v-model="bindOpen" title="选择要关联的作品" size="lg"><p class="modal-help">请核对名称与封面后选择，避免关联到同系列的其他作品。</p><form class="modal-search" @submit.prevent="searchBinding()"><input v-model="bindQuery" aria-label="关联作品搜索" placeholder="输入游戏名" /><KunButton type="submit" color="primary" :loading="busy.has('bind-search')">搜索</KunButton></form><div class="bind-results" :aria-busy="busy.has('bind-search')"><button class="binding-result" v-for="work in bindResults" :key="work.id" :disabled="busy.has('bind')" @click="bindWork(work)"><img v-if="workCoverUrl(work, snapshot?.settings.includeNsfw ?? true)" :src="workCoverUrl(work, snapshot?.settings.includeNsfw ?? true)!" :alt="work.title" /><div><strong>{{ work.title }}</strong><small>{{ work.originalTitle }}</small><span>{{ work.developers.join(' · ') }} · {{ releaseDate(work) }}</span></div><Link2 :size="17" /></button><div class="binding-pagination"><p v-if="bindError" class="binding-error" role="alert">{{ bindError }}</p><p v-else-if="bindNotice" role="status">{{ bindNotice }}</p><p v-else-if="busy.has('bind-search')" role="status">正在加载作品…</p><p v-else-if="bindHasSearched && !bindResults.length">没有找到作品，请试试其他名称。</p><p v-else-if="bindHasSearched && !bindCursor" role="status">已显示全部结果</p><KunButton v-if="bindError" size="sm" variant="bordered" :loading="busy.has('bind-search')" @click="searchBinding(bindRetryMore)">重试</KunButton><KunButton v-else-if="bindCursor" size="sm" variant="bordered" :loading="busy.has('bind-search')" :disabled="busy.has('bind-search')" @click="searchBinding(true)">{{ busy.has('bind-search') ? '加载中…' : '加载更多' }}</KunButton></div></div></KunModal>
-  <KunModal v-model="scanOpen" title="确认导入本地游戏" size="lg">
-    <p class="modal-help">扫描发现 {{ candidates.length }} 个游戏目录。先导入本地记录，再自动补全封面与资料；无法确定的作品集中核对。</p>
-    <div class="scanning-summary"><span><strong>{{ newCandidates.length }}</strong> 部可导入</span><span><CheckCircle2 :size="16" /><strong>{{ alreadyInLibrary.size }}</strong> 部已在书架</span></div>
-    <div class="import-match-option"><div><strong><Sparkles :size="16" /> 导入后自动补全封面和资料</strong><p v-if="!snapshot?.settings.hasApiKey">未配置密钥也能先导入。保存密钥后，在“资料整理”中点击“只补缺失”。</p><p v-else-if="matchingUnavailable">当前识别任务结束后，可继续补全新导入的作品。</p><p v-else>结合目录、名称与本地线索识别；证据有冲突时保留候选供你确认。</p></div><KunSwitch v-model="autoMatchOnImport" label="" aria-label="导入后自动补全封面和资料" :disabled="!snapshot?.settings.hasApiKey || matchingUnavailable || busy.has('import')" /></div>
-    <label class="scan-search"><Search :size="17" /><input v-model="scanQuery" aria-label="筛选扫描结果" placeholder="筛选名称或目录…" /></label>
-    <div class="scan-selection"><button class="text-button" :disabled="busy.has('import')" @click="chosen = newCandidates.map(candidate => candidate.id)">全选新游戏</button><button class="text-button" :disabled="busy.has('import')" @click="chosen = []">清空选择</button><span>已选择 {{ selectedScanIds.length }} 项</span></div>
-    <div class="scan-list"><label v-for="candidate in visibleCandidates" :key="candidate.id" :class="{ 'scan-known': alreadyInLibrary.has(candidate.id), 'scan-conflict': conflictingCandidates.has(candidate.id) }"><input v-model="chosen" type="checkbox" :value="candidate.id" :disabled="alreadyInLibrary.has(candidate.id) || conflictingCandidates.has(candidate.id) || busy.has('import')" /><FolderOpen :size="22" /><div><strong>{{ candidate.name }} <small v-if="alreadyInLibrary.has(candidate.id)">已在书架</small></strong><small>{{ candidate.folderPath }}</small><small v-if="conflictingCandidates.has(candidate.id)">与「{{ candidateOwner(candidate)?.name }}」的安装目录重叠，请先核对已有条目。</small><span>{{ candidate.executables.length === 1 ? '发现 1 个启动程序' : `发现 ${candidate.executables.length} 个程序，导入后可选择默认启动` }}</span></div></label><p v-if="!visibleCandidates.length" class="modal-help">没有符合筛选的目录。</p></div>
-    <div class="modal-footer"><KunButton v-if="scannedLibraryIds.length" variant="bordered" :disabled="matchingUnavailable || busy.has('import')" :title="`重新识别扫描范围内已入库的 ${scannedLibraryIds.length} 部游戏，无需重复导入`" @click="identifyScannedGames">识别已入库游戏</KunButton><KunButton variant="light" :disabled="busy.has('import')" @click="scanOpen = false">取消</KunButton><KunButton color="primary" :disabled="!selectedScanIds.length" :loading="busy.has('import')" @click="importSelected">确认导入 {{ selectedScanIds.length }} 部</KunButton></div>
+  <KunModal v-model="scanOpen" title="确认导入本地游戏" size="xl" scroll-behavior="inside" inner-class-name="import-candidates-modal" :is-dismissable="!busy.has('import')" :is-close-request-dismissable="!busy.has('import')" :is-show-close-button="!busy.has('import')">
+    <ImportCandidates :rows="scanRows" :chosen="selectedScanIds" :query="scanQuery" :view="scanView" :auto-match="autoMatchOnImport" :has-api-key="!!snapshot?.settings.hasApiKey" :matching-unavailable="matchingUnavailable" :busy="busy.has('import')" :scanning="busy.has('scan')" :known-game-count="scannedLibraryIds.length" :error="importError" :reload-needed="scanReloadNeeded" @selection="setScanSelection" @query="scanQuery = $event" @view="scanView = $event" @auto-match="autoMatchOnImport = $event" @cancel="scanOpen = false" @confirm="importSelected" @identify="identifyScannedGames" @rescan="scan" />
   </KunModal>
   <KunModal v-model="reviewOpen" title="核对游戏资料" size="xl" inner-class-name="matching-review-modal" scroll-behavior="inside">
     <p class="modal-help">先对照当前作品和本地安装，再核对候选。标题相符并不代表章节或版本相同。</p>

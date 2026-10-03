@@ -718,6 +718,58 @@ async function reviewedGame(env: Environment) {
   return { ...result, review, game: env.library.getGame(review.gameId) }
 }
 
+for (const readWhilePending of [false, true]) test(`an initial job rename failure restores the prior review state${readWhilePending ? ' after an in-flight snapshot' : ''} and permits a retry`, async t => {
+  const env = await environment(t, [firstTitle]), imported = env.library.getGames()[0]!
+  const original = work('999', secondTitle, 'vndb:v999')
+  await env.library.linkMetadata(imported.id, original)
+  const { matcher, calls, game } = await reviewedGame(env)
+  const before = matcher.getState(), libraryBefore = env.library.getGames()
+  const file = path.join(env.dataDir, 'metadata-matching.json')
+  const stateBytes = await fs.readFile(file, 'utf8'), libraryBytes = await fs.readFile(env.library.filePath, 'utf8')
+  const priorCalls = { index: calls.index, refs: calls.refs.length, search: calls.search.length, detail: calls.detail.length, applied: calls.applied.length, signals: calls.signals.length, changed: calls.changed }
+  const entered = deferred<void>(), release = deferred<void>(), rename = fs.rename
+  let failures = 0
+  t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+    if (String(args[1]) === file && failures === 0) {
+      failures++; entered.resolve(); await release.promise
+      throw new Error('Synthetic initial matching state rename failure')
+    }
+    return rename(...args)
+  })
+  const failed = assert.rejects(matcher.start([game.id], 'reidentify'), /initial matching state rename failure/)
+  await entered.promise
+  if (readWhilePending) assert.equal(matcher.getState().status, 'running', 'a snapshot may observe the pending initial write')
+  release.resolve(); await failed; await matcher.settle()
+  assert.equal(failures, 1)
+  assert.deepEqual(matcher.getState(), before, 'the old counters and complete review must be restored rather than leaving a phantom running job')
+  assert.deepEqual(env.library.getGames(), libraryBefore)
+  assert.equal(await fs.readFile(env.library.filePath, 'utf8'), libraryBytes, 'the injected failure affects only the matching state, never the library')
+  assert.equal(await fs.readFile(file, 'utf8'), stateBytes)
+  assert.equal((await fs.readdir(env.dataDir)).some(name => name.endsWith('.tmp')), false)
+  assert.deepEqual({ index: calls.index, refs: calls.refs.length, search: calls.search.length, detail: calls.detail.length, applied: calls.applied.length }, {
+    index: priorCalls.index, refs: priorCalls.refs, search: priorCalls.search, detail: priorCalls.detail, applied: priorCalls.applied,
+  }, 'no index, catalog or metadata application work may run before the initial save succeeds')
+  assert.equal(calls.signals.length, priorCalls.signals + 1)
+  assert.equal(calls.signals.at(-1)!.aborted, true, 'the rejected job controller is retired')
+  assert.ok(calls.changed > priorCalls.changed, 'listeners are told that the pending job was rolled back')
+  if (readWhilePending) {
+    // Restoring the review also has to restore its lifecycle guard. A snapshot
+    // of the tentative job must not make a later ABA association appear current.
+    await env.library.linkMetadata(game.id, work('777', '临时关联', 'vndb:v777'))
+    await env.library.linkMetadata(game.id, original)
+    assert.deepEqual(env.library.getGames(), libraryBefore)
+    assert.equal(matcher.getState().reviews[0]!.sourceStatus, 'stale')
+  }
+  const retry = await matcher.start([game.id], 'reidentify')
+  assert.equal(retry.status, 'running'); assert.notEqual(retry.id, before.id)
+  await matcher.settle()
+  const completed = matcher.getState()
+  assert.equal(completed.status, 'completed'); assert.equal(completed.processed, 1)
+  assert.notEqual(completed.reviews[0]!.reviewId, before.reviews[0]!.reviewId)
+  assert.deepEqual(env.library.getGames(), libraryBefore)
+  assert.equal(JSON.parse(await fs.readFile(file, 'utf8')).id, completed.id)
+})
+
 test('a review records the actual preferred installation and every bounded recognition input, without changing the library', async t => {
   const env = await environment(t, [firstTitle, `[汉化] ${firstTitle}`])
   const [first, second] = env.library.getGames()

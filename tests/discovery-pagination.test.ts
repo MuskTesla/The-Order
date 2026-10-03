@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
+import * as importWorkspace from '../src/import-workspace'
 import * as libraryInsights from '../src/library-insights'
 import * as savedLibraryViews from '../src/saved-library-views'
 
@@ -12,7 +13,7 @@ async function harness() {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
   const notices: string[] = []
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
     useKunMessage: (message: string) => notices.push(message), useKunAlert: async () => true, api: {},
     document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) {

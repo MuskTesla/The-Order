@@ -7,13 +7,15 @@ import { execFileSync } from 'node:child_process'
 import { _electron as electron } from '../node_modules/playwright/index.mjs'
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const output = path.join(project, '.artifacts/overnight-2026-10-04/round-4')
+const evidenceRound = process.argv.find(argument => argument.startsWith('--evidence-round='))?.split('=')[1]
+if (evidenceRound !== undefined && !/^[0-8]$/.test(evidenceRound)) throw new Error('Evidence round must be from 0 to 8')
+const output = evidenceRound === undefined ? path.join(project, '.artifacts/overnight-2026-10-04/round-4') : path.join(project, '.artifacts/overnight-2026-10-04', `round-${evidenceRound}`, 'settings-matching')
 const profile = path.join(output, 'ui-profile'), marker = path.join(profile, 'synthetic-profile.txt')
 const baseline = process.argv.includes('--baseline'), phase = baseline ? 'before' : 'after'
 await fs.mkdir(output, { recursive: true })
 try {
   if (await fs.readFile(marker, 'utf8') !== 'settings-matching-synthetic-only') throw new Error('Unknown profile')
-  if (path.resolve(profile) !== path.join(project, '.artifacts/overnight-2026-10-04/round-4/ui-profile')) throw new Error('Unexpected profile')
+  if (path.resolve(profile) !== path.join(output, 'ui-profile')) throw new Error('Unexpected profile')
   await fs.rm(profile, { recursive: true })
 } catch (error) { if (error.code !== 'ENOENT') throw error }
 await fs.mkdir(profile); await fs.writeFile(marker, 'settings-matching-synthetic-only')

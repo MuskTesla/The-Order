@@ -80,7 +80,7 @@ export interface SearchPage { items: WorkMetadata[]; nextCursor: string | null }
 export interface GamePatch { name?: string; status?: PlayStatus; personalRating?: number | null; favorite?: boolean; categories?: string[]; customTags?: string[]; notes?: string; preferredInstallationId?: string | null }
 export interface BulkGamePatch { status?: PlayStatus; favorite?: boolean; personalRating?: number | null; addCategories?: string[]; removeCategories?: string[]; addTags?: string[]; removeTags?: string[] }
 export interface ConnectionResult { ok: boolean; message: string }
-export interface ImportResult { added: number; skipped: number; matchingStarted?: boolean }
+export interface ImportResult { added: number; skipped: number; matchingStarted?: boolean; warning?: string }
 export interface KunManagerAPI {
   getState(): Promise<AppSnapshot>
   saveSettings(input: SettingsInput): Promise<SettingsSaveResult>
@@ -88,7 +88,7 @@ export interface KunManagerAPI {
   searchWorks(query: string, cursor?: string): Promise<SearchPage>
   getWork(id: string): Promise<WorkMetadata>
   addVirtualGame(workId: string): Promise<LibraryGame>
-  scanFolder(): Promise<ScanCandidate[]>
+  scanFolder(): Promise<ScanCandidate[] | null>
   prepareInstallationAttachment(gameId: string): Promise<InstallationAttachmentScan | null>
   attachLocalInstallation(requestId: string, candidateId: string): Promise<LibraryGame | null>
   cancelInstallationAttachment(requestId: string): Promise<void>

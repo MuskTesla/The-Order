@@ -47,8 +47,13 @@ try {
   await page.locator('.sidebar nav').getByRole('button', { name: /我的书架/ }).click()
   await page.getByRole('button', { name: '添加游戏', exact: true }).click()
   await page.getByRole('button', { name: '确认导入 37 部', exact: true }).waitFor()
-  assert.match(await page.locator('.scanning-summary').innerText(), /37\s*部可导入/)
-  assert.match(await page.locator('.scanning-summary').innerText(), /0\s*部已在书架/)
+  if (await page.locator('.scan-views').count()) {
+    assert.equal(await page.getByRole('button', { name: '可导入 37', exact: true }).count(), 1)
+    assert.equal(await page.getByRole('button', { name: '已在书架 0', exact: true }).count(), 1)
+  } else {
+    assert.match(await page.locator('.scanning-summary').innerText(), /37\s*部可导入/)
+    assert.match(await page.locator('.scanning-summary').innerText(), /0\s*部已在书架/)
+  }
   assert.equal(await page.locator('.scan-list input:checked').count(), 37)
   await page.getByRole('button', { name: '清空选择', exact: true }).click()
   assert.equal(await page.locator('.scan-list input:checked').count(), 0)
@@ -83,9 +88,15 @@ try {
   assert.equal(await page.locator('.scan-list input:checked').count(), 0)
   assert.equal(await page.locator('.scan-list input:disabled').count(), 37)
   assert.equal(await page.locator('.scan-list .scan-known').count(), 37)
-  assert.match(await page.locator('.scanning-summary').innerText(), /0\s*部可导入/)
-  assert.match(await page.locator('.scanning-summary').innerText(), /37\s*部已在书架/)
-  await page.getByRole('button', { name: '全选新游戏', exact: true }).click()
+  if (await page.locator('.scan-views').count()) {
+    assert.equal(await page.getByRole('button', { name: '可导入 0', exact: true }).count(), 1)
+    assert.equal(await page.getByRole('button', { name: '已在书架 37', exact: true }).count(), 1)
+    assert.equal(await page.getByRole('button', { name: '全选新游戏', exact: true }).isDisabled(), true)
+  } else {
+    assert.match(await page.locator('.scanning-summary').innerText(), /0\s*部可导入/)
+    assert.match(await page.locator('.scanning-summary').innerText(), /37\s*部已在书架/)
+    await page.getByRole('button', { name: '全选新游戏', exact: true }).click()
+  }
   assert.equal(await page.locator('.scan-list input:checked').count(), 0)
   assert.equal(await confirmEmpty.isDisabled(), true)
   const duplicateIds = await page.locator('.scan-list input').evaluateAll(inputs => inputs.map(input => input.value))

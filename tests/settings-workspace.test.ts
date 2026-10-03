@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
+import * as importWorkspace from '../src/import-workspace'
 import * as libraryInsights from '../src/library-insights'
 import * as savedLibraryViews from '../src/saved-library-views'
 import * as coverDisplay from '../src/cover-display'
@@ -19,7 +20,7 @@ const compiled = (async () => {
 })()
 async function harness(t: { after(callback: () => void): void }) {
   const { script, code } = await compiled, messages: string[] = [], api: any = {}
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, Error, api, isPreview: false, onMounted() {}, onUnmounted() {}, useKunMessage: (message: string) => messages.push(message), useKunAlert: async () => true, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, Error, api, isPreview: false, onMounted() {}, onUnmounted() {}, useKunMessage: (message: string) => messages.push(message), useKunAlert: async () => true, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
   const scope = vue.effectScope(); t.after(() => scope.stop()); vm.createContext(sandbox); scope.run(() => vm.runInContext(code, sandbox))
   const a = sandbox.audit, initial: PublicSettings = { baseUrl: 'https://fixture.invalid/v2/', hasApiKey: true, includeNsfw: false, theme: 'light', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }

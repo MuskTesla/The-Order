@@ -8,6 +8,7 @@ import * as libraryWorkspace from '../src/library-workspace'
 import * as libraryInsights from '../src/library-insights'
 import * as savedLibraryViews from '../src/saved-library-views'
 import * as coverDisplay from '../src/cover-display'
+import * as importWorkspace from '../src/import-workspace'
 test('cover lists cannot leak across A-B-A navigation, retry or picker reopen', async t => {
   const { a, api, state } = await harness(t), A = completeGame('A'), B = completeGame('B')
   a.snapshot.value = state([A, B]); await vue.nextTick(); await a.showGame(A)
@@ -196,14 +197,14 @@ function job(id = 'fixture-job', status: MetadataMatchingState['status'] = 'runn
 const compiledHarness = (async () => {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
-  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, selectedWork, editor, detailCoverUrl, coverPickerOpen, coverOptionsWork, coverError, toggleCoverPicker, closeCoverPicker, loadCoverOptions, saveCover, pickLocalCover, globalCoverDisplay, detailCoverDisplay, settingsForm, saveSettings, reload };'
+  const expose = '\nglobalThis.audit = { snapshot, page, busy, libraryQuery, statusFilter, favoritesOnly, filteredGames, selectionMode, selectedIds, batchStatus, batchFavorite, batchCategory, batchTag, batchCategoryMode, batchTagMode, enterSelection, leaveSelection, selectVisible, toggleSelection, organizeSelected, navigate, resetFilters, scanOpen, candidates, chosen, autoMatchOnImport, scanQuery, scanView, importError, scanReloadNeeded, setScanSelection, alreadyInLibrary, newCandidates, visibleCandidates, scan, importSelected, startMatching, cancelMatching, matchingLabel, reidentifying, matchingUnavailable, localGameIds, selectedLocalIds, identifySelected, identifyCurrentGame, identifyScannedGames, scannedLibraryIds, showGame, detailOpen, selectedGameId, selectedWork, editor, detailCoverUrl, coverPickerOpen, coverOptionsWork, coverError, toggleCoverPicker, closeCoverPicker, loadCoverOptions, saveCover, pickLocalCover, globalCoverDisplay, detailCoverDisplay, settingsForm, saveSettings, reload };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
   return { script, compiled }
 })()
 async function harness(t: { after(callback: () => void): void }) {
   const { script, compiled } = await compiledHarness
   const messages: Array<{ message: string; kind: string }> = []
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, ...importWorkspace, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
     useKunMessage: (message: string, kind: string) => messages.push({ message, kind }), useKunAlert: async () => true, api: {},
     document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
@@ -306,6 +307,171 @@ test('bulk completion after navigation does not return to the library or reopen 
   assert.equal(a.page.value, 'stats')
   assert.equal(a.selectionMode.value, false)
   assert.deepEqual(plain(a.selectedIds.value), [])
+})
+
+test('cancelling a new folder dialog preserves the existing scan, filters and selection without an empty-result message', async t => {
+  const { a, api, messages } = await harness(t)
+  api.scanFolder = async () => [candidate('old-first', 'First'), candidate('old-second', 'Second')]
+  await a.scan()
+  a.setScanSelection(['old-second']); a.scanQuery.value = 'Second'; a.scanView.value = 'new'
+  a.importError.value = 'An existing scan warning'
+  const before = plain(a.candidates.value), count = messages.length
+  const dialog = deferred<ScanCandidate[] | null>(); api.scanFolder = () => dialog.promise
+  const pending = a.scan()
+  assert.equal(a.busy.has('scan'), true)
+  dialog.resolve(null); await pending
+  assert.equal(a.scanOpen.value, true)
+  assert.deepEqual(plain(a.candidates.value), before)
+  assert.deepEqual(plain(a.chosen.value), ['old-second'])
+  assert.equal(a.scanQuery.value, 'Second'); assert.equal(a.scanView.value, 'new')
+  assert.equal(a.importError.value, 'An existing scan warning')
+  assert.equal(a.scanReloadNeeded.value, false)
+  assert.equal(a.busy.has('scan'), false); assert.equal(messages.length, count)
+})
+
+test('a confirmed folder with no programs opens a real empty scan and clears the previous scan context', async t => {
+  const { a, api, messages } = await harness(t)
+  api.scanFolder = async () => [candidate('old', 'Old')]
+  await a.scan()
+  a.scanQuery.value = 'Old'; a.scanView.value = 'new'
+  a.importError.value = 'Old read failure'; a.scanReloadNeeded.value = true
+  const count = messages.length
+  api.scanFolder = async () => []
+  await a.scan()
+  assert.equal(a.scanOpen.value, true)
+  assert.deepEqual(plain(a.candidates.value), [])
+  assert.deepEqual(plain(a.chosen.value), [])
+  assert.deepEqual(plain(a.visibleCandidates.value), [])
+  assert.equal(a.scanQuery.value, ''); assert.equal(a.scanView.value, 'all')
+  assert.equal(a.importError.value, ''); assert.equal(a.scanReloadNeeded.value, false)
+  assert.equal(messages.length, count, 'an empty scan is represented in the modal rather than described as cancellation')
+})
+
+test('scan selection and submission reject ghost IDs, duplicates, known directories and overlapping installations', async t => {
+  const { a, api, games } = await harness(t), calls: unknown[] = []
+  const known = { ...candidate('known'), folderPath: games[0]!.installations[0]!.folderPath }
+  const conflict = { ...candidate('overlap'), folderPath: games[1]!.installations[0]!.folderPath + '\\Nested' }
+  const fresh = candidate('fresh', 'Fresh')
+  api.scanFolder = async () => [known, conflict, fresh]
+  api.importLocalGames = async (ids: string[], match: boolean) => { calls.push({ ids, match }); return { added: 1, skipped: 0 } }
+  await a.scan()
+  a.setScanSelection(['ghost', 'known', 'overlap', 'fresh', 'fresh'])
+  assert.deepEqual(plain(a.chosen.value), ['fresh'])
+  a.setScanSelection(['ghost', 'known', 'overlap'])
+  await a.importSelected()
+  assert.equal(calls.length, 0)
+  // A stale consumer bypassing the selection callback still cannot submit IDs
+  // that are missing, already owned, overlapping or duplicated.
+  a.chosen.value = ['ghost', 'known', 'fresh', 'overlap', 'fresh']
+  await a.importSelected()
+  assert.deepEqual(structuredClone(calls), [{ ids: ['fresh'], match: true }])
+  assert.equal(vue.isProxy((calls[0] as any).ids), false)
+})
+
+test('a failed import keeps a persistent error and choices, then retry clears the error without accepting edits while pending', async t => {
+  const { a, api, messages } = await harness(t)
+  const first = deferred<{ added: number; skipped: number }>(), retry = deferred<{ added: number; skipped: number }>()
+  const responses = [first, retry], calls: string[][] = []
+  api.scanFolder = async () => [candidate('fresh', 'Fresh'), candidate('other', 'Other')]
+  api.importLocalGames = (ids: string[]) => { calls.push([...ids]); return responses.shift()!.promise }
+  await a.scan(); a.setScanSelection(['fresh'])
+  const failed = a.importSelected(); first.reject(new Error('Synthetic disk write failure')); await failed
+  assert.equal(a.scanOpen.value, true); assert.equal(a.scanReloadNeeded.value, false)
+  assert.match(a.importError.value, /导入未完成.*选择已保留/)
+  assert.deepEqual(plain(a.chosen.value), ['fresh'])
+  assert.equal(a.busy.has('import'), false); assert.equal(messages.at(-1)?.kind, 'error')
+  const pending = a.importSelected()
+  assert.equal(a.importError.value, ''); assert.equal(a.busy.has('import'), true)
+  a.setScanSelection(['other'])
+  assert.deepEqual(plain(a.chosen.value), ['fresh'])
+  await a.importSelected()
+  assert.deepEqual(calls, [['fresh'], ['fresh']], 'double clicking the retry cannot enqueue another write')
+  retry.resolve({ added: 1, skipped: 0 }); await pending
+  assert.equal(a.importError.value, ''); assert.equal(a.scanReloadNeeded.value, false)
+  assert.equal(a.scanOpen.value, false); assert.equal(messages.at(-1)?.kind, 'success')
+})
+
+test('an acknowledged import with a recognition-start warning keeps saved games and reports only the unfinished follow-up', async t => {
+  const { a, api, state, games, messages } = await harness(t)
+  const warning = '本地游戏已保存，但自动补全未能启动。请稍后在“资料整理”中点击“只补缺失”。'
+  const imported = game('Fresh'), calls: unknown[] = []
+  let reads = 0
+  api.scanFolder = async () => [candidate('fresh', 'Fresh')]
+  api.importLocalGames = async (ids: string[], match: boolean) => { calls.push({ ids, match }); return { added: 1, skipped: 0, matchingStarted: false, warning } }
+  api.getState = async () => { reads++; return state([...games, imported]) }
+  await a.scan(); await a.importSelected()
+  assert.deepEqual(structuredClone(calls), [{ ids: ['fresh'], match: true }])
+  assert.equal(reads, 1)
+  assert.equal(a.scanOpen.value, false); assert.equal(a.page.value, 'library')
+  assert.equal(a.importError.value, ''); assert.equal(a.scanReloadNeeded.value, false)
+  assert.equal(a.busy.has('import'), false)
+  assert.ok(a.snapshot.value.games.some((item: LibraryGame) => item.id === imported.id))
+  assert.deepEqual(plain(a.chosen.value), [], 'the saved installation is removed from import selection')
+  assert.equal(messages.at(-1)?.kind, 'info')
+  assert.match(messages.at(-1)!.message, /已添加 1 部游戏/)
+  assert.match(messages.at(-1)!.message, /补全未能启动/)
+  assert.doesNotMatch(messages.at(-1)!.message, /导入未完成|请.*再次导入/)
+  assert.equal(messages.some(message => message.kind === 'error'), false)
+  await a.importSelected()
+  assert.equal(calls.length, 1); assert.equal(reads, 1, 'a handled follow-up warning does not enter import or read recovery again')
+})
+
+test('an acknowledged import with a failed snapshot switches to read recovery and never imports again even after selection becomes empty', async t => {
+  const { a, api, state, games, messages } = await harness(t)
+  let writes = 0, reads = 0
+  api.scanFolder = async () => [candidate('fresh', 'Fresh')]
+  api.importLocalGames = async () => { writes++; return { added: 1, skipped: 0 } }
+  api.getState = async () => { reads++; throw new Error('Synthetic snapshot read failure') }
+  await a.scan(); await a.importSelected()
+  assert.equal(writes, 1); assert.equal(reads, 1)
+  assert.equal(a.scanOpen.value, true); assert.equal(a.scanReloadNeeded.value, true)
+  assert.match(a.importError.value, /导入已完成.*无需再次导入/)
+  assert.deepEqual(plain(a.chosen.value), ['fresh'])
+  assert.equal(messages.some(message => message.kind === 'success'), false)
+  a.setScanSelection([])
+  await a.importSelected()
+  assert.equal(writes, 1); assert.equal(reads, 2)
+  assert.equal(a.scanReloadNeeded.value, true)
+  assert.match(a.importError.value, /导入已完成.*重新读取/)
+  const recovered = deferred<AppSnapshot>()
+  api.getState = () => { reads++; return recovered.promise }
+  const pending = a.importSelected()
+  assert.equal(a.busy.has('import'), true)
+  await a.importSelected()
+  assert.equal(writes, 1); assert.equal(reads, 3)
+  const imported = game('Fresh')
+  recovered.resolve(state([...games, imported])); await pending
+  assert.equal(a.scanReloadNeeded.value, false); assert.equal(a.importError.value, '')
+  assert.equal(a.scanOpen.value, false); assert.equal(a.page.value, 'library')
+  assert.ok(a.snapshot.value.games.some((item: LibraryGame) => item.id === imported.id))
+})
+
+for (const phase of ['write', 'snapshot'] as const) test(`a stale ${phase} failure cannot pollute the error, recovery flag or candidates of a reopened scan`, async t => {
+  const { a, api } = await harness(t)
+  const oldWrite = deferred<{ added: number; skipped: number }>(), oldRead = deferred<AppSnapshot>(), readStarted = deferred<void>()
+  let scans = 0
+  api.scanFolder = async () => ++scans === 1 ? [candidate('old', 'Old')] : [candidate('new', 'New')]
+  api.importLocalGames = () => oldWrite.promise
+  if (phase === 'snapshot') api.getState = () => { readStarted.resolve(); return oldRead.promise }
+  await a.scan()
+  const pending = a.importSelected()
+  if (phase === 'snapshot') {
+    oldWrite.resolve({ added: 1, skipped: 0 })
+    await readStarted.promise
+    assert.equal(a.scanReloadNeeded.value, true, 'the acknowledged old import reached snapshot recovery')
+  }
+  a.scanOpen.value = false; a.navigate('discover'); await a.scan()
+  a.scanQuery.value = 'New'; a.scanView.value = 'new'
+  assert.equal(a.scanReloadNeeded.value, false)
+  if (phase === 'write') oldWrite.reject(new Error('Late old write failure'))
+  else oldRead.reject(new Error('Late old snapshot failure'))
+  await pending
+  assert.equal(a.scanOpen.value, true); assert.equal(a.page.value, 'discover')
+  assert.equal(a.importError.value, ''); assert.equal(a.scanReloadNeeded.value, false)
+  assert.deepEqual(plain(a.candidates.value).map((item: ScanCandidate) => item.id), ['new'])
+  assert.deepEqual(plain(a.chosen.value), ['new'])
+  assert.equal(a.scanQuery.value, 'New'); assert.equal(a.scanView.value, 'new')
+  assert.equal(a.busy.has('import'), false)
 })
 
 test('scan preselects only new directories and filters a stale known candidate before invoking the bridge', async t => {
