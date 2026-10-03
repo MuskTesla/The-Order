@@ -6,11 +6,12 @@ import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
 import * as libraryInsights from '../src/library-insights'
+import * as savedLibraryViews from '../src/saved-library-views'
 
 async function harness() {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: () => {}, useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: () => {}, useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
   const expose = '\nglobalThis.audit = { snapshot, editor, showGame, setPreferred, pickExecutable, saveArguments, saveGame, reload, markNameEdited: typeof markNameEdited === "function" ? markNameEdited : undefined, markArgumentsEdited: typeof markArgumentsEdited === "function" ? markArgumentsEdited : undefined };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })

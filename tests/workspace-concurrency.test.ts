@@ -6,6 +6,7 @@ import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
 import * as libraryInsights from '../src/library-insights'
+import * as savedLibraryViews from '../src/saved-library-views'
 import * as coverDisplay from '../src/cover-display'
 test('cover lists cannot leak across A-B-A navigation, retry or picker reopen', async t => {
   const { a, api, state } = await harness(t), A = completeGame('A'), B = completeGame('B')
@@ -202,7 +203,7 @@ const compiledHarness = (async () => {
 async function harness(t: { after(callback: () => void): void }) {
   const { script, compiled } = await compiledHarness
   const messages: Array<{ message: string; kind: string }> = []
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...coverDisplay, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, onMounted: () => {}, onUnmounted: () => {}, isPreview: false,
     useKunMessage: (message: string, kind: string) => messages.push({ message, kind }), useKunAlert: async () => true, api: {},
     document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name

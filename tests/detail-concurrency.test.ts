@@ -6,6 +6,7 @@ import { transform } from 'esbuild'
 import * as vue from 'vue'
 import * as libraryWorkspace from '../src/library-workspace'
 import * as libraryInsights from '../src/library-insights'
+import * as savedLibraryViews from '../src/saved-library-views'
 
 const deferred = () => {
   let resolve!: (value?: any) => void, reject!: (error: Error) => void
@@ -16,9 +17,9 @@ async function harness() {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
   const messages: any[] = []
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...libraryInsights, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: (...args: any[]) => messages.push(args), useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  const sandbox: any = { Error, ...vue, ...libraryWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: (...args: any[]) => messages.push(args), useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
-  const expose = '\nglobalThis.audit = { snapshot, editor, busy, selectedGameId, selectedWork, selectedGame, detailOpen, showGame, showWork, saveGame, saveArguments, addToLibrary, removeGame };'
+  const expose = '\nglobalThis.audit = { snapshot, editor, busy, selectedGameId, selectedWork, selectedGame, detailOpen, showGame, showWork, saveGame, savePersonalRecord, personalRecordError, saveArguments, addToLibrary, removeGame };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
   vm.createContext(sandbox); vm.runInContext(compiled.code, sandbox)
   const a = sandbox.audit
@@ -129,4 +130,75 @@ test('late removal reply preserves another detail but normal removal closes its 
   api.removeGame = async () => { a.snapshot.value = state([]) }; api.getState = async () => state([])
   await a.removeGame()
   assert.equal(a.detailOpen.value, false)
+})
+
+test('personal record saves only its three fields and keeps unrelated management drafts', async () => {
+  const { a, api, games, messages } = await harness(), calls: any[] = []
+  await a.showGame(games[0]); a.editor.name = 'Unsaved name'; a.editor.categories = 'Unsaved category'; a.editor.tags = 'Unsaved tag'; a.editor.launchArgs = '["--UNSAVED"]'
+  a.editor.status = 'playing'; a.editor.personalRating = '0'; a.editor.notes = 'New personal note'
+  api.updateGame = async (id: string, patch: any) => calls.push([id, structuredClone(patch)])
+  await a.savePersonalRecord()
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [['A', { status: 'playing', personalRating: 0, notes: 'New personal note' }]])
+  assert.equal(a.editor.name, 'Unsaved name'); assert.equal(a.editor.categories, 'Unsaved category'); assert.equal(a.editor.tags, 'Unsaved tag'); assert.equal(a.editor.launchArgs, '["--UNSAVED"]')
+  assert.equal(messages.at(-1)[1], 'success')
+})
+
+test('personal record rejects invalid scores visibly and clearing a score submits null', async () => {
+  const { a, api, games, messages } = await harness(), calls: any[] = []
+  await a.showGame(games[0]); api.updateGame = async (_: string, patch: any) => calls.push(patch)
+  for (const rating of ['11', '-1', 'NaN', '1e', '-']) { a.editor.personalRating = rating; await a.savePersonalRecord(); assert.match(a.personalRecordError.value, /0 到 10/); assert.equal(a.editor.personalRating, rating) }
+  assert.equal(calls.length, 0); assert.equal(messages.filter(message => message[1] === 'success').length, 0)
+  a.editor.personalRating = ''; await a.savePersonalRecord(); assert.equal(calls.at(-1).personalRating, null); assert.equal(a.personalRecordError.value, '')
+})
+
+test('personal save captures the submitted draft once while later input remains editable and unsaved', async () => {
+  const { a, api, games, state, messages } = await harness(), response = deferred(), calls: any[] = []
+  await a.showGame(games[0]); a.editor.notes = 'Submitted note'; a.editor.personalRating = '8'
+  api.updateGame = async (_: string, patch: any) => { calls.push(JSON.parse(JSON.stringify(patch))); await response.promise }
+  const pending = a.savePersonalRecord(); await a.savePersonalRecord()
+  a.editor.notes = 'Typed while saving'; a.editor.personalRating = '9'
+  api.getState = async () => state([{ ...games[0], ...calls[0] }, games[1]])
+  response.resolve(); await pending
+  assert.equal(calls.length, 1); assert.equal(calls[0].notes, 'Submitted note'); assert.equal(calls[0].personalRating, 8)
+  assert.equal(a.editor.notes, 'Typed while saving'); assert.equal(a.editor.personalRating, '9'); assert.match(messages.at(-1)[0], /还未保存/)
+  api.updateGame = async (_: string, patch: any) => calls.push(JSON.parse(JSON.stringify(patch)))
+  await a.savePersonalRecord(); assert.equal(calls.at(-1).notes, 'Typed while saving'); assert.equal(calls.at(-1).personalRating, 9)
+})
+
+for (const reopened of [false, true]) test(`late personal save does not claim a newer ${reopened ? 'reopened A' : 'B'} draft was saved`, async () => {
+  const { a, api, games, messages } = await harness(), response = deferred()
+  await a.showGame(games[0]); a.editor.notes = 'Submitted A'; api.updateGame = () => response.promise
+  const pending = a.savePersonalRecord(); a.detailOpen.value = false; await a.showGame(games[reopened ? 0 : 1]); a.editor.notes = 'Newer draft'
+  response.resolve(); await pending
+  assert.equal(a.editor.notes, 'Newer draft'); assert.equal(messages.length, 0); assert.equal(a.personalRecordError.value, ''); assert.equal(a.busy.has('save-game'), false)
+})
+
+test('personal save failure preserves the draft, exposes the error and allows a real retry', async () => {
+  const { a, api, games, messages } = await harness()
+  await a.showGame(games[0]); a.editor.notes = 'Retryable draft'; api.updateGame = async () => { throw Error('Synthetic persistence failure') }
+  await a.savePersonalRecord(); assert.equal(a.editor.notes, 'Retryable draft'); assert.equal(a.personalRecordError.value, 'Synthetic persistence failure'); assert.equal(messages.filter(message => message[1] === 'success').length, 0)
+  let submitted: any; api.updateGame = async (_: string, patch: any) => { submitted = patch }
+  await a.savePersonalRecord(); assert.equal(submitted.notes, 'Retryable draft'); assert.equal(a.personalRecordError.value, ''); assert.equal(messages.at(-1)[1], 'success')
+})
+
+test('personal save refuses a draft belonging to another game and stays silent on a late failure', async () => {
+  const { a, api, games, messages } = await harness(), response = deferred(); let calls = 0
+  await a.showGame(games[0]); a.selectedGameId.value = games[1].id; api.updateGame = async () => { calls++; return response.promise }
+  await a.savePersonalRecord(); assert.equal(calls, 0)
+  await a.showGame(games[0]); const pending = a.savePersonalRecord(); a.detailOpen.value = false; await a.showGame(games[1]); a.editor.notes = 'B untouched'
+  response.reject(Error('Late old-view failure')); await pending
+  assert.equal(a.editor.notes, 'B untouched'); assert.equal(a.personalRecordError.value, ''); assert.equal(messages.length, 0)
+})
+
+test('personal save distinguishes a committed record from a failed snapshot refresh', async () => {
+  const { a, api, games, state, messages } = await harness(); let persisted: any, calls = 0
+  await a.showGame(games[0]); a.editor.notes = 'Committed draft'; a.editor.personalRating = '7.5'
+  api.updateGame = async (_: string, patch: any) => { persisted = { ...games[0], ...patch }; calls++ }
+  api.getState = async () => { throw Error('Synthetic snapshot failure') }
+  await a.savePersonalRecord()
+  assert.equal(calls, 1); assert.equal(persisted.notes, 'Committed draft'); assert.equal(persisted.personalRating, 7.5)
+  assert.match(a.personalRecordError.value, /记录已保存.*刷新失败/); assert.equal(a.editor.notes, 'Committed draft'); assert.equal(a.editor.personalRating, '7.5')
+  assert.equal(messages.at(-1)[1], 'warn'); assert.equal(messages.filter(message => message[1] === 'success').length, 0)
+  api.getState = async () => state([persisted, games[1]]); await a.savePersonalRecord()
+  assert.equal(a.personalRecordError.value, ''); assert.equal(messages.at(-1)[1], 'success')
 })
