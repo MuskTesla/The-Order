@@ -1,9 +1,10 @@
+param([ValidateSet('01', '02')][string]$Iteration = '01')
 $ErrorActionPreference = 'Stop'
 $taskProject = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$taskCandidate = Join-Path $taskProject '.artifacts\iteration-01\candidate\win-unpacked\The Order.exe'
-$taskProfile = Join-Path $taskProject '.artifacts\iteration-01\trial-profile'
+$taskCandidate = Join-Path $taskProject ".artifacts\iteration-$Iteration\candidate\win-unpacked\The Order.exe"
+$taskProfile = Join-Path $taskProject ".artifacts\iteration-$Iteration\trial-profile"
 if (-not (Test-Path -LiteralPath $taskCandidate -PathType Leaf)) { throw '候选程序尚未打包，请查看 docs/ai/ITERATION.md。' }
-& node (Join-Path $taskProject 'tests\iteration-trial-data.mjs')
+& node (Join-Path $taskProject 'tests\iteration-trial-data.mjs') --iteration $Iteration
 if ($LASTEXITCODE -ne 0) { throw '隔离试用书架准备失败，未启动程序。' }
 Write-Host "启动候选程序；只使用隔离数据目录：$taskProfile"
 $taskPreviousData = $env:KGM_DATA_DIR

@@ -4,7 +4,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const profile = path.join(project, '.artifacts', 'iteration-01', 'trial-profile')
+const iterationFlag = process.argv.indexOf('--iteration')
+const iteration = iterationFlag < 0 ? '01' : process.argv[iterationFlag + 1]
+if (!['01', '02'].includes(iteration)) throw Error('未知候选轮次。')
+const profile = path.join(project, '.artifacts', `iteration-${iteration}`, 'trial-profile')
 await fs.mkdir(profile, { recursive: true })
 const file = path.join(profile, 'library.json')
 try { await fs.access(file); console.log('保留已有隔离试用书架。'); process.exit(0) } catch (error) { if (error.code !== 'ENOENT') throw error }

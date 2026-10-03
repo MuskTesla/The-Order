@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Heart, Star, Play, Check, Clock3, FolderPlus, ArrowUpRight } from 'lucide-vue-next'
 import type { LibraryGame, WorkMetadata } from '../shared/types'
 import { getLaunchInstallation } from '../library-insights'
@@ -35,16 +35,41 @@ const displayedRating = computed(() => personalRating.value !== null
   : rating.value ? { score: rating.value.score.toFixed(1), scale: rating.value.scale, label: sourceLabel(rating.value.source), personal: false } : null)
 const broken = ref(false)
 const loaded = ref(false)
-watch(() => metadata.value?.coverUrl, () => { broken.value = false; loaded.value = false })
+const imageFrame = ref<HTMLButtonElement | null>(null)
+const imageRatio = ref(0)
+const frameRatio = ref(3 / 4)
+// Preserve the complete artwork when filling the actual frame would lose over 20%.
+const preserveCover = computed(() => loaded.value && !broken.value && imageRatio.value > 0
+  && Math.min(imageRatio.value / frameRatio.value, frameRatio.value / imageRatio.value) < .8)
+let frameObserver: ResizeObserver | undefined
+onMounted(() => {
+  const frame = imageFrame.value
+  if (!frame) return
+  const measure = () => {
+    const { width, height } = frame.getBoundingClientRect()
+    if (width > 0 && height > 0) frameRatio.value = width / height
+  }
+  measure()
+  frameObserver = new ResizeObserver(measure)
+  frameObserver.observe(frame)
+})
+onBeforeUnmount(() => frameObserver?.disconnect())
+function coverLoaded(event: Event) {
+  const image = event.currentTarget as HTMLImageElement
+  imageRatio.value = image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : 0
+  loaded.value = true
+}
+watch(() => metadata.value?.coverUrl, () => { broken.value = false; loaded.value = false; imageRatio.value = 0 })
 const labels = { planned: '未开始', playing: '在玩', completed: '已完成', paused: '搁置', dropped: '放弃' }
 </script>
 
 <template>
   <article :class="['game-card', { 'library-card': !!game, 'card-list': layout === 'list', 'is-selected': selected, 'selection-mode': selectionMode }]">
     <button v-if="game && selectionMode" type="button" class="card-select" role="checkbox" :aria-checked="selected" :aria-label="`${selected ? '取消选择' : '选择'} ${title}`" @click="$emit('toggleSelected')"><Check v-if="selected" :size="16" :stroke-width="2.8" /></button>
-    <button type="button" class="card-image" :class="{ 'is-loading': metadata?.coverUrl && !broken && !loaded }" :aria-busy="!!metadata?.coverUrl && !broken && !loaded" :aria-label="`查看 ${title}`" @click="$emit('open')">
-      <img v-if="metadata?.coverUrl && !broken" :src="metadata.coverUrl" :alt="title" loading="lazy" referrerpolicy="no-referrer" @load="loaded = true" @error="broken = true" :class="{ 'cover-loading': !loaded }" />
-      <div v-else class="cover-placeholder"><span class="cover-placeholder-mark"><OrderMark /></span><strong>{{ title }}</strong><span>{{ broken ? '封面暂不可用' : '等待一段故事' }}</span><i aria-hidden="true"></i></div>
+    <button ref="imageFrame" type="button" class="card-image" :class="{ 'is-loading': metadata?.coverUrl && !broken && !loaded, 'preserve-cover': preserveCover }" :aria-busy="!!metadata?.coverUrl && !broken && !loaded" :aria-label="`查看 ${title}`" @click="$emit('open')">
+      <img v-if="metadata?.coverUrl && !broken" class="cover-foreground" :src="metadata.coverUrl" :alt="title" loading="lazy" referrerpolicy="no-referrer" @load="coverLoaded" @error="broken = true" :class="{ 'cover-loading': !loaded }" />
+      <img v-if="preserveCover && metadata?.coverUrl" class="cover-backdrop" :src="metadata.coverUrl" alt="" aria-hidden="true" loading="lazy" referrerpolicy="no-referrer" />
+      <div v-if="!metadata?.coverUrl || broken" class="cover-placeholder"><span class="cover-placeholder-mark"><OrderMark /></span><strong>{{ title }}</strong><span>{{ broken ? '封面暂不可用' : '等待一段故事' }}</span><i aria-hidden="true"></i></div>
       <span v-if="metadata?.coverUrl && !broken && !loaded" class="cover-loading-label" role="status">封面加载中</span>
       <span class="card-open">作品详情 <ArrowUpRight :size="13" /></span>
     </button>

@@ -71,6 +71,46 @@ function imageUrl(value: unknown): string | null {
   } catch { return null }
 }
 
+function selectedCoverUrl(work: JsonObject, includeNsfw: boolean): string | null {
+  // covers[] contains the whole media pool, even when the work is SFW. The
+  // nsfw request flag alone does not filter explicit cover rows.
+  const allowedUrl = (cover: JsonObject) =>
+    !includeNsfw && cover.sexual === 'explicit' ? null : imageUrl(cover)
+  const electedCover = object(work.cover)
+  const elected = allowedUrl(electedCover)
+  const candidates = [...rows(work.covers), electedCover].flatMap(cover => {
+    const url = allowedUrl(cover)
+    return url ? [{ cover, url }] : []
+  })
+  const portraitUrls = new Set(candidates.filter(({ cover }) => {
+    const { width, height } = cover
+    // Only documented, measured positive pixel dimensions establish a portrait.
+    // Unknown dimensions and pins cannot establish the image's shape.
+    return typeof width === 'number' && typeof height === 'number' &&
+      Number.isSafeInteger(width) && Number.isSafeInteger(height) &&
+      width > 0 && height > width && width <= 65535 && height <= 65535
+  }).map(candidate => candidate.url))
+  // Slot and ballot dimensions may arrive independently. Shape evidence from
+  // an allowed occurrence of the same URL also applies to its vote-bearing row.
+  const pool = portraitUrls.size ? candidates.filter(candidate => portraitUrls.has(candidate.url)) : candidates
+  let best: { id: string; url: string; votes: number } | undefined
+  for (const { cover, url } of pool) {
+    const id = text(cover.id)
+    const votes = cover.vote_count
+    if (!DECIMAL_ID.test(id) || typeof votes !== 'number' || !Number.isSafeInteger(votes) || votes <= 0) continue
+    // A tied elected image stays familiar; otherwise the lower cover-row id
+    // makes a tie stable across upstream ordering changes. A pin is not a vote.
+    if (!best || votes > best.votes || (votes === best.votes &&
+      (url === elected && best.url !== elected || ((url === elected) === (best.url === elected) && BigInt(id) < BigInt(best.id))))) {
+      best = { id, url, votes }
+    }
+  }
+  // Collection reads only elect a cover; detail include=covers supplies vote
+  // rows. Every fallback remains inside the portrait pool whenever it exists,
+  // including a measured elected portrait that is absent from covers[].
+  return best?.url ?? pool.find(candidate => candidate.url === elected)?.url ?? pool[0]?.url ?? null
+}
+
 function referenceUrl(source: string, id: string): string | undefined {
   if (source === 'vndb' && /^[vr][0-9]+$/.test(id)) return `https://vndb.org/${id}`
   if (!DECIMAL_ID.test(id)) return undefined
@@ -117,7 +157,7 @@ function mapTitleEvidence(work: JsonObject, titles: JsonObject[]): NonNullable<W
   return [...evidence.values()]
 }
 
-function mapWork(value: unknown): WorkMetadata {
+function mapWork(value: unknown, includeNsfw: boolean): WorkMetadata {
   const work = object(value)
   const id = text(work.id)
   if (work.object !== 'work' || !DECIMAL_ID.test(id)) {
@@ -164,7 +204,7 @@ function mapWork(value: unknown): WorkMetadata {
     aliases: unique([text(work.latin), ...titles.flatMap(item => [text(item.title), text(item.latin)])]
       .filter(item => item !== title && item !== originalTitle)),
     titleEvidence: mapTitleEvidence(work, titles),
-    coverUrl: imageUrl(work.cover) ?? rows(work.covers).map(imageUrl).find(Boolean) ?? null,
+    coverUrl: selectedCoverUrl(work, includeNsfw),
     bannerUrl: imageUrl(work.banner),
     description: text(description?.value),
     releaseDate: /^\d{4}-\d{2}-\d{2}$/.test(releaseDate) ? releaseDate : null,
@@ -308,7 +348,7 @@ export class NextMoeClient {
           const entry = object(ref)
           return typeof entry.source !== 'string' || !entry.source || typeof entry.external_id !== 'string' || !entry.external_id
         }))) throw new NextMoeError('API 返回的作品来源编号格式不正确。', 'INVALID_RESPONSE')
-        const work = mapWork(value)
+        const work = mapWork(value, this.includeNsfw)
         // Batch responses have no positional contract. Compare the verbatim upstream refs;
         // unrelated works and missing refs must never become automatic title matches.
         if (!rows(row.refs).some(ref => requested.has(`${ref.source}:${ref.external_id}`))) continue
@@ -352,7 +392,7 @@ export class NextMoeClient {
       const works = new Map<string, WorkMetadata>()
       for (const value of details.items) {
         if (!requested.has(text(object(value).id))) continue
-        const work = mapWork(value)
+        const work = mapWork(value, this.includeNsfw)
         works.set(work.id, work)
       }
       // A work can disappear or become hidden between the two reads (batch missing[]).
@@ -373,7 +413,7 @@ export class NextMoeClient {
           const body = await this.request(`catalog/works/${currentId}`, {
             nsfw: String(this.includeNsfw), include: 'titles,refs,links,intros,covers,companies,ratings,tags,characters'
           }, scope)
-          return mapWork(body)
+          return mapWork(body, this.includeNsfw)
         } catch (error) {
           if (!(error instanceof MergedWork)) throw error
           currentId = error.currentId

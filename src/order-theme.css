@@ -99,10 +99,10 @@ main { padding:32px 34px; max-width:1700px; }
 .game-card:hover,.game-card.library-card:hover { transform:translateY(-3px); box-shadow:0 10px 25px #273b6512; border-color:#aebfde; }
 .game-card.is-selected { border-color:#5576c2; box-shadow:0 0 0 2px #5679c52b; background:#f8faff; }
 .game-card .card-image,.game-card.library-card .card-image,.library-busy .game-card.library-card .card-image { aspect-ratio:3/4; height:auto; flex-shrink:0; background:#e8edf5; border-bottom:1px solid #dfe6f0; }
-.game-card .card-image>img { object-fit:cover; }
-.game-card.library-card .card-image>img { object-fit:contain; object-position:center; }
-.game-card .card-image img.cover-loading { opacity:0; }
-.game-card:hover .card-image>img { transform:scale(1.02); }
+.game-card .card-image>.cover-foreground { object-fit:cover; }
+.game-card.library-card .card-image>.cover-foreground { object-fit:contain; object-position:center; }
+.game-card .card-image>.cover-foreground.cover-loading { opacity:0; }
+.game-card:hover .card-image>.cover-foreground { transform:scale(1.02); }
 .game-card .cover-placeholder { position:relative; gap:12px; padding:24px; background:linear-gradient(155deg,#e9f2fa,#f5f5fb 60%,#e1e8f5); color:#7685a5; overflow:hidden; }
 .game-card .cover-placeholder:before,.game-card .cover-placeholder:after { content:""; position:absolute; width:130%; aspect-ratio:1; border:1px solid #708dc21d; border-radius:50%; pointer-events:none; }
 .game-card .cover-placeholder:before { top:35%; left:-80%; }
@@ -158,7 +158,7 @@ main { padding:32px 34px; max-width:1700px; }
 .game-card.card-list { display:grid; grid-template-columns:96px minmax(0,1fr); gap:17px; align-items:stretch; padding:12px; border-radius:12px; }
 .game-card.card-list:hover { transform:translateX(2px); }
 .game-card.card-list .card-image,.library-busy .game-card.card-list .card-image { width:96px; min-height:136px; height:100%; aspect-ratio:auto; border:1px solid #dce4f0; border-radius:7px; }
-.game-card.card-list .card-image>img { object-fit:contain; }
+.game-card.card-list .card-image>.cover-foreground { object-fit:contain; }
 .game-card.card-list .cover-placeholder { padding:9px; gap:7px; }
 .game-card.card-list .cover-placeholder-mark { width:37px; height:37px; }
 .game-card.card-list .cover-placeholder-mark .order-mark { width:25px; height:25px; }
@@ -396,7 +396,6 @@ main { padding:32px 34px; max-width:1700px; }
 .library-result-bar { min-height:30px; margin:10px 0 12px; }
 .library-view-actions button { height:30px; min-width:32px; padding-inline:9px; }
 .library-main .library-overview { margin-bottom:12px; }
-.game-card.library-card:not(.card-list) .card-image,.library-busy .game-card.library-card:not(.card-list) .card-image { height:clamp(180px,25vh,270px); aspect-ratio:auto; }
 .game-card.library-card:not(.card-list) .card-copy { padding:11px 12px 10px; }
 .game-card.library-card:not(.card-list) .card-meta { margin-bottom:4px; }
 .game-card.library-card:not(.card-list) .card-copy>p { margin-top:2px; }

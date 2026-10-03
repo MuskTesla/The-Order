@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 import vm from 'node:vm'
 import { parse, compileScript } from '@vue/compiler-sfc'
 import { transform } from 'esbuild'
-import { reactive, type VNode } from 'vue'
+import { nextTick, reactive, type VNode } from 'vue'
 
 // Render the actual SFC's compiled template, including its real computed props
 // and native button handlers. No duplicate implementation of launch readiness.
@@ -16,7 +16,10 @@ const component = (async () => {
   const script = compileScript(descriptor, { id: 'game-card-regression', inlineTemplate: true })
   const compiled = await transform(script.content, { loader: 'ts', format: 'cjs', target: 'es2022' })
   const module = { exports: {} as any }
-  vm.runInNewContext(compiled.code, { module, exports: module.exports, require: (id: string) => id.endsWith('.vue') ? { default: { name: 'OrderMark' } } : require(id) })
+  // This rendererless harness exercises the template. Actual frame sizing and
+  // observer cleanup are checked in the isolated Electron cover regression.
+  vm.runInNewContext(compiled.code, { module, exports: module.exports, require: (id: string) => id.endsWith('.vue') ? { default: { name: 'OrderMark' } }
+    : id === 'vue' ? { ...require(id), onMounted() {}, onBeforeUnmount() {} } : require(id) })
   return module.exports.default
 })()
 
@@ -106,4 +109,45 @@ test('source rating is labeled when personal rating is absent, with no unrated o
   assert.ok(nodeText(card.find('card-rating-summary')!).includes('8.5'))
   assert.equal(card.find('card-personal-rating'), undefined)
   assert.equal(card.find('card-rating'), undefined)
+})
+
+const coveredGame = () => ({ ...game([]), metadata: { title: 'Synthetic cover', coverUrl: 'https://cover-fixture.invalid/portrait.svg', ratings: [], developers: [], tags: [] } })
+
+test('loading covers do not display a placeholder or eagerly request a backdrop; ordinary portraits fill', async () => {
+  const card = await mount({ game: coveredGame() })
+  assert.equal(card.find('cover-placeholder'), undefined)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
+  const image = card.find('cover-foreground')!
+  assert.equal(image.props!.loading, 'lazy')
+  assert.equal(image.props!.referrerpolicy, 'no-referrer')
+  image.props!.onLoad({ currentTarget: { naturalWidth: 600, naturalHeight: 900 } })
+  assert.equal(card.find('card-image')!.props!['aria-busy'], false)
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), false)
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('cover-placeholder'), undefined)
+})
+
+test('unusual proportions preserve the artwork with a decorative same-image backdrop, including image changes and failures', async () => {
+  const card = await mount({ game: coveredGame() })
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 1200, naturalHeight: 600 } })
+  assert.equal(hasClass(card.find('card-image')!, 'preserve-cover'), true)
+  const backdrop = card.find('cover-backdrop')!
+  assert.equal(backdrop.props!.src, card.find('cover-foreground')!.props!.src)
+  assert.equal(backdrop.props!.alt, '')
+  assert.equal(backdrop.props!['aria-hidden'], 'true')
+  assert.equal(backdrop.props!.loading, 'lazy')
+  card.props.game.metadata.coverUrl = 'https://cover-fixture.invalid/replacement.svg'
+  await nextTick()
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], true)
+  card.find('cover-foreground')!.props!.onLoad({ currentTarget: { naturalWidth: 300, naturalHeight: 1200 } })
+  assert.ok(card.find('cover-backdrop'))
+  card.find('cover-foreground')!.props!.onError()
+  assert.equal(card.find('cover-backdrop'), undefined)
+  assert.equal(card.find('cover-foreground'), undefined)
+  assert.equal(card.find('card-image')!.props!['aria-busy'], false)
+  assert.ok(nodeText(card.find('cover-placeholder')!).includes('封面暂不可用'))
+  card.find('card-image')!.props!.onClick()
+  assert.deepEqual(card.events, [['open']])
 })
