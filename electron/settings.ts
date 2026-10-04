@@ -15,7 +15,7 @@ function coverDisplay(value: unknown): NonPortraitCoverDisplay {
 }
 
 export class SettingsStore {
-  private value: StoredSettings = { version: 1, baseUrl: 'https://api.nextmoe.dev/v2/', encryptedKey: null, includeNsfw: true, theme: 'light', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }
+  private value: StoredSettings = { version: 1, baseUrl: 'https://api.nextmoe.dev/v2/', encryptedKey: null, includeNsfw: true, theme: 'system', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }
   private readonly file: string
   private queue: Promise<void> = Promise.resolve()
   constructor(dataDir: string, private readonly codec: SecretCodec) { this.file = path.join(dataDir, 'settings.json') }

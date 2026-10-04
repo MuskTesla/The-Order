@@ -10,6 +10,7 @@ import DetailCover from './components/DetailCover.vue'
 import { gameCoverDisplay, gameCoverUrl, workCoverUrl } from './cover-display'
 import SectionSignature from './components/SectionSignature.vue'
 import OrderMark from './components/OrderMark.vue'
+import DesktopTitlebar from './components/DesktopTitlebar.vue'
 import LibraryOverview from './components/LibraryOverview.vue'
 import LibraryCollections from './components/LibraryCollections.vue'
 import LibrarySavedViews from './components/LibrarySavedViews.vue'
@@ -948,6 +949,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 </script>
 
 <template>
+  <DesktopTitlebar @home="navigate('library')" />
   <div class="app-shell" :class="{ 'library-page': page === 'library' }">
     <aside class="sidebar compact-sidebar" aria-label="应用导航">
       <button class="brand" aria-label="The Order，返回我的书架" title="The Order" @click="navigate('library')"><span class="brand-mark"><OrderMark /></span></button>

@@ -26,6 +26,20 @@ test('matching effects use normalized transaction values and ignore appearance',
 })
 async function fixture() { const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kgm-settings-')); const store = new SettingsStore(dir, codec); await store.initialize(); return { dir, store } }
 
+test('a new profile follows the system while existing explicit themes remain unchanged', async () => {
+  const { dir, store } = await fixture()
+  try {
+    assert.equal(store.getPublic().theme, 'system')
+    for (const theme of ['light', 'dark', 'system'] as const) {
+      await store.save({ ...store.getPublic(), theme })
+      const before = await fs.readFile(path.join(dir, 'settings.json'), 'utf8')
+      const reopened = new SettingsStore(dir, codec); await reopened.initialize()
+      assert.equal(reopened.getPublic().theme, theme)
+      assert.equal(await fs.readFile(path.join(dir, 'settings.json'), 'utf8'), before)
+    }
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})
+
 test('credentials are excluded from public settings and survive reload through the codec', async () => {
   const { dir, store } = await fixture()
   try {
@@ -54,9 +68,10 @@ test('unavailable encryption refuses key persistence and leaves the old config u
   const { dir } = await fixture()
   try {
     const store = new SettingsStore(dir, { ...codec, available: () => false }); await store.initialize()
+    const before = store.getPublic()
     await assert.rejects(store.save({ baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: 'test_credential', includeNsfw: true, theme: 'dark' }), /凭据保护/)
-    assert.equal(store.getPublic().hasApiKey, false)
-    assert.equal(store.getPublic().theme, 'light')
+    assert.deepEqual(store.getPublic(), before)
+    await assert.rejects(fs.access(path.join(dir, 'settings.json')), { code: 'ENOENT' })
   } finally { await fs.rm(dir, { recursive: true, force: true }) }
 })
 

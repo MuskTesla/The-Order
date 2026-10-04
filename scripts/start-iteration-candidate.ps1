@@ -1,4 +1,4 @@
-param([ValidateSet('01', '02', '03', '04')][string]$Iteration = '01')
+param([ValidateSet('01', '02', '03', '04', '05')][string]$Iteration = '01')
 $ErrorActionPreference = 'Stop'
 $taskProject = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $taskCandidate = Join-Path $taskProject ".artifacts\iteration-$Iteration\candidate\win-unpacked\The Order.exe"

@@ -7,9 +7,9 @@ import { deflateSync } from 'node:zlib'
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const iterationFlag = process.argv.indexOf('--iteration')
 const iteration = iterationFlag < 0 ? '01' : process.argv[iterationFlag + 1]
-if (!['01', '02', '03', '04'].includes(iteration)) throw Error('未知候选轮次。')
+if (!['01', '02', '03', '04', '05'].includes(iteration)) throw Error('未知候选轮次。')
 const profile = path.join(project, '.artifacts', `iteration-${iteration}`, 'trial-profile')
-if (iteration === '04') {
+if (iteration === '04' || iteration === '05') {
   const { prepareTrialProfile } = await import('../scripts/overnight-trial-data.mjs')
   const result = await prepareTrialProfile({ profile })
   console.log(`${result.created ? '已创建虚构隔离书架' : '保留已有隔离书架及试用修改'}：${result.profile}`)

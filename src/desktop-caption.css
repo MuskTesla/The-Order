@@ -1,0 +1,20 @@
+/* The OS owns caption buttons. Only this safe area is draggable; its geometry
+   is supplied by Chromium and remains correct when zoom/DPI changes. */
+:root { --desktop-titlebar-height:0px; }
+:root.windows-caption { --desktop-titlebar-height:env(titlebar-area-height,40px); }
+.desktop-titlebar { position:fixed; inset:0 0 auto; height:var(--desktop-titlebar-height); background:var(--app-bg); z-index:60; user-select:none; }
+.desktop-caption-area { position:absolute; left:env(titlebar-area-x,0px); top:env(titlebar-area-y,0px); width:env(titlebar-area-width,calc(100% - 138px)); height:env(titlebar-area-height,40px); display:flex; align-items:center; app-region:drag; -webkit-app-region:drag; }
+.desktop-caption-home { display:flex; align-items:center; gap:10px; height:100%; max-width:100%; padding:0 16px; color:var(--ink); font-size:12px; line-height:16px; font-weight:400; app-region:no-drag; -webkit-app-region:no-drag; }
+.desktop-caption-home .order-mark { width:18px; height:18px; }
+.desktop-caption-home:focus-visible { outline:2px solid var(--blue); outline-offset:-3px; }
+:root.windows-caption .app-shell { padding-top:var(--desktop-titlebar-height); }
+:root.windows-caption .sidebar { top:var(--desktop-titlebar-height); height:calc(100dvh - var(--desktop-titlebar-height)); }
+:root.windows-caption .compact-sidebar .brand { display:none; }
+:root.windows-caption .workspace>.topbar { top:var(--desktop-titlebar-height); }
+:root.windows-caption [data-kun-overlay] { top:var(--desktop-titlebar-height); height:calc(100dvh - var(--desktop-titlebar-height)) !important; }
+:root.windows-caption .kun-modal-panel { max-height:calc(100dvh - var(--desktop-titlebar-height) - 32px); }
+@media(forced-colors:active) {
+  .desktop-titlebar { background:Canvas; color:CanvasText; }
+  .desktop-caption-home { color:CanvasText; }
+  .desktop-caption-home:focus-visible { outline-color:Highlight; }
+}

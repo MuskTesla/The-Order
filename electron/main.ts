@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session, shell, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session, shell, Tray, Menu, nativeImage, nativeTheme, screen, systemPreferences } from 'electron'
 import { promises as fs } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
@@ -13,6 +13,7 @@ import { SettingsStore } from './settings'
 import { MetadataMatcher, loadTitleIndex } from './metadata-matching'
 import { hasExplicitGameVersion } from './title-matching'
 import { assertLocalCoverDecodes, normalizePhoto, readPhotoFile } from './local-cover'
+import { getWindowAppearance, getWindowSizeForWorkArea } from './window-appearance'
 import type { BulkGamePatch, GamePatch, NonPortraitCoverDisplay, ScanCandidate, SettingsInput, WorkCover } from '../src/shared/types'
 
 app.setName('The Order')
@@ -97,6 +98,8 @@ function registerIpc(): void {
   handle('getState', () => ({ games: library.getGames(), settings: settings.getPublic(), activeSession: tracker.getActiveSession(), dataPath: dataDir, version: app.getVersion(), matching: matcher.getState() }))
   handle('saveSettings', (input: SettingsInput) => withIdentityLock(async () => {
     const committed = await settings.saveWithEffects(input)
+    nativeTheme.themeSource = committed.settings.theme
+    updateWindowAppearance()
     let warning: string | undefined
     if (committed.matchingChanged) {
       try { await matcher.cancel() }
@@ -333,8 +336,29 @@ async function provisionKey(): Promise<boolean> {
   return true
 }
 
+function currentWindowAppearance() {
+  const forcedColors = nativeTheme.inForcedColorsMode || nativeTheme.shouldUseHighContrastColors
+  return getWindowAppearance({
+    dark: nativeTheme.shouldUseDarkColors,
+    forcedColors,
+    ...(process.platform === 'win32' && forcedColors ? {
+      systemBackground: systemPreferences.getColor('window'),
+      systemForeground: systemPreferences.getColor('window-text')
+    } : {})
+  })
+}
+
+function updateWindowAppearance(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  const appearance = currentWindowAppearance()
+  mainWindow.setBackgroundColor(appearance.backgroundColor)
+  if (process.platform === 'win32') mainWindow.setTitleBarOverlay(appearance.titleBarOverlay)
+}
+
 function createWindow(): void {
-  mainWindow = new BrowserWindow({ width: 1440, height: 940, minWidth: 1000, minHeight: 700, title: 'The Order · Galgame 书架', icon: path.resolve(__dirname, '../dist/icon.png'), backgroundColor: '#f7faff', autoHideMenuBar: true, show: false, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } })
+  const appearance = currentWindowAppearance()
+  const size = getWindowSizeForWorkArea(screen.getPrimaryDisplay().workAreaSize)
+  mainWindow = new BrowserWindow({ ...size, center: true, title: 'The Order · Galgame 书架', icon: path.resolve(__dirname, '../dist/icon.png'), backgroundColor: appearance.backgroundColor, ...(process.platform === 'win32' ? { titleBarStyle: 'hidden', titleBarOverlay: appearance.titleBarOverlay } : {}), autoHideMenuBar: true, show: false, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true } })
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   mainWindow.webContents.on('will-navigate', event => { event.preventDefault() })
   mainWindow.on('close', event => {
@@ -359,6 +383,8 @@ else {
   app.whenReady().then(async () => {
     await library.initialize(); await settings.initialize(); await matcher.initialize()
     await provisionKey()
+    nativeTheme.themeSource = settings.getPublic().theme
+    nativeTheme.on('updated', updateWindowAppearance)
     if (process.argv.includes('--provision-only')) { allowQuit = true; app.quit(); return }
     const dist = path.resolve(__dirname, '../dist')
     protocol.handle('kun-manager', request => {
