@@ -124,7 +124,7 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
                 var fields = new[] { e.Name, e.Metadata?.Title ?? "", e.Metadata?.OriginalTitle ?? "" }.Concat(e.Metadata?.Aliases ?? []).Concat(e.Metadata?.Developers ?? [])
                     .Concat(e.Categories).Concat(combinedTags).Concat(e.Installations.Select(i => i.Folder));
                 var preferred = e.Installations.FirstOrDefault(i => i.Id == e.PreferredInstallationId) ?? (e.Installations.Length == 1 ? e.Installations[0] : null);
-                built.Add(new(new GameSummary(e.Id, e.Name, e.Status, e.PersonalRating, e.Favorite, string.Join(" · ", e.Categories.Concat(e.CustomTags).Take(4)), e.Installations.Length, e.TotalPlaySeconds) { CoverKey = e.LocalCover is null ? null : LocalCoverSources.Key(e.LocalCover) },
+                built.Add(new(new GameSummary(e.Id, e.Name, e.Status, e.PersonalRating, e.Favorite, string.Join(" · ", e.Categories.Concat(e.CustomTags).Take(4)), e.Installations.Length, e.TotalPlaySeconds) { CoverKey = ImageSourceKeys.For(e), HasLocalCover = e.LocalCover is not null },
                     [.. fields.Select(text.NormalizeSearch)], e.Categories, combinedTags,
                     e.Installations.Length > 0 && string.IsNullOrEmpty(e.Metadata?.CoverUrl),
                     e.Installations.Length > 0 && (preferred?.Executable is null || !preferred.Executable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)), e.AddedAt, e.LastPlayedAt ?? ""));

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TheOrder.Application;
 using TheOrder.Infrastructure.Legacy;
+using TheOrder.Infrastructure.Online;
 using TheOrder.Platform.Windows;
 using TheOrder.Presentation;
 
@@ -26,6 +27,25 @@ internal static class Composition
         services.AddSingleton<IRasterCodec, WindowsRasterCodec>();
         services.AddSingleton<OfflineFilesClient>();
         services.AddSingleton<LocalCoverSources>();
+        services.AddSingleton<IsolatedCredentialStore>();
+        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<IsolatedCredentialStore>());
+        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<IsolatedCredentialStore>());
+        var fixtureOnline = nativeConfiguration.Diagnostics && configuration["ONLINE_FIXTURE"] == "1";
+        if (fixtureOnline)
+        {
+            services.AddSingleton<SyntheticOnline>();
+            services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<SyntheticOnline>());
+            services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<SyntheticOnline>());
+        }
+        services.AddSingleton<CatalogNetwork>();
+        services.AddSingleton<ImageNetwork>();
+        services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
+        services.AddSingleton<IOnlineCatalog, NextMoeCatalog>();
+        services.AddSingleton(p => new RemoteCoverSource(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<ImageNetwork>().Client));
+        services.AddSingleton<IRemoteCoverRegistry>(p => p.GetRequiredService<RemoteCoverSource>());
+        services.AddSingleton(p => new CombinedCoverSources(p.GetRequiredService<LocalCoverSources>(), p.GetRequiredService<OfflineLibraryClient>(), p.GetRequiredService<IRemoteCoverRegistry>(), p.GetRequiredService<RemoteCoverSource>()));
+        services.AddSingleton<OnlineLibraryClient>();
+        services.AddSingleton<OnlineViewModel>();
         services.AddSingleton<IThumbnailDiskCache, IsolatedThumbnailCache>();
         services.AddSingleton(new ImageOptions());
         services.AddSingleton<IImagePipeline, ImagePipeline>();
@@ -34,7 +54,7 @@ internal static class Composition
         {
             services.AddSingleton(new SyntheticScenario(configuration["HOLD_PREFERENCES"] == "1", configuration["HOLD_IMAGES"] == "1"));
             services.AddSingleton<IOfflineFilesClient>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<OfflineFilesClient>()));
-            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<LocalCoverSources>()));
+            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<CombinedCoverSources>()));
             services.AddSingleton<IClientTextRules>(p => p.GetRequiredService<SyntheticScenario>().Wrap(new LegacyClientTextRules()));
             services.AddSingleton<IUiPreferencesStore>(p => p.GetRequiredService<SyntheticScenario>().Wrap(new IsolatedUiPreferencesStore(nativeConfiguration)));
             services.AddSingleton<IOfflineLibraryClient>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<OfflineLibraryClient>()));
@@ -42,7 +62,7 @@ internal static class Composition
         else
         {
             services.AddSingleton<IOfflineFilesClient>(p => p.GetRequiredService<OfflineFilesClient>());
-            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<LocalCoverSources>());
+            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<CombinedCoverSources>());
             services.AddSingleton<IClientTextRules, LegacyClientTextRules>();
             services.AddSingleton<IUiPreferencesStore, IsolatedUiPreferencesStore>();
             services.AddSingleton<IOfflineLibraryClient>(p => p.GetRequiredService<OfflineLibraryClient>());

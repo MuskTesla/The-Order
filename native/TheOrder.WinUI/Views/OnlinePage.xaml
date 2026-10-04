@@ -1,0 +1,28 @@
+<Page x:Class="TheOrder.WinUI.Views.OnlinePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:p="using:TheOrder.Presentation" xmlns:local="using:TheOrder.WinUI.Views">
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="12">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <TextBlock Text="发现作品" Style="{StaticResource PageTitleStyle}"/>
+  <Grid Grid.Row="1" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBox PlaceholderText="搜索在线目录 · 中文名、日文名或别名" Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="OnlineQuery"/>
+   <Button Grid.Column="1" Content="搜索 / 重试" Click="OnSearch" AutomationProperties.AutomationId="OnlineSearch"/>
+   <Button Grid.Column="2" Content="取消" Click="OnCancel" AutomationProperties.AutomationId="OnlineCancel"/>
+  </Grid>
+  <StackPanel Grid.Row="2" Spacing="4"><ProgressBar IsIndeterminate="True" Visibility="{x:Bind BusyVisibility(ViewModel.SearchBusy), Mode=OneWay}"/><TextBlock Text="{x:Bind ViewModel.SearchMessage, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="OnlineSearchMessage"/></StackPanel>
+  <Grid Grid.Row="3" ColumnSpacing="20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ListView ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}" IsItemClickEnabled="True" ItemClick="OnWork" SelectionMode="None" AutomationProperties.AutomationId="OnlineResults">
+     <ListView.ItemTemplate><DataTemplate x:DataType="p:OnlineCard"><Grid Padding="4" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="60"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><local:CoverPresenter SourceKey="{x:Bind CoverKey}" Width="60" Height="84"/><StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center"><TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind Subtitle}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"/></StackPanel></Grid></DataTemplate></ListView.ItemTemplate>
+    </ListView><Button Grid.Row="1" Content="加载下一页" Click="OnMore" IsEnabled="{x:Bind ViewModel.CanLoadMore, Mode=OneWay}" AutomationProperties.AutomationId="OnlineMore"/>
+   </Grid>
+   <ScrollViewer Grid.Column="1"><StackPanel Spacing="12">
+    <TextBlock Text="{x:Bind ViewModel.DetailTitle, Mode=OneWay}" TextWrapping="Wrap" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+    <TextBlock Text="{x:Bind ViewModel.DetailMessage, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="OnlineDetailMessage"/>
+    <ProgressBar IsIndeterminate="True" Visibility="{x:Bind BusyVisibility(ViewModel.DetailBusy), Mode=OneWay}"/>
+    <local:CoverPresenter SourceKey="{x:Bind ViewModel.DetailCoverKey, Mode=OneWay}" Width="160" Height="220" HorizontalAlignment="Left"/>
+    <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="加入愿望单" Click="OnAdd" AutomationProperties.AutomationId="OnlineAddWishlist"/><Button Content="刷新 / 重试详情" Click="OnRefresh" AutomationProperties.AutomationId="OnlineRefreshDetails"/></StackPanel>
+    <TextBlock Text="{x:Bind ViewModel.DetailFacts, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+    <TextBlock Text="{x:Bind ViewModel.DetailDescription, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+   </StackPanel></ScrollViewer>
+  </Grid>
+ </Grid>
+</Page>

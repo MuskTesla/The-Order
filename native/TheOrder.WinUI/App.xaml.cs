@@ -19,6 +19,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             if (closing || host is null) return;
             closing = true;
             var owner = host;
+            owner.Window.CancelOnlineRequests();
             try
             {
                 if (!await owner.Window.ResolveUnsavedAsync()) { closing = false; return; }

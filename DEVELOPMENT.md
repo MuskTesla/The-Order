@@ -1,5 +1,101 @@
 # 开发与维护
 
+## WinUI Phase 4A：Online Data / API / Remote Assets（本机验收完成）
+
+起点 `9ae2199aba6aedbb8e8012ab38e4a3ec8eb1a1a2`，分支 `codex/winui-phase4`。仅在线数据基础，无 metadata matching、title-index识别、ranking/veto/review queue、game launch/playtime、Liquid Glass或正式数据迁移。旧Electron产品源码未修改，未升级NuGet/npm依赖。
+
+### 实际旧实现对照与分层
+
+| Electron源码行为（已读当前源码） | 原生对应 |
+| --- | --- |
+| `nextmoe.ts` 搜索返回hit，批量works补字段，按hit顺序展示；cursor前缀/上限校验 | `NextMoeCatalog` 两步共享budget；去重/恢复顺序/保留next cursor，卡片不冒充完整详情 |
+| work ID为十进制string；localized标题、详情include、elected cover优先、explicit过滤 | `RemoteWorkDto` confined于Infrastructure，映射Domain `WorkMetadata`，处理missing/null/unknown/partial与大ID |
+| 45秒overall deadline，最多2次重试，502/503/504与429 RATE_LIMITED，Retry-After | `CatalogTransport` 每operation共享CTS/剩余预算/重试计数；验证、401/403、JSON错误、取消不重试，网络连接错误也不盲重试 |
+| 流式8MiB上限，拒绝HTTP重定向，404 ENTITY_MERGED有限跟随 | ResponseHeadersRead + bounded stream + strict UTF-8/JSON；最多3次作品合并跳转，visited防环 |
+| settings safeStorage仅主进程持密钥，renderer只见状态 | 新隔离DPAPI存储，不迁移旧密钥；接口区分settings状态操作与Infrastructure secret读取 |
+| library.add按metadata ID避免重复，online-only无安装，refresh保护个人编辑 | `OnlineLibraryClient`复用 `TransactionalLibrary` 和request token，不建第二套写盘路径 |
+| Vue在线请求时效/分页、详情按需、remote图片显示 | `OnlineViewModel`独立search/detail generation；WinUI虚拟列表、明确Loading/Empty/Offline等状态，RemoteCoverSource扩展既有管线 |
+
+依赖方向保持：Domain无网络DTO；Application声明 `IOnlineCatalog` / `ICredentialSettings` / `ICredentialProvider` / `IRemoteCoverRegistry`；Infrastructure实现HTTP、mapping、bounded cache和remote source；Platform.Windows实现DPAPI与原WIC；Presentation处理用户意图；WinUI页面只绑定与调用。`CatalogNetwork` / `ImageNetwork`持有并释放各自复用的HttpClient，普通请求不new client。
+
+### 请求、认证与数据边界
+
+- 正常endpoint固定为 `https://api.nextmoe.dev/v2/`，不向用户暴露调试endpoint。连接复用5分钟、连接timeout10秒，catalog每主机最多4连接，gzip/deflate/br解压；共享45秒包含搜索两步、merge与retry。响应大小在解压后读取期间控制8MiB，不先任意ReadAsString。Body/response/request按using释放；204/malformed/坏UTF-8是InvalidResponse。
+- 分类包含NoCredential、InvalidCredential、Unauthorized、Forbidden、NotFound、RateLimited、Server、Offline、Timeout、InvalidResponse、ResponseTooLarge、InvalidRequest、RedirectBlocked、MergeLoop/Limit和CredentialStorage。Presentation将认证问题归Unauthorized状态但保留具体中文原因。HTTP408比旧版通用API错误更精确地映射Timeout，是记录在案的差异；differential只对这一分类做显式映射，不豁免请求序列或成功DTO差异。
+- retry默认500/1000ms，Retry-After delta/date/小数秒取合理等待，不超剩余budget；配额429不重试。日志 `NetworkEvent`仅method、host、status、elapsed、retry count、随机request ID，无URL query、Authorization、cookie、response body。正常装配不另写网络日志；redaction测试覆盖攻击性错误内容与secret。
+- `IsolatedCredentialStore`只访问带synthetic标记的明确目录，复用正式目录排除、reparse/目录pin检查、16KiB密文限制；`native-online-key.dpapi`以当前用户DPAPI加密后原子替换。managed原始字节和unmanaged buffer清零；临时使用的.NET string仍遵循GC生命周期，不宣称可完全清除所有内存副本。PasswordBox不显示保存值，保存立即清空输入。测试只用合成token；正式settings/safeStorage未读取。
+- 详情TTL缓存32项/8MiB源JSON预算/5分钟；refresh绕过、credential变化清空，cache generation防旧完成污染新cache。搜索不缓存完整详情。分页最多2000项、重复ID去重、重复cursor停止；page2完成不能替换新page1。每次改词立刻取消并废弃旧generation；离开页/关闭取消非关键HTTP，不把用户取消显示为错误。
+- 愿望单显式加入：planned、无安装，重复canonical ID返回原条目而不新增；沿用既有事务返回Committed语义（不据此推断必有数据变化）。refresh捕获token后联网，最终事务检查token并保留个人名称/字段；404或超时不删除资料。移除仅允许无安装条目，不访问游戏文件。已有原子写盘仍按Phase2/3关闭drain规则完成。
+
+### 远程图片与缓存
+
+只接受经API/已有书架登记的HTTPS DNS来源：443、无userinfo/fragment、URL≤8192、不接受IP literal/localhost/.local/.internal。实际ConnectCallback解析DNS并拒绝任何非公开地址，再连接已验证IP，避免第二次DNS解析；无自动redirect、cookie或auth，图片client禁用系统proxy。该策略允许API返回的公开CDN，而不是承诺所有公开域名都可信；其请求仍受下载/解码预算限制。
+
+远程response≤20MiB/20秒，Content-Type只接受PNG/JPEG，复用WIC header、单帧、4000万像素、最大decode edge1600及复用控件source/request generation保护。**WebP/其他类型或CDN跳转当前回退占位**，未为在线功能放宽本地decoder。URL+source revision经SHA-256，decode bucket进入既有thumbnail key；不以URL/query明文命名缓存。个人cover为authoritative数据，优先于remote，不进入可丢原图缓存。
+
+远程encoded cache单独64项/32MiB/10分钟；registry2048项，库来源按snapshot建索引并在需要时重新登记。原thumbnail内存64MiB/磁盘128MiB、并发2保持。API cache、原图cache、thumbnail和持久用户metadata各自独立。缓存损坏回退/重取，不删除愿望条目。
+
+### 验证结果
+
+| 项目 | 本轮实际结果 |
+| --- | --- |
+| 锁定restore；Debug/Release solution build | 成功，各0 warnings / 0 errors |
+| 完整C# | Debug / Release各557 passed / 0 failed / 0 skipped；原472+新增85 |
+| 新增online测试 | Transport44（含32 Electron在线differential与oracle freshness）、Presentation/事务集成13、RemoteCover28 |
+| 历史关键回归 | 102 transaction differential、14 fault injection、13 filesystem/cover differential保留；TRX中TransactionDifferentialTests共103含freshness |
+| Artifact pipeline | 24 passed / 0 failed / 0 skipped（增加online状态/count/details/id/cover/connection错配反例） |
+| Electron relevant | 252 passed / 0 failed / 0 skipped，原183集合加NextMoe/settings相关测试 |
+| Electron build /真实桌面import | 通过；37新增，重复0新增/37跳过，个人字段/重启/文件保留，renderer errors0 |
+| Release publish | `native-phase4a/publish-checkpoint/win-x64`成功，实际启动并正常退出 |
+| 真实API | **skipped**：没有安全可用的隔离服务凭据，不读取正式credential补测 |
+
+Deterministic handler覆盖200/204/400/401/403/404/408/429/500/502/503/504、Retry-After、坏JSON/UTF-8、超大/慢stream、断线、HTTP redirect、merge chain/loop/limit、DTO部分字段/大ID、乱序分页、旧缓存完成、TTL/预算。远程图覆盖JPEG/PNG、坏图、错误type、超大body/尺寸、redirect、危险scheme/内部地址、取消、视觉复用/源变化、cache corruption。旧ImagePipeline测试提供正确PNG CRC的超像素预分配拒绝证据；不能只用坏CRC图片证明像素预算。
+
+Oracle生成器 `native/scripts/generate-online-oracle.mjs` 实际import `electron/nextmoe.ts`，输出32个请求/映射/错误结果到 `native/fixtures/online-oracle.json`。fixture记录源SHA-256，测试验证没有漂移；不记录token，仅authorizationPresent。快速改词的可控测试强制旧响应忽略取消后迟到，真实UI则验证取消传播与最新查询稳定，两种证据不混淆。
+
+### 真实WinUI smoke及artifact范围
+
+隔离库 `.artifacts/native-phase4a/ui-profile`，初始3条synthetic，加入在线作品1后4条；无真实游戏/正式资料。诊断装配同时要求 `THE_ORDER_NATIVE_DIAGNOSTICS=1` 和 `THE_ORDER_NATIVE_ONLINE_FIXTURE=1`，生产transport/parser/VM/decoder均保留，只替换credential与HTTP handler。普通装配不会安装该handler。正常模式重启关闭ONLINE_FIXTURE，未保存密钥，书架/缓存封面仍完整可用；缺凭据连接测试在HTTP之前失败。
+
+| 真实场景 | Artifact ID / 观察 |
+| --- | --- |
+| 初始离线书架 | `offline-startup`：3条，正常Grid |
+| 在线搜索/分页 | `online-search-loaded`：2；`online-pagination-end`：3且下一页disabled（两页重叠ID去重） |
+| 详情及封面 | `remote-details-cover`：canonical1、Loaded、有效渐变图，未自动入库 |
+| 愿望单 | `wishlist-added`：Committed、4条；再次加入仍4条；`wishlist-restart`重启仍4条且缓存封面可见 |
+| 空/认证/限流/离线 | `online-empty` / `online-unauthorized` / `online-rate-limited` / `online-offline`：独立state与中文提示，本地4条不变 |
+| 坏图 | `invalid-cover-fallback`：work99详情Loaded，列表+详情占位，Errors2、Outstanding0；onlineHasCover代表有来源key，不代表decode成功 |
+| 取消 | `cancel-search-active-final` → `search-cancelled`：Loading0→Idle0，进度终止无错误 |
+| 改词 | `rapid-query-ab` / `rapid-query-ab-after-old-deadline`：A进行中输入B，AB加载2条；超过原等待窗口后hash仍AB；旧响应无权改状态 |
+| 连接测试 | `connection-test-synthetic`：接口形状/鉴权均通过才Loaded |
+| 活动请求关闭 | `close-during-network-active`：Loading；14:57:21.484Z发关闭，14:57:21.846Z exit0，约0.36秒，仅本机观察非SLA |
+| 正常装配重启 | `normal-mode-offline-restart`：4条/缓存cover；`normal-mode-no-credential`：缺密钥明确提示；随后exit0 |
+| 最终状态修复复测 | `checkpoint-startup` / `checkpoint-search-loaded` / `checkpoint-edited-query-idle` / `checkpoint-cancel-active` / `checkpoint-cancelled` / `checkpoint-close-active`：启动4条、搜索2条、改词Idle0、活动取消、活动关闭exit0 |
+
+26组manifest、26张JPEG、26份UI tree，逐项核对expected→actual、数量/页面/build/状态、文件长度/SHA-256，26个不同截图hash。所有验收截图均实际观察为候选UI，正常/错误/坏图不同。`artifact-sanity.json`保存矩阵；`final-ui-exit.json`、`normal-restart-exit.json`、`checkpoint-ui-exit.json`保存退出证据。最终PID35364于15:09:36.385Z发起关闭、15:09:36.719Z退出，约0.33秒。
+
+采集器自己取得fresh snapshot，错配直接失败，manifest最后写，不覆盖旧场景。现场一次重复加入预期NotCommitted而实际Committed、一次早期10秒查询在点击取消前已完成的预期Idle均被拒绝，没有保存成功manifest。`search-active-before-cancel`只证明早期Loading，**不证明取消**，由上述最终取消证据替代；不是降低Gate。
+
+构建证据分三批：`publish` 为MVID `f1aec2ab-5989-4195-94c4-acd52ecccb4f`，完成独立在线状态/图片/加入愿望单；`publish-final` 为MVID `f0c3cc82-958e-4e2f-9bcb-66f778c83ee0`，仅SyntheticOnline诊断等待10→40秒（低于45秒deadline），五核心层相同，完成取消/改词/重启/关闭；随后只在Presentation修复“改词清空后回Idle”和“移除凭据清除旧连接成功/详情/封面状态”，增加2项测试，生成真正交付的 `publish-checkpoint` 并完成上述六项复测。最终Debug/Release build零警告错误，full tests各557全部重跑通过。
+
+**WinUI MVID不是整个Solution指纹**：`publish-final` 与 `publish-checkpoint` 的WinUI MVID相同，但Presentation变化。最终Presentation SHA-256为 `1884A3CC532FB41D5D15F25E3F7F0E62BEAD87DE089CB7C6D0539538B1C6ED6A`。必须结合manifest的实际window.app发布路径、process ID和 `build-bundles.json` 的全部应用DLL哈希识别批次；不能宣称早期所有截图均来自最终二进制。最终修复未改变transport/DTO/credential/remote image/事务层，其他既有场景保持原有适用范围。移除凭据后的状态由生产Presentation集成测试直接调用验证，没有额外自动点击删除凭据。旧Phase3A无效证据继续作废，其他历史证据不提升覆盖范围。
+
+### 复验入口与停点
+
+从仓库根目录（不直接运行默认正式Electron入口）：
+
+```powershell
+node --import tsx native/scripts/generate-online-oracle.mjs
+node --test native/scripts/capture-ui-evidence.test.mjs
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe build native/TheOrder.slnx -c Release --no-restore
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-build
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -o .artifacts/native-phase4a/publish-checkpoint/win-x64
+```
+
+运行UI前设置已创建的标记isolated `THE_ORDER_NATIVE_DATA_DIR`，合成在线验收才开启两项诊断开关；结束清除环境覆盖。发布目录整体保留，不替换正式程序。数据与证据在 `.artifacts/` ignored，仅维护源码、fixtures和两份原文档提交。
+
+**Phase 4A 本机自检完成，建议独立Gate审查通过后再授权Phase4B；本轮checkpoint后暂停。** 未验证真实API/真实CDN与代理部署、WebP兼容、长期网络故障压力、干净机安装。没有重新跑10k图片baseline（本轮不改变其预算），UNC/generic reparse/10k unique images边界保留。`workingDirectory`降级写入门禁仍最迟Phase6并先于首次正式库写入；不能把候选与Electron指向同一可写正式profile。
+
 ## WinUI Phase 3B.1：Filesystem Boundary Remediation（整改自检完成）
 
 起点 `e75663c42fff9b0eea194cbca7d2706cbae45412`，保持 `codex/winui-phase3`。Phase 3B 独立 Gate 判为 NO-GO；本节 supersede 下方历史阶段关于扫描范围、不可用历史 identity 和候选连续性已经可靠的判断。只修复三项 filesystem MAJOR、深度提示和过期导航；没有 Phase 4、在线 API、识别、启动、计时、SQLite、Liquid Glass 或正式迁移。

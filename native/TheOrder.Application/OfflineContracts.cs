@@ -12,6 +12,7 @@ public sealed record LibraryQuery(string Text = "", string View = "all", string 
 public sealed record GameSummary(string Id, string Name, string Status, double? Rating, bool Favorite, string Labels, int InstallationCount, long PlaySeconds)
 {
     public string? CoverKey { get; init; }
+    public bool HasLocalCover { get; init; }
     public string StatusText => StatusNames.Display(Status);
     public string RatingText => Rating is null ? "未评分" : $"{Rating:0.#} 分";
     public string FavoriteText => Favorite ? "♥ 收藏" : "";

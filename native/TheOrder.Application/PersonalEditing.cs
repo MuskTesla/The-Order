@@ -38,7 +38,7 @@ public sealed partial class TransactionalLibrary
             e.Installations.IsEmpty ? "愿望条目 · 尚无安装" : string.Join("\n", e.Installations.Select(i => $"{(i.Id == e.PreferredInstallationId ? "首选 · " : "")}{i.Folder}\n{i.Executable ?? "尚未设置启动程序"}")),
             $"累计 {e.TotalPlaySeconds / 3600} 小时 {e.TotalPlaySeconds % 3600 / 60} 分钟 · {e.PlayCount} 次 · {e.Sessions.Length} 条历史记录",
             e.LocalCover is not null ? "个人本地封面 · 保存在书架资料中" : e.CoverChoice is not null || e.Metadata?.CoverUrl is not null ? "已保留资料封面 · 离线占位" : "暂无封面",
-            new(epoch, id, lifecycles[id].Generation, personal)) { CoverKey = e.LocalCover is null ? null : LocalCoverSources.Key(e.LocalCover), CoverToken = new(epoch, id, lifecycles[id].Generation, e.LocalCover, e.CoverChoice) });
+            new(epoch, id, lifecycles[id].Generation, personal)) { CoverKey = ImageSourceKeys.For(e), CoverToken = new(epoch, id, lifecycles[id].Generation, e.LocalCover, e.CoverChoice) });
     }, cancellation);
 
     public Task<CommitResult<LibraryEntry>> SaveLocalCoverAsync(CoverEditToken token, LocalCover? cover, CancellationToken cancellation = default)

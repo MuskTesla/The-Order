@@ -1,0 +1,3281 @@
+{
+  "sourceSha256": "ea2a1bba30dc044b06d44b8d86237108cfbe787b2dca3c016157db0fd6ff1430",
+  "fixed": "2026-10-04T00:00:00.000Z",
+  "cases": [
+    {
+      "name": "detail-rich",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "id": "86",
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/cover.png"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/cover.png",
+                "sexual": "safe",
+                "width": 60,
+                "height": 90,
+                "vote_count": 2
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "86",
+          "title": "合成作品",
+          "originalTitle": "Synthetic Original",
+          "aliases": [
+            "Romanized",
+            "別名",
+            "Alias"
+          ],
+          "titleEvidence": [
+            {
+              "text": "Romanized",
+              "kind": "latin",
+              "isMachine": false,
+              "language": null
+            },
+            {
+              "text": "別名",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            },
+            {
+              "text": "Alias",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            }
+          ],
+          "coverUrl": "https://images.example/cover.png",
+          "covers": [
+            {
+              "id": "1",
+              "url": "https://images.example/cover.png",
+              "width": 60,
+              "height": 90,
+              "votes": 2,
+              "sexual": "safe"
+            }
+          ],
+          "bannerUrl": null,
+          "description": "合成简介",
+          "releaseDate": "2020-01-02",
+          "releaseDatePrecision": "day",
+          "developers": [
+            "Studio"
+          ],
+          "tags": [
+            "标签"
+          ],
+          "ratings": [
+            {
+              "source": "vndb",
+              "score": 8.5,
+              "scale": 10,
+              "votes": 7
+            }
+          ],
+          "characters": [
+            {
+              "id": "11",
+              "name": "角色",
+              "originalName": "角色",
+              "imageUrl": null,
+              "role": "main",
+              "voiceActors": [
+                "声优"
+              ]
+            }
+          ],
+          "references": [
+            {
+              "source": "vndb",
+              "id": "v86",
+              "url": "https://vndb.org/v86"
+            },
+            {
+              "source": "steam",
+              "id": "10",
+              "url": "https://store.steampowered.com/app/10/"
+            }
+          ],
+          "webUrl": "https://www.kungal.com/galgame/2",
+          "contentRating": "safe",
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "detail-large-string-id",
+      "operation": "details",
+      "input": {
+        "id": "18446744073709551615"
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "id": "18446744073709551615",
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/cover.png"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/cover.png",
+                "sexual": "safe",
+                "width": 60,
+                "height": 90,
+                "vote_count": 2
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "18446744073709551615",
+          "title": "合成作品",
+          "originalTitle": "Synthetic Original",
+          "aliases": [
+            "Romanized",
+            "別名",
+            "Alias"
+          ],
+          "titleEvidence": [
+            {
+              "text": "Romanized",
+              "kind": "latin",
+              "isMachine": false,
+              "language": null
+            },
+            {
+              "text": "別名",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            },
+            {
+              "text": "Alias",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            }
+          ],
+          "coverUrl": "https://images.example/cover.png",
+          "covers": [
+            {
+              "id": "1",
+              "url": "https://images.example/cover.png",
+              "width": 60,
+              "height": 90,
+              "votes": 2,
+              "sexual": "safe"
+            }
+          ],
+          "bannerUrl": null,
+          "description": "合成简介",
+          "releaseDate": "2020-01-02",
+          "releaseDatePrecision": "day",
+          "developers": [
+            "Studio"
+          ],
+          "tags": [
+            "标签"
+          ],
+          "ratings": [
+            {
+              "source": "vndb",
+              "score": 8.5,
+              "scale": 10,
+              "votes": 7
+            }
+          ],
+          "characters": [
+            {
+              "id": "11",
+              "name": "角色",
+              "originalName": "角色",
+              "imageUrl": null,
+              "role": "main",
+              "voiceActors": [
+                "声优"
+              ]
+            }
+          ],
+          "references": [
+            {
+              "source": "vndb",
+              "id": "v86",
+              "url": "https://vndb.org/v86"
+            },
+            {
+              "source": "steam",
+              "id": "10",
+              "url": "https://store.steampowered.com/app/10/"
+            }
+          ],
+          "webUrl": "https://www.kungal.com/galgame/2",
+          "contentRating": "safe",
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/18446744073709551615",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "detail-partial-unknown",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "id": "86",
+            "unexpected": {
+              "a": true
+            },
+            "characters": null,
+            "tags": null
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "86",
+          "title": "作品 86",
+          "originalTitle": "作品 86",
+          "aliases": [],
+          "titleEvidence": [],
+          "coverUrl": null,
+          "bannerUrl": null,
+          "description": "",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [],
+          "tags": [],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "detail-numeric-id-rejected",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "id": 86,
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/cover.png"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/cover.png",
+                "sexual": "safe",
+                "width": 60,
+                "height": 90,
+                "vote_count": 2
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INVALID_RESPONSE"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "detail-explicit-filter",
+      "operation": "details",
+      "input": {
+        "includeExplicit": false
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "id": "86",
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/explicit.png",
+              "sexual": "explicit"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/safe.png",
+                "sexual": "safe"
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "86",
+          "title": "合成作品",
+          "originalTitle": "Synthetic Original",
+          "aliases": [
+            "Romanized",
+            "別名",
+            "Alias"
+          ],
+          "titleEvidence": [
+            {
+              "text": "Romanized",
+              "kind": "latin",
+              "isMachine": false,
+              "language": null
+            },
+            {
+              "text": "別名",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            },
+            {
+              "text": "Alias",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            }
+          ],
+          "coverUrl": "https://images.example/safe.png",
+          "covers": [
+            {
+              "id": "1",
+              "url": "https://images.example/safe.png",
+              "width": null,
+              "height": null,
+              "votes": null,
+              "sexual": "safe"
+            }
+          ],
+          "bannerUrl": null,
+          "description": "合成简介",
+          "releaseDate": "2020-01-02",
+          "releaseDatePrecision": "day",
+          "developers": [
+            "Studio"
+          ],
+          "tags": [
+            "标签"
+          ],
+          "ratings": [
+            {
+              "source": "vndb",
+              "score": 8.5,
+              "scale": 10,
+              "votes": 7
+            }
+          ],
+          "characters": [
+            {
+              "id": "11",
+              "name": "角色",
+              "originalName": "角色",
+              "imageUrl": null,
+              "role": "main",
+              "voiceActors": [
+                "声优"
+              ]
+            }
+          ],
+          "references": [
+            {
+              "source": "vndb",
+              "id": "v86",
+              "url": "https://vndb.org/v86"
+            },
+            {
+              "source": "steam",
+              "id": "10",
+              "url": "https://store.steampowered.com/app/10/"
+            }
+          ],
+          "webUrl": "https://www.kungal.com/galgame/2",
+          "contentRating": "safe",
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "false",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "search-mapping-reordered-duplicate",
+      "operation": "search",
+      "input": {
+        "query": " 合成 & A ",
+        "cursor": "cur_prior"
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "86"
+              },
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "90"
+              },
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "86"
+              }
+            ],
+            "next_cursor": "cur_next"
+          },
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "work",
+                "id": "90",
+                "display_name": "Synthetic Original",
+                "localized": {
+                  "zh-Hans": {
+                    "value": "合成作品"
+                  }
+                },
+                "latin": "Romanized",
+                "titles": [
+                  {
+                    "title": "別名",
+                    "latin": "Alias",
+                    "title_kind": "official",
+                    "is_machine": false,
+                    "lang": "ja"
+                  }
+                ],
+                "cover": {
+                  "url": "https://images.example/cover.png"
+                },
+                "covers": [
+                  {
+                    "id": "1",
+                    "url": "https://images.example/cover.png",
+                    "sexual": "safe",
+                    "width": 60,
+                    "height": 90,
+                    "vote_count": 2
+                  }
+                ],
+                "intros": [
+                  {
+                    "lang": "en",
+                    "value": "English"
+                  },
+                  {
+                    "lang": "zh-Hans",
+                    "value": "合成简介"
+                  }
+                ],
+                "companies": [
+                  {
+                    "attribution_role": "developer",
+                    "display_name": "Studio"
+                  }
+                ],
+                "tags": [
+                  {
+                    "display_name": "标签",
+                    "spoiler": "none"
+                  },
+                  {
+                    "display_name": "隐藏",
+                    "tier": "hidden"
+                  }
+                ],
+                "ratings": [
+                  {
+                    "source": "vndb",
+                    "score": 8.5,
+                    "vote_count": 7
+                  },
+                  {
+                    "source": "unknown",
+                    "score": 2
+                  }
+                ],
+                "characters": [
+                  {
+                    "id": "11",
+                    "display_name": "角色",
+                    "voices": [
+                      {
+                        "display_name": "声优"
+                      }
+                    ],
+                    "roster_role": "main",
+                    "spoiler": "none"
+                  }
+                ],
+                "refs": [
+                  {
+                    "source": "vndb",
+                    "external_id": "v86"
+                  },
+                  {
+                    "source": "steam",
+                    "external_id": "10"
+                  }
+                ],
+                "claim": {
+                  "site": "kungal",
+                  "state": "live",
+                  "site_work_id": "2"
+                },
+                "release_date": "2020-01-02",
+                "release_date_precision": "day",
+                "content_rating": "safe"
+              },
+              {
+                "object": "work",
+                "id": "999",
+                "display_name": "Synthetic Original",
+                "localized": {
+                  "zh-Hans": {
+                    "value": "合成作品"
+                  }
+                },
+                "latin": "Romanized",
+                "titles": [
+                  {
+                    "title": "別名",
+                    "latin": "Alias",
+                    "title_kind": "official",
+                    "is_machine": false,
+                    "lang": "ja"
+                  }
+                ],
+                "cover": {
+                  "url": "https://images.example/cover.png"
+                },
+                "covers": [
+                  {
+                    "id": "1",
+                    "url": "https://images.example/cover.png",
+                    "sexual": "safe",
+                    "width": 60,
+                    "height": 90,
+                    "vote_count": 2
+                  }
+                ],
+                "intros": [
+                  {
+                    "lang": "en",
+                    "value": "English"
+                  },
+                  {
+                    "lang": "zh-Hans",
+                    "value": "合成简介"
+                  }
+                ],
+                "companies": [
+                  {
+                    "attribution_role": "developer",
+                    "display_name": "Studio"
+                  }
+                ],
+                "tags": [
+                  {
+                    "display_name": "标签",
+                    "spoiler": "none"
+                  },
+                  {
+                    "display_name": "隐藏",
+                    "tier": "hidden"
+                  }
+                ],
+                "ratings": [
+                  {
+                    "source": "vndb",
+                    "score": 8.5,
+                    "vote_count": 7
+                  },
+                  {
+                    "source": "unknown",
+                    "score": 2
+                  }
+                ],
+                "characters": [
+                  {
+                    "id": "11",
+                    "display_name": "角色",
+                    "voices": [
+                      {
+                        "display_name": "声优"
+                      }
+                    ],
+                    "roster_role": "main",
+                    "spoiler": "none"
+                  }
+                ],
+                "refs": [
+                  {
+                    "source": "vndb",
+                    "external_id": "v86"
+                  },
+                  {
+                    "source": "steam",
+                    "external_id": "10"
+                  }
+                ],
+                "claim": {
+                  "site": "kungal",
+                  "state": "live",
+                  "site_work_id": "2"
+                },
+                "release_date": "2020-01-02",
+                "release_date_precision": "day",
+                "content_rating": "safe"
+              },
+              {
+                "object": "work",
+                "id": "86",
+                "display_name": "Synthetic Original",
+                "localized": {
+                  "zh-Hans": {
+                    "value": "合成作品"
+                  }
+                },
+                "latin": "Romanized",
+                "titles": [
+                  {
+                    "title": "別名",
+                    "latin": "Alias",
+                    "title_kind": "official",
+                    "is_machine": false,
+                    "lang": "ja"
+                  }
+                ],
+                "cover": {
+                  "url": "https://images.example/cover.png"
+                },
+                "covers": [
+                  {
+                    "id": "1",
+                    "url": "https://images.example/cover.png",
+                    "sexual": "safe",
+                    "width": 60,
+                    "height": 90,
+                    "vote_count": 2
+                  }
+                ],
+                "intros": [
+                  {
+                    "lang": "en",
+                    "value": "English"
+                  },
+                  {
+                    "lang": "zh-Hans",
+                    "value": "合成简介"
+                  }
+                ],
+                "companies": [
+                  {
+                    "attribution_role": "developer",
+                    "display_name": "Studio"
+                  }
+                ],
+                "tags": [
+                  {
+                    "display_name": "标签",
+                    "spoiler": "none"
+                  },
+                  {
+                    "display_name": "隐藏",
+                    "tier": "hidden"
+                  }
+                ],
+                "ratings": [
+                  {
+                    "source": "vndb",
+                    "score": 8.5,
+                    "vote_count": 7
+                  },
+                  {
+                    "source": "unknown",
+                    "score": 2
+                  }
+                ],
+                "characters": [
+                  {
+                    "id": "11",
+                    "display_name": "角色",
+                    "voices": [
+                      {
+                        "display_name": "声优"
+                      }
+                    ],
+                    "roster_role": "main",
+                    "spoiler": "none"
+                  }
+                ],
+                "refs": [
+                  {
+                    "source": "vndb",
+                    "external_id": "v86"
+                  },
+                  {
+                    "source": "steam",
+                    "external_id": "10"
+                  }
+                ],
+                "claim": {
+                  "site": "kungal",
+                  "state": "live",
+                  "site_work_id": "2"
+                },
+                "release_date": "2020-01-02",
+                "release_date_precision": "day",
+                "content_rating": "safe"
+              }
+            ]
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "items": [
+            {
+              "id": "86",
+              "title": "合成作品",
+              "originalTitle": "Synthetic Original",
+              "aliases": [
+                "Romanized",
+                "別名",
+                "Alias"
+              ],
+              "titleEvidence": [
+                {
+                  "text": "Romanized",
+                  "kind": "latin",
+                  "isMachine": false,
+                  "language": null
+                },
+                {
+                  "text": "別名",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                },
+                {
+                  "text": "Alias",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                }
+              ],
+              "coverUrl": "https://images.example/cover.png",
+              "covers": [
+                {
+                  "id": "1",
+                  "url": "https://images.example/cover.png",
+                  "width": 60,
+                  "height": 90,
+                  "votes": 2,
+                  "sexual": "safe"
+                }
+              ],
+              "bannerUrl": null,
+              "description": "合成简介",
+              "releaseDate": "2020-01-02",
+              "releaseDatePrecision": "day",
+              "developers": [
+                "Studio"
+              ],
+              "tags": [
+                "标签"
+              ],
+              "ratings": [
+                {
+                  "source": "vndb",
+                  "score": 8.5,
+                  "scale": 10,
+                  "votes": 7
+                }
+              ],
+              "characters": [
+                {
+                  "id": "11",
+                  "name": "角色",
+                  "originalName": "角色",
+                  "imageUrl": null,
+                  "role": "main",
+                  "voiceActors": [
+                    "声优"
+                  ]
+                }
+              ],
+              "references": [
+                {
+                  "source": "vndb",
+                  "id": "v86",
+                  "url": "https://vndb.org/v86"
+                },
+                {
+                  "source": "steam",
+                  "id": "10",
+                  "url": "https://store.steampowered.com/app/10/"
+                }
+              ],
+              "webUrl": "https://www.kungal.com/galgame/2",
+              "contentRating": "safe",
+              "fetchedAt": "2026-10-04T00:00:00.000Z"
+            },
+            {
+              "id": "90",
+              "title": "合成作品",
+              "originalTitle": "Synthetic Original",
+              "aliases": [
+                "Romanized",
+                "別名",
+                "Alias"
+              ],
+              "titleEvidence": [
+                {
+                  "text": "Romanized",
+                  "kind": "latin",
+                  "isMachine": false,
+                  "language": null
+                },
+                {
+                  "text": "別名",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                },
+                {
+                  "text": "Alias",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                }
+              ],
+              "coverUrl": "https://images.example/cover.png",
+              "covers": [
+                {
+                  "id": "1",
+                  "url": "https://images.example/cover.png",
+                  "width": 60,
+                  "height": 90,
+                  "votes": 2,
+                  "sexual": "safe"
+                }
+              ],
+              "bannerUrl": null,
+              "description": "合成简介",
+              "releaseDate": "2020-01-02",
+              "releaseDatePrecision": "day",
+              "developers": [
+                "Studio"
+              ],
+              "tags": [
+                "标签"
+              ],
+              "ratings": [
+                {
+                  "source": "vndb",
+                  "score": 8.5,
+                  "scale": 10,
+                  "votes": 7
+                }
+              ],
+              "characters": [
+                {
+                  "id": "11",
+                  "name": "角色",
+                  "originalName": "角色",
+                  "imageUrl": null,
+                  "role": "main",
+                  "voiceActors": [
+                    "声优"
+                  ]
+                }
+              ],
+              "references": [
+                {
+                  "source": "vndb",
+                  "id": "v86",
+                  "url": "https://vndb.org/v86"
+                },
+                {
+                  "source": "steam",
+                  "id": "10",
+                  "url": "https://store.steampowered.com/app/10/"
+                }
+              ],
+              "webUrl": "https://www.kungal.com/galgame/2",
+              "contentRating": "safe",
+              "fetchedAt": "2026-10-04T00:00:00.000Z"
+            }
+          ],
+          "nextCursor": "cur_next"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "合成 & A",
+            "limit": "20",
+            "nsfw": "true",
+            "cursor": "cur_prior"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works",
+          "query": {
+            "ids": "86,90",
+            "include": "ratings,companies,refs,titles,covers",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "search-missing-hit",
+      "operation": "search",
+      "input": {
+        "query": "合成"
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "86"
+              },
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "90"
+              }
+            ]
+          },
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "work",
+                "id": "90",
+                "display_name": "Synthetic Original",
+                "localized": {
+                  "zh-Hans": {
+                    "value": "合成作品"
+                  }
+                },
+                "latin": "Romanized",
+                "titles": [
+                  {
+                    "title": "別名",
+                    "latin": "Alias",
+                    "title_kind": "official",
+                    "is_machine": false,
+                    "lang": "ja"
+                  }
+                ],
+                "cover": {
+                  "url": "https://images.example/cover.png"
+                },
+                "covers": [
+                  {
+                    "id": "1",
+                    "url": "https://images.example/cover.png",
+                    "sexual": "safe",
+                    "width": 60,
+                    "height": 90,
+                    "vote_count": 2
+                  }
+                ],
+                "intros": [
+                  {
+                    "lang": "en",
+                    "value": "English"
+                  },
+                  {
+                    "lang": "zh-Hans",
+                    "value": "合成简介"
+                  }
+                ],
+                "companies": [
+                  {
+                    "attribution_role": "developer",
+                    "display_name": "Studio"
+                  }
+                ],
+                "tags": [
+                  {
+                    "display_name": "标签",
+                    "spoiler": "none"
+                  },
+                  {
+                    "display_name": "隐藏",
+                    "tier": "hidden"
+                  }
+                ],
+                "ratings": [
+                  {
+                    "source": "vndb",
+                    "score": 8.5,
+                    "vote_count": 7
+                  },
+                  {
+                    "source": "unknown",
+                    "score": 2
+                  }
+                ],
+                "characters": [
+                  {
+                    "id": "11",
+                    "display_name": "角色",
+                    "voices": [
+                      {
+                        "display_name": "声优"
+                      }
+                    ],
+                    "roster_role": "main",
+                    "spoiler": "none"
+                  }
+                ],
+                "refs": [
+                  {
+                    "source": "vndb",
+                    "external_id": "v86"
+                  },
+                  {
+                    "source": "steam",
+                    "external_id": "10"
+                  }
+                ],
+                "claim": {
+                  "site": "kungal",
+                  "state": "live",
+                  "site_work_id": "2"
+                },
+                "release_date": "2020-01-02",
+                "release_date_precision": "day",
+                "content_rating": "safe"
+              }
+            ]
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "items": [
+            {
+              "id": "90",
+              "title": "合成作品",
+              "originalTitle": "Synthetic Original",
+              "aliases": [
+                "Romanized",
+                "別名",
+                "Alias"
+              ],
+              "titleEvidence": [
+                {
+                  "text": "Romanized",
+                  "kind": "latin",
+                  "isMachine": false,
+                  "language": null
+                },
+                {
+                  "text": "別名",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                },
+                {
+                  "text": "Alias",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                }
+              ],
+              "coverUrl": "https://images.example/cover.png",
+              "covers": [
+                {
+                  "id": "1",
+                  "url": "https://images.example/cover.png",
+                  "width": 60,
+                  "height": 90,
+                  "votes": 2,
+                  "sexual": "safe"
+                }
+              ],
+              "bannerUrl": null,
+              "description": "合成简介",
+              "releaseDate": "2020-01-02",
+              "releaseDatePrecision": "day",
+              "developers": [
+                "Studio"
+              ],
+              "tags": [
+                "标签"
+              ],
+              "ratings": [
+                {
+                  "source": "vndb",
+                  "score": 8.5,
+                  "scale": 10,
+                  "votes": 7
+                }
+              ],
+              "characters": [
+                {
+                  "id": "11",
+                  "name": "角色",
+                  "originalName": "角色",
+                  "imageUrl": null,
+                  "role": "main",
+                  "voiceActors": [
+                    "声优"
+                  ]
+                }
+              ],
+              "references": [
+                {
+                  "source": "vndb",
+                  "id": "v86",
+                  "url": "https://vndb.org/v86"
+                },
+                {
+                  "source": "steam",
+                  "id": "10",
+                  "url": "https://store.steampowered.com/app/10/"
+                }
+              ],
+              "webUrl": "https://www.kungal.com/galgame/2",
+              "contentRating": "safe",
+              "fetchedAt": "2026-10-04T00:00:00.000Z"
+            }
+          ],
+          "nextCursor": null
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "合成",
+            "limit": "20",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works",
+          "query": {
+            "ids": "86,90",
+            "include": "ratings,companies,refs,titles,covers",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "search-empty",
+      "operation": "search",
+      "input": {
+        "query": "none"
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "list",
+            "items": []
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "items": [],
+          "nextCursor": null
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "none",
+            "limit": "20",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "search-malformed-cursor",
+      "operation": "search",
+      "input": {
+        "query": "none"
+      },
+      "responses": [
+        {
+          "body": {
+            "object": "list",
+            "items": [],
+            "next_cursor": "bad"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INVALID_RESPONSE"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "none",
+            "limit": "20",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-400",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 400,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 400,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 400,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-401",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INVALID_API_KEY"
+          },
+          "status": 401,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INVALID_API_KEY"
+          },
+          "status": 401,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INVALID_API_KEY"
+          },
+          "status": 401,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INVALID_API_KEY"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-403",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 403,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 403,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 403,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-404",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-408",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 408,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 408,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 408,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-429",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "RATE_LIMITED"
+          },
+          "status": 429,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "RATE_LIMITED"
+          },
+          "status": 429,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "RATE_LIMITED"
+          },
+          "status": 429,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "RATE_LIMITED"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        500,
+        1000
+      ]
+    },
+    {
+      "name": "status-500",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 500,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 500,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 500,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-502",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 502,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 502,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 502,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        500,
+        1000
+      ]
+    },
+    {
+      "name": "status-503",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 503,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 503,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 503,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        500,
+        1000
+      ]
+    },
+    {
+      "name": "status-504",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 504,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 504,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 504,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INTERNAL_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        500,
+        1000
+      ]
+    },
+    {
+      "name": "status-301",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 301,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 301,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 301,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "REDIRECT_BLOCKED"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "status-307",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 307,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 307,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "INTERNAL_ERROR"
+          },
+          "status": 307,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "REDIRECT_BLOCKED"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "retry-after",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "RATE_LIMITED"
+          },
+          "status": 429,
+          "headers": {
+            "retry-after": "2"
+          }
+        },
+        {
+          "body": {
+            "object": "work",
+            "id": "86",
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/cover.png"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/cover.png",
+                "sexual": "safe",
+                "width": 60,
+                "height": 90,
+                "vote_count": 2
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "86",
+          "title": "合成作品",
+          "originalTitle": "Synthetic Original",
+          "aliases": [
+            "Romanized",
+            "別名",
+            "Alias"
+          ],
+          "titleEvidence": [
+            {
+              "text": "Romanized",
+              "kind": "latin",
+              "isMachine": false,
+              "language": null
+            },
+            {
+              "text": "別名",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            },
+            {
+              "text": "Alias",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            }
+          ],
+          "coverUrl": "https://images.example/cover.png",
+          "covers": [
+            {
+              "id": "1",
+              "url": "https://images.example/cover.png",
+              "width": 60,
+              "height": 90,
+              "votes": 2,
+              "sexual": "safe"
+            }
+          ],
+          "bannerUrl": null,
+          "description": "合成简介",
+          "releaseDate": "2020-01-02",
+          "releaseDatePrecision": "day",
+          "developers": [
+            "Studio"
+          ],
+          "tags": [
+            "标签"
+          ],
+          "ratings": [
+            {
+              "source": "vndb",
+              "score": 8.5,
+              "scale": 10,
+              "votes": 7
+            }
+          ],
+          "characters": [
+            {
+              "id": "11",
+              "name": "角色",
+              "originalName": "角色",
+              "imageUrl": null,
+              "role": "main",
+              "voiceActors": [
+                "声优"
+              ]
+            }
+          ],
+          "references": [
+            {
+              "source": "vndb",
+              "id": "v86",
+              "url": "https://vndb.org/v86"
+            },
+            {
+              "source": "steam",
+              "id": "10",
+              "url": "https://store.steampowered.com/app/10/"
+            }
+          ],
+          "webUrl": "https://www.kungal.com/galgame/2",
+          "contentRating": "safe",
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        2000
+      ]
+    },
+    {
+      "name": "quota-no-retry",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "code": "QUOTA_EXCEEDED"
+          },
+          "status": 429,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "QUOTA_EXCEEDED"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "shared-retries-search",
+      "operation": "search",
+      "input": {
+        "query": "synthetic"
+      },
+      "responses": [
+        {
+          "body": {
+            "code": "SERVICE_UNAVAILABLE"
+          },
+          "status": 503,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "search_result",
+                "target_object": "work",
+                "id": "86"
+              }
+            ]
+          },
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": {
+            "code": "SERVICE_UNAVAILABLE"
+          },
+          "status": 503,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "list",
+            "items": [
+              {
+                "object": "work",
+                "id": "86",
+                "display_name": "Synthetic Original",
+                "localized": {
+                  "zh-Hans": {
+                    "value": "合成作品"
+                  }
+                },
+                "latin": "Romanized",
+                "titles": [
+                  {
+                    "title": "別名",
+                    "latin": "Alias",
+                    "title_kind": "official",
+                    "is_machine": false,
+                    "lang": "ja"
+                  }
+                ],
+                "cover": {
+                  "url": "https://images.example/cover.png"
+                },
+                "covers": [
+                  {
+                    "id": "1",
+                    "url": "https://images.example/cover.png",
+                    "sexual": "safe",
+                    "width": 60,
+                    "height": 90,
+                    "vote_count": 2
+                  }
+                ],
+                "intros": [
+                  {
+                    "lang": "en",
+                    "value": "English"
+                  },
+                  {
+                    "lang": "zh-Hans",
+                    "value": "合成简介"
+                  }
+                ],
+                "companies": [
+                  {
+                    "attribution_role": "developer",
+                    "display_name": "Studio"
+                  }
+                ],
+                "tags": [
+                  {
+                    "display_name": "标签",
+                    "spoiler": "none"
+                  },
+                  {
+                    "display_name": "隐藏",
+                    "tier": "hidden"
+                  }
+                ],
+                "ratings": [
+                  {
+                    "source": "vndb",
+                    "score": 8.5,
+                    "vote_count": 7
+                  },
+                  {
+                    "source": "unknown",
+                    "score": 2
+                  }
+                ],
+                "characters": [
+                  {
+                    "id": "11",
+                    "display_name": "角色",
+                    "voices": [
+                      {
+                        "display_name": "声优"
+                      }
+                    ],
+                    "roster_role": "main",
+                    "spoiler": "none"
+                  }
+                ],
+                "refs": [
+                  {
+                    "source": "vndb",
+                    "external_id": "v86"
+                  },
+                  {
+                    "source": "steam",
+                    "external_id": "10"
+                  }
+                ],
+                "claim": {
+                  "site": "kungal",
+                  "state": "live",
+                  "site_work_id": "2"
+                },
+                "release_date": "2020-01-02",
+                "release_date_precision": "day",
+                "content_rating": "safe"
+              }
+            ]
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "items": [
+            {
+              "id": "86",
+              "title": "合成作品",
+              "originalTitle": "Synthetic Original",
+              "aliases": [
+                "Romanized",
+                "別名",
+                "Alias"
+              ],
+              "titleEvidence": [
+                {
+                  "text": "Romanized",
+                  "kind": "latin",
+                  "isMachine": false,
+                  "language": null
+                },
+                {
+                  "text": "別名",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                },
+                {
+                  "text": "Alias",
+                  "kind": "official",
+                  "isMachine": false,
+                  "language": "ja"
+                }
+              ],
+              "coverUrl": "https://images.example/cover.png",
+              "covers": [
+                {
+                  "id": "1",
+                  "url": "https://images.example/cover.png",
+                  "width": 60,
+                  "height": 90,
+                  "votes": 2,
+                  "sexual": "safe"
+                }
+              ],
+              "bannerUrl": null,
+              "description": "合成简介",
+              "releaseDate": "2020-01-02",
+              "releaseDatePrecision": "day",
+              "developers": [
+                "Studio"
+              ],
+              "tags": [
+                "标签"
+              ],
+              "ratings": [
+                {
+                  "source": "vndb",
+                  "score": 8.5,
+                  "scale": 10,
+                  "votes": 7
+                }
+              ],
+              "characters": [
+                {
+                  "id": "11",
+                  "name": "角色",
+                  "originalName": "角色",
+                  "imageUrl": null,
+                  "role": "main",
+                  "voiceActors": [
+                    "声优"
+                  ]
+                }
+              ],
+              "references": [
+                {
+                  "source": "vndb",
+                  "id": "v86",
+                  "url": "https://vndb.org/v86"
+                },
+                {
+                  "source": "steam",
+                  "id": "10",
+                  "url": "https://store.steampowered.com/app/10/"
+                }
+              ],
+              "webUrl": "https://www.kungal.com/galgame/2",
+              "contentRating": "safe",
+              "fetchedAt": "2026-10-04T00:00:00.000Z"
+            }
+          ],
+          "nextCursor": null
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "synthetic",
+            "limit": "20",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/search",
+          "query": {
+            "object": "work",
+            "q": "synthetic",
+            "limit": "20",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works",
+          "query": {
+            "ids": "86",
+            "include": "ratings,companies,refs,titles,covers",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works",
+          "query": {
+            "ids": "86",
+            "include": "ratings,companies,refs,titles,covers",
+            "nsfw": "true"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": [
+        500,
+        1000
+      ]
+    },
+    {
+      "name": "merge-canonical",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "90"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "work",
+            "id": "90",
+            "display_name": "Synthetic Original",
+            "localized": {
+              "zh-Hans": {
+                "value": "合成作品"
+              }
+            },
+            "latin": "Romanized",
+            "titles": [
+              {
+                "title": "別名",
+                "latin": "Alias",
+                "title_kind": "official",
+                "is_machine": false,
+                "lang": "ja"
+              }
+            ],
+            "cover": {
+              "url": "https://images.example/cover.png"
+            },
+            "covers": [
+              {
+                "id": "1",
+                "url": "https://images.example/cover.png",
+                "sexual": "safe",
+                "width": 60,
+                "height": 90,
+                "vote_count": 2
+              }
+            ],
+            "intros": [
+              {
+                "lang": "en",
+                "value": "English"
+              },
+              {
+                "lang": "zh-Hans",
+                "value": "合成简介"
+              }
+            ],
+            "companies": [
+              {
+                "attribution_role": "developer",
+                "display_name": "Studio"
+              }
+            ],
+            "tags": [
+              {
+                "display_name": "标签",
+                "spoiler": "none"
+              },
+              {
+                "display_name": "隐藏",
+                "tier": "hidden"
+              }
+            ],
+            "ratings": [
+              {
+                "source": "vndb",
+                "score": 8.5,
+                "vote_count": 7
+              },
+              {
+                "source": "unknown",
+                "score": 2
+              }
+            ],
+            "characters": [
+              {
+                "id": "11",
+                "display_name": "角色",
+                "voices": [
+                  {
+                    "display_name": "声优"
+                  }
+                ],
+                "roster_role": "main",
+                "spoiler": "none"
+              }
+            ],
+            "refs": [
+              {
+                "source": "vndb",
+                "external_id": "v86"
+              },
+              {
+                "source": "steam",
+                "external_id": "10"
+              }
+            ],
+            "claim": {
+              "site": "kungal",
+              "state": "live",
+              "site_work_id": "2"
+            },
+            "release_date": "2020-01-02",
+            "release_date_precision": "day",
+            "content_rating": "safe"
+          },
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "value": {
+          "id": "90",
+          "title": "合成作品",
+          "originalTitle": "Synthetic Original",
+          "aliases": [
+            "Romanized",
+            "別名",
+            "Alias"
+          ],
+          "titleEvidence": [
+            {
+              "text": "Romanized",
+              "kind": "latin",
+              "isMachine": false,
+              "language": null
+            },
+            {
+              "text": "別名",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            },
+            {
+              "text": "Alias",
+              "kind": "official",
+              "isMachine": false,
+              "language": "ja"
+            }
+          ],
+          "coverUrl": "https://images.example/cover.png",
+          "covers": [
+            {
+              "id": "1",
+              "url": "https://images.example/cover.png",
+              "width": 60,
+              "height": 90,
+              "votes": 2,
+              "sexual": "safe"
+            }
+          ],
+          "bannerUrl": null,
+          "description": "合成简介",
+          "releaseDate": "2020-01-02",
+          "releaseDatePrecision": "day",
+          "developers": [
+            "Studio"
+          ],
+          "tags": [
+            "标签"
+          ],
+          "ratings": [
+            {
+              "source": "vndb",
+              "score": 8.5,
+              "scale": 10,
+              "votes": 7
+            }
+          ],
+          "characters": [
+            {
+              "id": "11",
+              "name": "角色",
+              "originalName": "角色",
+              "imageUrl": null,
+              "role": "main",
+              "voiceActors": [
+                "声优"
+              ]
+            }
+          ],
+          "references": [
+            {
+              "source": "vndb",
+              "id": "v86",
+              "url": "https://vndb.org/v86"
+            },
+            {
+              "source": "steam",
+              "id": "10",
+              "url": "https://store.steampowered.com/app/10/"
+            }
+          ],
+          "webUrl": "https://www.kungal.com/galgame/2",
+          "contentRating": "safe",
+          "fetchedAt": "2026-10-04T00:00:00.000Z"
+        }
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/90",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "merge-loop",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "86"
+          },
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "MERGE_LOOP"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "merge-depth",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "90"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "91"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "92"
+          },
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "93"
+          },
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "MERGE_LIMIT"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/90",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/91",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        },
+        {
+          "path": "/v2/catalog/works/92",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "merge-invalid",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "body": {
+            "object": "work",
+            "code": "ENTITY_MERGED",
+            "current_id": "bad"
+          },
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": "INVALID_RESPONSE"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "malformed",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "status": 200,
+          "raw": "{bad"
+        }
+      ],
+      "expected": {
+        "error": "INVALID_JSON"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "empty-204",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "status": 204
+        }
+      ],
+      "expected": {
+        "error": "INVALID_RESPONSE"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "oversized",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "status": 200,
+          "oversized": true
+        }
+      ],
+      "expected": {
+        "error": "RESPONSE_TOO_LARGE"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    },
+    {
+      "name": "connection-drop",
+      "operation": "details",
+      "input": {},
+      "responses": [
+        {
+          "drop": true
+        }
+      ],
+      "expected": {
+        "error": "NETWORK_ERROR"
+      },
+      "calls": [
+        {
+          "path": "/v2/catalog/works/86",
+          "query": {
+            "nsfw": "true",
+            "include": "titles,refs,links,intros,covers,companies,ratings,tags,characters"
+          },
+          "authorizationPresent": true
+        }
+      ],
+      "delays": []
+    }
+  ]
+}

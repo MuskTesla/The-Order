@@ -17,6 +17,8 @@ public sealed partial class MainWindow : Window
     private readonly LibraryPage libraryPage;
     private readonly DetailsPage detailsPage;
     private readonly SettingsPage settingsPage;
+    private readonly Views.OnlinePage onlinePage;
+    private readonly OnlineViewModel online;
     private readonly ImportPage importPage;
     private readonly InstallationsPage installationsPage;
     private readonly FilesViewModel files;
@@ -26,16 +28,19 @@ public sealed partial class MainWindow : Window
     private Task? initialization;
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, SyntheticScenario? scenario = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, SyntheticScenario? scenario = null)
     {
-        this.scenario = scenario;
+        this.scenario = scenario; this.online = online;
         this.files = files; this.images = images;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import) };
         detailsPage = new(workspace, images) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
-        settingsPage = new(workspace);
+        onlinePage = new(online, images);
+        settingsPage = new(workspace, online);
+        detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) await online.RefreshEntryAsync(id); };
+        detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
         importPage = new(files, workspace) { ChooseFolder = PickFolder };
         installationsPage = new(files, workspace) { ChooseFolder = PickFolder, ChooseExecutable = () => PickFile(".exe") };
         workspace.ThemeChanged += ApplyTheme; workspace.PropertyChanged += OnState;
@@ -71,14 +76,15 @@ public sealed partial class MainWindow : Window
     private void ShowPage()
     {
         synchronizing = true;
-        PageContent.Content = ViewModel.Page switch { WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
-        Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : LibraryNavigation;
+        PageContent.Content = ViewModel.Page switch { WorkspacePage.Online => onlinePage, WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
+        Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : LibraryNavigation;
         Navigation.IsBackEnabled = ViewModel.Page != WorkspacePage.Library;
         synchronizing = false;
     }
     private async Task Navigate(WorkspacePage page, string? id = null)
     {
         installationNavigation.Invalidate();
+        if (page != WorkspacePage.Online) online.Leave();
         if (navigating) return; navigating = true;
         try { if (await ResolveInstallationDraft()) { await ViewModel.NavigateAsync(page, id, ChooseUnsaved); ShowPage(); } }
         catch (Exception) { ViewModel.ReportUnexpected(); }
@@ -86,7 +92,7 @@ public sealed partial class MainWindow : Window
     }
     private async void OnNavigationInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
-        if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate(item.Tag as string == "settings" ? WorkspacePage.Settings : WorkspacePage.Library);
+        if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate((item.Tag as string) switch { "settings" => WorkspacePage.Settings, "online" => WorkspacePage.Online, _ => WorkspacePage.Library });
     }
     private async void OnBack(NavigationView sender, NavigationViewBackRequestedEventArgs args) => await Navigate(WorkspacePage.Library);
     private async Task<UnsavedChoice> ChooseUnsaved()
@@ -113,6 +119,7 @@ public sealed partial class MainWindow : Window
         return (await picker.PickSingleFileAsync())?.Path;
     }
     private void ApplyTheme() => Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
+    public void CancelOnlineRequests() => online.Leave();
     public async ValueTask StopAsync()
     {
         installationNavigation.Invalidate();
@@ -121,6 +128,7 @@ public sealed partial class MainWindow : Window
         // Startup may still hold user preference overrides. Finish loading/merging them
         // before disposal cancels the lifetime, then drain the resulting persistence queue.
         if (initialization is not null) await initialization;
+        await online.DisposeAsync();
         await files.DisposeAsync();
         await ViewModel.DisposeAsync();
     }
@@ -155,7 +163,9 @@ public sealed partial class MainWindow : Window
             installationCount = files.Installations?.Rows.Length ?? 0,
             missingInstallations = files.Installations?.Rows.Count(r => r.Status is PreflightStatus.NotFound or PreflightStatus.BrokenLink) ?? 0,
             installationDraft = files.Draft is not null, imageMetrics = images.Metrics,
-            localCoverCount = ViewModel.Items.Count(i => i.CoverKey is not null)
+            localCoverCount = ViewModel.Items.Count(i => i.HasLocalCover),
+            onlineState = online.SearchState.ToString(), onlineCount = online.Items.Count, onlineDetails = online.DetailState.ToString(), onlineWorkId = online.Details?.Id, onlineHasCover = online.DetailCoverKey is not null, onlineConnection = online.ConnectionState.ToString(),
+            onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim())))
         };
         RuntimeState.Text = "THE_ORDER_RUNTIME " + JsonSerializer.Serialize(snapshot);
     }

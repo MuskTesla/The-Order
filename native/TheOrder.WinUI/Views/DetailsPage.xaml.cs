@@ -10,6 +10,10 @@ public sealed partial class DetailsPage : Page, IImageHost
     public WorkspaceViewModel ViewModel { get; }
     public IImagePipeline Images { get; }
     public Func<Task>? ManageInstallations { get; set; }
+    public Func<Task>? RefreshOnline { get; set; }
+    public Func<Task>? RemoveWishlist { get; set; }
+    private async void OnRefreshOnline(object sender, RoutedEventArgs e) { try { if (RefreshOnline is not null) await RefreshOnline(); } catch { ViewModel.ReportUnexpected(); } }
+    private async void OnRemoveWishlist(object sender, RoutedEventArgs e) { try { if (RemoveWishlist is not null) await RemoveWishlist(); } catch { ViewModel.ReportUnexpected(); } }
     public Func<Task>? ChangeCover { get; set; }
     private async void OnInstallations(object sender, RoutedEventArgs e) { try { if (ManageInstallations is not null) await ManageInstallations(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     private async void OnCover(object sender, RoutedEventArgs e) { try { if (ChangeCover is not null) await ChangeCover(); } catch (Exception) { ViewModel.ReportUnexpected(); } }

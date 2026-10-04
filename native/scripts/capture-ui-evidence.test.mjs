@@ -9,7 +9,7 @@ const fixture = (changes = {}) => {
     viewMode: 'grid', theme: 'Dark', readOnly: false, state: 'normal', page: 'Library', viewport: { realizedContainerCount: 51, viewportWidth: 1100, viewportHeight: 600, firstContainerMs: 900 }, ...changes }
   return { window: { id: 1, app: 'synthetic' }, accessibility: { tree: 'text THE_ORDER_RUNTIME ' + JSON.stringify(runtime) + ' ID: RuntimeEvidence' }, screenshots: [{ id: 'fresh', url: 'data:image/png;base64,aGVsbG8=' }] }
 }
-for (const [key, value] of Object.entries({ itemCount: 1000, totalCount: 5000, viewMode: 'list', theme: 'Light', readOnly: true, state: 'error', page: 'Details', build: 'another-build', importStage: 'Scanning', candidateCount: 20, installationCount: 2, missingInstallations: 1, localCoverCount: 10000, scanRoot: 'Z:\\different', duplicateCandidates: 2 })) {
+for (const [key, value] of Object.entries({ itemCount: 1000, totalCount: 5000, viewMode: 'list', theme: 'Light', readOnly: true, state: 'error', page: 'Details', build: 'another-build', importStage: 'Scanning', candidateCount: 20, installationCount: 2, missingInstallations: 1, localCoverCount: 10000, scanRoot: 'Z:\\different', duplicateCandidates: 2, onlineState: 'Loaded', onlineCount: 2, onlineDetails: 'Loaded', onlineWorkId: '86', onlineHasCover: true, onlineConnection: 'Unauthorized' })) {
   test(`reject mismatched ${key}`, () => assert.throws(() => runtimeFromState(fixture(), { [key]: value }), /Scenario mismatch/))
 }
 test('reject stale or unrealized capture', () => {

@@ -17,7 +17,7 @@
     <TextBox Header="个人标签" Text="{x:Bind ViewModel.Draft.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditTags"/>
     <TextBox Header="笔记" MinHeight="150" MaxHeight="320" AcceptsReturn="True" TextWrapping="Wrap" Text="{x:Bind ViewModel.Draft.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditNotes"/>
    </StackPanel></ContentControl>
-   <StackPanel Spacing="8"><TextBlock Text="安装与游玩记录" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Installations, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Playtime, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
+   <StackPanel Spacing="8"><StackPanel Orientation="Horizontal" Spacing="8"><Button Content="刷新在线资料" Click="OnRefreshOnline"/><Button Content="移除愿望条目" Click="OnRemoveWishlist"/></StackPanel><TextBlock Text="安装与游玩记录" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Installations, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Playtime, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
   </StackPanel></ScrollViewer>
   <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <TextBlock Text="{x:Bind DirtyText(ViewModel.IsDirty), Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="DraftState"/>

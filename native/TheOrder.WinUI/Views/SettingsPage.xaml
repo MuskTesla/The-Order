@@ -3,10 +3,15 @@
   <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}"/>
   <ComboBox x:Name="ThemeChoice" Header="外观主题" Width="260" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="ThemeChoice"><ComboBoxItem Content="跟随系统"/><ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/></ComboBox>
   <ComboBox x:Name="LayoutChoice" Header="书架视图" Width="260" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="LayoutChoice"><ComboBoxItem Content="网格"/><ComboBoxItem Content="列表"/></ComboBox>
+  <TextBlock Text="在线目录 · NextMoe" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+  <PasswordBox x:Name="ApiCredential" Header="隔离开发用 API 密钥" PasswordRevealMode="Hidden" MaxLength="4096" Width="360" AutomationProperties.AutomationId="OnlineCredential"/>
+  <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="保存密钥" Click="OnSaveCredential"/><Button Content="移除密钥" Click="OnClearCredential"/><Button Content="测试连接" Click="OnTestConnection"/></StackPanel>
+  <TextBlock Text="{x:Bind Online.CredentialMessage, Mode=OneWay}" TextWrapping="Wrap"/>
+  <TextBlock Text="{x:Bind Online.ConnectionMessage, Mode=OneWay}" TextWrapping="Wrap"/>
   <TextBlock Text="隔离开发资料" Style="{ThemeResource SubtitleTextBlockStyle}"/>
   <TextBlock Text="{x:Bind ViewModel.DataDirectory}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="DataDirectory"/>
   <TextBlock Text="仅使用带合成标记的指定开发目录。书架修改通过完整事务保存；外观、排序和常用筛选保存在独立的 native-ui.json。不会读取正式书架或旧密钥。" Style="{StaticResource SecondaryTextStyle}"/>
   <TextBlock Text="浏览器 localStorage 偏好迁移尚未接入。当前临时搜索条件不会自动成为常用筛选。" Style="{StaticResource SecondaryTextStyle}"/>
-  <TextBlock Text="The Order · 原生候选 · Phase 3B" Style="{StaticResource SecondaryTextStyle}"/>
+  <TextBlock Text="The Order · 原生候选 · Phase 4A" Style="{StaticResource SecondaryTextStyle}"/>
  </StackPanel></ScrollViewer>
 </Page>

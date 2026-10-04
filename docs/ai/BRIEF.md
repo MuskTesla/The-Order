@@ -1,5 +1,18 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 4A：Online Data / API / Remote Assets（本机验收完成）
+
+- 从可信 Phase 3B.1 `9ae2199aba6aedbb8e8012ab38e4a3ec8eb1a1a2` 新建 `codex/winui-phase4`。本节为当前实现；下方历史阶段的“无 Phase 4 / 远程图片尚不下载”不再描述当前候选。没有进入 Phase 4B、读取正式资料或真实 credential、扫描或执行真实游戏。
+- 已实际审计 `electron/nextmoe.ts`、settings、library 与 Vue 在线入口，并以当前 Electron 生成32个在线 oracle。Application 定义在线/credential/cover 接口；Infrastructure 分离 transport、DTO mapping、catalog/cache、remote source；Platform.Windows 提供隔离 DPAPI；Presentation 管理请求 generation/取消/显式状态；WinUI 只负责输入和展示。保留事务、filesystem、图片管线和七项目依赖方向，无依赖升级。
+- 固定正常 API endpoint，长寿命连接、45秒共享 operation deadline（搜索两步、重试和合并均消耗同一预算）、最多2次重试，仅502/503/504与429 `RATE_LIMITED`。8MiB流式上限，严格UTF-8/JSON；状态分类、响应/stream释放、有限 Retry-After。HTTP跳转不跟随；作品 `ENTITY_MERGED` 最多3跳且防环，返回canonical string ID。
+- 原生发现页提供搜索/取消/重试/分页/详情；去重、查询与详情generation防旧结果覆盖新意图。愿望条目显式加入，经旧事务内核保存；重复ID不增条目，无安装；资料刷新保留个人字段并检查请求token；删除只移除无安装的书架关系。移除/刷新/并发个人编辑的完整语义由生产服务集成测试验证，不冒充全部桌面点击覆盖。
+- credential仅隔离目录 `native-online-key.dpapi`、当前Windows用户DPAPI、原子写入、受限读取；不读取旧safeStorage或真实密钥，不写明文，UI只暴露保存状态。连接测试必须同时通过鉴权和目录响应校验。日志结构只允许method/host/status/elapsed/retry/requestId；错误不带响应体、完整URL或密钥。
+- 远程图只接受已注册API/库来源的HTTPS公开DNS目标；无IP/本地或内部地址、userinfo、非标准端口、cookie/auth或自动跳转。DNS解析检查后直接连接已检查IP，绕过系统代理以免绕开目的地校验。20秒/20MiB，PNG/JPEG复用现有WIC像素上限与stale-image保护；WebP等仍占位，未声称全格式支持。个人封面优先；URL+revision哈希与decode bucket区分缓存，不把URL写文件名。详情缓存32项/8MiB/5分钟，远程原图64项/32MiB/10分钟，派生缓存沿用64MiB内存/128MiB磁盘，缓存丢弃不删除用户资料。
+- 最终 Debug/Release build各0 warnings/errors，C#各 **557/0/0**（原472+85）；保留102 differential、14 fault injection、13 filesystem/cover differential；新增在线 differential **32**。Artifact **24/0/0**，Electron relevant扩展到 **252/0/0**，Electron build/import通过：37新增、重复0新增/37跳过、个人字段/重启/文件保留、renderer errors0。Release publish成功。
+- 真WinUI在隔离合成库验证：启动、搜索2项、分页去重到3项、详情和远程封面、坏图占位、空/401/429/离线、加入愿望单及重复、重启保留4项、取消、A→AB及超过旧响应窗口后不回退、活动请求关闭exit0。关闭动作至退出约0.36秒，非性能SLA。正常装配（ONLINE_FIXTURE关闭）无凭据重启，缓存封面和书架可用；连接测试明确提示缺少密钥。真实API smoke因没有安全可用开发凭据明确跳过。
+- `.artifacts/native-phase4a/` 为ignored证据：**26组 JPEG/UI tree/manifest**逐项requested/runtime/hash核对，26个不同截图SHA-256。`search-active-before-cancel`仅早期诊断，不证明取消通过；最终 `checkpoint-*` 六场景复核启动、加载、改词Idle、取消与活动关闭exit0。最终包 `publish-checkpoint/win-x64`；WinUI MVID `f0c3cc82-958e-4e2f-9bcb-66f778c83ee0`，Presentation SHA-256 `1884A3CC532FB41D5D15F25E3F7F0E62BEAD87DE089CB7C6D0539538B1C6ED6A`。最终两处状态重置修复有新增回归，三批构建差异/各层hash见DEVELOPMENT及 `build-bundles.json`，不能仅用WinUI MVID判断整个Solution相同。此前Phase3A错误artifacts仍作废。
+- **Phase 4A 本机验收自检通过，可进入独立 Gate Review；不是正式接管或 Phase 4B 实施授权。** 剩余边界：真实API/CDN/代理环境与WebP兼容、长时间网络故障压力、干净机安装未验证；既有UNC/generic reparse/10k unique images边界保留。`workingDirectory`降级写入门禁最迟Phase6且必须先于正式库写入，不能用备份提醒代替。完成checkpoint后暂停。
+
 ## WinUI Phase 3B.1：Filesystem Boundary Remediation（整改自检完成）
 
 - 基线 `e75663c42fff9b0eea194cbca7d2706cbae45412`，保持 `codex/winui-phase3`。Phase3B独立Gate曾判NO-GO；本节supersede下方历史阶段关于扫描边界/未知identity/候选连续性的完成判断。只修复M1–M3、Depth、Navigation，无Phase4或正式数据操作。
