@@ -14,15 +14,22 @@ const deferred = () => {
   const promise = new Promise<any>((yes, no) => { resolve = yes; reject = no })
   return { promise, resolve, reject }
 }
-async function harness() {
+// Every case exercises the same production setup. Compile it once instead of
+// issuing another service transform for every isolated view lifecycle.
+const compiledHarness = (async () => {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
+  const expose = '\nglobalThis.audit = { snapshot, editor, busy, selectedGameId, selectedWork, selectedGame, detailOpen, showGame, showWork, saveGame, savePersonalRecord, personalRecordError, saveArguments, addToLibrary, removeGame };'
+  const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
+  return { script, compiled }
+})()
+async function harness(t: { after(callback: () => void): void }) {
+  const { script, compiled } = await compiledHarness
   const messages: any[] = []
   const sandbox: any = { Error, ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: (...args: any[]) => messages.push(args), useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
-  const expose = '\nglobalThis.audit = { snapshot, editor, busy, selectedGameId, selectedWork, selectedGame, detailOpen, showGame, showWork, saveGame, savePersonalRecord, personalRecordError, saveArguments, addToLibrary, removeGame };'
-  const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
-  vm.createContext(sandbox); vm.runInContext(compiled.code, sandbox)
+  const scope = vue.effectScope(); t.after(() => scope.stop())
+  vm.createContext(sandbox); scope.run(() => vm.runInContext(compiled.code, sandbox))
   const a = sandbox.audit
   const games = ['A', 'B'].map(id => ({ id, name: `Game ${id}`, metadata: { id: `work-${id}`, title: `Work ${id}` }, status: 'planned', personalRating: null, categories: [id], customTags: [id], notes: `Saved ${id}`, installations: [{ id: 'install', arguments: [`--${id}`] }], preferredInstallationId: 'install' }))
   const state = (items = games) => ({ games: items, settings: { baseUrl: '', includeNsfw: false, hasApiKey: false } })
@@ -30,8 +37,8 @@ async function harness() {
   return { a, api: sandbox.api, sandbox, games, state, messages }
 }
 
-test('discovery initializes the correct library editor before detail returns and preserves later edits', async () => {
-  const { a, api, games } = await harness(), detail = deferred(), saved: any[] = []
+test('discovery initializes the correct library editor before detail returns and preserves later edits', async t => {
+  const { a, api, games } = await harness(t), detail = deferred(), saved: any[] = []
   await a.showGame(games[0]); a.editor.notes = 'Unsaved A'
   api.getWork = () => detail.promise
   api.updateGame = async (...args: any[]) => saved.push(args)
@@ -44,8 +51,8 @@ test('discovery initializes the correct library editor before detail returns and
   assert.equal(a.editor.notes, 'Fresh B draft'); assert.equal(a.editor.categories, 'Fresh category'); assert.equal(a.editor.launchArgs, '["--B-DRAFT"]')
 })
 
-test('a merged work revealing an existing game initializes that editor once', async () => {
-  const { a, api, games } = await harness(), detail = deferred()
+test('a merged work revealing an existing game initializes that editor once', async t => {
+  const { a, api, games } = await harness(t), detail = deferred()
   await a.showGame(games[0]); a.editor.notes = 'Unsaved A'
   api.getWork = () => detail.promise
   const pending = a.showWork({ id: 'old-work-B', title: 'Old B reference' })
@@ -54,8 +61,8 @@ test('a merged work revealing an existing game initializes that editor once', as
   assert.equal(a.selectedGameId.value, 'B'); assert.equal(a.editor.notes, 'Saved B')
 })
 
-test('stale detail failure stays silent after close and reopening another request', async () => {
-  const { a, api, games, messages } = await harness(), first = deferred(), second = deferred()
+test('stale detail failure stays silent after close and reopening another request', async t => {
+  const { a, api, games, messages } = await harness(t), first = deferred(), second = deferred()
   let requests = 0; api.getWork = () => ++requests === 1 ? first.promise : second.promise
   const old = a.showWork(games[0].metadata)
   a.detailOpen.value = false
@@ -67,8 +74,8 @@ test('stale detail failure stays silent after close and reopening another reques
   assert.equal(a.busy.has('detail'), false); assert.equal(a.editor.notes, 'B draft')
 })
 
-test('library metadata notifications preserve drafts and supersede a previous work detail', async () => {
-  const { a, api, games, state } = await harness(), detail = deferred()
+test('library metadata notifications preserve drafts and supersede a previous work detail', async t => {
+  const { a, api, games, state } = await harness(t), detail = deferred()
   api.getWork = () => detail.promise
   const pending = a.showWork(games[0].metadata)
   a.editor.notes = 'A draft'; a.editor.name = 'A draft name'
@@ -80,8 +87,8 @@ test('library metadata notifications preserve drafts and supersede a previous wo
   assert.equal(a.editor.notes, 'A draft'); assert.equal(a.editor.name, 'A draft name')
 })
 
-test('saving rejects editor data belonging to another game even when installation IDs coincide', async () => {
-  const { a, api, games } = await harness()
+test('saving rejects editor data belonging to another game even when installation IDs coincide', async t => {
+  const { a, api, games } = await harness(t)
   await a.showGame(games[0])
   a.selectedGameId.value = 'B'; a.selectedWork.value = games[1].metadata
   let saves = 0; api.updateGame = api.setLaunchArguments = async () => { saves++ }
@@ -89,8 +96,8 @@ test('saving rejects editor data belonging to another game even when installatio
   assert.equal(saves, 0)
 })
 
-test('late wishlist completion persists its game without changing a newer detail or draft', async () => {
-  const { a, api, games, state } = await harness(), addition = deferred()
+test('late wishlist completion persists its game without changing a newer detail or draft', async t => {
+  const { a, api, games, state } = await harness(t), addition = deferred()
   api.getWork = async (id: string) => ({ id, title: 'Work C' })
   await a.showWork({ id: 'work-C', title: 'Work C' })
   api.addVirtualGame = () => addition.promise
@@ -102,8 +109,8 @@ test('late wishlist completion persists its game without changing a newer detail
   assert.equal(a.snapshot.value.games.length, 3)
 })
 
-test('wishlist completion in the original view enables correctly initialized management', async () => {
-  const { a, api, games, state } = await harness()
+test('wishlist completion in the original view enables correctly initialized management', async t => {
+  const { a, api, games, state } = await harness(t)
   const added = { ...games[0], id: 'C', name: 'Game C', notes: '', metadata: { id: 'work-C', title: 'Work C' } }
   api.getWork = async () => added.metadata; api.addVirtualGame = async () => added
   await a.showWork(added.metadata)
@@ -111,8 +118,8 @@ test('wishlist completion in the original view enables correctly initialized man
   assert.equal(a.selectedGame.value.id, 'C'); assert.equal(a.editor.name, 'Game C'); assert.equal(a.editor.notes, '')
 })
 
-test('removal confirmation becomes stale after closing and reopening even the same game', async () => {
-  const { a, api, games, sandbox } = await harness(), confirmation = deferred()
+test('removal confirmation becomes stale after closing and reopening even the same game', async t => {
+  const { a, api, games, sandbox } = await harness(t), confirmation = deferred()
   sandbox.useKunAlert = () => confirmation.promise
   await a.showGame(games[0]); let removals = 0; api.removeGame = async () => { removals++ }
   const pending = a.removeGame()
@@ -121,8 +128,8 @@ test('removal confirmation becomes stale after closing and reopening even the sa
   assert.equal(removals, 0); assert.equal(a.detailOpen.value, true); assert.equal(a.editor.notes, 'Reopened A draft')
 })
 
-test('late removal reply preserves another detail but normal removal closes its own vanished entry', async () => {
-  const { a, api, games, state } = await harness(), removal = deferred()
+test('late removal reply preserves another detail but normal removal closes its own vanished entry', async t => {
+  const { a, api, games, state } = await harness(t), removal = deferred()
   await a.showGame(games[0]); api.removeGame = () => removal.promise
   const pending = a.removeGame(); await Promise.resolve(); await Promise.resolve()
   a.detailOpen.value = false; await a.showGame(games[1]); a.editor.notes = 'New B draft'
@@ -133,8 +140,8 @@ test('late removal reply preserves another detail but normal removal closes its 
   assert.equal(a.detailOpen.value, false)
 })
 
-test('personal record saves only its three fields and keeps unrelated management drafts', async () => {
-  const { a, api, games, messages } = await harness(), calls: any[] = []
+test('personal record saves only its three fields and keeps unrelated management drafts', async t => {
+  const { a, api, games, messages } = await harness(t), calls: any[] = []
   await a.showGame(games[0]); a.editor.name = 'Unsaved name'; a.editor.categories = 'Unsaved category'; a.editor.tags = 'Unsaved tag'; a.editor.launchArgs = '["--UNSAVED"]'
   a.editor.status = 'playing'; a.editor.personalRating = '0'; a.editor.notes = 'New personal note'
   api.updateGame = async (id: string, patch: any) => calls.push([id, structuredClone(patch)])
@@ -144,16 +151,16 @@ test('personal record saves only its three fields and keeps unrelated management
   assert.equal(messages.at(-1)[1], 'success')
 })
 
-test('personal record rejects invalid scores visibly and clearing a score submits null', async () => {
-  const { a, api, games, messages } = await harness(), calls: any[] = []
+test('personal record rejects invalid scores visibly and clearing a score submits null', async t => {
+  const { a, api, games, messages } = await harness(t), calls: any[] = []
   await a.showGame(games[0]); api.updateGame = async (_: string, patch: any) => calls.push(patch)
   for (const rating of ['11', '-1', 'NaN', '1e', '-']) { a.editor.personalRating = rating; await a.savePersonalRecord(); assert.match(a.personalRecordError.value, /0 到 10/); assert.equal(a.editor.personalRating, rating) }
   assert.equal(calls.length, 0); assert.equal(messages.filter(message => message[1] === 'success').length, 0)
   a.editor.personalRating = ''; await a.savePersonalRecord(); assert.equal(calls.at(-1).personalRating, null); assert.equal(a.personalRecordError.value, '')
 })
 
-test('personal save captures the submitted draft once while later input remains editable and unsaved', async () => {
-  const { a, api, games, state, messages } = await harness(), response = deferred(), calls: any[] = []
+test('personal save captures the submitted draft once while later input remains editable and unsaved', async t => {
+  const { a, api, games, state, messages } = await harness(t), response = deferred(), calls: any[] = []
   await a.showGame(games[0]); a.editor.notes = 'Submitted note'; a.editor.personalRating = '8'
   api.updateGame = async (_: string, patch: any) => { calls.push(JSON.parse(JSON.stringify(patch))); await response.promise }
   const pending = a.savePersonalRecord(); await a.savePersonalRecord()
@@ -166,24 +173,24 @@ test('personal save captures the submitted draft once while later input remains 
   await a.savePersonalRecord(); assert.equal(calls.at(-1).notes, 'Typed while saving'); assert.equal(calls.at(-1).personalRating, 9)
 })
 
-for (const reopened of [false, true]) test(`late personal save does not claim a newer ${reopened ? 'reopened A' : 'B'} draft was saved`, async () => {
-  const { a, api, games, messages } = await harness(), response = deferred()
+for (const reopened of [false, true]) test(`late personal save does not claim a newer ${reopened ? 'reopened A' : 'B'} draft was saved`, async t => {
+  const { a, api, games, messages } = await harness(t), response = deferred()
   await a.showGame(games[0]); a.editor.notes = 'Submitted A'; api.updateGame = () => response.promise
   const pending = a.savePersonalRecord(); a.detailOpen.value = false; await a.showGame(games[reopened ? 0 : 1]); a.editor.notes = 'Newer draft'
   response.resolve(); await pending
   assert.equal(a.editor.notes, 'Newer draft'); assert.equal(messages.length, 0); assert.equal(a.personalRecordError.value, ''); assert.equal(a.busy.has('save-game'), false)
 })
 
-test('personal save failure preserves the draft, exposes the error and allows a real retry', async () => {
-  const { a, api, games, messages } = await harness()
+test('personal save failure preserves the draft, exposes the error and allows a real retry', async t => {
+  const { a, api, games, messages } = await harness(t)
   await a.showGame(games[0]); a.editor.notes = 'Retryable draft'; api.updateGame = async () => { throw Error('Synthetic persistence failure') }
   await a.savePersonalRecord(); assert.equal(a.editor.notes, 'Retryable draft'); assert.equal(a.personalRecordError.value, 'Synthetic persistence failure'); assert.equal(messages.filter(message => message[1] === 'success').length, 0)
   let submitted: any; api.updateGame = async (_: string, patch: any) => { submitted = patch }
   await a.savePersonalRecord(); assert.equal(submitted.notes, 'Retryable draft'); assert.equal(a.personalRecordError.value, ''); assert.equal(messages.at(-1)[1], 'success')
 })
 
-test('personal save refuses a draft belonging to another game and stays silent on a late failure', async () => {
-  const { a, api, games, messages } = await harness(), response = deferred(); let calls = 0
+test('personal save refuses a draft belonging to another game and stays silent on a late failure', async t => {
+  const { a, api, games, messages } = await harness(t), response = deferred(); let calls = 0
   await a.showGame(games[0]); a.selectedGameId.value = games[1].id; api.updateGame = async () => { calls++; return response.promise }
   await a.savePersonalRecord(); assert.equal(calls, 0)
   await a.showGame(games[0]); const pending = a.savePersonalRecord(); a.detailOpen.value = false; await a.showGame(games[1]); a.editor.notes = 'B untouched'
@@ -191,8 +198,8 @@ test('personal save refuses a draft belonging to another game and stays silent o
   assert.equal(a.editor.notes, 'B untouched'); assert.equal(a.personalRecordError.value, ''); assert.equal(messages.length, 0)
 })
 
-test('personal save distinguishes a committed record from a failed snapshot refresh', async () => {
-  const { a, api, games, state, messages } = await harness(); let persisted: any, calls = 0
+test('personal save distinguishes a committed record from a failed snapshot refresh', async t => {
+  const { a, api, games, state, messages } = await harness(t); let persisted: any, calls = 0
   await a.showGame(games[0]); a.editor.notes = 'Committed draft'; a.editor.personalRating = '7.5'
   api.updateGame = async (_: string, patch: any) => { persisted = { ...games[0], ...patch }; calls++ }
   api.getState = async () => { throw Error('Synthetic snapshot failure') }

@@ -9,14 +9,21 @@ import * as importWorkspace from '../src/import-workspace'
 import * as libraryInsights from '../src/library-insights'
 import * as savedLibraryViews from '../src/saved-library-views'
 
-async function harness() {
+// Reuse the same compiled production setup, while each test owns and cleans up
+// its Vue effects. This removes repeated compiler service requests per case.
+const compiledHarness = (async () => {
   const source = await fs.readFile(new URL('../src/App.vue', import.meta.url), 'utf8')
   const script = source.split('<script setup lang="ts">')[1]!.split('</script>')[0]!
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: () => {}, useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
-  for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
   const expose = '\nglobalThis.audit = { snapshot, editor, showGame, setPreferred, pickExecutable, saveArguments, saveGame, reload, markNameEdited: typeof markNameEdited === "function" ? markNameEdited : undefined, markArgumentsEdited: typeof markArgumentsEdited === "function" ? markArgumentsEdited : undefined };'
   const compiled = await transform(script.replace(/^import .*$/gm, '') + expose, { loader: 'ts', format: 'cjs', target: 'es2022' })
-  vm.createContext(sandbox); vm.runInContext(compiled.code, sandbox)
+  return { script, compiled }
+})()
+async function harness(t: { after(callback: () => void): void }) {
+  const { script, compiled } = await compiledHarness
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: () => {}, useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
+  const scope = vue.effectScope(); t.after(() => scope.stop())
+  vm.createContext(sandbox); scope.run(() => vm.runInContext(compiled.code, sandbox))
   const a = sandbox.audit
   const game = { id: 'game', name: 'Name', metadata: { id: 'work', title: 'Name' }, status: 'planned', personalRating: null, categories: [], customTags: [], notes: 'saved', installations: [{ id: 'A', arguments: ['--A'] }, { id: 'B', arguments: ['--B'] }], preferredInstallationId: 'A' }
   const state = (games: any[]) => ({ games, settings: { baseUrl: '', includeNsfw: false, hasApiKey: false } })
@@ -24,8 +31,8 @@ async function harness() {
   return { a, api: sandbox.api, game, state }
 }
 
-test('a late preference reload cannot replace newly entered arguments for the displayed installation', async () => {
-  const { a, api, game, state } = await harness()
+test('a late preference reload cannot replace newly entered arguments for the displayed installation', async t => {
+  const { a, api, game, state } = await harness(t)
   a.editor.notes = 'UNSAVED note'; a.editor.name = 'UNSAVED name'
   let release!: (value: any) => void
   const waiting = new Promise(resolve => { release = resolve })
@@ -43,8 +50,8 @@ test('a late preference reload cannot replace newly entered arguments for the di
   await a.saveArguments(); assert.equal(saved[1], 'B'); assert.deepEqual(JSON.parse(JSON.stringify(saved[2])), ['--NEW-B-DRAFT'])
 })
 
-test('ordinary Save omits untouched name but editing it back to the same value explicitly confirms it', async () => {
-  const { a, api, game, state } = await harness()
+test('ordinary Save omits untouched name but editing it back to the same value explicitly confirms it', async t => {
+  const { a, api, game, state } = await harness(t)
   const patches: any[] = []
   api.updateGame = async (_id: string, patch: any) => { patches.push(patch); return game }
   api.getState = async () => state([game])
@@ -54,8 +61,8 @@ test('ordinary Save omits untouched name but editing it back to the same value e
   await a.saveGame(); assert.equal(patches[1].name, game.name)
 })
 
-test('a delayed installation action cannot write another detail or its argument draft', async () => {
-  const { a, api, game, state } = await harness()
+test('a delayed installation action cannot write another detail or its argument draft', async t => {
+  const { a, api, game, state } = await harness(t)
   let release!: (value: any) => void
   api.pickExecutable = () => new Promise(resolve => { release = resolve })
   const other = { ...game, id: 'other', name: 'Other' }
@@ -68,8 +75,8 @@ test('a delayed installation action cannot write another detail or its argument 
 })
 
 
-test('an older A reload cannot roll back a newer B snapshot or route its draft to A', async () => {
-  const { a, api, game, state } = await harness()
+test('an older A reload cannot roll back a newer B snapshot or route its draft to A', async t => {
+  const { a, api, game, state } = await harness(t)
   let release!: (value: any) => void
   const older = new Promise(resolve => { release = resolve })
   let reads = 0
@@ -88,8 +95,8 @@ test('an older A reload cannot roll back a newer B snapshot or route its draft t
   await a.saveArguments(); assert.equal(saved[1], 'B')
 })
 
-test('an obsolete reload failure is ignored after a newer successful snapshot', async () => {
-  const { a, api, game, state } = await harness()
+test('an obsolete reload failure is ignored after a newer successful snapshot', async t => {
+  const { a, api, game, state } = await harness(t)
   let reject!: (error: Error) => void
   const older = new Promise((_resolve, failure) => { reject = failure })
   let reads = 0
@@ -100,8 +107,8 @@ test('an obsolete reload failure is ignored after a newer successful snapshot', 
   assert.equal(a.snapshot.value.games[0].preferredInstallationId, 'B')
 })
 
-test('a newest reload failure remains visible and does not revive an older snapshot', async () => {
-  const { a, api, game, state } = await harness()
+test('a newest reload failure remains visible and does not revive an older snapshot', async t => {
+  const { a, api, game, state } = await harness(t)
   let release!: (value: any) => void
   const older = new Promise(resolve => { release = resolve })
   let reads = 0

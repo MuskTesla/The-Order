@@ -16,6 +16,7 @@ import LibrarySavedViews from './components/LibrarySavedViews.vue'
 import PersonalRecord from './components/PersonalRecord.vue'
 import PreferencesSettings from './components/PreferencesSettings.vue'
 import ImportCandidates from './components/ImportCandidates.vue'
+import MatchReviewWorkspace from './components/MatchReviewWorkspace.vue'
 import LibraryMaintenance from './components/LibraryMaintenance.vue'
 import PlayStatistics from './components/PlayStatistics.vue'
 import { filterLibraryGames, folderKey, libraryViewCounts, readLibraryPreferences, saveLibraryPreferences, splitLabels } from './library-workspace'
@@ -91,13 +92,21 @@ watch(matching, (current, previous) => {
 const reviewOpen = ref(false)
 const reviewGameId = ref<string | null>(null)
 const reviewChoice = ref('')
+const reviewError = ref(''), reviewReloadNeeded = ref(false)
+let reviewGeneration = 0
+const reviewModalOpen = computed({ get: () => reviewOpen.value, set: value => { if (!busy.has('matching-resolve')) reviewOpen.value = value } })
 const currentReview = computed(() => matchReviews.value.find(review => review.gameId === reviewGameId.value) ?? matchReviews.value[0] ?? null)
 const reviewGame = computed(() => games.value.find(game => game.id === currentReview.value?.gameId) ?? null)
 const maintenanceOpen = ref(false)
 const missingGames = computed(() => games.value.filter(game => game.installations.length && (!game.metadata || !game.metadata.coverUrl)))
 const unconfiguredGames = computed(() => games.value.filter(game => game.installations.length && !getLaunchInstallation(game)?.executablePath))
-watch(() => [currentReview.value?.gameId, currentReview.value?.reviewId, currentReview.value?.decisionFingerprint].join('|'), () => { reviewChoice.value = '' })
-watch(() => currentReview.value?.options.map(option => option.work.id).join(','), () => { if (!currentReview.value?.options.some(option => option.work.id === reviewChoice.value)) reviewChoice.value = '' })
+function reviewIdentity() { return [currentReview.value?.gameId, currentReview.value?.reviewId, currentReview.value?.decisionFingerprint].join('|') }
+watch(reviewIdentity, () => {
+  reviewChoice.value = ''
+  if (!busy.has('matching-resolve')) { reviewGeneration++; reviewError.value = ''; reviewReloadNeeded.value = false }
+}, { flush: 'sync' })
+watch(() => currentReview.value?.options.map(option => option.work.id).join(','), () => { if (!currentReview.value?.options.some(option => option.work.id === reviewChoice.value)) reviewChoice.value = '' }, { flush: 'sync' })
+watch(reviewOpen, open => { if (!open) { reviewGeneration++; reviewChoice.value = ''; if (!reviewReloadNeeded.value) reviewError.value = ''; reviewDetailOpen.value = false } }, { flush: 'sync' })
 const allCategories = computed(() => [...new Set(games.value.flatMap(g => g.categories))].sort())
 const allTags = computed(() => [...new Set(games.value.flatMap(g => [...g.customTags, ...(g.metadata?.tags ?? [])]))].sort())
 const libraryFilters = computed<LibraryFilters>(() => ({ query: libraryQuery.value, view: libraryView.value, status: statusFilter.value, favorites: favoritesOnly.value, category: categoryFilter.value, tag: tagFilter.value, minRating: minRating.value }))
@@ -225,21 +234,48 @@ async function identifySelected() { await startMatching([...selectedLocalIds.val
 async function identifyCurrentGame() { const game = selectedGame.value; if (game) await startMatching([game.id], 'reidentify') }
 async function cancelMatching() { await task('matching-cancel', async () => { await api.cancelMetadataMatching(); await reload() }) }
 function openMatchReviews() { maintenanceOpen.value = false; reviewOpen.value = true; if (!matchReviews.value.some(review => review.gameId === reviewGameId.value)) reviewGameId.value = matchReviews.value[0]?.gameId ?? null }
+function selectReview(gameId: string) { if (!busy.has('matching-resolve') && !reviewReloadNeeded.value && matchReviews.value.some(review => review.gameId === gameId)) reviewGameId.value = gameId }
+function chooseReview(workId: string) { if (!busy.has('matching-resolve') && !reviewReloadNeeded.value && currentReview.value?.sourceStatus !== 'stale' && currentReview.value?.options.some(option => option.work.id === workId)) reviewChoice.value = workId }
+function laterReview() { if (!busy.has('matching-resolve')) reviewOpen.value = false }
 async function resolveReview(skip = false) {
+  if (busy.has('matching-resolve') || !reviewOpen.value) return
   const review = currentReview.value; const choice = reviewChoice.value
-  if (!review || (!skip && !review.options.some(option => option.work.id === choice))) return
-  if (!review.reviewId || !review.decisionFingerprint) { useKunMessage('核对信息正在更新，请重新打开资料整理。', 'info'); return }
+  if (!reviewReloadNeeded.value && (!review || (!skip && (review.sourceStatus === 'stale' || !review.options.some(option => option.work.id === choice))))) return
+  if (!reviewReloadNeeded.value && (!review?.reviewId || !review.decisionFingerprint)) { reviewError.value = '核对信息正在更新，请重新打开资料整理。'; return }
+  const generation = reviewGeneration, reread = reviewReloadNeeded.value
+  const currentSession = () => generation === reviewGeneration && reviewOpen.value
+  reviewError.value = ''
   await task('matching-resolve', async () => {
-    await api.resolveMetadataMatch(review.gameId, skip ? null : choice, review.reviewId, review.decisionFingerprint)
-    await reload()
-    if (selectedGameId.value === review.gameId) selectedWork.value = games.value.find(game => game.id === review.gameId)?.metadata ?? selectedWork.value
-    useKunMessage(skip ? '本次建议已结束，书架关联和个人记录未改变。' : '已关联你确认的作品资料。', 'success')
+    let committed = reread
+    try {
+      if (!reread) { await api.resolveMetadataMatch(review!.gameId, skip ? null : choice, review!.reviewId, review!.decisionFingerprint); committed = true }
+      await reload()
+      if (!currentSession()) return
+      reviewReloadNeeded.value = false
+      if (review && selectedGameId.value === review.gameId) selectedWork.value = games.value.find(game => game.id === review.gameId)?.metadata ?? selectedWork.value
+      useKunMessage(reread ? '书架与核对清单已重新读取。' : skip ? '本次建议已结束，书架关联和个人记录未改变。' : '已关联你确认的作品资料。', 'success')
+    } catch (error) {
+      if (!currentSession()) return
+      if (committed) { reviewReloadNeeded.value = true; reviewError.value = reread ? '书架与核对清单仍未能读取。请重新读取，不会重复提交。' : '本次决定已提交，但书架与核对清单读取失败。请重新读取，不会重复提交。' }
+      else if (!matchReviews.value.some(item => item.gameId === review?.gameId && item.reviewId !== review?.reviewId)) {
+        // A rejected decision can still follow a completed library commit if
+        // persisting the remaining queue failed. Read the actual association
+        // before offering another decision; never resubmit automatically.
+        try {
+          await reload()
+          if (currentSession() && !matchReviews.value.some(item => item.gameId === review?.gameId && item.reviewId !== review?.reviewId)) reviewError.value = `「${review?.name}」的操作未完整结束，请核对当前关联后再决定。` + settingsFailure(error)
+        } catch {
+          if (currentSession()) { reviewReloadNeeded.value = true; reviewError.value = '操作未完整结束，当前关联和清单也未能重新读取。请先重新读取，再决定是否重试；不会自动重复提交。' }
+        }
+      }
+    }
   })
 }
 const reviewDetailOpen = ref(false), reviewDetailWork = ref<WorkMetadata | null>(null), reviewDetailError = ref('')
 let reviewDetailGeneration = 0
 watch(reviewDetailOpen, open => { if (!open) { reviewDetailGeneration++; busy.delete('review-detail') } })
 async function showReviewDetail(work: WorkMetadata) {
+  if (busy.has('matching-resolve') || reviewReloadNeeded.value) return
   const generation = ++reviewDetailGeneration
   reviewDetailWork.value = work; reviewDetailError.value = ''; reviewDetailOpen.value = true; busy.add('review-detail')
   try { const detail = await api.getWork(work.id); if (generation === reviewDetailGeneration && reviewDetailOpen.value) reviewDetailWork.value = detail }
@@ -560,7 +596,7 @@ watch(bindOpen, open => { if (!open) resetBindingSearch() }, { flush: 'sync' })
 watch(selectedGameId, (current, previous) => { if (current !== previous && bindOpen.value) bindOpen.value = false }, { flush: 'sync' })
 watch(() => games.value.some(game => game.id === bindTargetId.value), exists => { if (!exists && bindOpen.value) bindOpen.value = false }, { flush: 'sync' })
 async function beginBind() { resetBindingSearch(); bindReviewContext.value = null; bindTargetId.value = selectedGame.value?.id ?? null; bindQuery.value = selectedGame.value?.name ?? ''; bindOpen.value = true }
-function searchReviewAgain(review: MatchReview) { resetBindingSearch(); bindReviewContext.value = review.reviewId && review.decisionFingerprint ? { reviewId: review.reviewId, fingerprint: review.decisionFingerprint } : null; bindTargetId.value = review.gameId; bindQuery.value = games.value.find(game => game.id === review.gameId)?.name ?? review.name; reviewOpen.value = false; bindOpen.value = true }
+function searchReviewAgain(review: MatchReview) { if (busy.has('matching-resolve') || reviewReloadNeeded.value || currentReview.value?.reviewId !== review.reviewId) return; resetBindingSearch(); bindReviewContext.value = review.reviewId && review.decisionFingerprint ? { reviewId: review.reviewId, fingerprint: review.decisionFingerprint } : null; bindTargetId.value = review.gameId; bindQuery.value = games.value.find(game => game.id === review.gameId)?.name ?? review.name; reviewOpen.value = false; bindOpen.value = true }
 async function searchBinding(more = false) {
   const query = more ? bindSubmittedQuery.value : bindQuery.value.trim(), target = bindTargetId.value
   if (!bindOpen.value || !target || !games.value.some(game => game.id === target) || !query || busy.has('bind-search')) return
@@ -892,19 +928,8 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
   <KunModal v-model="scanOpen" title="确认导入本地游戏" size="xl" scroll-behavior="inside" inner-class-name="import-candidates-modal" :is-dismissable="!busy.has('import')" :is-close-request-dismissable="!busy.has('import')" :is-show-close-button="!busy.has('import')">
     <ImportCandidates :rows="scanRows" :chosen="selectedScanIds" :query="scanQuery" :view="scanView" :auto-match="autoMatchOnImport" :has-api-key="!!snapshot?.settings.hasApiKey" :matching-unavailable="matchingUnavailable" :busy="busy.has('import')" :scanning="busy.has('scan')" :known-game-count="scannedLibraryIds.length" :error="importError" :reload-needed="scanReloadNeeded" @selection="setScanSelection" @query="scanQuery = $event" @view="scanView = $event" @auto-match="autoMatchOnImport = $event" @cancel="scanOpen = false" @confirm="importSelected" @identify="identifyScannedGames" @rescan="scan" />
   </KunModal>
-  <KunModal v-model="reviewOpen" title="核对游戏资料" size="xl" inner-class-name="matching-review-modal" scroll-behavior="inside">
-    <p class="modal-help">先对照当前作品和本地安装，再核对候选。标题相符并不代表章节或版本相同。</p>
-    <div v-if="currentReview" class="review-layout">
-      <aside class="review-queue"><span class="review-queue-heading">待核对 · {{ matchReviews.length }}</span><button v-for="review in matchReviews" :key="review.gameId" :class="{ active: currentReview.gameId === review.gameId }" :disabled="busy.has('matching-resolve')" @click="reviewGameId = review.gameId"><BookOpen :size="14" /><span>{{ review.name }}</span><ChevronRight :size="13" /></button></aside>
-      <section class="review-content"><div class="review-local-game"><span>本地游戏</span><h3>{{ reviewGame?.name || currentReview.name }}</h3><span>{{ currentReview.source ? '首选识别目录' : '旧建议记录的目录' }}</span><p><FolderOpen :size="13" />{{ currentReview.source?.folderPath || currentReview.folderPath }}</p><small v-if="currentReview.source?.executablePath">程序：{{ currentReview.source.executablePath }}</small><details v-if="(currentReview.source?.installations?.length || 0) > 1"><summary>本次输入 {{ currentReview.source?.installations?.length }} 个安装</summary><p v-for="source in currentReview.source?.installations" :key="source.installationId">{{ source.folderPath }}</p></details></div>
-        <div v-if="reviewGame?.metadata" class="review-current-work" aria-label="当前关联"><img v-if="gameCoverUrl(reviewGame, snapshot?.settings.includeNsfw ?? true)" :src="gameCoverUrl(reviewGame, snapshot?.settings.includeNsfw ?? true)!" alt="" referrerpolicy="no-referrer" /><div><small>当前关联 · 保留至你明确确认</small><strong>{{ reviewGame.metadata.title }}</strong><span>{{ releaseDate(reviewGame.metadata) }} · {{ reviewGame.metadata.developers.join(' / ') || '厂商暂未收录' }}</span></div></div>
-        <div class="review-reason"><CircleHelp :size="15" /><p>{{ currentReview.sourceStatus === 'stale' ? '安装、名称或关联已改变，这条建议已过时。请手动搜索，或结束本次建议。' : currentReview.reason }}</p></div><p v-if="currentReview.sourceStatus === 'legacy'" class="review-source-note">旧队列未记录完整来源。这里显示当前关联，请核对后再决定；目录信息不能证明候选已验证。</p>
-        <div v-if="currentReview.options.length" class="review-options"><div v-for="option in currentReview.options" :key="option.work.id" class="review-option-row"><button :class="['review-option', { selected: reviewChoice === option.work.id }]" :aria-pressed="reviewChoice === option.work.id" :disabled="busy.has('matching-resolve') || currentReview.sourceStatus === 'stale'" @click="reviewChoice = option.work.id"><img v-if="workCoverUrl(option.work, snapshot?.settings.includeNsfw ?? true)" :src="workCoverUrl(option.work, snapshot?.settings.includeNsfw ?? true)!" :alt="option.work.title" loading="lazy" referrerpolicy="no-referrer" /><span v-else class="review-cover-placeholder"><BookOpen :size="24" /></span><span class="review-option-copy"><strong>{{ option.work.title }}</strong><small v-if="option.work.originalTitle !== option.work.title">{{ option.work.originalTitle }}</small><span>{{ releaseDate(option.work) }} · {{ option.work.developers.join(' / ') || '厂商暂未收录' }}</span><em>{{ option.reason }}</em><small>此处是匹配线索，整体关联仍待你核对。</small></span><span class="review-option-check"><Check v-if="reviewChoice === option.work.id" :size="13" /></span></button><button class="text-button review-detail-link" @click="showReviewDetail(option.work)">查看详情</button></div></div>
-        <div v-else class="review-no-options"><Search :size="25" /><p>暂时没有合适的候选。</p><span>可以换一个完整名称或原名，重新搜索。</span></div>
-        <div class="review-footer"><button class="text-button" :disabled="busy.has('matching-resolve')" @click="searchReviewAgain(currentReview)"><Search :size="14" /> 手动搜索</button><div><KunButton variant="light" size="sm" :disabled="busy.has('matching-resolve')" @click="reviewOpen = false">稍后处理</KunButton><KunButton variant="bordered" size="sm" :disabled="busy.has('matching-resolve')" @click="resolveReview(true)">{{ reviewGame?.metadata ? '保留当前关联' : '本次不关联' }}</KunButton><KunButton color="primary" size="sm" :disabled="!reviewChoice || currentReview.sourceStatus === 'stale'" :loading="busy.has('matching-resolve')" @click="resolveReview()"><Check :size="14" /> 确认关联</KunButton></div></div>
-      </section>
-    </div>
-    <div v-else class="small-empty review-finished"><CheckCircle2 :size="35" /><h3>{{ matchingRunning ? '目前没有待核对的项目' : '待核对项目已处理完毕' }}</h3><p>{{ matchingRunning ? '后台仍在识别其他游戏，有新的候选时会显示在这里。' : '可以返回书架查看补全的封面与资料。' }}</p><KunButton variant="flat" color="primary" @click="reviewOpen = false">返回书架</KunButton></div>
+  <KunModal v-model="reviewModalOpen" title="核对游戏资料" size="xl" inner-class-name="matching-review-modal" scroll-behavior="inside" :is-dismissable="!busy.has('matching-resolve')" :is-close-request-dismissable="!busy.has('matching-resolve')" :is-show-close-button="!busy.has('matching-resolve')">
+    <MatchReviewWorkspace :reviews="matchReviews" :games="games" :current="currentReview" :choice="reviewChoice" :busy="busy.has('matching-resolve')" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :error="reviewError" :reload-needed="reviewReloadNeeded" :running="matchingRunning" @select="selectReview" @choice="chooseReview" @detail="showReviewDetail" @search="searchReviewAgain" @resolve="resolveReview" @later="laterReview" />
   </KunModal>
   <LibraryMaintenance v-model="maintenanceOpen" :matching="matching" :missing="missingGames" :unconfigured="unconfiguredGames" :unavailable="matchingUnavailable" :has-local="!!localGameIds.length" @start="startMatching(undefined, $event)" @cancel="cancelMatching" @review="openMatchReviews" @open="openMaintenanceGame" @configure="openMaintenanceGame($event, true)" @filter="showMaintenanceFilter" />
   <KunModal v-model="attachmentOpen" title="添加本地游戏" size="lg" scroll-behavior="inside" inner-class-name="attachment-modal"><p class="modal-help">为「{{ games.find(game => game.id === attachmentGameId)?.name }}」附加安装。原作品资料和个人记录会保留。</p><p class="attachment-root"><strong>所选根目录</strong>{{ attachmentScan?.rootPath }}</p><p v-if="attachmentError" class="inline-error" role="alert">{{ attachmentError }}</p><p v-if="!attachmentScan?.candidates.length" class="modal-help">没有发现可用的程序目录。请确认选择的是游戏目录，再重新选择。</p><div v-for="candidate in attachmentScan?.candidates" :key="candidate.id" class="attachment-candidate"><div><strong>{{ candidate.name }}</strong><span>{{ candidate.folderPath }}</span><small v-if="candidateOwner(candidate)">与「{{ candidateOwner(candidate)?.name }}」的安装目录重叠，请先核对已有条目。</small><small v-else>选择这个根目录中的程序；取消选择不会添加安装。</small></div><KunButton size="sm" :disabled="!!candidateOwner(candidate)" :loading="busy.has('attachment-commit')" @click="attachCandidate(candidate)">选择程序并添加</KunButton></div><div class="modal-footer"><KunButton variant="light" @click="attachmentOpen = false">取消</KunButton><KunButton variant="bordered" :disabled="busy.has('attachment-commit')" @click="attachmentOpen = false; scan()">返回普通导入</KunButton></div></KunModal>

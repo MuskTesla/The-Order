@@ -11,10 +11,13 @@ import { _electron as electron } from '../node_modules/playwright/index.mjs'
 // All games, persisted reviews and catalog responses are synthetic. Programs
 // are inert text fixtures, and every network destination is intercepted.
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const evidenceArguments = process.argv.slice(2)
+if (evidenceArguments.length > 1 || evidenceArguments.some(argument => !/^--evidence-round=[0-8]$/.test(argument))) throw new Error('Only one --evidence-round=0..8 argument is supported')
+const evidenceRound = evidenceArguments[0]?.slice('--evidence-round='.length)
 const temporaryRoot = path.resolve(os.tmpdir())
 const temporary = await fs.mkdtemp(path.join(temporaryRoot, 'the-order-iteration-review-'))
 const profile = path.join(temporary, 'profile')
-const artifacts = path.join(project, '.artifacts', 'iteration-01', 'flows')
+const artifacts = evidenceRound === undefined ? path.join(project, '.artifacts', 'iteration-01', 'flows') : path.join(project, '.artifacts', 'overnight-2026-10-04', `round-${evidenceRound}`, 'iteration-review')
 await fs.mkdir(artifacts, { recursive: true })
 const captures = []
 const hashes = async files => Object.fromEntries(await Promise.all(files.map(async file => {
@@ -220,9 +223,9 @@ try {
   await page.locator('.matching-review-modal').waitFor()
   await selectReview(page, games[0].name)
   assert.equal((await page.locator('.review-current-work strong').innerText()).trim(), games[0].metadata.title)
+  await page.locator('.review-local-game summary').click()
   assert.match(await page.locator('.review-local-game').innerText(), /首选识别目录/)
   assert.ok((await page.locator('.review-local-game').innerText()).includes(games[0].installations[1].folderPath))
-  await page.locator('.review-local-game summary').click()
   for (const installation of games[0].installations) assert.ok((await page.locator('.review-local-game').innerText()).includes(installation.folderPath))
   await capture(page, '02-review-current-source.png', '核对当前关联、实际首选识别目录及两个输入安装，并展示可比较的候选。')
   const beforeLater = await snapshot(page)
