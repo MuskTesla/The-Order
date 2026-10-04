@@ -34,11 +34,12 @@ export function gameCoverDisplay(game: LibraryGame | null | undefined, globalDis
 
 export function shouldPreserveCover(imageRatio: number, frameRatio: number, display: NonPortraitCoverDisplay = 'blur'): boolean {
   if (!Number.isFinite(imageRatio) || !Number.isFinite(frameRatio) || imageRatio <= 0 || frameRatio <= 0) return false
-  if (imageRatio >= 1) return display !== 'crop'
-  // Portrait artwork keeps the existing bounded crop policy in small frames.
+  if (display === 'crop') return false
+  if (imageRatio >= 1) return true
+  // Complete-image modes still fit ordinary portraits with bounded cropping.
   return Math.min(imageRatio / frameRatio, frameRatio / imageRatio) < .8
 }
 
 export function shouldBlurCover(imageRatio: number, frameRatio: number, display: NonPortraitCoverDisplay = 'blur'): boolean {
-  return shouldPreserveCover(imageRatio, frameRatio, display) && !(imageRatio >= 1 && display === 'plain')
+  return display === 'blur' && shouldPreserveCover(imageRatio, frameRatio, display)
 }

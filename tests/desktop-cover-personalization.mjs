@@ -132,7 +132,7 @@ async function snapshot() {
 }
 const entry = async index => (await snapshot()).games.find(game => game.id === games[index].id)
 const picker = () => page.getByRole('region', { name: '选择封面', exact: true })
-const display = () => picker().getByRole('combobox', { name: '非竖版封面展示', exact: true })
+const display = () => picker().getByRole('combobox', { name: '封面展示', exact: true })
 const saveCover = () => picker().getByRole('button', { name: '保存封面设置', exact: true })
 const note = () => page.locator('.manage-form .field-label').filter({ hasText: '游玩笔记' }).locator('textarea')
 const tab = label => page.locator('.detail-tabs').getByRole('button', { name: label, exact: true }).click()
@@ -218,7 +218,7 @@ async function chooseDisplay(index, value) {
 }
 async function saveGlobal(value) {
   await navigate('偏好设置')
-  await page.getByRole('combobox', { name: '非竖版封面默认展示', exact: true }).selectOption(value)
+  await page.getByRole('combobox', { name: '封面默认展示', exact: true }).selectOption(value)
   await page.getByRole('button', { name: '应用界面设置', exact: true }).click()
   await poll(snapshot, state => state.settings.nonPortraitCoverDisplay === value, 'global display persistence')
 }
@@ -257,11 +257,11 @@ try {
   await page.evaluate(async () => { const state = await window.kunManager.getState(); await window.kunManager.saveSettings({ ...state.settings, apiKey: 'synthetic-cover-personalization-key', includeNsfw: false, readExecutableMetadata: false }) })
   if (settingsOnly) {
     await resize(normal); await saveGlobal('blur')
-    await page.getByRole('combobox', { name: '非竖版封面默认展示' }).evaluate(element => element.closest('.settings-panel').scrollIntoView({ block: 'start' }))
+    await page.getByRole('combobox', { name: '封面默认展示' }).evaluate(element => element.closest('.settings-panel').scrollIntoView({ block: 'start' }))
     await page.getByText('设置已保存。', { exact: true }).waitFor({ state: 'visible' })
     await page.getByText('设置已保存。', { exact: true }).waitFor({ state: 'hidden', timeout: 15000 })
     const controls = await page.evaluate(() => {
-      const select = document.querySelector('[aria-label="非竖版封面默认展示"]'), panel = select.closest('.settings-panel')
+      const select = document.querySelector('[aria-label="封面默认展示"]'), panel = select.closest('.settings-panel')
       const help = [...panel.querySelectorAll('.field-help')].find(element => element.textContent.includes('横版与方形'))
       const save = [...panel.querySelectorAll('button')].find(element => element.textContent.includes('应用界面设置'))
       return [select, help, save].map(element => ({ label: element.textContent.trim(), top: element.getBoundingClientRect().top, bottom: element.getBoundingClientRect().bottom, viewport: innerHeight }))
@@ -316,11 +316,11 @@ try {
     }
     record('All six sections retain Chinese headings larger than their secondary Galgame names')
 
-    await navigate('偏好设置'); await page.getByRole('combobox', { name: '非竖版封面默认展示' }).selectOption('crop')
+    await navigate('偏好设置'); await page.getByRole('combobox', { name: '封面默认展示' }).selectOption('crop')
     assert.equal((await snapshot()).settings.nonPortraitCoverDisplay, 'blur')
     await openGame(0); await checkPresentation(0, 'blur', wide.url); await closeDetail()
     await saveGlobal('crop'); await openGame(0); await checkPresentation(0, 'crop', wide.url); await closeDetail()
-    await navigate('偏好设置'); await page.getByRole('combobox', { name: '非竖版封面默认展示' }).evaluate(element => element.closest('.settings-panel').scrollIntoView({ block: 'start' })); await capture('saved-global-setting', normal)
+    await navigate('偏好设置'); await page.getByRole('combobox', { name: '封面默认展示' }).evaluate(element => element.closest('.settings-panel').scrollIntoView({ block: 'start' })); await capture('saved-global-setting', normal)
     await openGame(1); await checkPresentation(1, 'plain', square.url); await openPicker()
     await chooseDisplay(1, 'global'); await checkPresentation(1, 'crop', square.url, true); await capture('follows-global-crop', normal); await closeDetail()
     await saveGlobal('blur'); await openGame(0); await openPicker(); await checkPresentation(0, 'blur', wide.url, true)

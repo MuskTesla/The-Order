@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
 defineEmits<{ open: []; favorite: []; play: []; configure: []; toggleSelected: [] }>()
 
 const metadata = computed(() => props.work ?? props.game?.metadata)
+const compactCard = computed(() => !!props.game && props.layout === 'grid')
 const coverUrl = computed(() => props.game ? gameCoverUrl(props.game, props.includeNsfw) : workCoverUrl(props.work, props.includeNsfw))
 const coverDisplay = computed(() => gameCoverDisplay(props.game, props.globalDisplay))
 const title = computed(() => props.game?.name ?? metadata.value?.title ?? '未命名作品')
@@ -69,22 +70,22 @@ const labels = { planned: '未开始', playing: '在玩', completed: '已完成'
 </script>
 
 <template>
-  <article :class="['game-card', { 'library-card': !!game, 'card-list': layout === 'list', 'is-selected': selected, 'selection-mode': selectionMode }]">
+  <article :class="['game-card', { 'library-card': !!game, 'compact-card': compactCard, 'card-list': layout === 'list', 'is-selected': selected, 'selection-mode': selectionMode }]">
     <button v-if="game && selectionMode" type="button" class="card-select" role="checkbox" :aria-checked="selected" :aria-label="`${selected ? '取消选择' : '选择'} ${title}`" @click="$emit('toggleSelected')"><Check v-if="selected" :size="16" :stroke-width="2.8" /></button>
     <button ref="imageFrame" type="button" class="card-image" :class="{ 'is-loading': coverUrl && !broken && !loaded, 'preserve-cover': preserveCover }" :aria-busy="!!coverUrl && !broken && !loaded" :aria-label="`查看 ${title}`" @click="$emit('open')">
       <img v-if="coverUrl && !broken" class="cover-foreground" :src="coverUrl" :alt="title" loading="lazy" referrerpolicy="no-referrer" @load="coverLoaded" @error="broken = true" :class="{ 'cover-loading': !loaded }" />
       <img v-if="blurCover && coverUrl" class="cover-backdrop" :src="coverUrl" alt="" aria-hidden="true" loading="lazy" referrerpolicy="no-referrer" />
       <div v-if="!coverUrl || broken" class="cover-placeholder"><span class="cover-placeholder-mark"><OrderMark /></span><strong>{{ title }}</strong><span>{{ broken ? '封面暂不可用' : '等待一段故事' }}</span><i aria-hidden="true"></i></div>
       <span v-if="coverUrl && !broken && !loaded" class="cover-loading-label" role="status">封面加载中</span>
-      <span class="card-open">作品详情 <ArrowUpRight :size="13" /></span>
+      <span v-if="!compactCard" class="card-open">作品详情 <ArrowUpRight :size="13" /></span>
     </button>
-    <button v-if="game" type="button" class="favorite-button" :class="{ active: game.favorite }" :aria-label="`${game.favorite ? '取消收藏' : '收藏游戏'} ${title}`" :aria-pressed="game.favorite" @click="$emit('favorite')"><Heart :size="16" :fill="game.favorite ? 'currentColor' : 'none'" /></button>
+    <button v-if="game && !compactCard" type="button" class="favorite-button" :class="{ active: game.favorite }" :aria-label="`${game.favorite ? '取消收藏' : '收藏游戏'} ${title}`" :aria-pressed="game.favorite" @click="$emit('favorite')"><Heart :size="16" :fill="game.favorite ? 'currentColor' : 'none'" /></button>
     <div class="card-copy">
-      <div v-if="game || displayedRating" class="card-meta"><span v-if="game" class="card-status" :class="game.status"><span></span>{{ labels[game.status] }}</span><span v-if="displayedRating" class="card-rating-summary" :class="{ personal: displayedRating.personal }" :title="`${displayedRating.label}评分 ${displayedRating.score} / ${displayedRating.scale}`"><Star :size="12" fill="currentColor" /><strong>{{ displayedRating.score }}</strong><small>/{{ displayedRating.scale }}</small><span>{{ displayedRating.label }}</span></span></div>
-      <button type="button" class="card-title" :title="title" @click="$emit('open')">{{ title }}</button>
-      <p :title="developerLine">{{ developerLine }}</p>
-      <div v-if="game" class="card-progress"><span><Clock3 :size="12" />{{ playtime }}</span><span v-if="game.playCount">{{ game.playCount }} 次游玩</span></div>
-      <div class="card-bottom">
+      <div v-if="!compactCard && (game || displayedRating)" class="card-meta"><span v-if="game" class="card-status" :class="game.status"><span></span>{{ labels[game.status] }}</span><span v-if="displayedRating" class="card-rating-summary" :class="{ personal: displayedRating.personal }" :title="`${displayedRating.label}评分 ${displayedRating.score} / ${displayedRating.scale}`"><Star :size="12" fill="currentColor" /><strong>{{ displayedRating.score }}</strong><small>/{{ displayedRating.scale }}</small><span>{{ displayedRating.label }}</span></span></div>
+      <button type="button" class="card-title" :title="title" @click="$emit('open')"><span v-if="compactCard" class="compact-title-text">{{ title }}</span><template v-else>{{ title }}</template></button>
+      <p v-if="!compactCard" :title="developerLine">{{ developerLine }}</p>
+      <div v-if="game && !compactCard" class="card-progress"><span><Clock3 :size="12" />{{ playtime }}</span><span v-if="game.playCount">{{ game.playCount }} 次游玩</span></div>
+      <div v-if="!compactCard" class="card-bottom">
         <span v-if="game && (!local || !canLaunch)" class="card-location card-availability">{{ !local ? '未安装' : '待设程序' }}</span>
         <span v-if="!game" class="card-location">{{ metadata?.releaseDate?.slice(0, 4) || '发售日未知' }}</span>
         <button v-if="game && canLaunch" type="button" class="card-launch" :disabled="launchDisabled" :aria-label="`启动 ${title}`" :title="launchDisabled ? '已有游戏正在启动或计时' : `启动 ${title}`" @click="$emit('play')"><Play :size="13" fill="currentColor" /> 启动</button>
@@ -94,3 +95,54 @@ const labels = { planned: '未开始', playing: '在玩', completed: '已完成'
     </div>
   </article>
 </template>
+
+<style scoped>
+.game-card.library-card.compact-card {
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  overflow:visible;
+}
+.game-card.library-card.compact-card:hover {
+  transform:none;
+  box-shadow:none;
+}
+.game-card.library-card.compact-card .card-image {
+  border:0;
+  border-radius:10px;
+}
+.game-card.library-card.compact-card:hover .card-image>.cover-foreground {
+  transform:none;
+}
+.game-card.library-card.compact-card .card-copy {
+  display:block;
+  flex:none;
+  padding:8px 3px 0;
+}
+.game-card.library-card.compact-card .card-title {
+  height:3em;
+  display:flex;
+  align-items:flex-start;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.5;
+  color:var(--ink);
+  text-wrap:wrap;
+}
+.compact-title-text {
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  width:100%;
+  text-align:left;
+}
+.game-card.library-card.compact-card .card-title:hover {
+  color:var(--blue);
+}
+.game-card.library-card.compact-card.is-selected .card-image {
+  outline:3px solid var(--blue);
+  outline-offset:2px;
+}
+</style>

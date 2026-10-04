@@ -226,8 +226,8 @@ try {
     const condition = conditions[3]
     await resize(condition); await openGame(); await openPicker(); await pickerReady()
     await picker().getByRole('radio', { name: '封面 2', exact: true }).click()
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('plain')
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).focus()
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('plain')
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).focus()
     await page.keyboard.press('Tab')
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), '封面 2')
     await page.keyboard.press('Tab')
@@ -263,7 +263,7 @@ try {
     await manage(); await note().fill('Unsaved management draft survives cover changes'); await overview()
     const requestCount = await application.evaluate(() => globalThis.__coverPreferences.requests.length)
     for (const mode of ['plain', 'crop']) {
-      await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption(mode)
+      await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption(mode)
       await saveAndWait(wide.id, mode); await presentation(mode, wide.url); await shot(`wide-${mode}`, normal)
     }
     assert.equal(await application.evaluate(() => globalThis.__coverPreferences.requests.length), requestCount, 'Display-only changes must not refetch or require authentication')
@@ -272,7 +272,7 @@ try {
     record('All three nonportrait modes agree in card, detail and picker; display-only saves preserve unsaved management draft and issue no catalogue request')
 
     await picker().getByRole('radio', { name: '封面 3', exact: true }).click()
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('plain')
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('plain')
     await saveAndWait(square.id, 'plain'); await presentation('plain', square.url); await shot('square-plain', normal)
     await picker().getByRole('radio', { name: '资料源默认封面', exact: true }).click(); await saveAndWait(null, 'plain')
     assert.equal((await mainGame()).metadata.coverUrl, portrait.url)
@@ -281,7 +281,7 @@ try {
     record('An already chosen cover can be changed again or restored to the source default; high votes do not override the default')
 
     await picker().getByRole('radio', { name: '封面 2', exact: true }).click()
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('crop')
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('crop')
     await saveAndWait(wide.id, 'crop'); await closeDetail()
     const persisted = await snapshot()
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(profile, 'library.json'), 'utf8')).games, persisted.games)
@@ -295,7 +295,7 @@ try {
     await closePicker(); await setFakeKey(true); await openPicker(); await pickerReady()
     await picker().getByRole('alert').waitFor()
     const noKeyRequests = await application.evaluate(() => globalThis.__coverPreferences.requests.length)
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('plain'); await saveAndWait(wide.id, 'plain')
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('plain'); await saveAndWait(wide.id, 'plain')
     await picker().getByRole('radio', { name: '资料源默认封面', exact: true }).click(); await saveAndWait(null, 'plain')
     assert.equal(await application.evaluate(() => globalThis.__coverPreferences.requests.length), noKeyRequests)
     await shot('no-key-default-recovery', normal)
@@ -305,7 +305,7 @@ try {
     await application.evaluate(() => { globalThis.__coverPreferences.holdId = '981001' })
     await openPicker(); await poll(() => application.evaluate(() => globalThis.__coverPreferences.heldId), id => id === '981001', 'held catalogue request')
     await picker().getByText('正在读取可选封面…', { exact: true }).waitFor()
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('blur')
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('blur')
     assert.equal(await saveButton().isDisabled(), true)
     await shot('loading-covers', normal)
     await application.evaluate(() => globalThis.__coverPreferences.release()); await pickerReady()
@@ -317,15 +317,15 @@ try {
 
     for (const condition of conditions) {
       await resize(condition); await picker().getByRole('radio', { name: '封面 2', exact: true }).click()
-      await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('blur')
+      await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('blur')
       if (!await saveButton().isDisabled()) await saveAndWait(wide.id, 'blur')
       await presentation('blur', wide.url); await shot('picker-wide-blur', condition)
       // Keyboard selection must stay reachable even in a short zoomed dialog.
       await picker().getByRole('radio', { name: '封面 2', exact: true }).focus(); await page.keyboard.press('End')
       assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), '封面 4')
       await picker().getByRole('radio', { name: '封面 2', exact: true }).click()
-      await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).focus()
-      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), '非竖版封面展示')
+      await picker().getByRole('combobox', { name: '封面展示', exact: true }).focus()
+      assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), '封面展示')
     }
     record('Long title, radios, display select and save remain usable without horizontal overflow at both window sizes and 150% zoom')
     await resize(normal); await closeDetail()
@@ -334,7 +334,7 @@ try {
     await openGame(2); await page.locator('.detail-art-placeholder').getByText('封面暂不可用', { exact: true }).waitFor()
     await openPicker(); await pickerReady(); await picker().getByText('封面暂不可用', { exact: true }).waitFor(); await shot('broken-cover', normal); await closeDetail()
     await openGame(3); await openPicker(); await pickerReady(); await picker().getByText(/当前手选封面不在这次返回的列表中/).waitFor()
-    await picker().getByRole('combobox', { name: '非竖版封面展示', exact: true }).selectOption('plain'); await saveButton().click(); await pickerReady()
+    await picker().getByRole('combobox', { name: '封面展示', exact: true }).selectOption('plain'); await saveButton().click(); await pickerReady()
     assert.equal((await snapshot()).games.find(game => game.id === 'cover-preference-3').coverChoice.cover.id, '999999')
     await shot('legacy-retained-cover', normal)
     record('Empty lists, failed images and a saved image absent from fresh catalogue each have explicit usable states')

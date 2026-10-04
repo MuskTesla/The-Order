@@ -115,7 +115,7 @@ try {
     await app.evaluate(() => globalThis.__connectionGate.release()); await page.locator('.connection-feedback').filter({ hasText: '已保存连接可用' }).waitFor()
     report.checks.push({ testUsesSavedUrl: true, connectionFailureInline: true, sharedOperationLock: true })
     // Keyboard-only activation of the switch and save action uses the actual rendered controls.
-    await field('外观主题').selectOption('dark'); await field('非竖版封面默认展示').selectOption('plain')
+    await field('外观主题').selectOption('dark'); await field('封面默认展示').selectOption('plain')
     const reading = page.getByRole('switch', { name: '读取程序内的游戏名称', exact: true }); const wasReading = (await state()).settings.readExecutableMetadata
     await reading.focus(); await page.keyboard.press('Space'); await save().focus(); await page.keyboard.press('Enter')
     await page.waitForFunction(async () => (await window.kunManager.getState()).settings.theme === 'dark')

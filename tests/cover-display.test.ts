@@ -94,16 +94,29 @@ test('landscape and square artwork follows blur, plain, and crop choices even wh
   }
 })
 
-test('portrait artwork keeps bounded cropping regardless of the non-portrait preference', () => {
+test('ordinary portrait artwork retains bounded cropping with every display preference', () => {
   for (const display of ['blur', 'plain', 'crop'] as NonPortraitCoverDisplay[]) {
     assert.equal(shouldPreserveCover(2 / 3, 3 / 4, display), false)
     assert.equal(shouldBlurCover(2 / 3, 3 / 4, display), false)
-    assert.equal(shouldPreserveCover(1 / 4, 3 / 4, display), true)
-    assert.equal(shouldBlurCover(1 / 4, 3 / 4, display), true)
-    assert.equal(shouldPreserveCover(2 / 3, 1.4, display), true, 'short viewport retains a complete portrait')
   }
   assert.equal(shouldPreserveCover(.8, 1), false, 'exactly twenty percent loss is still bounded cropping')
   assert.equal(shouldPreserveCover(.79, 1), true)
+})
+
+test('crop fills the frame for tall portrait covers and portraits in short frames', () => {
+  for (const [imageRatio, frameRatio] of [[1 / 4, 3 / 4], [324 / 563, 3 / 4], [2 / 3, 1.4]]) {
+    assert.equal(shouldPreserveCover(imageRatio!, frameRatio!, 'crop'), false)
+    assert.equal(shouldBlurCover(imageRatio!, frameRatio!, 'crop'), false)
+  }
+})
+
+test('special portrait ratios respect complete-image blur and plain backgrounds', () => {
+  for (const [imageRatio, frameRatio] of [[1 / 4, 3 / 4], [324 / 563, 3 / 4], [2 / 3, 1.4]]) {
+    assert.equal(shouldPreserveCover(imageRatio!, frameRatio!, 'blur'), true)
+    assert.equal(shouldBlurCover(imageRatio!, frameRatio!, 'blur'), true)
+    assert.equal(shouldPreserveCover(imageRatio!, frameRatio!, 'plain'), true)
+    assert.equal(shouldBlurCover(imageRatio!, frameRatio!, 'plain'), false)
+  }
 })
 
 test('missing or invalid image/frame dimensions never request preservation backgrounds', () => {

@@ -153,7 +153,7 @@
   .library-workspace .library-overview .story-time { grid-column:2; grid-row:2; }
 }
 @media(max-height:680px) {
-  .game-card.library-card:not(.card-list) .card-image {
+  .game-card.library-card:not(.card-list):not(.compact-card) .card-image {
     height:clamp(140px,25vh,180px); aspect-ratio:auto;
   }
 }

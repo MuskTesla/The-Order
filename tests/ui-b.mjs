@@ -7,7 +7,7 @@ import { _electron as electron } from '../node_modules/playwright/index.mjs'
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const version = JSON.parse(await fs.readFile(path.join(project, 'package.json'), 'utf8')).version
-const output = path.join(project, '.artifacts', `the-order-${version}-ui-evidence`)
+const output = path.join(project, '.artifacts', `the-order-${version}-ui-evidence`, new Date().toISOString().replace(/[:.]/g, '-'))
 await fs.mkdir(output, {recursive:true})
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'kgm-ui-b-'))
 const titles = ['湖岸来信', '当星光再次照亮那个没有名字的小镇时我们仍然记得夏日约定与遥远海岸的回声', '星の向こうで君と出会った夏の日々を忘れないための長い長い物語', 'The Last Train Beyond the Horizon and All the Letters We Never Sent', 'TheUnbrokenSyntheticVisualNovelTitleThatHasNoSpacesAndMustNeverWidenTheCardOrPushItsLaunchButtonAway', '雪线之外', '雨中的旧车站', '花园里的第八封信', '暮色下的风筝', '月光与纸船', '虚构愿望清单', '封面损坏测试', '封面加载测试', '暂无封面记录', '远岸的灯塔']
@@ -20,12 +20,14 @@ async function contrast(page) {
  const values=await page.evaluate(targets=>{
   const rgba=s=>{const n=s.match(/[\d.]+/g)?.map(Number)||[];return [n[0]||0,n[1]||0,n[2]||0,n[3]??1]}
   const luminance=rgb=>rgb.slice(0,3).map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4}).reduce((v,x,i)=>v+x*[.2126,.7152,.0722][i],0)
-  return targets.map(([label,selector,pseudo])=>{
-   const e=document.querySelector(selector),style=getComputedStyle(e,pseudo?'::placeholder':undefined)
+  return targets.flatMap(([label,selector,pseudo])=>{
+   const e=document.querySelector(selector)
+   if(!e || !e.getBoundingClientRect().width)return []
+   const style=getComputedStyle(e,pseudo?'::placeholder':undefined)
    let background=[255,255,255,1],current=e
    while(current){const bg=rgba(getComputedStyle(current).backgroundColor);if(bg[3]===1){background=bg;break}current=current.parentElement}
    const foreground=rgba(style.color),a=luminance(foreground),b=luminance(background)
-   return {label,foreground:style.color,background:background.slice(0,3),ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05),fontSize:style.fontSize}
+   return [{label,foreground:style.color,background:background.slice(0,3),ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05),fontSize:style.fontSize}]
   })
  },targets)
  return values
@@ -49,6 +51,10 @@ async function size(page,w,h,zoom=1) {
  await page.waitForTimeout(180)
  await page.evaluate(()=>window.scrollTo(0,0))
 }
+async function layout(page, value) {
+ await page.getByRole('button',{name:value==='list'?'列表视图':'封面视图',exact:true}).click()
+ await page.waitForFunction(value=>[...document.querySelectorAll('.library-card')].every(e=>e.classList.contains('card-list')===(value==='list')),value)
+}
 async function shot(page,name) {
  await page.mouse.move(0,0)
  const file=path.join(output,name+'.png')
@@ -57,15 +63,15 @@ async function shot(page,name) {
 }
 async function bounds(page,variant,state,w,h,zoom,requireRow=false) {
  const measure=await page.evaluate(()=>{
-   const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right}}
+   const box=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right}}
    const cards=[...document.querySelectorAll('.library-card')]
    const top=cards[0]?.getBoundingClientRect().top
    const row=cards.filter(e=>Math.abs(e.getBoundingClientRect().top-top)<2)
-   return {viewport:{width:innerWidth,height:innerHeight},rootWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,grid:document.querySelector('.library-grid')?box(document.querySelector('.library-grid')):null,columns:row.length,firstRow:row.map(e=>({card:box(e),title:box(e.querySelector('.card-title')),action:box(e.querySelector('.card-bottom')),image:box(e.querySelector('.card-image'))})),controls:[...document.querySelectorAll('.library-controls button,.library-controls input,.library-controls select')].filter(e=>e.getBoundingClientRect().width).map(e=>({label:e.getAttribute('aria-label')||e.textContent.trim(),...box(e)})),images:cards.slice(0,8).map(e=>{const img=e.querySelector('img');return img?{naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight,fit:getComputedStyle(img).objectFit}:null})}
+   return {viewport:{width:innerWidth,height:innerHeight},rootWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,grid:document.querySelector('.library-grid')?box(document.querySelector('.library-grid')):null,columns:row.length,firstRow:row.map(e=>({card:box(e),title:box(e.querySelector('.card-title')),action:box(e.querySelector('.card-bottom')),image:box(e.querySelector('.card-image')),compact:e.classList.contains('compact-card'),extraControls:e.querySelectorAll('.card-meta,.card-progress,.card-bottom,.favorite-button').length})),controls:[...document.querySelectorAll('.library-controls button,.library-controls input,.library-controls select')].filter(e=>e.getBoundingClientRect().width).map(e=>({label:e.getAttribute('aria-label')||e.textContent.trim(),...box(e)})),images:cards.slice(0,8).map(e=>{const img=e.querySelector('img');return img?{naturalWidth:img.naturalWidth,naturalHeight:img.naturalHeight,fit:getComputedStyle(img).objectFit,preserved:e.querySelector('.card-image').classList.contains('preserve-cover')}:null})}
  })
  assert.ok(measure.rootWidth<=measure.viewport.width+1,`${variant} ${state} ${zoom}: root overflow ${measure.rootWidth}/${measure.viewport.width}`)
  assert.ok(measure.bodyWidth<=measure.viewport.width+1,`${variant} ${state}: body overflow`)
- for(const card of measure.firstRow){assert.ok(card.action.right<=card.card.right+1);assert.ok(card.title.right<=card.card.right+1);assert.ok(card.action.bottom<=card.card.bottom+1)}
+ for(const card of measure.firstRow){assert.ok(card.title.right<=card.card.right+1);if(card.compact){assert.equal(card.action,null);assert.equal(card.extraControls,0)}else{assert.ok(card.action,'Information cards retain their action row');assert.ok(card.action.right<=card.card.right+1);assert.ok(card.action.bottom<=card.card.bottom+1)}}
  result.measurements.push({variant,state,window:{w,h},zoom,...measure})
  if(requireRow){assert.ok(measure.firstRow.length>=3,`${variant} ${state}: ${measure.columns} columns, grid ${JSON.stringify(measure.grid)}`);for(const c of measure.firstRow)assert.ok(c.card.bottom<=measure.viewport.height,`${variant} ${state} first row bottom ${c.card.bottom}/${measure.viewport.height}`)}
  // Expanded controls and an active matching banner may require vertical scrolling.
@@ -94,20 +100,35 @@ try {
   assert.equal(await page.locator('.fixture-label').innerText(),'虚构测试书架 · 原创测试封面')
   assert.equal(await page.locator('.recent-strip').count(),0)
   const m=await bounds(page,variant,'normal',1427,817,1,true)
+  const compactGrid=await page.locator('.compact-card').count()>0
+  // The simple cover grid intentionally omits details. Check their unchanged
+  // contrast and real action targets in the retained information list.
+  if(compactGrid)await layout(page,'list')
   result.contrast=await contrast(page)
+  for(const label of ['card-title','developer','launch'])assert.ok(result.contrast.some(e=>e.label===label),`${label} contrast is actually measured`)
   for(const entry of result.contrast)assert.ok(entry.ratio>=4.5,`${entry.label}: text contrast ${entry.ratio.toFixed(2)} is below 4.5`)
-  assert.ok(m.images.every(i=>i?.fit==='contain'&&i.naturalWidth>0))
+  if(compactGrid)await layout(page,'grid')
+  assert.ok(m.images.every(i=>i?.naturalWidth>0&&i.fit===(compactGrid&&!i.preserved?'cover':'contain')))
   await shot(page,`The-Order-UI-${variant}-1427x817`)
   await size(page,1280,720);await bounds(page,variant,'normal',1280,720,1,true);await shot(page,`The-Order-UI-${variant}-1280x720`)
   for(const zoom of [1.25,1.5,2]) {
    await size(page,1280,720,zoom);await bounds(page,variant,'normal',1280,720,zoom);await page.getByRole('textbox',{name:'搜索书架',exact:true}).focus()
+   if(compactGrid){await layout(page,'list');await page.getByRole('textbox',{name:'搜索书架',exact:true}).focus()}
    const firstLaunch=page.locator('.library-card').first().locator('.card-launch')
    for(let tab=0;tab<32;tab++){if(await firstLaunch.evaluate(e=>e===document.activeElement))break;await page.keyboard.press('Tab')}
    assert.equal(await firstLaunch.evaluate(e=>e===document.activeElement),true,'Tab reaches the first launch button')
    await page.waitForTimeout(80)
    const focus=await firstLaunch.evaluate(e=>{const r=e.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return {visible:r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth,unobstructed:hit===e||e.contains(hit),outline:getComputedStyle(e).outlineStyle,rect:{x:r.x,y:r.y,right:r.right,bottom:r.bottom},viewport:{width:innerWidth,height:innerHeight}}})
    assert.equal(focus.visible,true,`${variant} ${zoom}: ${JSON.stringify(focus)}`);assert.equal(focus.unobstructed,true);assert.notEqual(focus.outline,'none')
-   result.keyboard.push({variant,zoom,launchFocusVisible:true,tabNavigation:true,...focus})
+   result.keyboard.push({variant,zoom,launchFocusVisible:true,tabNavigation:true,layout:compactGrid?'list':'grid',...focus})
+   if(compactGrid){
+    await layout(page,'grid')
+    const cover=page.locator('.library-card').first().locator('.card-image')
+    await page.getByRole('textbox',{name:'搜索书架',exact:true}).focus()
+    for(let tab=0;tab<32;tab++){if(await cover.evaluate(e=>e===document.activeElement))break;await page.keyboard.press('Tab')}
+    assert.equal(await cover.evaluate(e=>e===document.activeElement),true,'The simple cover grid retains a native keyboard detail target')
+    assert.notEqual(await cover.evaluate(e=>getComputedStyle(e).outlineStyle),'none')
+   }
    if(zoom===1.5)await shot(page,`The-Order-${version}-B-150percent-keyboard-focus`)
    await page.evaluate(()=>window.scrollTo(0,0));if(zoom===1.5)await shot(page,`The-Order-${version}-B-150percent`);if(zoom===2)await shot(page,`The-Order-${version}-B-200percent`)
   }
@@ -120,25 +141,32 @@ try {
   await size(page,1280,720)
   await page.getByRole('button',{name:'筛选',exact:true}).click()
   const search=page.getByRole('textbox',{name:'搜索书架',exact:true})
-  await search.focus();await page.keyboard.press('Tab');assert.equal(await page.getByRole('button',{name:'筛选',exact:true}).evaluate(e=>e===document.activeElement),true)
+  // Sorting and view controls precede filters in the current header. Check the
+  // actual keyboard route instead of assuming filters are immediately next.
+  const filter=page.getByRole('button',{name:'筛选',exact:true})
+  await search.focus()
+  for(let tab=0;tab<24;tab++){if(await filter.evaluate(e=>e===document.activeElement))break;await page.keyboard.press('Tab')}
+  assert.equal(await filter.evaluate(e=>e===document.activeElement),true,'Tab reaches the filters through the current header controls')
   await search.fill('测试别名4');await search.press('Enter')
   assert.equal(await page.locator('.library-card').count(),1)
   const title=page.locator('.library-card .card-title')
   await title.focus();await title.press('Enter');await page.locator('.kun-modal-panel').waitFor()
   await page.keyboard.press('Escape');await page.locator('.kun-modal-panel').waitFor({state:'hidden'})
   assert.equal(await title.evaluate(e=>e===document.activeElement),true,'detail returns keyboard focus to title')
+  if(compactGrid)await layout(page,'list')
   const launch=page.locator('.library-card .card-launch');await launch.focus();await launch.press('Enter')
   await page.waitForTimeout(100)
   let launches=await app.evaluate(()=>globalThis.__uiFixture.launches)
   assert.deepEqual(launches,['synthetic-4'])
   const fav=page.locator('.favorite-button');const before=await fav.getAttribute('aria-pressed');await fav.focus();await fav.press('Space');await page.waitForFunction(before=>document.querySelector('.favorite-button').getAttribute('aria-pressed')!==before,before)
+  if(compactGrid)await layout(page,'grid')
   result.keyboard.push({variant,aliasSearchEnter:true,detailEnterEscapeFocusRestored:true,launchEnterCorrectId:true,favoriteSpace:true})
   await search.fill('没有这样的虚构游戏');assert.equal(await page.locator('.library-card').count(),0);await bounds(page,variant,'no-results',1280,720,1);result.states.push({variant,state:'no-results',clearFiltersVisible:await page.getByRole('button',{name:'清空筛选',exact:true}).isVisible()})
   await page.getByRole('button',{name:'清空筛选',exact:true}).click()
-  await page.getByRole('combobox',{name:'游戏排序'}).selectOption('recent');assert.equal(await page.locator('.library-card').first().locator('.card-title').innerText(),titles[4]);await page.locator('.library-card').first().locator('.card-launch').click();result.states.push({variant,state:'continue-path',actions:2,gameId:'synthetic-4'})
+  await page.getByRole('combobox',{name:'游戏排序'}).selectOption('recent');assert.equal(await page.locator('.library-card').first().locator('.card-title').innerText(),titles[4]);if(compactGrid)await layout(page,'list');await page.locator('.library-card').first().locator('.card-launch').click();if(compactGrid)await layout(page,'grid');result.states.push({variant,state:'continue-path',actions:2,gameId:'synthetic-4'})
   await page.getByRole('combobox',{name:'游戏排序'}).selectOption('added')
-  await search.fill('封面损坏测试');await page.locator('.cover-placeholder').waitFor();assert.match(await page.locator('.cover-placeholder').innerText(),/封面暂不可用/);result.states.push({variant,state:'broken-cover',usableTitleAndLaunch:true})
-  await search.fill('封面加载测试');await page.locator('.cover-loading-label').waitFor();assert.equal(await page.locator('.card-launch').isVisible(),true);await bounds(page,variant,'cover-loading',1280,720,1);await shot(page,`The-Order-UI-${variant}-cover-loading`)
+  await search.fill('封面损坏测试');await page.locator('.cover-placeholder').waitFor();assert.match(await page.locator('.cover-placeholder').innerText(),/封面暂不可用/);assert.equal(await page.locator('.card-title').isVisible(),true);if(compactGrid)await layout(page,'list');assert.equal(await page.locator('.card-launch').isVisible(),true);if(compactGrid)await layout(page,'grid');result.states.push({variant,state:'broken-cover',usableTitleAndLaunch:true,launchLayout:compactGrid?'list':'grid'})
+  await search.fill('封面加载测试');await page.locator('.cover-loading-label').waitFor();if(compactGrid)await layout(page,'list');assert.equal(await page.locator('.card-launch').isVisible(),true);if(compactGrid)await layout(page,'grid');await page.locator('.cover-loading-label').waitFor();await bounds(page,variant,'cover-loading',1280,720,1);await shot(page,`The-Order-UI-${variant}-cover-loading`)
   await app.evaluate(()=>{globalThis.__uiFixture.coverDelay=false;globalThis.__uiFixture.releaseCover()});await page.waitForFunction(()=>document.querySelector('.library-card img')?.naturalWidth>0);assert.equal(await page.locator('.cover-loading-label').count(),0);result.states.push({variant,state:'cover-loading',titleAndLaunchUsable:true,recovered:true});await search.fill('')
   await page.getByRole('button',{name:'列表视图',exact:true}).click()
   assert.equal(await page.locator('.card-list').count(),15)

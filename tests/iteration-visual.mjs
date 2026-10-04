@@ -15,7 +15,7 @@ const skipPerformance = process.argv.includes('--skip-performance')
 assert.ok(['before','after'].includes(phase), 'Use --phase before or --phase after')
 const runtimeRoot = path.resolve(option('--runtime-root') ?? project)
 const sourceCommit = option('--source-commit') ?? execFileSync('git',['rev-parse','HEAD'],{cwd:project,encoding:'utf8'}).trim()
-const output = path.join(project,'.artifacts','iteration-01',phase)
+const output = path.join(project,'.artifacts','iteration-01',phase,new Date().toISOString().replace(/[:.]/g,'-'))
 const profile = await fs.mkdtemp(path.join(os.tmpdir(),'the-order-iteration-visual-'))
 const date='2026-10-03T00:00:00.000Z'
 const listCondition={width:1280,height:720,zoom:1,theme:'light'}
@@ -49,6 +49,7 @@ if(performanceOnly) {
 const env={...process.env,KGM_DATA_DIR:profile,KGM_VISUAL_RUNTIME_ROOT:runtimeRoot}
 delete env.KGM_TEST_EXECUTABLE; delete env.KGM_DEV_SERVER_URL; delete env.VITE_DEV_SERVER_URL
 let application
+let compactGrid=false
 async function resize(page,width,height,zoom=1) {
   await application.evaluate(({BrowserWindow},{width,height,zoom})=>{const win=BrowserWindow.getAllWindows()[0];win.setContentSize(width,height);win.webContents.setZoomFactor(zoom)},{width,height,zoom})
   await page.waitForTimeout(180)
@@ -59,12 +60,21 @@ async function measure(page,state,condition) {
     const box=e=>e?.getBoundingClientRect().toJSON()??null
     const cards=[...document.querySelectorAll('.library-card')]
     const firstY=cards[0]?.getBoundingClientRect().y
-    return {viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},documentWidth:document.documentElement.scrollWidth,firstCoverY:cards[0]?.querySelector('.card-image').getBoundingClientRect().y,columns:cards.filter(e=>Math.abs(e.getBoundingClientRect().y-firstY)<2).length,overview:box(document.querySelector('.library-overview')),cards:cards.slice(0,10).map(e=>({name:e.querySelector('.card-title').textContent,card:box(e),image:box(e.querySelector('.card-image')),title:box(e.querySelector('.card-title')),action:box(e.querySelector('.card-bottom')),ratings:e.querySelectorAll('.card-rating-summary,.card-personal-rating,.card-rating').length,rating:[...e.querySelectorAll('.card-rating-summary,.card-personal-rating,.card-rating')].map(n=>n.textContent.trim()),availability:e.querySelector('.card-availability')?.textContent,primary:e.querySelector('.card-launch,.card-configure')?.textContent.trim(),fit:e.querySelector('img')?getComputedStyle(e.querySelector('img')).objectFit:null,visibleTextFonts:[...e.querySelectorAll('span,small,strong,p,button')].filter(n=>n.getBoundingClientRect().height&&!n.querySelector('span,small,strong,p,button')&&n.textContent.trim()).map(n=>({text:n.textContent.trim(),font:parseFloat(getComputedStyle(n).fontSize)}))}))}
+    return {viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},documentWidth:document.documentElement.scrollWidth,firstCoverY:cards[0]?.querySelector('.card-image').getBoundingClientRect().y,columns:cards.filter(e=>Math.abs(e.getBoundingClientRect().y-firstY)<2).length,overview:box(document.querySelector('.library-overview')),cards:cards.slice(0,10).map(e=>({name:e.querySelector('.card-title').textContent,card:box(e),image:box(e.querySelector('.card-image')),title:box(e.querySelector('.card-title')),action:box(e.querySelector('.card-bottom')),compact:e.classList.contains('compact-card'),extraControls:e.querySelectorAll('.card-meta,.card-progress,.card-bottom,.favorite-button').length,ratings:e.querySelectorAll('.card-rating-summary,.card-personal-rating,.card-rating').length,rating:[...e.querySelectorAll('.card-rating-summary,.card-personal-rating,.card-rating')].map(n=>n.textContent.trim()),availability:e.querySelector('.card-availability')?.textContent,primary:e.querySelector('.card-launch,.card-configure')?.textContent.trim(),fit:e.querySelector('img')?getComputedStyle(e.querySelector('img')).objectFit:null,preserved:e.querySelector('.card-image').classList.contains('preserve-cover'),visibleTextFonts:[...e.querySelectorAll('span,small,strong,p,button')].filter(n=>n.getBoundingClientRect().height&&!n.querySelector('span,small,strong,p,button')&&n.textContent.trim()).map(n=>({text:n.textContent.trim(),font:parseFloat(getComputedStyle(n).fontSize)}))}))}
   })
   assert.ok(metric.documentWidth<=metric.viewport.width+1,`${state}: horizontal overflow`)
-  for(const card of metric.cards){assert.ok(card.title.right<=card.card.right+1);assert.ok(card.action.right<=card.card.right+1);assert.ok(card.action.bottom<=card.card.bottom+1)}
+  for(const card of metric.cards){assert.ok(card.title.right<=card.card.right+1);if(card.compact){assert.equal(card.action,null);assert.equal(card.extraControls,0)}else{assert.ok(card.action,'Information cards retain their action row');assert.ok(card.action.right<=card.card.right+1);assert.ok(card.action.bottom<=card.card.bottom+1)}}
   manifest.measurements.push({state,...condition,...metric})
   return metric
+}
+function checkDetails(metric) {
+  assert.ok(metric.cards.every(c=>c.ratings<=1),'At most one rating per information card')
+  assert.ok(metric.cards[0].rating[0]?.includes('0.0')&&metric.cards[0].rating[0]?.includes('我的'),'Personal zero rating takes priority')
+  assert.ok(metric.cards[2].rating[0]?.includes('Bangumi'),'Unrated personal record labels the source score')
+  assert.equal(metric.cards[5].primary,'添加本地游戏')
+  assert.equal(metric.cards[6].primary,'设置启动程序')
+  assert.ok(metric.cards.every(c=>c.visibleTextFonts.every(f=>f.font>=12)),'Card text is at least 12 CSS px')
+  assert.ok(metric.cards.filter(c=>c.fit).every(c=>c.fit===(compactGrid&&!c.preserved?'cover':'contain')),'Cover fit follows the preserved-artwork or crop mode')
 }
 async function shot(page,state,condition) {
   await page.mouse.move(0,0)
@@ -116,6 +126,8 @@ try {
   page.on('pageerror',error=>manifest.errors.push(error.message))
   await page.emulateMedia({reducedMotion:'reduce'})
   await page.locator('.library-card').nth(199).waitFor({state:'attached'})
+  compactGrid=await page.locator('.compact-card').count()>0
+  manifest.compactGrid=compactGrid
   await page.evaluate(()=>{const label=document.createElement('span');label.textContent='虚构测试书架 · 原创合成封面';label.className='iteration-fixture-label';label.style.cssText='position:fixed;right:12px;bottom:8px;z-index:9999;padding:4px 8px;border:1px solid #8795a9;background:#f8fafc;color:#384860;font-size:12px;border-radius:5px;pointer-events:none';document.body.append(label)})
   if(!performanceOnly) {
   await resize(page,1440,960)
@@ -131,13 +143,17 @@ try {
     const metric=await measure(page,'shelf',condition)
     await shot(page,'shelf',condition)
     if(phase==='after') {
-      assert.ok(metric.cards.every(c=>c.ratings<=1),'At most one rating per card')
-      assert.ok(metric.cards[0].rating[0]?.includes('0.0')&&metric.cards[0].rating[0]?.includes('我的'),'Personal zero rating takes priority')
-      assert.ok(metric.cards[2].rating[0]?.includes('Bangumi'),'Unrated personal record labels the source score')
-      assert.equal(metric.cards[5].primary,'添加本地游戏')
-      assert.equal(metric.cards[6].primary,'设置启动程序')
-      assert.ok(metric.cards.every(c=>c.visibleTextFonts.every(f=>f.font>=12)),'Card text is at least 12 CSS px')
-      assert.ok(metric.cards.filter(c=>c.fit).every(c=>c.fit==='contain'),'Complete cover fit')
+      if(compactGrid){
+        assert.ok(metric.cards.every(c=>c.compact&&c.ratings===0&&c.extraControls===0),'The cover grid displays only cover and title')
+        assert.ok(metric.cards.every(c=>c.visibleTextFonts.every(f=>f.font>=12)),'Grid titles are at least 12 CSS px')
+        assert.ok(metric.cards.filter(c=>c.fit).every(c=>c.fit===(c.preserved?'contain':'cover')),'Grid cover fit honors preserved-artwork mode')
+        // Keep the original personal-rating, source-rating and executable
+        // assertions in the information list rather than discard them.
+        await page.getByRole('button',{name:'列表视图',exact:true}).click()
+        const details=await measure(page,'list-details',condition);checkDetails(details)
+        if(zoom===1)await contrast(page,condition)
+        await page.getByRole('button',{name:'封面视图',exact:true}).click()
+      }else checkDetails(metric)
       if(zoom===1&&metric.firstCoverY>200){manifest.layoutFailures??=[];manifest.layoutFailures.push(`${width}×${height} ${theme}: default cover starts at ${metric.firstCoverY}`)}
       if(zoom===1)await contrast(page,condition)
     }
@@ -158,11 +174,14 @@ try {
     await page.evaluate(()=>document.documentElement.classList.remove('kun-dark-mode'))
   }
   await page.locator('.library-card').first().locator('.card-image').focus()
+  if(compactGrid){await page.getByRole('button',{name:'列表视图',exact:true}).click();await page.locator('.library-card').first().locator('.card-image').focus()}
   const firstLaunch=page.locator('.library-card').first().locator('.card-launch')
   for(let i=0;i<12;i++){if(await firstLaunch.evaluate(e=>e===document.activeElement))break;await page.keyboard.press('Tab')}
   assert.equal(await firstLaunch.evaluate(e=>e===document.activeElement),true,'Tab reaches the first launch')
   manifest.keyboard=await firstLaunch.evaluate(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return {visible:r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth,unobstructed:hit===e||e.contains(hit),outline:getComputedStyle(e).outlineStyle}})
   assert.equal(manifest.keyboard.visible,true);assert.equal(manifest.keyboard.unobstructed,true);assert.notEqual(manifest.keyboard.outline,'none')
+  manifest.keyboard.layout=compactGrid?'list':'grid'
+  if(compactGrid)await page.getByRole('button',{name:'封面视图',exact:true}).click()
   }
   await resize(page,1440,960)
   for(const treatment of phase==='after'?['neutral','soft']:['baseline']) {

@@ -42,8 +42,8 @@ async function mount(input: any) {
   return { props, events, tree, find }
 }
 
-test('a different installation having an exe does not enable the missing default', async () => {
-  const card = await mount({ game: game([installation('selected', null), installation('other', 'C:/synthetic-only/Game.exe')], 'selected') })
+test('list actions do not launch another installation when the default has no exe', async () => {
+  const card = await mount({ game: game([installation('selected', null), installation('other', 'C:/synthetic-only/Game.exe')], 'selected'), layout: 'list' })
   assert.equal(card.find('card-launch'), undefined)
   const configure = card.find('card-configure')!
   assert.ok(configure); configure.props!.onClick()
@@ -51,16 +51,16 @@ test('a different installation having an exe does not enable the missing default
 })
 
 test('multiple installations require a valid default while a sole executable remains launchable', async () => {
-  const multiple = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe'), installation('two', 'C:/synthetic-only/B.exe')]) })
+  const multiple = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe'), installation('two', 'C:/synthetic-only/B.exe')]), layout: 'list' })
   assert.equal(multiple.find('card-launch'), undefined)
-  const single = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe')]) })
+  const single = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe')]), layout: 'list' })
   assert.ok(single.find('card-launch')); assert.equal(single.find('card-configure'), undefined)
   single.find('card-launch')!.props!.onClick()
   assert.deepEqual(single.events, [['play']])
 })
 
 test('busy launch uses native disabled without hiding the action or enabling configuration', async () => {
-  const card = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe')]), launchDisabled: true })
+  const card = await mount({ game: game([installation('one', 'C:/synthetic-only/A.exe')]), layout: 'list', launchDisabled: true })
   assert.equal(card.find('card-launch')!.props!.disabled, true)
   assert.equal(card.find('card-configure'), undefined)
 })
@@ -93,18 +93,18 @@ test('unlinked local games show configuration, zero personal ratings take priori
 })
 
 test('wishlist offers adding a local game, while launchable games omit a redundant local marker', async () => {
-  const wishlist = await mount({ game: game([]) })
+  const wishlist = await mount({ game: game([]), layout: 'list' })
   assert.equal(nodeText(wishlist.find('card-availability')!), '未安装')
   assert.equal(nodeText(wishlist.find('card-configure')!), '添加本地游戏')
   wishlist.find('card-configure')!.props!.onClick()
   assert.deepEqual(wishlist.events, [['configure']])
-  const local = await mount({ game: game([installation('one', 'C:/synthetic-only/Game.exe')]) })
+  const local = await mount({ game: game([installation('one', 'C:/synthetic-only/Game.exe')]), layout: 'list' })
   assert.equal(local.find('card-availability'), undefined)
   assert.equal(local.find('card-location'), undefined)
 })
 
 test('source rating is labeled when personal rating is absent, with no unrated or second score badge', async () => {
-  const card = await mount({ game: { ...game([]), metadata: { ratings: [{source:'bangumi',score:8.5,scale:10}], developers:[], tags:[] } } })
+  const card = await mount({ game: { ...game([]), metadata: { ratings: [{source:'bangumi',score:8.5,scale:10}], developers:[], tags:[] } }, layout: 'list' })
   assert.ok(nodeText(card.find('card-rating-summary')!).includes('Bangumi'))
   assert.ok(nodeText(card.find('card-rating-summary')!).includes('8.5'))
   assert.equal(card.find('card-personal-rating'), undefined)
@@ -112,6 +112,50 @@ test('source rating is labeled when personal rating is absent, with no unrated o
 })
 
 const coveredGame = () => ({ ...game([]), metadata: { id: 'fixture-work', title: 'Synthetic cover', coverUrl: 'https://cover-fixture.invalid/portrait.svg', ratings: [], developers: [], tags: [] } })
+
+test('library grid has only cover and a two-target readable title, with no metadata or action controls', async () => {
+  const title = '合成超长作品名称：这是用于验证书架简洁显示与完整名称提示的测试条目'.repeat(3)
+  const card = await mount({ game: { ...coveredGame(), name: title, favorite: true, status: 'playing', personalRating: 9.5, totalPlaySeconds: 7200, playCount: 3 } })
+  assert.ok(hasClass(card.tree(), 'compact-card'))
+  assert.equal(nodes(card.tree()).filter(node => node.type === 'button').length, 2)
+  for (const name of ['favorite-button', 'card-open', 'card-meta', 'card-status', 'card-rating-summary', 'card-progress', 'card-bottom', 'card-launch', 'card-configure']) {
+    assert.equal(card.find(name), undefined, `${name} must be absent from the simple library grid`)
+  }
+  assert.equal(nodes(card.tree()).some(node => node.type === 'p'), false)
+  assert.equal(card.find('card-title')!.props!.title, title)
+  assert.equal(nodeText(card.find('card-title')!), title)
+  assert.equal(nodeText(card.find('compact-title-text')!), title)
+  assert.equal(card.find('card-image')!.props!['aria-label'], `查看 ${title}`)
+  card.find('card-image')!.props!.onClick(); card.find('card-title')!.props!.onClick()
+  assert.deepEqual(card.events, [['open'], ['open']])
+})
+
+test('switching a local grid into list restores its metadata, favorite and executable action', async () => {
+  const card = await mount({ game: { ...coveredGame(), installations: [installation('one', 'C:/synthetic-only/Game.exe')] } })
+  assert.equal(card.find('favorite-button'), undefined)
+  assert.equal(card.find('card-launch'), undefined)
+  card.props.layout = 'list'; await nextTick()
+  assert.equal(hasClass(card.tree(), 'compact-card'), false)
+  assert.ok(hasClass(card.tree(), 'card-list'))
+  assert.equal(card.find('compact-title-text'), undefined)
+  assert.ok(card.find('card-meta'))
+  assert.ok(card.find('card-progress'))
+  card.find('favorite-button')!.props!.onClick(); card.find('card-launch')!.props!.onClick()
+  assert.deepEqual(card.events, [['favorite'], ['play']])
+  card.props.layout = 'grid'; await nextTick()
+  assert.ok(hasClass(card.tree(), 'compact-card'))
+  assert.equal(card.find('favorite-button'), undefined)
+  assert.equal(card.find('card-launch'), undefined)
+})
+
+test('discovery work cards keep their source rating, developer and release information', async () => {
+  const card = await mount({ work: { ...coveredGame().metadata, ratings: [{ source: 'bangumi', score: 8.5, scale: 10 }], developers: ['Synthetic studio'], releaseDate: '2026-01-02' } })
+  assert.equal(hasClass(card.tree(), 'compact-card'), false)
+  assert.ok(nodeText(card.find('card-rating-summary')!).includes('8.5'))
+  assert.equal(nodes(card.tree()).find(node => node.type === 'p')?.props?.title, 'Synthetic studio')
+  assert.equal(nodeText(card.find('card-location')!), '2026')
+  assert.ok(card.find('card-open'))
+})
 
 test('loading covers do not display a placeholder or eagerly request a backdrop; ordinary portraits fill', async () => {
   const card = await mount({ game: coveredGame() })
