@@ -4,10 +4,11 @@
 
 - 正式项目：`D:\Projects\The-Order`，应用内部版本 **0.7.1**；用户于2026-10-04明确要求“替换原版”，已将验证后的夜间候选部署到原 `release\win-unpacked`，完整备份睡前 `16ccc28` 程序。正式资料未读取、迁移或修改。准确入口、备份与替换证据见 [本次替换](OVERNIGHT.md#用户授权替换正式程序2026-10-04)。
 - 当前正式程序对应交付提交 `aee3ec1d370f70df37863cb8fb66205457a1b31a`，业务提交 `583e46dd8df921fff25b4dbacc76ae6dbc656e9e`，分支 `codex/overnight-2026-10-04`。睡前分支 `codex/cover-personalization` 仍为 `d82bcb6`，对应业务 `16ccc28`；第三轮及更早候选均为历史记录，准确基线与证据保留在 [ITERATION](ITERATION.md)。
-- 当前开发分支`codex/windows-experience`，第五轮代码`57bce0f0b452051ab0056694410e535925adef5d`从第四轮交付`8adc1a0276d55240859bb6eecbe1d6737814d06d`接续。中性明暗、有效系统字体、原生标题栏/主题同步与窄窗口适配已实现，69项相关单元、最终生产9组/39图与隔离启动通过。宿主Windows11/200%，高对比为媒体模拟，Win10与Snap鼠标操作未验证；准确范围与证据见[第五轮记录](ITERATION.md#第五轮windows体验与审美适配2026-10-04)。用`& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 05`隔离试用，资料`.artifacts/iteration-05/trial-profile`，ASAR`e916f089…`。第四轮代码`3b26dfb25b7fcc1089aa632d0ae42b9c264aabc6`、程序和trial-profile保留：84/72px导航、仅封面与两行名字、长竖图铺满；评分/收藏/启动在列表及详情保留。这两轮候选均未替换正式程序。
+- 第五轮保留候选分支`codex/windows-experience`，代码`57bce0f0b452051ab0056694410e535925adef5d`从第四轮交付`8adc1a0276d55240859bb6eecbe1d6737814d06d`接续。中性明暗、有效系统字体、原生标题栏/主题同步与窄窗口适配已实现，69项相关单元、最终生产9组/39图与隔离启动通过。宿主Windows11/200%，高对比为媒体模拟，Win10与Snap鼠标操作未验证；准确范围与证据见[第五轮记录](ITERATION.md#第五轮windows体验与审美适配2026-10-04)。用`& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 05`隔离试用，资料`.artifacts/iteration-05/trial-profile`，ASAR`e916f089…`。第四轮代码`3b26dfb25b7fcc1089aa632d0ae42b9c264aabc6`、程序和trial-profile保留：84/72px导航、仅封面与两行名字、长竖图铺满；评分/收藏/启动在列表及详情保留。这两轮候选均未替换正式程序。
+- 当前开发分支`codex/appearance-styles`，第六轮候选代码`dd89ea2326d3651955cfb2e86c91a1bd47286a9b`从第五轮交付`3ef02f8b0cdcaa3553b298eed5f03b5b18772c75`接续。设置中可保存经典书架、Windows、Liquid Glass三种风格，明暗独立；玻璃使用应用内边缘折射/轻微色散，保留原生窗口及清晰封面，不依赖桌面捕获或额外原生面板。236项相关单元、15组生产UI检查/53图、真实像素对照和隔离启动通过，准确范围及上游参考取舍见[第六轮记录](ITERATION.md#第六轮三套可切换界面2026-10-04)。启动`& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 06`，数据`.artifacts/iteration-06/trial-profile`；ASAR`8fac672c…`，仍未替换正式程序。
 - 本文用于帮助下一位维护者或评审者理解当前程序。用户操作见 [README](../../README.md)，构建、数据隔离和 Git 规则见 [DEVELOPMENT](../../DEVELOPMENT.md)。
 - 夜间最终候选与当前正式程序75个文件逐一核对一致，ASAR SHA-256为`652c3c2beba98c7b363f90dfc5deeb3f68b5510a1618f9877640eaf9f111176f`。用`& 'D:\Projects\The-Order\scripts\start-overnight-candidate.ps1'`仍可隔离试用，资料固定为`.artifacts/overnight-2026-10-04/trial-profile`；六条虚构书架/模拟游玩记录与原创封面可编辑重开保留，没有预置密钥。九次已完成，任务PAUSED；夜间交付及未验证范围见[晨间交付](OVERNIGHT.md#晨间交付)，此次部署没有带入试用数据。
-- 第一轮独立评审、A-1修复和历次正式替换记录仍保留在 [迭代记录](ITERATION.md)。下面以当前源码为准；第四/五轮的简洁网格、窄导航、所有比例铺满与Windows适配仅在新候选中，当前正式程序保持夜间交付界面。各轮隔离入口仍可使用，不会把试用书架或测试密钥带入正式资料。
+- 第一轮独立评审、A-1修复和历次正式替换记录仍保留在 [迭代记录](ITERATION.md)。下面以当前源码为准；第四至六轮的简洁网格、窄导航、所有比例铺满、Windows适配与三风格选择仅在新候选中，当前正式程序保持夜间交付界面。各轮隔离入口仍可使用，不会把试用书架或测试密钥带入正式资料。
 - 以下第0–7次描述保留各轮当时的交付状态，“未替换”指该轮结束时；这些成果现已随用户授权部署。夜间开发接续同一仓库的 `codex/overnight-2026-10-04`，睡前分支和程序备份保留。第0次已实现可检索的分类收藏页：分类/所含作品/别名搜索、名称/数量/近期排序、封面与在玩/完成进度、全部标签搜索，以及小窗口图标导航的中文名称。准确提交、原生窗口前后图和检查范围见 [OVERNIGHT](OVERNIGHT.md)。
 - 第1次夜间源码增加命名“常用筛选”：完整筛选/排序保存、实时匹配数量、书架/分类页直接打开，以及独立改名/更新条件/删除；过时分类/标签保持精确条件。记录位于当前profile的本机UI存储，不随书架备份导出；保存失败与损坏记录有明确反馈，应用时清除批量选择，批量写入中禁用操作。同profile重启与跨profile隔离已通过真实桌面合成回归，17项定向单元、构建、原有书架相关回归和10张修改后原生图通过；未验证真实大库性能。准确代码提交与比较图见 [第1次记录](OVERNIGHT.md#第1次自己的动态书架已完成)，仍未替换正式程序。
 - 第2次夜间源码让状态、个人评分和笔记可在作品资料页明确保存，与管理共享草稿并仅提交三个字段；小窗口保留发行日期/公司，封面选择器支持焦点往返。未完成评分输入保留并校验，失败/晚输入/切详情保护通过；77项相关并发与分页单测、26项封面/桥单测、构建、新详情和既有资料保留桌面回归通过。前后20张原生图、准确提交与尚未验证范围见 [第2次记录](OVERNIGHT.md#第2次详情里的个人记录已完成)。仍是夜间源码，未替换睡前程序。
@@ -32,7 +33,7 @@
 | 发现与详情 | NextMoe 搜索、分页、去重和原页重试；详情展示简介、角色、开发商、来源评分与链接。使用资料源默认封面，票数不影响自动选图。详情「封面与展示」可反复选资料图、恢复默认、选择本地PNG/JPG及指定展示模式或跟随全局。目录手选图同作品刷新保留、换关联清除；本地图片作为个人字段在刷新/换绑后保留，明确选默认或另一资料图才清除。无资料关联也可选本地图片。默认随明确刷新更新，新远程图须联网核验；恢复已存默认、仅改展示及本地图片可离线。支持愿望单、手动关联和刷新；未安装条目先附加明确的本地游戏。 |
 | 启动与记录 | 通过选定 EXE 和参数数组启动，记录被跟踪进程的运行时长；尝试接续同目录启动器产生的游戏进程。关闭窗口可留在托盘继续计时，「结束计时」不结束游戏进程。 |
 | 个人数据与统计 | 名称、状态、0–10 分个人评分、分类、标签、笔记、收藏、会话与总时长；继续游玩、近 14 天、最近会话及常玩榜。当前会话单独显示，不重复计入已保存检查点。 |
-| 配置与备份 | 夜间源码统一明确保存全部偏好、保存中后续输入保护、独立移除已保存密钥、保存后测试与配置时效反馈；API 地址、加密密钥、成人分级、主题、全局封面展示、程序内名称读取；书架JSON导入导出、原子保存及上一有效版本恢复。第四轮展示文案包含长竖图，内部旧字段及备份格式兼容。导出含本地封面压缩副本与每游戏展示，不含API密钥、全局设置或游戏文件；远程图片仍只保留网址。 |
+| 配置与备份 | 夜间源码统一明确保存全部偏好、保存中后续输入保护、独立移除已保存密钥、保存后测试与配置时效反馈；API 地址、加密密钥、成人分级、明暗主题、界面风格、全局封面展示、程序内名称读取；书架JSON导入导出、原子保存及上一有效版本恢复。第四轮展示文案包含长竖图，内部旧字段及备份格式兼容。导出含本地封面压缩副本与每游戏展示，不含API密钥、全局设置或游戏文件；远程图片仍只保留网址。 |
 
 ### 必须保持的行为
 
@@ -65,7 +66,7 @@
 | [src/bridge.ts](../../src/bridge.ts) | 无桌面桥时启用的浏览器演示；不能用此模式证明真实导入、识别或启动有效。 |
 | [tests](../../tests) | 单元测试与隔离 Electron 回归。重点先看 `metadata-concurrency`、`metadata-matching`、`desktop-reidentification`、`desktop-cancel-queue` 及各页面并发测试。 |
 
-样式主要分布在 `src/style.css`、`src/order-theme.css`、`src/library-layout.css` 和组件局部样式；卡片/继续条与整理/核对样式集中在 `src/library-refresh.css`、`src/workspace-refresh.css`。第五轮最后加载 `src/windows-theme.css`（字体、明暗、控件及相关详情覆盖）与 `src/desktop-caption.css`（原生按钮安全区域）；准确顺序见 `src/main.ts`。保持 KunUI 组件、明暗主题和较小窗口下的可用性。
+样式主要分布在 `src/style.css`、`src/order-theme.css`、`src/library-layout.css` 和组件局部样式；卡片/继续条与整理/核对样式集中在 `src/library-refresh.css`、`src/workspace-refresh.css`。第六轮依次加载 `src/windows-theme.css`（保留全局系统字体/无障碍，Windows覆盖避开经典）、`src/glass-theme.css`（玻璃材料）与 `src/desktop-caption.css`（原生按钮安全区域）；`src/components/LiquidGlassMaterial.vue`仅在已保存玻璃风格时挂载，`src/liquid-glass.ts`负责有界、事件驱动的SVG背景折射及卸载；准确顺序见 `src/main.ts`。保持 KunUI 组件、明暗主题和较小窗口下的可用性。
 
 ## 真功能、演示数据与未实现内容
 
@@ -119,6 +120,10 @@
 ### 夜间最终候选（2026-10-04）
 
 完整产品单元639项、辅助测试9项，以及正常生产EXE的6组烟测和原资料保留回归通过；实际隔离试用入口、六条数据与本地图解码、宽100%/小窗口150%已检查。本夜真实API/游戏未验证，不把早前作品84的线上检查算作本夜结果。最终截图索引与准确提交为[第8次记录](OVERNIGHT.md#第8次最终候选与晨间交付已完成)，本机总回执`.artifacts/overnight-2026-10-04/round-8/committed-evidence.json`；后续用户授权正式替换及正式入口隔离检查见 [替换记录](OVERNIGHT.md#用户授权替换正式程序2026-10-04)。本次没有重跑上述整套测试。
+
+### 第六轮三风格证据
+
+当前图像清单：`.artifacts/iteration-06/appearance/after/2026-10-04T04-58-16-064Z/manifest.json`（53图），同条件Windows基线：`.artifacts/iteration-06/appearance/baseline/2026-10-04T04-19-01-922Z/manifest.json`（11图）。代表图为`glass-grid-dark-1440x940-zoom1.png`、`glass-detail-light-1440x940-zoom1.png`、`glass-active-filters-dark-500x600-zoom1.png`和`glass-reduced-transparency-detail-simulated-500x600-zoom1.png`，均位于最终目录；同目录`classic-*`、`windows-*`供比较。原创合成数据，未调用真实API。光学棋盘对照另在`.artifacts/iteration-06/optics/2026-10-04T04-52-35-076Z/`，是实际滤镜像素验证，不是正常产品界面。版本绑定与未验证范围见[第六轮记录](ITERATION.md#第六轮三套可切换界面2026-10-04)。
 
 ### 睡前候选（第三轮）
 
