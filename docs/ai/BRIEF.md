@@ -16,6 +16,8 @@
 
 - 第6次夜间源码`1908c3123192ebb07fdf28125e1db650ab8cf474`将核对改为可搜索队列与独立对比/决策区，支持窄窗150%、筛选外当前项、完整来源展开及持续错误恢复；提交期间锁定交互，部分成功重新读取实际关联，已确认后的读失败仅重读，关闭重开也不重复提交。最终167项定向单元、新6组原生核对与9组既有核对语义回归通过；2张基线/11张最终状态图和5张来源回归图准确版本见 [第6次记录](OVERNIGHT.md#第6次可定位可比较可恢复的核对工作区已完成)。均为合成资料/模拟API，停滞运行与未验证范围如实保留；尚未打包或替换正式程序。
 
+- 第7次夜间源码`583e46dd8df921fff25b4dbacc76ae6dbc656e9e`明确详情四组草稿与分组保存，正常关页/标签导航先确认放弃，封面切页保留，保存中阻止离开；原安装参数不会因默认切换静默丢失或投到新安装。已保存而读取失败仅重读，恢复后才离开，重开不会从旧快照覆盖已提交值；Escape与嵌套确认已实际检查。219项相关单元、8组新原生及5/9组既有详情/核对回归通过，16张图与版本、停滞/未验证范围见 [第7次记录](OVERNIGHT.md#第7次详情草稿与可信保存已完成)。合成profile/模拟接口，不保证应用退出或强杀后的未保存草稿持久化；尚未打包、替换正式程序。
+
 ## 已实现的核心流程
 
 | 流程 | 当前行为 |
@@ -44,7 +46,7 @@
 | [src/App.vue](../../src/App.vue) | 页面、搜索分页、导入、识别、核对和详情编辑的异步状态；多数流程仍集中在此文件。 |
 | [src/components/GameCard.vue](../../src/components/GameCard.vue)、[LibraryOverview.vue](../../src/components/LibraryOverview.vue)、[PlayStatistics.vue](../../src/components/PlayStatistics.vue) | 封面卡片、继续游玩和统计；共享计算在 `src/library-workspace.ts`、`src/library-insights.ts`。 |
 | [LibrarySavedViews.vue](../../src/components/LibrarySavedViews.vue)、[saved-library-views.ts](../../src/saved-library-views.ts)、[LibraryCollections.vue](../../src/components/LibraryCollections.vue) | 夜间源码的命名动态筛选与分类浏览；UI存储的有界校验/显式失败、改名与更新区别、过时标签保留、实时匹配数量与键盘交互。 |
-| [PersonalRecord.vue](../../src/components/PersonalRecord.vue)、[App.vue](../../src/App.vue) | 夜间源码的详情个人记录：共享管理草稿、明确三字段保存、输入校验与异步反馈；小窗口基础资料和封面焦点往返。 |
+| [PersonalRecord.vue](../../src/components/PersonalRecord.vue)、[App.vue](../../src/App.vue)、[detail-drafts.css](../../src/detail-drafts.css) | 夜间源码的详情分组草稿、正常离开确认、持续失败和只读恢复、原安装参数归属；共享个人记录/管理输入与明确保存；小窗口基础资料和封面焦点往返。 |
 | [CoverPicker.vue](../../src/components/CoverPicker.vue)、[DetailCover.vue](../../src/components/DetailCover.vue)、[cover-display.ts](../../src/cover-display.ts) | 详情封面草稿、原子保存、比例展示与共享个人选图/分级规则；默认预览须与恢复后实际图一致。 |
 | [local-cover.ts](../../electron/local-cover.ts)、[SectionSignature.vue](../../src/components/SectionSignature.vue) | 有界PNG/JPG读取、方向/透明处理与JPEG副本校验；主栏目小副标题及视觉主次。 |
 | [LibraryMaintenance.vue](../../src/components/LibraryMaintenance.vue)、[installation-attachment.ts](../../electron/installation-attachment.ts) | 常驻整理面板；明确安装附加的真实目录边界与有界独立编号冲突检查。 |
