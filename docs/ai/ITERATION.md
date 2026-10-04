@@ -2,9 +2,64 @@
 
 ## 状态与授权
 
-- 日期：2026-10-04（北京时间）。前三轮及夜间0–8次已完成；用户授权替换后的正式程序为夜间交付 `aee3ec1` / 业务 `583e46d`，准确入口和备份见 [OVERNIGHT](OVERNIGHT.md#用户授权替换正式程序2026-10-04)。本轮按用户新要求修复长竖封面铺满、压缩侧栏并简化书架网格，详见下方第四轮；此前记录保留为历史。
+- 日期：2026-10-04（北京时间）。第四轮及夜间0–8次已完成；当前正式程序为已授权替换的夜间交付 `aee3ec1` / 业务 `583e46d`，准确入口和备份见 [OVERNIGHT](OVERNIGHT.md#用户授权替换正式程序2026-10-04)。第五轮按用户新要求增强Windows兼容性与审美一致性，第四轮候选保留；此前记录作为历史。
 - 用户明确授权第一轮代码、测试、文档、候选提交及可试用候选程序；第一轮开发分支为 `codex/iteration-01-library`，修改前基线为 `9ca0587ab3047dd2606cff5ec1100f9f623b75ac`。候选阶段没有正式替换或推送授权；后续明确替换授权与实际结果另记。下文方案与验收不代表已通过，实际结果写入结果记录。
 - 本文件是本轮唯一迭代记录。实现基线与已有证据仍以 [BRIEF](BRIEF.md) 为准；后续批准、实施、验证及 Claude 复审结果继续追加到本文件，不另建重复交接文档。
+
+## 第五轮：Windows体验与审美适配（2026-10-04）
+
+用户提供PotatoVN在Windows桌面的截图，要求增强The Order与Windows系统的兼容性和审美一致性，授权本轮实施及隔离验证。实际仓库`D:\Projects\The-Order`，开始时`codex/compact-library`/`8adc1a0276d55240859bb6eecbe1d6737814d06d`，工作区干净；从该候选建立`codex/windows-experience`。保留第四轮代码`3b26dfb`、ASAR`c95327d8…`和trial-profile，以及原正式程序ASAR`652c3c2b…`；本轮不自动替换正式程序、不推送、不使用正式数据。
+
+- 实际观察：第四轮网格已经简洁，但蓝黑画布、蓝灰边框、较重导航色块与标题仍呈现较强网页组件感；参考截图的舒适感来自中性色、轻字重、内容留白和窗口/页面协调，不能把猜测色值当成PotatoVN的精确参数。
+- 源码核实：已有样式声明包含Segoe UI，前端也已有「跟随系统」监听；不能误报成完全缺失。实际生产基线却优先Helvetica/Arial：KunUI在utilities层对body的important字体覆盖了root继承，需精准覆盖。主进程未同步nativeTheme，加载背景固定浅色，默认最小1000×700 DIP约束分屏；缺少forced-colors专门适配。
+- 目标：Segoe UI Variable及中文/日文字体回退；中性明暗画布、克制强调色、常驻控件4px/弹窗8px、较轻导航；保留封面和名字的网格以及现有管理能力。先在书架/设置实看，再决定相关页面的统一。
+- 原生范围：40 DIP标题栏与Windows原生最小化/最大化/关闭按钮、安全可拖动区域；已保存主题同步原生控件/背景，系统主题更新继续自动响应，新profile默认跟随系统而保留已有偏好。默认与最小窗口尺寸按显示器工作区DIP限制，先试500px宽；保留标准厚框与系统尺寸能力。
+- 验收：正常生产EXE明暗、宽窗/150%、640及500窄窗、长名/空/失败/加载、设置/详情及键盘无溢出；标题栏安全区域随缩放正确，主题保存/系统跟随/重启一致；最小化/最大化/恢复及当前宿主实际DPI运行检查。forced-colors/reduced-motion可模拟验证，但不得称Windows高对比设置实测；不能以Electron API最大化冒充鼠标操作Snap浮层。
+- 非目标：不迁移WinUI或底层资料架构，不新增产品功能或付费依赖，不覆盖当前正式版。Mica暂不启用，先交付可验证的实色层次与原生窗口整合；Windows 10及其他系统缩放未经执行须标未验证。
+
+技术依据：[Windows字体](https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/typography)、[几何层次](https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/geometry)、[Electron原生标题栏](https://www.electronjs.org/docs/latest/tutorial/custom-title-bar)、[nativeTheme](https://www.electronjs.org/docs/latest/api/native-theme)。以下为实际结果，而非以文档或单元测试代替界面证据。
+
+### 第五轮落实与调整
+
+- 候选代码提交：`57bce0f0b452051ab0056694410e535925adef5d`，分支`codex/windows-experience`，修改前交付`8adc1a0276d55240859bb6eecbe1d6737814d06d`。文档提交与最终干净状态由`.artifacts/iteration-05/committed-evidence.json`绑定；没有合并、推送或替换正式程序。
+- 实际体验：书架使用中性明暗底色，84/72px中文导航以细强调条指示当前位置；封面保持视觉重心，书名14/20普通字重、主标题28/36半粗。搜索/排序/常规动作采用轻量边框与4px圆角，封面/设置组/弹窗8px。The Order及Avalon等名称保留，功能中文仍最醒目。相同1440×940请求下网格从7列变6列，封面与留白更舒展，代价是单屏容量稍降；这是参考舒适度目标下的取舍，未增加卡片资料。先实看书架和设置后，只对实际详情、封面选择残留蓝灰做针对性统一；没有推翻分类、导入或识别的信息结构。
+- 系统整合：40 DIP原生标题栏按钮与应用画布统一，拖动区取Chromium安全几何、品牌按钮明确no-drag；模态期间包含标题栏的app实际inert，不能返回背后的页面。保存主题成功后同步nativeTheme/加载底色/按钮，新profile默认system，已有light/dark/system偏好保留，跟随系统与深色都通过重启检查。未改AppID、资料格式、密钥边界或事务。
+- 兼容性：使用显示器工作区DIP约束首次窗口，保留原生厚框，允许最小500×400；宿主200%缩放下实际初始1392×804，位于1440×852工作区内。500×600与640×560实际可达到并无横向溢出；旧1000×700下限阻止这两种宽度。保留Segoe UI Variable/Segoe UI/微软雅黑UI/日文字体回退，用与KunUI相同utilities层的精准字体important覆盖解决有效字体问题，没有泛化重置所有组件。
+- 试作修正：第一版高对比模拟虽命中媒体查询，人工打开图发现添加游戏黑字背板不可读；DOM证实没有额外遮罩，浏览器强制颜色文字背板与自定HighlightText冲突是机制推断。改为系统ButtonFace/ButtonText/ButtonBorder配对，保留自动强制色。新增真实截图像素检查能让旧原型失败（背景占比0），修复后背景占比0.51245、可区分文字占比0.35660；最终实图文字清楚。不能把早期“自动流程通过”当作视觉验收。[强制颜色机制](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/forced-colors)。
+- 放弃/不采用：未引入WinUI迁移、Mica、全新视觉主题或架构重写。此次实色、字体和原生窗口已能改善参考图指出的不协调，保留现有管理能力；未为了外观增加服务或依赖。
+
+### 第五轮实际验证与证据
+
+1. 69项相关单元（settings、window-appearance、game-card、cover-display、cover-picker）全部通过；包含默认system/已有偏好与窗口边界。第一次运行有一项原断言固定期待light，改为比较拒绝保存前完整状态并验证没有settings文件后通过；未删除失败保护。最终构建/类型检查及显式隔离打包成功，锁文件和依赖版本未修改。
+2. 正常生产EXE/真实preload与IPC使用八条虚构书架/原创JPEG、TEMP资料、阻断HTTP/S：最终9组检查/39图、0渲染错误。覆盖明暗/system保存与重启，1440×940@100%、1000×700@150%应用缩放、640×560和500×600@100%，长名、坏/缺图、空/筛选空、键盘、列表、设置、详情/封面、收藏、分类、统计、发现和整理；四处computed字体首位Segoe UI Variable，正文/书名400、主标题600。
+3. 最小化、最大化、恢复通过BrowserWindow API实跑；每帧caption安全区与native overlay相符，模态焦点不能进入inert标题栏。自有窗口源截图实际看见原生按钮，未采纳其他窗口图片或标题。forced-colors/reduced-motion为渲染器媒体模拟，按钮文案经过像素与人工实看，不能当作改变Windows高对比设置的验证。
+4. `tests/ui-b.mjs`补充26项测量/15图、0渲染错误，含合成加载、失败、空、长中日英名、键盘/批量与滚动；启动/计时由IPC spy替换，没有启动游戏。最近记录`.artifacts/the-order-0.7.1-ui-evidence/2026-10-04T03-46-21-500Z/complete-b.json`，在最后forced-colors专用修补前运行；最终生产检查随后复验正常与高对比状态。未重跑与此次外观/窗口无关的整套测试。
+5. 人用`-Iteration 05`启动脚本实际打开窗口、正常关闭exit0，调用者环境恢复，既有合成试用修改保留；最终回执`.artifacts/iteration-05/launcher.json`。程序只使用新的隔离trial-profile，没有复制此前候选profile或真实设置。
+
+截图索引是下列manifest，内含每张图的准确路径、SHA-256、请求与实际窗口/客户区、DPR/zoom、主题、源文件和EXE/ASAR指纹。前后八条合成数据规范化SHA-256同为`fb81d3d0035fb1b8e7a532e2be4480f5f05d2e6adbf9d30274ff5b9f9c8a410e`。采用相同请求窗口尺寸与zoom；旧最小尺寸与原生标题栏导致的实际客户区差异已记录，不伪称这些是相同CSS视口。截图内容不是个人游戏或实时API数据。
+
+| 证据 | 准确路径（相对仓库） |
+| --- | --- |
+| 有效修改前索引，第四轮代码`3b26dfb`/ASAR`c95327d8…`，24图 | `.artifacts/iteration-05/windows-experience/baseline/2026-10-04T03-38-19-907Z/manifest.json` |
+| 最终候选索引，代码`57bce0f`/ASAR`e916f089…`，39图 | `.artifacts/iteration-05/windows-experience/after/2026-10-04T03-53-19-416Z/manifest.json` |
+| 同条件明暗书架对比 | 两个索引各自目录内`grid-light-1440x940-zoom1.png`和`grid-dark-1440x940-zoom1.png` |
+| 500窄窗、150%书架 | 最终目录`grid-dark-500x600-zoom1.png`、`grid-light-1000x700-zoom1.5.png` |
+| 含原生按钮的窗口源图，1100×700@100%请求，thumbnail分辨率 | 最终目录`grid-dark-own-window-frame.png`、`grid-light-own-window-frame.png` |
+| 设置/详情/深色封面选择 | 最终目录`settings-light-1000x700-zoom1.5.png`、`detail-light-1440x940-zoom1.png`、`detail-cover-picker-dark-500x600-zoom1.png` |
+| 高对比模拟修复后 | 最终目录`forced-colors-simulated-500x600-zoom1.png` |
+| 原型缺陷与诊断，不能当最终交付 | `after/2026-10-04T03-46-50-885Z/`黑字图；`after/2026-10-04T03-49-56-811Z/`DOM与`after/2026-10-04T03-52-12-567Z/`像素诊断，各位于`.artifacts/iteration-05/windows-experience/`下 |
+
+宿主Windows 11 Pro `10.0.26300`，Electron`44.5.1`，系统scaleFactor=2。未验证Windows 10/其他系统版本、多显示器搬动、其他真实系统缩放、鼠标操作原生按钮/Snap浮层/Alt+Space/任务栏，以及改变OS主题/高对比设置后的动态切换。真实API、个人大书架、原生照片选择器、真实游戏与计时没有本轮验证；不能将合成场景解释为这些已通过。正式资料没有读取/修改。
+
+### 第五轮隔离试用
+
+```powershell
+& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 05
+```
+
+候选入口`D:\Projects\The-Order\.artifacts\iteration-05\candidate\win-unpacked\The Order.exe`；固定资料`D:\Projects\The-Order\.artifacts\iteration-05\trial-profile`，六条虚构可编辑书架/原创图、无预置密钥；重开保留试用修改。请用上方入口显式设置隔离目录，直接打开EXE默认仍会使用正式资料。
+
+候选ASAR SHA-256：`e916f089c63ca177fa63f0a8407d01571165fd1a96fbbff444e81621505617a7`；EXE：`5349d7b2963477239aa761f943d3932b9e2d46ce37a01cf4e3015ed6aa429012`。正式ASAR仍`652c3c2b…`，第四轮仍`c95327d8…`，准确全值与逐文件/截图/提交绑定见`.artifacts/iteration-05/committed-evidence.json`。数据字段、备份格式和AppID保持兼容，没有迁移。完成后停止，等待用户试用。
 
 ## 第四轮：简洁书架与封面铺满（2026-10-04）
 
