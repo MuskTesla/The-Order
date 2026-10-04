@@ -12,7 +12,8 @@ $taskPreviousDev = $env:KGM_DEV_URL
 try {
   $env:KGM_DATA_DIR = $taskProfile
   Remove-Item Env:KGM_DEV_URL -ErrorAction SilentlyContinue
-  Start-Process -FilePath $taskCandidate -WorkingDirectory (Split-Path -Parent $taskCandidate) -WindowStyle Hidden
+  # Candidate trial is an interactive window the user needs to see.
+  Start-Process -FilePath $taskCandidate -WorkingDirectory (Split-Path -Parent $taskCandidate) -WindowStyle Normal
 } finally {
   if ($null -eq $taskPreviousData) { Remove-Item Env:KGM_DATA_DIR -ErrorAction SilentlyContinue } else { $env:KGM_DATA_DIR = $taskPreviousData }
   if ($null -eq $taskPreviousDev) { Remove-Item Env:KGM_DEV_URL -ErrorAction SilentlyContinue } else { $env:KGM_DEV_URL = $taskPreviousDev }

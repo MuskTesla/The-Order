@@ -37,9 +37,19 @@ async function openManagement(page, name) {
   await page.locator('.detail-tabs').getByRole('button', { name: '管理', exact: true }).click()
 }
 async function closeDetail(page) {
-  const close = page.locator('.kun-modal-panel button.absolute[aria-label]')
+  const detail = page.locator('.game-detail-modal')
+  const close = detail.getByRole('button', { name: '关闭', exact: true })
   assert.equal(await close.count(), 1)
-  await close.click(); await page.locator('.kun-modal-panel').waitFor({ state: 'hidden' })
+  await close.click()
+  const discard = page.getByRole('alertdialog', { name: '放弃未保存的修改？' }).getByRole('button', { name: '放弃修改', exact: true })
+  // These preservation races intentionally leave one draft before opening
+  // another detail. Make that choice through the normal leave confirmation.
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (!await detail.isVisible() || await discard.isVisible()) break
+    await page.waitForTimeout(20)
+  }
+  if (await discard.isVisible()) await discard.click()
+  await detail.waitFor({ state: 'hidden' })
 }
 try {
   application = await electron.launch(launchOptions)
