@@ -6,7 +6,7 @@ using static TheOrder.Infrastructure.Online.RemoteWorkDto;
 
 namespace TheOrder.Infrastructure.Online;
 
-public sealed class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IOnlineCatalog
+public sealed partial class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IRecognitionCatalog
 {
     private readonly object gate = new();
     private sealed record CachedDetail(WorkMetadata Work, DateTimeOffset Until, int Bytes, long AuthGeneration);

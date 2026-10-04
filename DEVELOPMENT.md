@@ -1,5 +1,33 @@
 # 开发与维护
 
+## WinUI Phase 4B：Recognition / Review（实施中，尚未验收）
+
+基线 `0de0b342623c0e6a047fd354843903779e564e2e`，保持 `codex/winui-phase4`。用户已授权4B，禁止Phase5/正式资料或凭据/真实游戏执行。先4B.1纯识别、差分和lifecycle，再4B.2持久核对/提交/WinUI；下表来自本轮重新阅读旧源码，不是完成声明。
+
+4B.1 内部自检：纯 `RecognitionEngine` 不持库，`RecognitionQueue` 仅依赖 `IRecognitionLibrarySource`；两 worker、1000 项调度上限。每项最多6个搜索、2个详情/发行补充；先对全体有界候选评分再保留5个 review options。索引128项饱和时不作唯一身份桥接，显式提示候选不完整；这是自检补上的危险截断边界。旧忽略/持久化/Apply 尚未接入，不能据此宣称4B完成。
+
+核心测试证据 `.artifacts/native-phase4b/core-*`：Debug/Release全套各911/0/0（原609+新增302），两配置 solution build 0 warnings/errors。254组实际 Electron 差分（220标题/排序+34文本/PE），生产指纹继续通过六向量（含孤立surrogate）；另有索引炸弹、物理文件变化、ABA/新请求/安装/关联变化、双worker/取消、网络降级/错误ID/auth变化回归。最后的候选饱和保护以 `core-final-recognition` 专项复核补证。未进行4B桌面验收、性能baseline或最终Electron/publish回归。
+
+有意差异：建议默认不自动提交；新增8MiB单次文本总预算、候选128/结果5上限、无效索引保留本地证据、在线补充失败不终止其他项。索引和PE保留原文件/资源大小限制；PE默认关闭。所有重工作在后台；SHA256只比对输入，生命周期仍由Phase2队列及独立recognition generation保护。暂不做跨请求识别结果缓存，避免把缓存当review权限。
+
+| 旧行为 | 本轮实际源码审计 / 原生迁移约束 |
+| --- | --- |
+| Evidence sources | `game-identification.ts`：优先安装排序，最多100个安装的目录/所选exe/1MiB PotatoVN sidecar/128B steam_appid；sidecar标题与ID同源，不独立投票。preferred安装补充PE/档案/Steam配置，以及固定manual/help/StartData下的文档；既有关联在reidentify时不作为独立标题，个人名称仍保留 |
+| bounded local reads | `local-game-evidence.ts`：目录512项，所选exe+最多4个补充exe，可选PE总资源1MiB、header额外64KiB、96 sections/32 directories/256 entries/1024 blocks/深度5，全部语言成功后才采用；不执行模块。配置128KiB，档案名最多5。`local-text-evidence.ts`：固定5目录各128项、8文件、文件128KiB、只读32KiB前缀、16标题/8品牌；HTML仅标题/明确产品标签，不执行或跟随链接 |
+| Encoding | manual/config按BOM UTF16 LE/BE、允许的charset、严格UTF8、再Shift-JIS与GB18030的既有启发顺序；truncated prefix允许尾部半字符。sidecar/readme旧路为UTF8→GB18030，Steam配置UTF16LE BOM或UTF8。不得统一猜码后无界读文件 |
+| Normalization | `title-matching.ts`：500 UTF16单元、NFKC、仅移除包装/语言噪声、Latin重音折叠但保留日文浊点、Unicode lower、标点空格、最多8 query variants；章节/FD/remake/edition保留独立marker。比较60%bigram Dice+40%编辑相似度、round至0.001并设版本/编号/短词上限；不是概率 |
+| Title index | 本轮解包核对现有 `data/title-index.json.gz`：2,024,873B压缩/5,851,882B解压，v1，**56,064 records / 97,038 titles**；旧上限8MiB/32MiB/150k行。unique exact normalized title lookup，不模糊推导强ID；必须同一索引行连接本地观察、官方名称、ID。保留Apache2许可及THIRD_PARTY_NOTICES，不重新生成来源 |
+| Candidate generation | 名称/引用各8、证据标题/引用各40、index proofs20、独立primary query优先后最多6搜索；refs每批100且4096字符。在线同ID去重，完整详情shortlist3，发行辅助最多2，review options5；全体竞争候选不能因补详情而消失 |
+| Score factors | `evidence-matching.ts`：folder/custom-name、PE、resource分别对官方/全部可信名称比较；物理Steam+独立标题0.99(level3)，正式发行0.985(level2)，同一索引行0.98，ID+标题约0.975–0.99，无ID完整标题0.95；品牌最多+0.01且不授予资格；sidecar弱支持，不增加独立票 |
+| Veto / tie | 章节/版本、Latin主标题矛盾、独立ID冲突、补丁/备份目录独立取消eligible，不能靠score恢复。eligible优先→evidence level→score→ID；唯一候选还需margin≥0.075、无分裂refs/同名无独立ID/不同VNDB身份。原生采用显式veto并固定排序tie契约 |
+| Automatic/manual | 旧`MetadataMatcher.run`在全详情复核后允许显式策略auto apply；different-work reidentify只建review。新Recognition本身不得持writable repository；结果只建议，默认显式Apply，排序分数不等于提交授权。manual仍验证远端canonical、当前生命周期并走CommitLinkAsync |
+| Pending / ignore | `metadata-matching.json`最多16MiB/10000 reviews/options5，随机reviewId、source快照、stale标记；启动running→cancelled，不自动联网。Ignore仅移除精确reviewId、原子保存失败恢复，非永久忽略游戏/候选；新识别仍可出现 |
+| Fingerprint | 旧reviewIdentity=SHA256(JS JSON `[name,nameIsCustom,metadata.id或null,preferredInstallationId,installations[id,path,exe]]`)；personal notes/rating/launch args不影响。decision hash另结合epoch/generation/request；本地内容变化未纳入旧hash。继续复用Phase1 fixture；新增版本化evidence摘要补齐本地内容和filesystem身份，绝不把hash当token |
+| Stale / lifecycle | 旧sourceCurrent+captureReview/assertReviewCurrent+事务beforeCommit防乱序、删除同ID重建、安装/关联ABA；个人字段可兼容保留。重启新token，旧UI决定无效，既有stale记忆不可洗白。原生复用Phase2 token、单独recognition generation、review身份和Apply前重验；无法跨重启证明的旧decision保守NeedsRecheck |
+| Network failures | 旧凭据前置及某些ref/API错误会终止batch；新要求明确加强为本地候选可用、enrichment unavailable，每项失败独立。旧auth迟到结果丢弃，auth epoch不是recognition generation |
+
+已读相关 title/evidence/game-identification/local-game/local-text/metadata-matching tests，以及main的review resolve/manual link/refresh和library token/merge契约；危险用例包括copied sidecar、polluted alias、跨语言同一索引行、正式发行与不同VNDB竞争、queued cancellation、review persistence失败、关联ABA、same-ID重建、late UI decision。实现期间以生产路径回归补证，不能用此审计表代替测试或桌面验收。
+
 ## WinUI Phase 4A.1：Online Result Acceptance Remediation（2026-10-05）
 
 基线 `f737bf7c4174cdabe66d25ffa60629d939ca69dd`，保持 `codex/winui-phase4`。本节 supersede 下方 Phase4A 的结果接纳及凭据操作完成判断；原 Gate 为 NO-GO、无 BLOCKER，原有分层保留。没有 Phase4B、识别/匹配/review queue、正式资料/凭据、真实游戏操作、依赖升级或正式程序替换。以下为整改自检证据，不把确定性测试说成真实API兼容保证。

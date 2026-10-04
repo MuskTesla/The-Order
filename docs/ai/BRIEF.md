@@ -1,5 +1,14 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 4B：识别核心内部检查点（实施中，非最终 Gate）
+
+- 用户已授权 Phase4B，保持 `codex/winui-phase4`，起点 `0de0b342623c0e6a047fd354843903779e564e2e`；不得进入 Phase5。下方 Phase4A.1 的“无 Phase4B”仅描述该历史 checkpoint。
+- 已重新读取 Electron recognition、local evidence、pending review、manual/merge/lifecycle 源码和相关测试，行为表维护在 DEVELOPMENT.md。当前仅完成核心：纯标题/证据排序、显式 veto、有界延迟加载索引、Windows 安全证据读取、可选有界 PE 资源、原 JS 指纹与独立 evidence 指纹、只读生命周期快照、双 worker 调度、有限在线补充。
+- 算法 `electron-recognition-v1-native-1`。索引为现有 56,064 records / 97,038 titles，保留许可。源指纹保持 JS JSON UTF-16 契约；局部证据摘要加入文件/目录物理身份和所读字节摘要。二者均不提供提交权限。
+- 已新增 302 项核心测试，其中实际 Electron 标题/排序 oracle 220 组、PE/文本 oracle 34 组、生产指纹六向量及索引/边界/乱序/ABA/取消/在线降级回归。Debug/Release 全套各 911/0/0，两配置 solution build 均 0 warnings / 0 errors。自检补充了索引饱和时拒绝唯一身份推断的保护，另以 `core-final-recognition` 专项复核。
+- 核心检查确认：RecognitionEngine 没有 writable repository；队列仅取得 IRecognitionLibrarySource。新结果只有建议，Apply 层尚未接入。旧自动关联策略将改为显式确认；两个 worker、每项最多六次搜索/两个详情与发行补充、结果最多五项，不把截断候选当唯一匹配。
+- **尚未交付**：持久化 Review、Apply/Ignore/Manual、完整 WinUI 接入、真实桌面 smoke/artifacts、Phase4B 性能基线和最终全量验收。此内部检查点不能作为 Phase4B PASS 或 Phase5 授权。正式资料和 credential 未访问，真实 API 仍为 SKIPPED — no safe development credential。
+
 ## WinUI Phase 4A.1：Online Result Acceptance Remediation（整改自检完成）
 
 - 起点 `f737bf7c4174cdabe66d25ffa60629d939ca69dd`，保持 `codex/winui-phase4`。Phase4A Gate 为 NO-GO；本节 supersede 下方历史阶段关于 credential lifecycle、detail identity 和结果接纳完整性的判断。仅修 M1–M3、corrupt-vs-missing 和 DNS callback 测试覆盖，无 Phase4B、正式数据/凭据操作或识别功能。

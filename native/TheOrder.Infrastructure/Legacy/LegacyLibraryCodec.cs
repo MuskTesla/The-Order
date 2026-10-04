@@ -112,7 +112,7 @@ public sealed class LegacyLibraryCodec : ILibraryCodec
             References = [.. m.References.Select(r => r with { Source = T(r.Source), Id = T(r.Id), Url = U(r.Url) })]
         };
     }
-    private sealed class Utf16Writer : JsonConverter<string>
+    internal sealed class Utf16Writer : JsonConverter<string>
     {
         public override string Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options) => throw new NotSupportedException();
         public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
