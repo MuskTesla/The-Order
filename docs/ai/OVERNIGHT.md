@@ -424,3 +424,23 @@
 EXE固定为`D:\Projects\The-Order\.artifacts\overnight-2026-10-04\candidate\win-unpacked\The Order.exe`，资料固定为`D:\Projects\The-Order\.artifacts\overnight-2026-10-04\trial-profile`。六条记录、时间和图片均明确虚构，可编辑后重开保留；本地图片样例位于其`synthetic-photos`。没有预置密钥；若需要实时目录检索，在候选设置中自行填写，虚构作品不是有效线上关联。不要直接双击该EXE作为隔离试用入口，它默认仍使用正式资料目录。
 
 睡前候选始终可用原命令独立启动：`& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 03`，资料仍为 `.artifacts/iteration-03/trial-profile`。源码回到睡前时，先保存夜间分支的未提交接续状态，工作区干净后切回 `codex/cover-personalization`（应核对HEAD为 `d82bcb6`），不使用破坏性重置。正式入口保持睡前程序，本晚不替换。
+
+## 用户授权替换正式程序（2026-10-04）
+
+用户在晨间候选交付后明确要求“替换原版”。本次只部署已验证的完整夜间候选，不继续开发或重新构建；上文“本晚不替换”保留为夜间交付时的历史状态。
+
+- 替换前实际仓库根 `D:\Projects\The-Order`，分支 `codex/overnight-2026-10-04`，HEAD `c08f5c22de8ebc8260815dcc0ea36fe018f77a21`，工作区干净。当前HEAD相对候选交付 `aee3ec1d370f70df37863cb8fb66205457a1b31a` 只有文档变化，业务提交为 `583e46dd8df921fff25b4dbacc76ae6dbc656e9e`，内部版本仍为0.7.1。原睡前分支与准确提交保留。
+- 核对同仓库其他对话无活动写入者、Git无锁、正式程序未运行；取得本轮协作写入锁，并在替换前复核锁归属、HEAD及工作区。全部目录及其父目录、递归程序内容均检查无链接；暂存、正式和备份的绝对路径限于当前仓库。
+- 北京时间10:27:41开始正式替换：完整候选复制至独立暂存目录，逐文件核对75个SHA-256后，将旧正式目录完整移入备份，再将暂存目录移至原入口。正式目录与候选75个文件一致，备份与旧正式75个文件一致；替换失败有恢复旧程序处理，没有删除旧程序或候选。
+- 新正式入口：`D:\Projects\The-Order\release\win-unpacked\The Order.exe`。对应交付 `aee3ec1` / 业务 `583e46d`，ASAR SHA-256 `652c3c2beba98c7b363f90dfc5deeb3f68b5510a1618f9877640eaf9f111176f`，EXE SHA-256 `f9a9f9e0d30cd36e0d0f2448bab091fd3f87e3fb6117bd0227d04fb83890701e`，与第8次已验证候选相同。
+- 完整旧程序备份：`D:\Projects\The-Order\.artifacts\official-backups\20261004-102741-0cc33fb4\win-unpacked`，对应睡前业务 `16ccc28355a6a42b99111ba077c345f0e1ef9ac9`，ASAR SHA-256 `867f6175fdcf63a17a70aaac4b9f89ec56bf6eb711f57f8e377c11cc776a0274`。只含程序文件，不含正式或试用资料。需要回退时先退出所有 The Order，保留当前程序目录，再将此完整备份恢复至 `release\win-unpacked`；不要直接从备份目录启动，不移动资料目录。此前 `412dc12` 的旧备份也保留。
+- 实际运行替换后的正常正式EXE，显式指定新建临时空profile，检查 `app.isPackaged=true`、0.7.1、正常应用协议、开发页面地址被忽略、应用实际ASAR路径及哈希、空书架/无密钥/无计时、本地图片桥、资料整理空态与Escape、分类搜索无结果与清空、三种展示选项，以及修改偏好在明确保存前不生效、保存后实际生效。页面错误为0。设置及分类两张截图均来自此次正式入口；根代理实际打开设置截图，确认新保存栏和保存结果。该次为1440×960内容窗口的安装检查，不作为夜间前后视觉比较。
+- 证据目录：`.artifacts/overnight-2026-10-04/promotion/`；[完整替换回执](../../.artifacts/overnight-2026-10-04/promotion/replacement.json)、[正式入口检查](../../.artifacts/overnight-2026-10-04/promotion/installed-smoke.json)、[设置截图](../../.artifacts/overnight-2026-10-04/promotion/installed-smoke.png)、[分类截图](../../.artifacts/overnight-2026-10-04/promotion/installed-collections.png)。沿用上述同一包的639项单元、9项辅助及生产包回归结果，本次不重复整套测试；不把复制发布写成新增真实API、私库或游戏验证。
+- 测试实例已关闭，临时profile已清理。正式 `%APPDATA%\KunGalManager` 未读取、复制、迁移或修改；没有操作真实游戏、存档、密钥或游玩记录。旧/新隔离候选、试用资料与正式资料保持各自位置。未推送GitHub、合并main、改快捷方式或系统设置；任务仍为PAUSED，本次文档说明单独提交，完成后停止等待用户实际试用。
+
+正常双击原入口或在PowerShell运行以下命令，会沿用原正式资料（清除仅针对当前终端的测试覆盖）：
+
+```powershell
+Remove-Item Env:KGM_DATA_DIR -ErrorAction SilentlyContinue
+& 'D:\Projects\The-Order\release\win-unpacked\The Order.exe'
+```
