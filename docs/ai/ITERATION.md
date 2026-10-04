@@ -2,7 +2,7 @@
 
 ## 状态与授权
 
-- 日期：2026-10-04（北京时间）。第四轮及夜间0–8次已完成；当前正式程序为已授权替换的夜间交付 `aee3ec1` / 业务 `583e46d`，准确入口和备份见 [OVERNIGHT](OVERNIGHT.md#用户授权替换正式程序2026-10-04)。第六轮已在此基础上保留经典/Windows并增加可选玻璃；第四、第五轮候选继续保留，此前记录作为历史。
+- 日期：2026-10-04（北京时间）。夜间0–8次及第四至六轮已完成；用户随后授权“替换正版”，当前正式程序为第六轮候选交付`707aaeb` / 业务`dd89ea2`。三风格共存，准确入口、旧夜间程序备份及替换验证见下方第六轮替换记录；第四、第五轮候选继续保留，此前记录作为历史。
 - 用户明确授权第一轮代码、测试、文档、候选提交及可试用候选程序；第一轮开发分支为 `codex/iteration-01-library`，修改前基线为 `9ca0587ab3047dd2606cff5ec1100f9f623b75ac`。候选阶段没有正式替换或推送授权；后续明确替换授权与实际结果另记。下文方案与验收不代表已通过，实际结果写入结果记录。
 - 本文件是本轮唯一迭代记录。实现基线与已有证据仍以 [BRIEF](BRIEF.md) 为准；后续批准、实施、验证及 Claude 复审结果继续追加到本文件，不另建重复交接文档。
 
@@ -45,6 +45,24 @@
 试用命令：`& 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 06`，明确使用`.artifacts/iteration-06/trial-profile`，首次原创合成数据、没有密钥，重开保留自己的试用改动。设置里选择风格并保存；不要直接双击EXE而误用正式数据。回看前两款独立程序用同脚本`-Iteration 04`或`05`，无需重置源码；当前候选本身也可切回经典/Windows。
 
 未验证：Win10、其他GPU/低端机器性能、宿主系统实际切换高对比/减少透明（本次为媒体模拟）、鼠标Snap/任务栏行为、桌面壁纸透视、Apple合成器等效、真实API与游戏运行。应用内折射是独立近似，不能声称达到上游原生实现的性能或全部视觉特性。本次不替换正式程序、不推送GitHub。
+
+### 用户授权替换第六轮正式程序（2026-10-04）
+
+用户在三风格候选交付后明确要求“替换正版”。本次部署上述已验证的候选包，不继续开发或重新构建；本轮前文“未替换”保留为候选交付时的历史状态。
+
+- 实际起点：`D:\Projects\The-Order`，`codex/appearance-styles`，HEAD`707aaeb79075ef7a7ca12c79928d07d450594b1e`，工作区干净。核对候选EXE、ASAR、11项包内运行文件、162项源码和66张基线/最终/光学证据的绑定；同仓库无其他活动写入者、无Git锁、正式程序未运行，取得并保持协作写入锁。
+- 北京时间13:11:03开始：候选复制至仓库内独立暂存目录，逐文件核对75个SHA256，再将旧正式目录完整移入备份，暂存目录移至原入口。绝对目标和父目录/内容均检查无链接，备份/暂存限于仓库；替换失败有恢复旧目录处理。新正式75文件与候选一致，旧程序备份75文件与替换前一致，没有删除旧程序或候选。
+- 新正式入口`D:\Projects\The-Order\release\win-unpacked\The Order.exe`，业务提交`dd89ea2326d3651955cfb2e86c91a1bd47286a9b`、候选交付`707aaeb79075ef7a7ca12c79928d07d450594b1e`；ASAR`8fac672c819c051464363fa8172802b76ee36d24f12401536771e1e55d3ba2a4`，EXE`901158ac7b1ba63e36da7982809be313df94ab825e2081532958976e2881f611`，内部版本仍0.7.1。原快捷方式/程序路径可继续使用。
+- 旧夜间程序完整备份`D:\Projects\The-Order\.artifacts\official-backups\20261004-131103-3461208b\win-unpacked`，旧业务`583e46dd8df921fff25b4dbacc76ae6dbc656e9e`、ASAR`652c3c2beba98c7b363f90dfc5deeb3f68b5510a1618f9877640eaf9f111176f`。只含程序文件，不含正式资料。回退时先退出The Order、保留当前程序目录，再将此完整备份恢复至原`release\win-unpacked`；资料目录不随程序回退移动。
+- 替换后实际启动原正式EXE，明确指定新临时空profile。3组安装检查通过：真实生产协议及打包路径、开发地址被忽略、安全preload、空书架/无密钥/无计时、默认Windows；三风格明确保存/光学层创建卸载、原生标题栏存在；新进程重启保留玻璃设置且书架不变。0前端错误，三张设置截图；根代理实际打开玻璃图。此验证没有打开正式书架或调用真实API/游戏，沿用候选完整回归而不重复整套测试。
+- [替换回执](../../.artifacts/iteration-06/promotion/replacement.json)、[正式入口检查](../../.artifacts/iteration-06/promotion/installed-smoke.json)、[实际玻璃设置截图](../../.artifacts/iteration-06/promotion/installed-glass.png)均在`.artifacts/iteration-06/promotion/`。测试实例已关闭，临时profile已清理，协作锁在本次全部写入结束后释放。正式`%APPDATA%\KunGalManager`未读取、复制、迁移或修改；没有带入试用数据/设置。未推送或合并main。
+
+正常双击原入口会沿用原书架和已保存设置。正式设置缺风格字段时默认Windows；在「偏好设置 → 界面风格」选择并保存即可切换。当前终端若有测试数据覆盖，正常启动用：
+
+```powershell
+Remove-Item Env:KGM_DATA_DIR -ErrorAction SilentlyContinue
+& 'D:\Projects\The-Order\release\win-unpacked\The Order.exe'
+```
 
 ## 第五轮：Windows体验与审美适配（2026-10-04）
 
