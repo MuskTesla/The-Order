@@ -1,5 +1,97 @@
 # 开发与维护
 
+## WinUI Phase 3A：隔离离线客户端与验收
+
+当前候选分支 `codex/winui-phase3`，起点为 Phase 2.1 的 `d0702cafe1b6762069d63fe08bcba07b199ca713`。仅 Phase 3A；下面各阶段描述保留为历史证据。Phase 3A checkpoint 后暂停等待 Gate，不能自动进入 Phase 3B。
+
+### 架构与写入边界
+
+| 层 / 位置 | 职责 |
+| --- | --- |
+| WinUI/Views、MainWindow、Resources/DesignTokens.xaml | 原生三页面、导航/确认框、虚拟化容器、主题资源；无数据访问实现 |
+| Presentation/WorkspaceViewModel、PersonalDraft | 草稿、dirty/保存/导航状态、最新请求保护、UI continuation；仅依赖 Application |
+| Application/OfflineLibraryClient、OfflineContracts | 统一 capability/result、后台搜索索引、轻量 summary 和按需详情、保存结果解释 |
+| Application/PersonalEditing | 既有 transaction kernel 的有限扩展：个人字段 token、最多 1000 ID 的一次批量 mutation |
+| Infrastructure/Legacy/LegacyClientTextRules | 使用已验证的 legacy Unicode lower/空白规则；查询/分类标签差分支持 |
+| Platform.Windows/IsolatedLibraryFactory、IsolatedUiPreferencesStore | 后台打开已隔离 profile；界面偏好独立存储、目录固定、大小/链接检查、临时文件替换 |
+
+书架仍为 legacy v1 `library.json` / `library.json.bak`，原始大小、schema、完整校验、writer lease、串行事务、原子提交和读取恢复语义不变。主文件已经提交的 warning 不能报告为失败、不能自动重试。个人编辑 token 检查 epoch、条目 generation 和原个人字段，允许无关条目变化，拒绝删除/恢复身份和同条目个人字段过期。批量标签先规范化，再按旧规则移除和追加；不循环执行 N 次整库保存。
+
+`native-ui.json` 是独立的 version 1 偏好 envelope，仅包含 Theme/Layout/Sort/SavedFilters。临时搜索和筛选条件只在内存里，只有“保存筛选”会创建命名项。不得读取真实 Electron settings/credentials/localStorage；localStorage 迁移后置。损坏偏好文件保留，本次外观可用但不覆盖它。偏好队列按顺序写入，关闭等待已经接受的偏好和事务。读取无效库不能当作空库。当前 writer 只支持带 `.the-order-synthetic` 标记并通过原隔离检查的目录。
+
+### 生成与运行
+
+从仓库根目录执行；使用既有锁定 .NET 10.0.401 / Windows App SDK 2.5.1，未增加 NuGet/npm 版本。生成器只接受**尚不存在**的绝对目录，不覆盖已有合成资料。输出不提交。
+
+```powershell
+./native/scripts/native.ps1 -Action Restore
+./native/scripts/native.ps1 -Action Build -Configuration Debug
+./native/scripts/native.ps1 -Action Build -Configuration Release
+./native/scripts/native.ps1 -Action Test -Configuration Debug
+./native/scripts/native.ps1 -Action Test -Configuration Release
+
+$taskPhase3 = Join-Path (Get-Location) ('.artifacts/phase3-smoke-' + [guid]::NewGuid().ToString('N'))
+node native/scripts/generate-offline-library.mjs --out $taskPhase3 --count 10000
+$env:THE_ORDER_NATIVE_DIAGNOSTICS = '1'
+./native/scripts/native.ps1 -Action Run -Configuration Release -DataDirectory $taskPhase3
+Remove-Item Env:THE_ORDER_NATIVE_DIAGNOSTICS
+```
+
+分别生成 1000/5000/10000；`--count 0` 为合法空库，`--corrupt` 为损坏输入，`--readonly` 为两条、合计 200k sessions 的合法但不可写资料。路径内的 `Z:\SyntheticOnly` 和 `example.invalid` 都是数据字符串，本阶段不访问它们。诊断开关仅显示 first-container/query 时间和面板容器统计；默认关闭，计数使用 weak table，不保留旧容器。
+
+差分与 Electron 回归：
+
+```powershell
+node native/scripts/generate-offline-ui-oracle.mjs
+./node_modules/.bin/tsx.cmd --test tests/library.test.ts tests/bulk-library.test.ts tests/metadata-concurrency.test.ts tests/title-matching.test.ts tests/library-cover.test.ts tests/library-local-cover.test.ts tests/library-workspace.test.ts
+npm run build
+Remove-Item Env:KGM_TEST_EXECUTABLE -ErrorAction SilentlyContinue
+node tests/desktop-import.mjs
+```
+
+新 oracle 在锁定 Electron 中执行实际 `filterLibraryGames`、`splitLabels`、`LibraryStore.updateGames`，记录四个参考文件 hash；重复生成 SHA-256 相同。旧 transaction/codec oracle 未修改。C# 新测试在 OfflineClientTests / OfflineClientPerformanceTests，包含 51 个 UI differential、草稿、冲突/删除恢复、失败保留、迟到请求、统一只读、损坏偏好、保存/关闭等待、1000 ID 单次持久化、单线程 UI context 和大库查询。性能 collection 不与其他 collection 并行运行。
+
+本轮发布使用独立目录，未替换正式程序：
+
+```powershell
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -o .artifacts/native-phase3a/publish/win-x64
+```
+
+这是 unpackaged/self-contained 候选目录，必须保留整个目录，不能仅复制 EXE。正常 `native.ps1 -Action Publish` 仍使用既有 `.artifacts/native-phase1/publish/win-x64`；其 `-Published` 也只指向该默认目录。本轮独立发布目录应显式设置 `THE_ORDER_NATIVE_DATA_DIR` 后运行其中 EXE，结束后清除本次环境覆盖。
+
+### 实际结果与证据范围（2026-10-04）
+
+- Locked restore、Debug/Release 全 solution build：0 warnings / 0 errors；两配置全量 C# **349 passed / 0 failed / 0 skipped**（原 270 + 新增 79），原 102 differential / 14 fault-injection 测试全部保留通过。Release publish 成功，发布目录实际启动与正常退出。
+- Electron 七个相关单元文件 **130 passed / 0 failed / 0 skipped**；build + desktop import 通过：37 条新增，重复 0 新增 / 37 跳过，个人字段和重启一致，游戏文件保留，renderer errors 0。未宣称运行了整个 npm test 或全部 desktop suite。
+- 新 UI 的实际自动化操作通过 Computer Use 的 WinUI accessibility / 窗口截图完成，没有浏览器替代。先前锁屏造成的激活失败与壁纸截图均不计入结果；用户解锁后重新执行。发现并修正 DPI 下初始物理窗口过小、空 Tag 的评分选项未选中；初始大小现按 XamlRoot scale 转成物理像素并限制在当前工作区。窗口缩放/最大化也已观察。
+- 真实 smoke：1k Grid/List、多选/详情、输入时磁盘不变、保存后名称/NameIsCustom 落盘、退出重启搜索命中、取消笔记、dirty 导航的继续编辑、System/Light 外观；10k 末尾条目详情、搜索、评分排序、收藏筛选 2500/10000、显式保存命名筛选、清除临时条件、切换另一详情、关闭时选择保存并继续，最终两处笔记落盘且进程退出。发布包额外批量更新两条标签，Case/case 分别保留且同大小写重复项去重。
+- ValidReadOnly 的两条/200k sessions 主库能查看；批量、名称、状态、评分、收藏、分类、标签、笔记、保存全部禁用。损坏库显示读取错误/尚未加载书架；合法空库显示 0/0 和空状态。
+- 已在进行中的事务关闭等待、commit 后 warning/取消、IO failure 等精确时序由生产 persistence probe + 单线程 context 及 ViewModel gate 测试覆盖。实际 UI smoke 覆盖“保存完成后关闭”和“关闭时保存草稿”；不声称人工输入准确落在某个 durable IO 指令之间。没有 UI 自动重试路径。
+
+**最终 Release 发布包观察**（无图片下载/解码；本机一次启动、一次大幅滚动，诊断开启）：
+
+| 合成条目 | 首个容器回调 ms | 首屏 / 滚动后面板容器 | 工作集 MiB | Private MiB |
+| --- | --- | --- | --- | --- |
+| 1,000 | 937 | 45 / 51 | 306.1 | 203.6 |
+| 5,000 | 1563 | 45 / 51 | 335.5 | 236.9 |
+| 10,000 | 2126 | 45 / 51 | 353.7 | 256.5 |
+
+时间从 LibraryPage 构造至首个非回收 ContainerContentChanging 回调，**不是完整冷启动或首帧像素呈现测量**。容器值为 ItemsPanelRoot.Children.Count（包含缓冲/池）；有首屏与滚动截图，10k 没有创建 10k 个完整可视元素。先前 Debug smoke 还验证列表 1k/5k/10k 分别约 14–32/32/28 个面板容器，窗口大小不同不能直接横比。累计 containers 计的是“曾创建过”，不同查询/模式切换会增加，不等于同时存活。没有帧时间/FPS/长时间泄漏测试，不把单次 working set 作为内存上限。
+
+布局按 [Microsoft GridView/ListView 虚拟化指导](https://learn.microsoft.com/en-us/windows/apps/develop/performance/optimize-gridview-and-listview)：有限 viewport、保留默认 ItemsWrapGrid/ItemsStackPanel、无外层整页 ScrollViewer，inactive view 的 ItemsSource 为 null。窗口尺寸换算参考 [Microsoft 窗口管理](https://learn.microsoft.com/zh-cn/windows/apps/develop/ui/manage-app-windows)。
+
+**Application 微基准**使用另一组更小的、无 metadata 的合成 entry，每项预热 1 次 + 测量 3 次；仅计后台查询、不计 120 ms 防抖、XAML 渲染或图片。它与真实 UI 表是不同指标。
+
+| 条目 | 打开库 ms（单次） | 建索引 ms（单次） | 搜索 median ms | 评分排序 median ms | 组合筛选 median ms |
+| --- | --- | --- | --- | --- | --- |
+| 1,000 | 21.9 | 3.2 | 0.21 | 0.42 | 0.13 |
+| 5,000 | 87.5 | 22.4 | 0.79 | 2.81 | 0.40 |
+| 10,000 | 179.7 | 41.9 | 0.50 | 4.94 | 0.41 |
+
+证据目录 `.artifacts/native-phase3a/`（不提交）：`restore.log`、`debug-build.log`、`release-build.log`、`debug-full.trx`、`release-full.trx`、`publish.log`、`electron-unit.log`、`electron-build.log`、`electron-import.log`、`oracle-repeat.json`；`ui-*.txt/png` 为真实交互、只读/损坏/空库；`published-{1000,5000,10000}-{initial,scroll}.txt/png` 与 `published-memory-*.json` 为最终发布包数据；`ui-close-persistence.json`、`published-batch.json` 为合成文件回读。所有测试窗口已正常关闭。复验应从新生成目录开始，不把本次编辑过的 profile 当原始基准。
+
+**Gate 剩余边界**：Phase 3A 尚待独立 review，不自行宣告 Phase 3B GO。长时间运行、全 Unicode/其他 ICU/NLS 版本比较、全屏幕尺寸与无障碍、真实用户库、断电/网络盘、干净机器安装/签名/升级未验收。图片仍是占位，数据中的本地 cover 未当作缓存删除；安装、文件系统 identity/preflight、扫描/导入、ImageService/ThumbnailService 都属于 Phase 3B。通过 Gate 前不实现，不运行真实游戏，不接入 API/凭据、匹配、SQLite 或 Liquid Glass。
+
 ## WinUI Phase 2.1：Gate 整改与验证边界
 
 本轮从 `codex/winui-phase2` / `f495d06c6b3b6d8dc2b6125405490876b5d7fab1` 整改，不新增架构层或依赖，不允许正式 profile / 凭据，也没有 Phase 3 授权。以下规则替代旧 Phase 2 中相应的输入预处理和同步释放描述。

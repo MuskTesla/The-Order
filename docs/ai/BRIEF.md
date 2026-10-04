@@ -1,5 +1,17 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 3A：Library & Personal Data UI（2026-10-04，候选待 Gate）
+
+- 从可信 `codex/winui-phase2` / `d0702cafe1b6762069d63fe08bcba07b199ca713` 建立 **`codex/winui-phase3`**。本节为当前状态，下面 Phase 1/2 的“尚未接入 UI writer”是历史状态。本阶段只开放带既有合成标记的隔离目录；没有访问正式 `%APPDATA%\KunGalManager`、凭据、真实游戏或联网目录 API。完成 Phase 3A checkpoint 后暂停，**没有 Phase 3B 授权**。
+- Solution 新增纯 .NET **TheOrder.Presentation**，现为七项目。调用路径为 `WinUI View → WorkspaceViewModel / PersonalDraft → IOfflineLibraryClient → TransactionalLibrary → LegacyLibraryCodec / IsolatedLibraryPersistence`。View 不调用 repository；Presentation 无文件 IO、JSON serializer、HttpClient、Win32 或具体持久化实现。composition root 负责装配，Theme Resources 负责基础外观，业务层不依赖 XAML。
+- Library 使用默认虚拟化 GridView/ListView、受限高度 viewport、轻量 GameSummary、按需 GameDetails 和封面占位。详情只开放个人名称、评分、状态、笔记、分类、个人标签和收藏。数据不从 binding 直接写入 authoritative snapshot；Save 经事务后刷新，Cancel 丢弃草稿。导航、关闭、重新读取保护 dirty draft；旧 epoch、删除/恢复 generation 和个人字段冲突均拒绝过期提交。批量状态/收藏/分类/标签最多 1000 个 ID，一次 candidate、一次 durable transaction。
+- 搜索索引和查询在后台工作，120 ms 输入防抖与 cancellation/generation 防止旧结果覆盖新查询。迁移旧五种排序、五种库视图、状态/收藏/分类/个人和目录标签/最低评分筛选。实际 Electron oracle 提供 **38 查询 + 5 标签拆分 + 8 批量差分**；NFKC、Unicode lower、AND 搜索项、标签大小写/次序/追加/删除保持参考行为。排序使用 zh-CN 名称比较，ID 使用 en-US 比较；未声称任意 Windows/NLS/ICU 版本的所有 Unicode 排序等价。
+- 原 legacy v1 和提交内核不变；Application 新增个人草稿 token 与有限批量用例。`native-ui.json` 单独保存主题、Grid/List、排序和显式命名筛选；临时查询不自动保存，损坏偏好不覆盖旧文件。正式 Electron localStorage 迁移后置。只读能力来自统一 LibraryCapability；所有个人编辑入口禁用。CommittedWithWarning 显示“修改已经保存，但存在附加警告”，不自动重试；失败保留草稿；损坏库显示“尚未加载书架”，不显示为真实空库。
+- **实际验证**：locked restore、Debug/Release 全 solution build 均 0 warnings/errors；C# 两配置各 **349 passed / 0 failed / 0 skipped**，比 Phase 2.1 新增 79，原 102 differential / 14 fault injection 保留，新增 UI differential 51。Electron 7 个相关单元文件 **130/0/0**；build + desktop import 37 新增/重复 0 新增、37 跳过/个人字段与重启保留/renderer errors 0。独立 Release publish 成功，发布 EXE 实际启动、滚动、批量写入并正常关闭。
+- **真实 WinUI 证据**：Grid/List、选中/切换详情、草稿不提前落盘、保存/重启、取消、dirty 导航和关闭时保存、搜索/评分排序/收藏筛选、显式保存筛选、System→Light、只读/损坏/空库均已实际操作；发布包额外验证两条目的批量标签写入和大小写去重。保存已在进行时的关闭等待、warning、取消和故障分界还有受控生产内核/单线程 context 和 ViewModel 测试；人工速度的 UI smoke 不声称命中了每个 IO 阶段。
+- **最终发布包虚拟化**：1k/5k/10k 首个容器回调分别 **937/1563/2126 ms**；快速滚动后面板容器均约 **51**（含缓冲/池，非只计可见卡片），远少于 10k。工作集 **306.1/335.5/353.7 MiB**；这是单次本机合成观察，不是 P95/FPS 或正式性能承诺。早期锁屏与小窗口零可视高度数据已排除。计数使用 weak table，诊断本身不强引用历史可视元素。方法、详细数据、复验命令及截图索引见 DEVELOPMENT 的 Phase 3A 节。
+- 仍保留的阶段边界：图片只是占位和数据说明；没有图片下载/解码/缓存、安装管理/扫描/导入 UI、启动/计时、API、识别或 Liquid Glass。长时间运行、全 Unicode 排序、干净机器/安装包签名/升级和无障碍完整验收尚未完成。当前可交给 **Phase 3A Gate Review**；通过后才能规划 Phase 3B filesystem identity/preflight，不能直接接入真实目录。
+
 ## WinUI Phase 2.1：Transaction Kernel Gate Remediation（2026-10-04）
 
 - 当前工作基于 `codex/winui-phase2` / `f495d06c6b3b6d8dc2b6125405490876b5d7fab1`，只整改 B1/B2/M1/M2 和异步 token 入口。六项目结构、legacy v1、32 MiB / 每条目 100k sessions 上限、事务提交顺序与正式资料隔离保持不变。WinUI 仍未注册 writer，未进入 Phase 3，未访问正式资料或真实凭据；完成 checkpoint 后暂停。

@@ -1,19 +1,48 @@
-<Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:domain="using:TheOrder.Domain">
-  <Grid Padding="28" RowSpacing="16">
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <StackPanel Spacing="6"><TextBlock Text="书架" Style="{ThemeResource TitleTextBlockStyle}" /><TextBlock Text="Phase 1 · 合成资料只读预览" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel>
-    <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-      <TextBlock Text="{x:Bind ViewModel.Status, Mode=OneWay}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus" />
-      <Button Grid.Column="1" Content="重新读取" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary" />
-    </Grid>
-    <!-- Bounded viewport and default ItemsStackPanel preserve ListView UI virtualization. -->
-    <ListView Grid.Row="2" ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}" SelectionMode="None" AutomationProperties.Name="合成游戏书架" AutomationProperties.AutomationId="LibraryList">
-      <ListView.ItemTemplate><DataTemplate x:DataType="domain:LibrarySummary">
-        <Grid Padding="8" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="48" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <Border Width="48" Height="64" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="22" /></Border>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6"><TextBlock Text="{x:Bind Name}" FontSize="17" TextTrimming="CharacterEllipsis" /><TextBlock Text="{x:Bind Subtitle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" /></StackPanel>
-        </Grid>
-      </DataTemplate></ListView.ItemTemplate>
-    </ListView>
+<Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application">
+ <Page.Resources>
+  <DataTemplate x:Key="CardTemplate" x:DataType="app:GameSummary">
+   <Border Width="190" Height="268" Margin="4" Style="{StaticResource SurfaceStyle}"><Grid RowSpacing="10" Padding="12"><Grid.RowDefinitions><RowDefinition Height="136"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="40" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/></Border>
+    <StackPanel Grid.Row="1" Spacing="4"><TextBlock Text="{x:Bind Name}" FontSize="16" FontWeight="SemiBold" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/><TextBlock Text="{x:Bind Subtitle}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="{x:Bind FavoriteText}" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/><TextBlock Text="{x:Bind Labels}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel>
+   </Grid></Border>
+  </DataTemplate>
+  <DataTemplate x:Key="RowTemplate" x:DataType="app:GameSummary">
+   <Grid Padding="8" ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+    <Border Height="64" Width="48" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;"/></Border>
+    <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="16" TextTrimming="CharacterEllipsis"/><TextBlock Text="{x:Bind Subtitle}" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind Labels}" TextTrimming="CharacterEllipsis" FontSize="12"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind FavoriteText}" VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+   </Grid>
+  </DataTemplate>
+ </Page.Resources>
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="12">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel><TextBlock Text="书架" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="{x:Bind ViewModel.CountText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="LibraryStatus"/></StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="网格" Click="OnGrid" AutomationProperties.AutomationId="GridMode"/><Button Content="列表" Click="OnList" AutomationProperties.AutomationId="ListMode"/><Button Content="重新读取" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary"/></StackPanel>
   </Grid>
+  <Grid Grid.Row="1" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="145"/><ColumnDefinition Width="145"/></Grid.ColumnDefinitions>
+   <TextBox x:Name="SearchBox" PlaceholderText="搜索名称、原名、标签、开发商或安装目录" TextChanged="OnSearch" AutomationProperties.AutomationId="LibrarySearch"/>
+   <ComboBox Grid.Column="1" x:Name="ViewChoice" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="LibraryView"><ComboBoxItem Content="全部作品" Tag="all"/><ComboBoxItem Content="本地游戏" Tag="local"/><ComboBoxItem Content="愿望单" Tag="wishlist"/><ComboBoxItem Content="缺资料" Tag="unmatched"/><ComboBoxItem Content="待设启动程序" Tag="unconfigured"/></ComboBox>
+   <ComboBox Grid.Column="2" x:Name="SortChoice" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="LibrarySort"><ComboBoxItem Content="最近添加" Tag="added"/><ComboBoxItem Content="最近游玩" Tag="recent"/><ComboBoxItem Content="名称排序" Tag="name"/><ComboBoxItem Content="我的评分" Tag="rating"/><ComboBoxItem Content="游玩时长" Tag="playtime"/></ComboBox>
+  </Grid>
+  <VariableSizedWrapGrid Grid.Row="2" Orientation="Horizontal" ItemHeight="40" ItemWidth="148" MaximumRowsOrColumns="8">
+   <ComboBox x:Name="StatusChoice" Width="140" SelectionChanged="OnFilter" AutomationProperties.AutomationId="StatusFilter"><ComboBoxItem Content="全部状态" Tag="all"/><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
+   <TextBox x:Name="CategoryFilter" Width="140" PlaceholderText="分类（精确）" TextChanged="OnSearch" AutomationProperties.AutomationId="CategoryFilter"/>
+   <TextBox x:Name="TagFilter" Width="140" PlaceholderText="标签（精确）" TextChanged="OnSearch" AutomationProperties.AutomationId="TagFilter"/>
+   <ComboBox x:Name="MinimumChoice" Width="140" SelectionChanged="OnFilter" AutomationProperties.AutomationId="RatingFilter"><ComboBoxItem Content="全部评分" Tag=""/><ComboBoxItem Content="已评分" Tag="0"/><ComboBoxItem Content="评分 ≥ 6" Tag="6"/><ComboBoxItem Content="评分 ≥ 8" Tag="8"/></ComboBox>
+   <CheckBox x:Name="FavoriteFilter" Content="只看收藏" Checked="OnFavoriteFilter" Unchecked="OnFavoriteFilter" AutomationProperties.AutomationId="FavoriteFilter"/>
+  </VariableSizedWrapGrid>
+  <Grid Grid.Row="3" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel Orientation="Horizontal" Spacing="8"><ComboBox x:Name="SavedChoice" Width="150" PlaceholderText="常用筛选" ItemsSource="{x:Bind ViewModel.SavedFilters, Mode=OneWay}" DisplayMemberPath="Name" SelectionChanged="OnSavedFilter" AutomationProperties.AutomationId="SavedFilters"/><Button Content="保存筛选" Click="OnSaveFilter"/><Button Content="清除条件" Click="OnClear"/></StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Content="查看详情" Click="OnOpen" AutomationProperties.AutomationId="OpenDetails"/><Button Content="批量编辑" Click="OnBatch" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="BatchEdit"/></StackPanel>
+  </Grid>
+  <!-- Bounded viewport; default ItemsWrapGrid / ItemsStackPanel; inactive source is null. -->
+  <Grid Grid.Row="4">
+   <ProgressBar IsIndeterminate="True" Height="2" VerticalAlignment="Top" Canvas.ZIndex="1" Visibility="{x:Bind Visible(ViewModel.IsSearching), Mode=OneWay}" AutomationProperties.Name="正在更新书架"/>
+   <GridView x:Name="GameGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource CardTemplate}" DoubleTapped="OnDoubleTapped" KeyDown="OnItemsKey" ContainerContentChanging="OnContainerChanging" AutomationProperties.AutomationId="LibraryGrid" AutomationProperties.Name="游戏网格"/>
+   <ListView x:Name="GameList" Visibility="Collapsed" SelectionMode="Multiple" ItemTemplate="{StaticResource RowTemplate}" DoubleTapped="OnDoubleTapped" KeyDown="OnItemsKey" ContainerContentChanging="OnContainerChanging" AutomationProperties.AutomationId="LibraryList" AutomationProperties.Name="游戏列表"/>
+   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind Visible(ViewModel.IsEmpty), Mode=OneWay}"><FontIcon Glyph="&#xE8F1;" FontSize="36"/><TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}" Margin="0,12,0,0" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
+   <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+  </Grid>
+  <TextBlock Grid.Row="5" x:Name="DiagnosticsText" Visibility="Collapsed" FontSize="11" AutomationProperties.AutomationId="VirtualizationProbe"/>
+ </Grid>
 </Page>

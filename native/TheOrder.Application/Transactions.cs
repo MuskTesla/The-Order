@@ -52,7 +52,7 @@ public sealed class StaleLibraryRequestException() : InvalidOperationException("
 
 // UI-independent transaction service. All state is immutable; only this queue publishes snapshots.
 // Metadata fetching, directory authorization and game launch deliberately do not live here.
-public sealed class TransactionalLibrary : IDisposable, IAsyncDisposable
+public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
 {
     private readonly ILibraryCodec codec;
     private readonly ILibraryPersistence persistence;

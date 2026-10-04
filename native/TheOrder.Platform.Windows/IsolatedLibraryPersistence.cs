@@ -25,12 +25,7 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
         try
         {
             // Pin the directory chain against rename/junction substitution for the lease lifetime.
-            for (DirectoryInfo? directory = new(root); directory is not null; directory = directory.Parent)
-            {
-                var handle = CreateFile(directory.FullName, 0, 3, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
-                if (handle.IsInvalid) { handle.Dispose(); throw new IOException("无法固定合成目录。", new Win32Exception()); }
-                leases.Add(handle);
-            }
+            leases.AddRange(PinDirectoryChain(root));
             IsolatedLibrarySource.ValidateDirectory(root);
             leases.Add(IsolatedLibrarySource.OpenChecked(Path.Combine(root, IsolatedLibrarySource.MarkerName)));
             var lockPath = Path.Combine(root, ".the-order-writer.lock");
@@ -40,6 +35,21 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
             leases.Add(new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
         }
         catch { Dispose(); throw; }
+    }
+    internal static List<IDisposable> PinDirectoryChain(string root)
+    {
+        var handles = new List<IDisposable>();
+        try
+        {
+            for (DirectoryInfo? directory = new(root); directory is not null; directory = directory.Parent)
+            {
+                var handle = CreateFile(directory.FullName, 0, 3, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+                if (handle.IsInvalid) { handle.Dispose(); throw new IOException("无法固定合成目录。", new Win32Exception()); }
+                handles.Add(handle);
+            }
+            return handles;
+        }
+        catch { foreach (var handle in handles) handle.Dispose(); throw; }
     }
     public byte[]? ReadMain() => Read("library.json");
     public byte[]? ReadBackup() => Read("library.json.bak");

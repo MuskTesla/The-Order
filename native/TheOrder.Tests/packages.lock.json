@@ -113,6 +113,12 @@
         "dependencies": {
           "TheOrder.Application": "[1.0.0, )"
         }
+      },
+      "theorder.presentation": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Application": "[1.0.0, )"
+        }
       }
     }
   }

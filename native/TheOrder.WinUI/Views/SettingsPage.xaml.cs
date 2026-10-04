@@ -1,22 +1,21 @@
 using Microsoft.UI.Xaml.Controls;
 using TheOrder.Application;
+using TheOrder.Presentation;
 
 namespace TheOrder.WinUI.Views;
 
 public sealed partial class SettingsPage : Page
 {
-    private readonly INativeSettings settings;
-    public string DataDirectory { get; }
-    public event Action<NativeTheme>? ThemeChanged;
-    public SettingsPage(INativeSettings settings, string directory)
+    public WorkspaceViewModel ViewModel { get; }
+    private bool synchronizing;
+    public SettingsPage(WorkspaceViewModel viewModel)
     {
-        this.settings = settings; DataDirectory = directory;
-        InitializeComponent(); ThemeChoice.SelectedIndex = (int)settings.Theme;
+        ViewModel = viewModel; InitializeComponent();
+        Loaded += (_, _) => { synchronizing = true; ThemeChoice.SelectedIndex = (int)ViewModel.Theme; LayoutChoice.SelectedIndex = ViewModel.Layout == "grid" ? 0 : 1; synchronizing = false; };
     }
-    private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
+    private async void OnAppearance(object sender, SelectionChangedEventArgs e)
     {
-        if (ThemeChoice.SelectedIndex is < 0 or > 2) return;
-        settings.Theme = (NativeTheme)ThemeChoice.SelectedIndex;
-        ThemeChanged?.Invoke(settings.Theme);
+        if (synchronizing || ThemeChoice.SelectedIndex < 0 || LayoutChoice.SelectedIndex < 0) return;
+        await ViewModel.ChangeAppearanceAsync((NativeTheme)ThemeChoice.SelectedIndex, LayoutChoice.SelectedIndex == 0 ? "grid" : "list");
     }
 }

@@ -21,6 +21,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             var owner = host;
             try
             {
+                if (!await owner.Window.ResolveUnsavedAsync()) { closing = false; return; }
                 await owner.DisposeAsync();
                 // Post a new close after this Closing callback returns, including idle shutdown.
                 owner.Window.DispatcherQueue.TryEnqueue(() => { allowClose = true; owner.Window.Close(); });

@@ -1,0 +1,27 @@
+<Page x:Class="TheOrder.WinUI.Views.DetailsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel><TextBlock Text="作品详情" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Relationship, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="20" MaxWidth="840" HorizontalAlignment="Stretch">
+   <Border Style="{StaticResource SurfaceStyle}" Padding="20"><Grid ColumnSpacing="20"><Grid.ColumnDefinitions><ColumnDefinition Width="108"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Border Height="144" CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="36"/></Border>
+    <StackPanel Grid.Column="1" Spacing="8"><TextBlock Text="{x:Bind ViewModel.Draft.Source.Personal.Name, Mode=OneWay}" Style="{ThemeResource SubtitleTextBlockStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="DetailTitle"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.MetadataTitle, Mode=OneWay}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.OriginalTitle, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="12"/></StackPanel>
+   </Grid></Border>
+   <ContentControl IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" HorizontalContentAlignment="Stretch"><StackPanel x:Name="Editor" Spacing="14">
+    <TextBox Header="个人名称" Text="{x:Bind ViewModel.Draft.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="2000" AutomationProperties.AutomationId="EditName"/>
+    <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <ComboBox Header="游玩状态" HorizontalAlignment="Stretch" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Draft.Status, Mode=TwoWay}" AutomationProperties.AutomationId="EditStatus"><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
+     <TextBox Grid.Column="1" Header="个人评分 · 0–10，可留空" Text="{x:Bind ViewModel.Draft.Rating, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditRating"/>
+     <ToggleSwitch Grid.Column="2" Header="收藏" OnContent="已收藏" OffContent="未收藏" IsOn="{x:Bind ViewModel.Draft.Favorite, Mode=TwoWay}" AutomationProperties.AutomationId="EditFavorite"/>
+    </Grid>
+    <TextBox Header="分类 · 逗号、中文逗号或换行分隔" Text="{x:Bind ViewModel.Draft.Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditCategories"/>
+    <TextBox Header="个人标签" Text="{x:Bind ViewModel.Draft.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditTags"/>
+    <TextBox Header="笔记" MinHeight="150" MaxHeight="320" AcceptsReturn="True" TextWrapping="Wrap" Text="{x:Bind ViewModel.Draft.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditNotes"/>
+   </StackPanel></ContentControl>
+   <StackPanel Spacing="8"><TextBlock Text="安装与游玩记录" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Installations, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.Playtime, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
+  </StackPanel></ScrollViewer>
+  <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBlock Text="{x:Bind DirtyText(ViewModel.IsDirty), Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="DraftState"/>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Content="取消修改" Click="OnCancel" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="CancelEdit"/><Button Content="保存修改" Style="{StaticResource AccentButtonStyle}" Click="OnSave" IsEnabled="{x:Bind ViewModel.CanSave, Mode=OneWay}" AutomationProperties.AutomationId="SaveEdit"/></StackPanel>
+  </Grid>
+ </Grid>
+</Page>

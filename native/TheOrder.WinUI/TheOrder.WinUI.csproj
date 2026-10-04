@@ -23,6 +23,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
     <ProjectReference Include="../TheOrder.Infrastructure/TheOrder.Infrastructure.csproj" />
+    <ProjectReference Include="../TheOrder.Presentation/TheOrder.Presentation.csproj" />
     <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
   </ItemGroup>
   <!-- SDK 2.5.1 copies generated XAML/PRI to build output but omits them from

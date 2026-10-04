@@ -19,7 +19,7 @@ public interface IIsolatedLibrarySource
     Stream OpenRead(string? explicitDirectory);
 }
 public sealed class DataIsolationException(string message) : Exception(message);
-public sealed record NativeConfiguration(string? DataDirectory);
+public sealed record NativeConfiguration(string? DataDirectory, bool Diagnostics = false);
 public enum NativeTheme { System, Light, Dark }
 public interface INativeSettings
 {
