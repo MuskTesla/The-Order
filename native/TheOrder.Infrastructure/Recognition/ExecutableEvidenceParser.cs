@@ -38,13 +38,15 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
         cancellation.ThrowIfCancellationRequested();
         if (!stream.CanRead || !stream.CanSeek) throw Invalid();
         int total = 0;
+        var reads = new Dictionary<(long Offset, int Size), byte[]>();
         byte[] Read(long offset, int size)
         {
             cancellation.ThrowIfCancellationRequested();
+            if (reads.TryGetValue((offset, size), out var cached)) return cached;
             if (!Range(offset, size, stream.Length) || size > Limit || total + size > Limit + 64 * 1024) throw Invalid();
             total += size; var bytes = new byte[size]; stream.Position = offset;
             for (int n = 0; n < size;) { cancellation.ThrowIfCancellationRequested(); int count = stream.Read(bytes, n, size - n); if (count == 0) throw Invalid(); n += count; }
-            return bytes;
+            reads.Add((offset, size), bytes); return bytes;
         }
         static ExecutableEvidence Empty() => new(new([], [], [], []), "");
         if (stream.Length < 2) return Empty();
@@ -82,27 +84,51 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
         }
         var version = Directory(0).FirstOrDefault(e => e.Name == 16); if (version.Name == 0) return Empty();
         if ((version.Target & 0x80000000) == 0) throw Invalid();
-        var resources = new List<byte[]>(); int resourceBytes = 0;
-        foreach (var name in Directory(version.Target & 0x7fffffff).Take(4))
+        List<byte[]> Resources(bool canonical)
         {
-            if ((name.Target & 0x80000000) == 0) throw Invalid();
-            foreach (var language in Directory(name.Target & 0x7fffffff).Take(4))
+            visited.Clear(); visited.Add(0);
+            var result = new List<byte[]>(); int resourceBytes = 0;
+            IEnumerable<(uint Name, uint Target)> Selected(long offset)
             {
-                if ((language.Target & 0x80000000) != 0) throw Invalid();
-                var data = Relative(language.Target, 16); long size = U32(data, 4);
-                if (size < 8 || size > Limit || resourceBytes + size > Limit) throw Invalid();
-                resourceBytes += (int)size; resources.Add(Read(FileOffset(U32(data, 0), (int)size), (int)size));
+                var entries = Directory(offset);
+                // Numeric resource/language identity, then offset as a deterministic tie breaker.
+                return (canonical ? entries.OrderBy(e => e.Name).ThenBy(e => e.Target) : entries.AsEnumerable()).Take(4);
             }
+            foreach (var name in Selected(version.Target & 0x7fffffff))
+            {
+                if ((name.Target & 0x80000000) == 0) throw Invalid();
+                foreach (var language in Selected(name.Target & 0x7fffffff))
+                {
+                    if ((language.Target & 0x80000000) != 0) throw Invalid();
+                    var data = Relative(language.Target, 16); long size = U32(data, 4);
+                    if (size < 8 || size > Limit || resourceBytes + size > Limit) throw Invalid();
+                    resourceBytes += (int)size; result.Add(Read(FileOffset(U32(data, 0), (int)size), (int)size));
+                }
+            }
+            return result;
         }
-        var parsed = resources.Select(r => ParseVersion(r, cancellation)).ToArray();
-        if (parsed.Any(f => f.OriginalNames.Any(n => Match(Path.GetFileName(n), Helper, true) || Match(Path.GetFileName(n), OtherHelper, true))))
-            return new(new([], [], [], []), "", true) { EvidenceDigest = Digest(parsed, [], [], true) };
-        var titles = new List<LocalTitleEvidence>(); var companies = new List<string>(); bool fingerprintable = false;
+        // The compatibility hash retains the original bounded traversal and raw bytes. Native
+        // recognition selects resources deterministically before bounding; cached reads share the
+        // original total byte budget, so supporting both contracts cannot make IO unbounded.
+        var resources = Resources(false);
+        var legacy = resources.Select(r => ParseVersion(r, cancellation)).ToArray();
+        var parsed = Resources(true).Select(r => ParseVersion(r, cancellation)).ToArray();
+        static bool Rejected(Fields[] values) => values.Any(f => f.OriginalNames.Any(n => Match(Path.GetFileName(n), Helper, true) || Match(Path.GetFileName(n), OtherHelper, true)));
+        string hash = "";
+        if (!Rejected(legacy) && legacy.Any(f => f.Products.Any(p => IsUsefulTitle(p) && !Match(p, Menu, true))))
+        {
+            using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            foreach (var resource in resources) digest.AppendData(resource);
+            digest.AppendData(Encoding.UTF8.GetBytes("\0" + LegacyPathCase.Lower(basename.Normalize(NormalizationForm.FormKC))));
+            hash = "pe-version-sha256:" + Convert.ToHexStringLower(digest.GetHashAndReset());
+        }
+        if (Rejected(parsed)) return new(new([], [], [], []), hash, true) { EvidenceDigest = Digest(parsed, [], [], true) };
+        var titles = new List<LocalTitleEvidence>(); var companies = new List<string>();
         void Title(string value, string source)
         {
             value = Clean(value); bool program = source is "product-name" or "file-description";
             if (program) value = TitleMatching.Rx(Menu, true).Replace(value, "").Trim();
-            if (IsUsefulTitle(value) && !titles.Any(t => Compact(t.Value) == Compact(value) && (t.Source == source || program && t.Source is "product-name" or "file-description"))) titles.Add(new(value, source));
+            if (IsUsefulTitle(value)) titles.Add(new(value, source));
         }
         foreach (var fields in parsed)
         {
@@ -112,18 +138,14 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
             foreach (var value in fields.Descriptions) Title(value, "file-description");
             foreach (var value in fields.OriginalNames) if (Path.GetExtension(value) is "" || Path.GetExtension(value).Equals(".exe", StringComparison.OrdinalIgnoreCase)) Title(Stem(value), "executable-name");
             if (hasTitle) companies.AddRange(fields.Companies.Where(c => c.Length > 0 && !Match(Compact(c), @"^(?:companyname|unknown|yourcompany|todo)", true)));
-            fingerprintable |= fields.Products.Any(p => IsUsefulTitle(p) && !Match(p, Menu, true));
         }
-        string hash = "";
-        if (fingerprintable)
-        {
-            using var digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            foreach (var resource in resources) digest.AppendData(resource);
-            digest.AppendData(Encoding.UTF8.GetBytes("\0" + LegacyPathCase.Lower(basename.Normalize(NormalizationForm.FormKC))));
-            hash = "pe-version-sha256:" + Convert.ToHexStringLower(digest.GetHashAndReset());
-        }
-        var acceptedTitles = titles.Take(16).ToImmutableArray();
-        var acceptedCompanies = companies.Distinct(StringComparer.Ordinal).Take(8).ToImmutableArray();
+        // ProductName wins a duplicate program title deterministically, not whichever resource
+        // happened to arrive first. Keep the existing 16-title / 8-company per-executable limits.
+        var acceptedTitles = titles.OrderBy(t => t.Source switch { "product-name" => 0, "file-description" => 1, _ => 2 })
+            .ThenBy(t => Compact(t.Value), StringComparer.Ordinal).ThenBy(t => t.Value, StringComparer.Ordinal)
+            .DistinctBy(t => (t.Source is "product-name" or "file-description" ? "program" : t.Source, Compact(t.Value)))
+            .Take(16).ToImmutableArray();
+        var acceptedCompanies = companies.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(8).ToImmutableArray();
         return new(new(acceptedTitles, [], acceptedCompanies, []), hash) { EvidenceDigest = Digest(parsed, acceptedTitles, acceptedCompanies, false) };
     }
     // Only the four consumed version fields, their presence (missing [] != present [""]),
@@ -132,9 +154,9 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
     {
         static string[] Ordered(IEnumerable<string> values) => values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var resources = Ordered(fields.Select(f => JsonSerializer.Serialize(new[] { Ordered(f.Products), Ordered(f.Descriptions), Ordered(f.Companies), Ordered(f.OriginalNames) })));
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { Version = 1, Resources = resources,
-            Titles = titles.OrderBy(t => t.Source, StringComparer.Ordinal).ThenBy(t => t.Value, StringComparer.Ordinal), Companies = Ordered(companies), Rejected = rejected });
-        return "pe-evidence-v1:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { Version = 2, Resources = resources,
+            Titles = titles, Companies = companies, Rejected = rejected });
+        return "pe-evidence-v2:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
     private static Fields ParseVersion(byte[] bytes, CancellationToken cancellation)
     {

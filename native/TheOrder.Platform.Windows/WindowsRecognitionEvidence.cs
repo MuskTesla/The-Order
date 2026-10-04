@@ -140,8 +140,17 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
             }
         }
         cancellation.ThrowIfCancellationRequested();
-        var evidence = new RecognitionEvidence([.. titles.Take(40)], [.. refs.Distinct().Take(40)], [.. companies.Distinct(StringComparer.Ordinal).Take(16)],
+        // Compose a stable effective input before the aggregate 40-title boundary. Keep source
+        // precedence explicit; enumeration order within a source must never decide a chapter veto.
+        var effectiveTitles = titles.OrderBy(t => t.Source switch {
+            "folder" => 0, "sidecar" => 1, "readme-heading" => 2, "custom-name" => 3,
+            "product-name" => 4, "file-description" => 5, "executable-name" => 6, "archive-name" => 7, _ => 8 })
+            .ThenBy(t => t.Source, StringComparer.Ordinal).ThenBy(t => t.Value, StringComparer.Ordinal).Take(40).ToImmutableArray();
+        var evidence = new RecognitionEvidence(effectiveTitles, [.. refs.Distinct().Take(40)], [.. companies.Distinct(StringComparer.Ordinal).Take(16)],
             [.. warnings.Distinct(StringComparer.Ordinal)], [.. peHashes], entry.Installations.Any(i => Match(i.Folder, @"(?:^|[\\/])(?:汉化补丁|补丁|patches|_patch|backup|beifen)(?:[\\/]|$)")), []);
+        // Bind freshness to the exact bounded input as well as the physical/raw observations.
+        // The legacy raw PE hashes are provenance only, not consumed by ranking or veto.
+        observations.Add("effective|" + JsonSerializer.Serialize(new { evidence.Titles, evidence.References, evidence.Companies, evidence.AuxiliaryDirectory }));
         return new(evidence, [.. roots], [.. observations], fingerprint(observations)) { IncludePe = requestedPe };
     }
     private void Revalidate(PathObservation value) => new InstallationPreflightService(filesystem).Revalidate(value);

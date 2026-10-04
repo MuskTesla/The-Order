@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 namespace TheOrder.Application;
 
 public enum RecognitionReviewStatus { NeedsReview, NeedsRecheck, Stale }
+public enum ReviewInitializationState { Uninitialized, Initializing, Ready, Failed }
 public sealed record HistoricalRecognitionCandidate(string Id, string Title, string OriginalTitle, double Confidence, string Reason);
 public sealed record RecognitionReview(Guid Id, string GameId, string Title, DateTimeOffset CreatedAt,
     RecognitionReviewStatus Status, string AlgorithmVersion, RecognitionResult? Result,

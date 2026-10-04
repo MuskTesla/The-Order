@@ -46,7 +46,7 @@ public interface IRecognitionEvidenceReader
 }
 public sealed record ExecutableEvidence(ParsedLocalEvidence Evidence, string Fingerprint, bool RejectExecutable = false)
 {
-    public string EvidenceDigest { get; init; } = "pe-evidence-v1:missing";
+    public string EvidenceDigest { get; init; } = "pe-evidence-v2:missing";
 }
 public interface IExecutableEvidenceParser
 {

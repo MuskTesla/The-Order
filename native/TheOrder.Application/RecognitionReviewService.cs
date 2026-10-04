@@ -22,10 +22,12 @@ public sealed class RecognitionReviewService : IAsyncDisposable
     private readonly Channel<bool> dirty = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
     private readonly CancellationTokenSource lifetime = new();
     private readonly Task pump;
-    private bool loaded, storageSafe = true, disposed;
+    private bool storageSafe = true, disposed;
+    private ReviewInitializationState initializationState;
     public string? PersistenceError { get; private set; }
     public string? CapacityError { get; private set; }
-    public bool Loaded => loaded;
+    public ReviewInitializationState InitializationState { get { lock (gate) return initializationState; } }
+    public bool Loaded => InitializationState is ReviewInitializationState.Ready or ReviewInitializationState.Failed;
     public event Action? Changed;
     public RecognitionReviewService(OfflineLibraryClient offline, RecognitionQueue queue, IRecognitionReviewStorage storage,
         IRecognitionReviewCodec codec, IRecognitionEvidenceReader evidence, IRecognitionRanker ranker, IRecognitionCatalog catalog,
@@ -38,14 +40,22 @@ public sealed class RecognitionReviewService : IAsyncDisposable
     public ImmutableArray<RecognitionReview> Snapshot { get { lock (gate) return [.. reviews.Values.OrderByDescending(r => r.CreatedAt).ThenBy(r => r.Id)]; } }
     public async Task InitializeAsync(CancellationToken cancellation)
     {
+        using var stopping = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
+        cancellation = stopping.Token;
         await initialization.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
-            if (loaded) return;
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                if (Loaded) return;
+                storageSafe = true; PersistenceError = null;
+                initializationState = ReviewInitializationState.Initializing;
+            }
+            var opening = new List<RecognitionReview>();
             try
             {
                 var restored = await Task.Run(async () => codec.Read(await storage.ReadAsync(cancellation).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
-                var opening = new List<RecognitionReview>();
                 foreach (var review in codec.PrepareAdmission(restored))
                 {
                     cancellation.ThrowIfCancellationRequested(); var value = review;
@@ -58,36 +68,72 @@ public sealed class RecognitionReviewService : IAsyncDisposable
                     catch (InvalidDataException) { value = review with { Status = RecognitionReviewStatus.Stale, Message = "原条目已不存在，请核对后忽略。" }; }
                     opening.Add(value);
                 }
-                // Lifecycle diagnostics can increase serialized size too. Publish only the final budgeted state.
-                var admitted = codec.PrepareAdmission([.. opening]);
-                lock (gate) foreach (var value in admitted) reviews.TryAdd(value.Id, value);
             }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or DataIsolationException)
-            { storageSafe = false; PersistenceError = "历史核对队列无法安全读取，原文件已保留；本次建议暂不持久保存。"; }
-            loaded = true; OnQueueChanged();
+            {
+                opening.Clear(); storageSafe = false;
+                PersistenceError = "历史核对队列无法安全读取，原文件已保留；本次建议暂不持久保存。";
+            }
+            List<Guid> rejected;
+            lock (gate)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                // Queue owns the bounded pending state and generations. Read its latest snapshot
+                // under the publication gate instead of replaying potentially obsolete events.
+                // No live result has entered reviews while initialization was pending.
+                var baseline = codec.PrepareAdmission([.. opening]).ToDictionary(r => r.Id);
+                var proposed = ProjectQueue(baseline);
+                rejected = [];
+                try { Publish(codec.PrepareAdmission([.. proposed.Values])); CapacityError = null; }
+                catch (ReviewCapacityException e)
+                {
+                    CapacityError = e.Message;
+                    Publish([.. baseline.Values]);
+                    rejected.AddRange(proposed.Keys.Where(id => !baseline.ContainsKey(id)));
+                }
+                initializationState = storageSafe ? ReviewInitializationState.Ready : ReviewInitializationState.Failed;
+            }
+            foreach (var id in rejected) queue.RejectCapacity(id);
+            if (!disposed) dirty.Writer.TryWrite(true);
+            Notify();
+        }
+        catch
+        {
+            lock (gate) if (initializationState == ReviewInitializationState.Initializing) initializationState = ReviewInitializationState.Uninitialized;
+            throw;
         }
         finally { initialization.Release(); }
+    }
+    // gate must be held. Every replacement is prepared in full before this method is called;
+    // removals are the only mutation that cannot increase the already validated budget.
+    private void Publish(ImmutableArray<RecognitionReview> admitted)
+    { reviews.Clear(); foreach (var item in admitted) reviews.Add(item.Id, item); }
+    private Dictionary<Guid, RecognitionReview> ProjectQueue(Dictionary<Guid, RecognitionReview> previous)
+    {
+        var proposed = new Dictionary<Guid, RecognitionReview>(previous);
+        foreach (var job in queue.Snapshot)
+        {
+            if (job.State == RecognitionJobState.NeedsReview && job.Result is { } result && (!previous.TryGetValue(job.Id, out var prior) || prior.Status == RecognitionReviewStatus.NeedsReview))
+                proposed[job.Id] = new(job.Id, job.GameId, job.Title, job.CreatedAt, RecognitionReviewStatus.NeedsReview, result.AlgorithmVersion, result, [], Message: result.EnrichmentMessage);
+            else if (job.State == RecognitionJobState.Stale && previous.TryGetValue(job.Id, out var old))
+                proposed[job.Id] = old with { Status = RecognitionReviewStatus.Stale, Message = job.Message };
+            else if (job.State is RecognitionJobState.Completed or RecognitionJobState.Cancelled) proposed.Remove(job.Id);
+        }
+        return proposed;
     }
     private void OnQueueChanged()
     {
         var rejected = new List<Guid>();
         lock (gate)
         {
-            var proposed = new Dictionary<Guid, RecognitionReview>(reviews);
-            foreach (var job in queue.Snapshot)
-            {
-                if (job.State == RecognitionJobState.NeedsReview && job.Result is { } result && (!reviews.TryGetValue(job.Id, out var prior) || prior.Status == RecognitionReviewStatus.NeedsReview))
-                    proposed[job.Id] = new(job.Id, job.GameId, job.Title, job.CreatedAt, RecognitionReviewStatus.NeedsReview, result.AlgorithmVersion, result, [], Message: result.EnrichmentMessage);
-                else if (job.State == RecognitionJobState.Stale && reviews.TryGetValue(job.Id, out var previous))
-                    proposed[job.Id] = previous with { Status = RecognitionReviewStatus.Stale, Message = job.Message };
-                else if (job.State is RecognitionJobState.Completed or RecognitionJobState.Cancelled) proposed.Remove(job.Id);
-            }
+            if (!Loaded || disposed) return;
+            var proposed = ProjectQueue(reviews);
             if (proposed.Count != reviews.Count || proposed.Any(p => !reviews.TryGetValue(p.Key, out var old) || old != p.Value))
             {
                 try
                 {
                     var admitted = codec.PrepareAdmission([.. proposed.Values]);
-                    reviews.Clear(); foreach (var item in admitted) reviews.Add(item.Id, item);
+                    Publish(admitted);
                     CapacityError = null;
                 }
                 catch (ReviewCapacityException e)
@@ -98,7 +144,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             }
         }
         foreach (var id in rejected) queue.RejectCapacity(id);
-        if (loaded && !disposed) dirty.Writer.TryWrite(true);
+        if (!disposed) dirty.Writer.TryWrite(true);
         Notify();
     }
     public async Task RefreshValidityAsync(CancellationToken cancellation)
@@ -114,18 +160,22 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             // OnQueueChanged stages and budgets the status/message update before publishing it.
             queue.MarkStale(review.Id, message);
         }
-        if (loaded && !disposed) dirty.Writer.TryWrite(true);
+        if (Loaded && !disposed) dirty.Writer.TryWrite(true);
         Notify();
     }
     public async Task FlushAsync(CancellationToken cancellation = default)
     {
         await persistence.WaitAsync(cancellation).ConfigureAwait(false);
-        try { await SaveSnapshotAsync(Snapshot, cancellation).ConfigureAwait(false); }
+        try
+        {
+            ImmutableArray<RecognitionReview> snapshot;
+            lock (gate) { if (!Loaded) return; snapshot = Snapshot; }
+            await SaveSnapshotAsync(snapshot, cancellation).ConfigureAwait(false);
+        }
         finally { persistence.Release(); }
     }
     private async Task SaveSnapshotAsync(ImmutableArray<RecognitionReview> snapshot, CancellationToken cancellation)
     {
-        if (!loaded) return;
         if (!storageSafe) throw new IOException("历史队列尚未安全读取，拒绝覆盖。");
         var bytes = await Task.Run(() => codec.Write(snapshot), cancellation).ConfigureAwait(false);
         await storage.WriteAsync(bytes, cancellation).ConfigureAwait(false); PersistenceError = null;
@@ -151,6 +201,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
         await decision.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
+            await InitializeAsync(cancellation).ConfigureAwait(false);
             _ = Require(id);
             await persistence.WaitAsync(cancellation).ConfigureAwait(false);
             try
@@ -173,6 +224,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
         RequestToken? transaction = null; TransactionalLibrary? library = null;
         try
         {
+            await InitializeAsync(stopping.Token).ConfigureAwait(false);
             if (workId.Length is < 1 or > 20 || !workId.All(c => c is >= '0' and <= '9')) throw new InvalidDataException("目录作品编号须为 1 至 20 位数字。");
             RecognitionResult? result = null;
             if (reviewId is { } id)
@@ -225,7 +277,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
                         var proposed = reviews.Values.Select(r => r.GameId == input.Entry.Id
                             ? r with { Status = RecognitionReviewStatus.Stale, Message = "已手动关联，旧建议失效。" } : r);
                         var admitted = codec.PrepareAdmission([.. proposed]);
-                        reviews.Clear(); foreach (var item in admitted) reviews.Add(item.Id, item);
+                        Publish(admitted);
                     }
                     foreach (var oldId in superseded) queue.MarkStale(oldId, "已手动关联，旧建议失效。");
                 }
@@ -249,6 +301,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (disposed) return; disposed = true; lifetime.Cancel();
+        await initialization.WaitAsync().ConfigureAwait(false); initialization.Release();
         await decision.WaitAsync().ConfigureAwait(false); decision.Release();
         queue.Changed -= OnQueueChanged; dirty.Writer.TryComplete(); await pump.ConfigureAwait(false);
         lifetime.Dispose();

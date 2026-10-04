@@ -12,7 +12,7 @@ public sealed record TitleComparison(double Score, bool Exact, string? Conflict,
 // Pure compatibility algorithm. No filesystem, network, repository, or UI access.
 public static class TitleMatching
 {
-    public const string AlgorithmVersion = "electron-recognition-v1-native-3";
+    public const string AlgorithmVersion = "electron-recognition-v1-native-4";
     private const string Packaging = @"^(?:(?:pc|windows|win(?:32|64)|x(?:86|64)|chs|cht|cn|jp|en)|(?:简体|繁体|官方)?中文(?:版)?|官中(?:版)?|汉化(?:硬盘|整合)?版?|(?:日文|英文|日语|英语|简中|繁中)版?|免安装(?:版)?|硬盘版|绿色版|直装版|解压即玩)$";
     private const string Suffix = @"(?:[\s._-]+(?:chs|cht|x64|x86|win32|win64)|[\s._-]*(?:(?:简体|繁体|官方)中文(?:版)?|官中(?:版)?|汉化(?:硬盘|整合)?版|免安装(?:版)?|硬盘版|绿色版|直装版|解压即玩))$";
     private static readonly HashSet<string> Generic = new(("game games gamedata game32 game64 data datafiles engine content assets plugins binaries win32 win64 windows x86 x64 www backup save saves savedata managed runtime resources system start startup launch launcher main config settings setup install installer uninstall directx dotnet advhd siglusengine onscripter nscripter kirikiri krkr krkrz artemis bgi rio reallive malie unityplayer 游戏 游戏目录 游戏文件 游戏本体 本体 新建文件夹").Split(' '), StringComparer.Ordinal);

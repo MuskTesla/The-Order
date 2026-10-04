@@ -1,5 +1,46 @@
 # 开发与维护
 
+## WinUI Phase 4B.1.1：Final Recognition Gate Remediation（2026-10-05）
+
+基线 `codex/winui-phase4` / `41fa1e0a573d83f232e3d5e8d2d2011bf884acc6`。上一轮 targeted re-Gate 为 **NO-GO**，仅剩 M1（PE 排序与截断）和 M5（初始化接纳竞态）。本节 supersede 下方 Phase4B.1 对这两项已充分修复及 Gate 放行的判断；旧 artifacts 仍是原场景的历史证据，不能证明本轮两个反例已消失。本轮没有修改评分/veto、Review UI、provider-name exclusion、历史校验或 auth/local 规则，没有进入 Phase5、访问真实 API/credential/正式资料或真实游戏。
+
+### M1：一个确定的有效输入
+
+`ExecutableEvidenceParser` 对 native 资源先按 resource/language identity（数值 Name，再 Target）排序，再沿用每级4项的有界选择。字段继续使用原清洗/标题可用性规则；候选标题按 ProductName、FileDescription、OriginalFilename 优先级，再按 Compact 值及原值的 Ordinal 顺序排列，之后按来源组+Compact 去重，最后保留16标题。相同程序标题优先 ProductName，不再取决于资源到达顺序。公司名先 Ordinal 去重排序再保留8项。没有扩大每个程序的标题、资源或读取字节预算。
+
+`pe-evidence-v2` 直接序列化这份实际返回的 ordered/bounded Titles、Companies、RejectExecutable；同时保留四种已消费字段的规范化资源内容及 missing/empty 区别。未消费字段仍不参与。digest 不再另行改变有效输出顺序。整个本地输入在 `WindowsRecognitionEvidence` 中按显式来源优先级及 Ordinal 标题排序后截取40条；这份实际传给 recognition 的 Titles/References/Companies/AuxiliaryDirectory 同时纳入 `native-local-evidence-v3`。相同语义资源的枚举重排不改变有效输入，实际 top-40 变化则失效。评分和 veto 实现未改。
+
+Electron-compatible raw PE fingerprint 保持原有遍历选择/顺序、原始资源字节、basename及启用条件。兼容摘要与 native 资源选择共享有界读取缓存，避免重复 IO；两条路径合计仍受原总读取字节预算约束，不能因兼容路径无界读取。`electron-review-identity-v1` 不变。只有算法身份升为 `electron-recognition-v1-native-4`，旧建议恢复仍须重新识别，不继承旧决定权限。
+
+### M5：初始化也是接纳事务
+
+`ReviewInitializationState` 为 Uninitialized → Initializing → Ready；读取损坏/IO失败为 Failed（明确降级，新的合法结果只在内存可用，原文件禁止覆盖）。取消或未处理初始化错误不发布半成品，回到 Uninitialized，可重试；并发 Initialize 由同一 semaphore 串行，成功后不会再次读/合并。
+
+Uninitialized/Initializing 期间不把 queue event 写入 Review authoritative dictionary。由现有有界 `RecognitionQueue` 保留最新 job/generation 状态；初始化完成时在同一 publication gate 下取最新 queue snapshot，与已校验、已复核的历史状态合并，统一执行原 `PrepareAdmission`（deterministic retirement、10000条/16MiB精确序列化、结构与候选限制），通过后一次性替换状态并进入 Ready。延迟事件总是读取最新 queue snapshot，不重放旧 generation。
+
+无法容纳受保护的新建议时，保留已预算的合法基线，记录 ReviewCapacity 并撤销本次未接纳 job 的决定资格；不会先发布超限结果。Ready 后继续使用同一投影/预算/发布入口。所有增长或替换都先 PrepareAdmission，单项移除不会增加预算；历史仍最多256、按 CreatedAt/Guid 最旧先退役，actionable review 受保护。Ignore/Apply/Manual 的公开入口等待初始化屏障；Flush 的 Loaded 判断与快照捕获在同一锁内，初始化前不会把空快照覆盖历史。业务决定、canonical 校验、durable transaction 规则未改。
+
+### 验证及证据
+
+新增 `RecognitionFinalGateTests` **14项**，没有复制生产 digest/retirement/validation 算法。PE builder 仅构造合成资源；真实 Windows reader、parser、ranker、engine、queue、review service 与事务路径参与验证。暂停的 storage 是可控 IO 边界，生产 codec/service 执行实际预算与发布。
+
+- M1：两语言资源重排；超过40原始标题的20次固定种子随机排列；超过4语言资源时先排序再截断；3个程序的48条PE标题组成实际40条输入并重复8次重排；39目录标题+chapter1/2 的原 Gate 反例通过真实 Windows reader及Apply；真实有效标题变化使旧Review stale且库字节不变。沿用6组 FileDescription/OriginalFilename等变更的 zero-write 回归、missing/empty/culture以及34组 Electron evidence 差分，legacy fingerprint 未改。
+- M5：暂停近16MiB历史读取→1MiB live result→统一退役后发布；紧接 Ignore和Apply均成功；不可容纳的17MiB新结果显式拒绝；Ready阶段已有9MiB active再来9MiB结果，原状态与权限保留。10000历史+多个live结果+同条目old/new generation+两次并发Initialize只读一次、最终256历史+2新建议；损坏/IO失败保留文件，取消初始化可重试，初始化期间Flush不写盘。快照及发布通知观察中实际序列化校验均不超过10000/16MiB。
+- Apply容量用例中的1MiB建议用于压力输入；提交时 fresh detail 返回符合既有书架字段限制的内容。早期测试曾被正确的 description 长度校验拒绝，已调整合成场景，未放宽产品校验。
+
+| 最终验证 | 结果 |
+| --- | --- |
+| locked restore | 成功；锁文件/依赖未改 |
+| Debug / Release solution build | 各0 warnings / 0 errors |
+| Debug / Release完整C# | 各 **1002 passed / 0 failed / 0 skipped**；988既有全部保留+14新增 |
+| 原差分及fault | **102 original、13 filesystem/cover组、32 online、254 recognition、14 fault injection**全部通过 |
+| Electron | 完整 **665/0/0**；build通过；真实Electron隔离导入37项、重复0新增/37跳过、个人字段及reload/游戏文件保留、renderer errors0 |
+| Release publish | 成功，`.artifacts/native-phase4b11/publish/win-x64` |
+
+本机证据在 ignored `.artifacts/native-phase4b11/`：restore/build/test/publish/Electron日志、两份完整TRX、targeted TRX及`validation-audit.json`，源码/发布hash见`build-identity.json`，提交后由`checkpoint-receipt.json`绑定。发布二进制的源身份仍嵌入父SHA `41fa1e0a...`，必须连同源码hash和receipt识别，不能冒称嵌入最终checkpoint。未新增桌面截图或复用旧截图作为本轮证明；正常recognition/review/Apply由生产路径集成测试验证。
+
+**M1 fully fixed / M5 fully fixed：本轮自检通过，PASS FOR REAL API SMOKE（self-check）。** 这不是已完成独立re-Gate或真实API smoke。正式profile、真实credential/API/游戏均未使用；不证明真实catalog/CDN、所有真实PE、长期压力或干净机安装。旧UNC/图片/workingDirectory等边界继续保留。仅建立Phase4B.1.1 checkpoint，然后暂停，不进入Phase5、不开始真实API smoke。
+
 ## WinUI Phase 4B.1：Recognition / Review 边界整改（2026-10-05）
 
 本轮从 `codex/winui-phase4` / `7da6eebab3c79b66af65e628daad8ae1788644d4` 开始，只修独立 Gate 的 M1–M5 和两个 MINOR。不是下方 Phase4B 开发过程中的同名内部子步骤。本节 supersede 旧 Phase4B 关于 PE freshness 完整、候选详情绑定、重新识别标题独立性、历史候选安全及队列预算已经充分成立的判断；保留旧功能与测试记录的历史身份。未修改事务、Filesystem、Online、Image 核心架构、依赖或旧 Electron 实现，未进入 Phase5。
