@@ -88,10 +88,11 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
     internal static ClientResult Present<T>(CommitResult<T> receipt) => receipt.Warning is not null
         ? new(ClientOutcome.CommittedWithWarning, "修改已经保存，但存在附加警告：" + receipt.Warning + " 请勿重复提交。")
         : new(ClientOutcome.Committed, receipt.CancellationAfterCommit ? "修改已经保存。取消发生在提交开始之后。" : "修改已经保存。");
-    internal static bool Expected(Exception e) => e is InvalidDataException or LibraryWriteLimitException or LibraryReadOnlyException or StaleLibraryRequestException or OperationCanceledException or IOException or UnauthorizedAccessException or DataIsolationException;
+    internal static bool Expected(Exception e) => e is InvalidDataException or LibraryWriteLimitException or LibraryReadOnlyException or StaleLibraryRequestException or CandidateStaleException or OperationCanceledException or IOException or UnauthorizedAccessException or DataIsolationException;
     internal static ClientResult Failure(Exception e) => e switch
     {
         LibraryReadOnlyException => new(ClientOutcome.ReadOnly, e.Message),
+        CandidateStaleException => new(ClientOutcome.CandidateStale, e.Message),
         StaleLibraryRequestException => new(ClientOutcome.Conflict, "资料已经变化，未保存此次修改。草稿已保留；请核对后取消草稿并重新打开。"),
         OperationCanceledException => new(ClientOutcome.Cancelled, "提交前已取消，修改没有保存。草稿已保留。"),
         InvalidDataException or LibraryWriteLimitException => new(ClientOutcome.ValidationFailure, e.Message),

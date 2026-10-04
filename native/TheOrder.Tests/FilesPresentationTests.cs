@@ -62,6 +62,43 @@ public sealed class FilesPresentationTests
         var first = files.LoadInstallationsAsync("a"); var second = files.LoadInstallationsAsync("b"); b.SetResult(View("b")); await second; Assert.Equal("b", files.Installations!.Details.Token.GameId);
         var close = files.DisposeAsync().AsTask(); Assert.False(close.IsCompleted); a.SetResult(View("a")); await first; await close; Assert.Equal("b", files.Installations.Details.Token.GameId);
     }
+    [Theory][InlineData(WorkspacePage.Library)][InlineData(WorkspacePage.Settings)]
+    public async Task LeavingDuringInstallationLoadInvalidatesNavigation(WorkspacePage destination)
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        var held = Gate<InstallationView>(); var client = new Files { Load = (_, _) => held.Task };
+        await using var files = new FilesViewModel(client, workspace); var navigation = new InstallationNavigation(files);
+        var opening = navigation.OpenAsync("a", () => Task.FromResult(true), async () => { await workspace.NavigateAsync(WorkspacePage.Installations, null, () => Task.FromResult(UnsavedChoice.Stay)); });
+        navigation.Invalidate(); await workspace.NavigateAsync(destination, null, () => Task.FromResult(UnsavedChoice.Stay));
+        held.SetResult(View("a")); await opening; Assert.Equal(destination, workspace.Page);
+    }
+    [Fact]
+    public async Task CurrentInstallationIntentNavigatesAfterLoad()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        var held = Gate<InstallationView>(); await using var files = new FilesViewModel(new Files { Load = (_, _) => held.Task }, workspace);
+        var navigation = new InstallationNavigation(files);
+        var opening = navigation.OpenAsync("a", () => Task.FromResult(true), async () => { await workspace.NavigateAsync(WorkspacePage.Installations, null, () => Task.FromResult(UnsavedChoice.Stay)); });
+        held.SetResult(View("a")); await opening; Assert.Equal(WorkspacePage.Installations, workspace.Page); Assert.Equal("a", files.Installations!.Details.Token.GameId);
+    }
+    [Fact]
+    public async Task NewestInstallationNavigationWinsEvenWhenOlderLoadFinishesLast()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync(); var a = Gate<InstallationView>(); var b = Gate<InstallationView>();
+        await using var files = new FilesViewModel(new Files { Load = (id, _) => id == "a" ? a.Task : b.Task }, workspace);
+        var navigation = new InstallationNavigation(files); var destinations = new List<string>();
+        Task Open(string id) => navigation.OpenAsync(id, () => Task.FromResult(true), async () => { destinations.Add(id); await workspace.NavigateAsync(WorkspacePage.Installations, null, () => Task.FromResult(UnsavedChoice.Stay)); });
+        var first = Open("a"); var second = Open("b"); b.SetResult(View("b")); await second; a.SetResult(View("a")); await first;
+        Assert.Equal(new[] { "b" }, destinations); Assert.Equal("b", files.Installations!.Details.Token.GameId);
+    }
+    [Fact]
+    public async Task RetryReusesRootAndShowsDepthPartialEvenWithNoCandidates()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync(); int attempts = 0;
+        var client = new Files { Scan = (root, _) => { Assert.Equal("synthetic", root); attempts++; return Task.FromResult(new ScanResult(ScanStatus.NoCandidates, [], new(2, 3, 0, root), [], "扫描已完成，但因深度限制可能未检查全部目录。") { Truncation = ScanTruncation.DepthLimit }); } };
+        await using var files = new FilesViewModel(client, workspace); await files.ScanAsync("synthetic"); await files.RetryScanAsync();
+        Assert.Equal(2, attempts); Assert.Equal(ImportStage.NoCandidates, files.Stage); Assert.Contains("深度限制", files.ScanMessage);
+    }
     private sealed class Files : IOfflineFilesClient
     {
         public int Scans, Saves;

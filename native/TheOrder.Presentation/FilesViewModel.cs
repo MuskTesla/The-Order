@@ -77,6 +77,7 @@ public sealed class FilesViewModel(IOfflineFilesClient client, WorkspaceViewMode
     }
     private void NotifyScan() { Changed(nameof(Stage)); Changed(nameof(ScanMessage)); Changed(nameof(Progress)); Changed(nameof(Candidates)); Changed(nameof(IsScanning)); }
     public void CancelScan() => scanCancellation?.Cancel();
+    public Task RetryScanAsync() => ScanRoot is { } root ? ScanAsync(root) : Task.CompletedTask;
     private Task Track(Func<Task> action) => disposed ? Task.CompletedTask : mutation is { IsCompleted: false } ? mutation : mutation = action();
     public Task WaitForMutationAsync() => mutation ?? Task.CompletedTask;
     public Task ImportAsync(ImmutableArray<ScanCandidate> selected) => Track(() => ImportCore(selected));

@@ -5,7 +5,8 @@ namespace TheOrder.Application;
 
 public sealed record InstallationEditToken(Guid Epoch, string GameId, Guid Generation, ImmutableArray<Installation> Original, string? Preferred);
 public sealed record InstallationDetails(InstallationEditToken Token, ImmutableArray<Installation> Items, string? Preferred);
-public sealed record PreparedInstallation(Installation Value, PathObservation Folder, PathObservation? Executable, PathObservation? WorkingDirectory);
+public sealed record PreparedInstallation(Installation Value, PathObservation Folder, PathObservation? Executable, PathObservation? WorkingDirectory,
+    PathObservation? ReviewedCandidate = null);
 public sealed record LocalImportItem(string Name, PreparedInstallation Installation, ImmutableArray<PathObservation> Executables);
 
 public sealed partial class TransactionalLibrary
@@ -64,8 +65,7 @@ public sealed partial class TransactionalLibrary
             var observed = preflight.Observe(Existing(games), cancellation).ToList();
             foreach (var item in items)
             {
-                cancellation.ThrowIfCancellationRequested(); Revalidate(item.Installation, preflight);
-                ValidateCandidate(item, preflight);
+                cancellation.ThrowIfCancellationRequested(); ValidateCandidate(item, preflight); Revalidate(item.Installation, preflight);
                 var check = preflight.Check(item.Installation.Value.Folder, observed, cancellation);
                 if (check.Overlap) throw new InvalidDataException(check.Path.Message);
                 if (check.Duplicate is not null) { skipped++; continue; }
@@ -81,7 +81,7 @@ public sealed partial class TransactionalLibrary
             var observed = preflight.Observe(Existing(current.Entries), cancellation).ToList();
             foreach (var item in accepted)
             {
-                cancellation.ThrowIfCancellationRequested(); Revalidate(item.Installation, preflight); ValidateCandidate(item, preflight);
+                cancellation.ThrowIfCancellationRequested(); ValidateCandidate(item, preflight); Revalidate(item.Installation, preflight);
                 var check = preflight.Check(item.Installation.Value.Folder, observed, cancellation);
                 if (!check.CanAttach) throw new InvalidDataException(check.Path.Message);
                 observed.Add(new(new("candidate", item.Name, item.Installation.Value.Id, item.Installation.Value.Folder), check.Path));
@@ -90,6 +90,9 @@ public sealed partial class TransactionalLibrary
     }
     private static void ValidateCandidate(LocalImportItem item, InstallationPreflightService preflight)
     {
+        if (item.Installation.ReviewedCandidate is not { } original || !InstallationPreflightService.SameObservation(original, item.Installation.Folder))
+            throw new CandidateStaleException();
+        preflight.Revalidate(original, reviewedCandidate: true);
         if (item.Executables.IsDefault || item.Executables.Length is < 1 or > 200) throw new InvalidDataException("候选必须含有 1 至 200 个游戏 exe。");
         var expected = item.Executables.Length == 1 ? item.Executables[0].StoredPath : null;
         if (item.Installation.Value.Executable != expected)

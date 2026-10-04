@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace TheOrder.Application;
 
-public enum ClientOutcome { Success, Committed, CommittedWithWarning, ValidationFailure, Conflict, Cancelled, IoFailure, ReadOnly, LoadFailure }
+public enum ClientOutcome { Success, Committed, CommittedWithWarning, ValidationFailure, Conflict, Cancelled, IoFailure, ReadOnly, LoadFailure, CandidateStale }
 public sealed record ClientResult(ClientOutcome Outcome, string Message)
 {
     public bool IsCommitted => Outcome is ClientOutcome.Committed or ClientOutcome.CommittedWithWarning;

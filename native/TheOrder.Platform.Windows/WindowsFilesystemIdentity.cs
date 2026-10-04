@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -20,6 +21,7 @@ public sealed class WindowsFilesystemIdentity : IFilesystemIdentity
             var display = Path.TrimEndingDirectorySeparator(Path.GetFullPath(storedPath));
             // Inspect every lexical ancestor without following its final reparse point. Unknown filters fail closed.
             bool alias = false; uint tag = 0;
+            var reparsePaths = ImmutableArray.CreateBuilder<string>();
             var ancestors = new Stack<string>();
             for (string? part = display; part is not null; part = Path.GetDirectoryName(part))
             {
@@ -34,6 +36,7 @@ public sealed class WindowsFilesystemIdentity : IFilesystemIdentity
                     return Failure(PreflightStatus.IdentityUnavailable, "无法检查目录的重解析信息。", Marshal.GetLastWin32Error());
                 if ((info.Attributes & ReparseAttribute) == 0) continue;
                 alias = true; tag = info.Tag;
+                reparsePaths.Add(part);
                 if (tag is not (Symlink or MountPoint)) return Failure(PreflightStatus.UnsupportedReparseCase, "此重解析类型暂不支持，请选择普通目录、junction 或目录符号链接。");
             }
             using var handle = Open(display, false, requireDirectory);
@@ -51,7 +54,7 @@ public sealed class WindowsFilesystemIdentity : IFilesystemIdentity
             if (length == 0 || length >= final.Capacity) return Failure(PreflightStatus.IdentityUnavailable, "无法取得句柄的最终路径。", Marshal.GetLastWin32Error());
             // FILE_ID_INFO is deliberately not narrowed to 64 bits (ReFS needs all 128).
             var key = new FilesystemIdentity(identity.Volume.ToString("X16"), $"{identity.Low:X16}{identity.High:X16}");
-            return new(PreflightStatus.Valid, new(storedPath, display, final.ToString(), key, directory, alias, tag), "可用");
+            return new(PreflightStatus.Valid, new(storedPath, display, final.ToString(), key, directory, alias, tag) { ReparsePaths = reparsePaths.ToImmutable() }, "可用");
         }
         catch (UnauthorizedAccessException) { return Failure(PreflightStatus.AccessDenied, "无权访问此目录，请选择可读取的目录。"); }
         catch (Exception e) when (e is IOException or ArgumentException or NotSupportedException)

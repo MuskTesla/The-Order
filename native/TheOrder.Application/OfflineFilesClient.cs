@@ -55,10 +55,10 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
             var library = client.Required();
             var prepared = await Task.Run(() => candidates.Select(c =>
             {
-                cancellation.ThrowIfCancellationRequested(); preflight.Revalidate(c.Folder);
+                cancellation.ThrowIfCancellationRequested(); preflight.Revalidate(c.Folder, reviewedCandidate: true);
                 if (c.Executables.Length is < 1 or > 200) throw new InvalidDataException("候选必须含有 1 至 200 个游戏 exe。");
-                var executables = c.Executables.Select(p => { var probe = identity.Inspect(p, false); if (!probe.IsValid) throw new InvalidDataException(probe.Message); return probe.Observation!; }).ToImmutableArray();
-                return new LocalImportItem(c.Name, Prepare(new(Guid.NewGuid().ToString(), c.Folder.StoredPath, c.Executables.Length == 1 ? c.Executables[0] : null, null, [], true), cancellation), executables);
+                var executables = c.Executables.Select(p => { var probe = identity.Inspect(p, false); if (!probe.IsValid) { preflight.Revalidate(c.Folder, reviewedCandidate: true); throw new InvalidDataException(probe.Message); } return probe.Observation!; }).ToImmutableArray();
+                return new LocalImportItem(c.Name, Prepare(new(Guid.NewGuid().ToString(), c.Folder.StoredPath, c.Executables.Length == 1 ? c.Executables[0] : null, null, [], true), cancellation, c.Folder), executables);
             }).ToImmutableArray(), cancellation).ConfigureAwait(false);
             var result = await library.ImportLocalAsync(prepared, preflight, cancellation).ConfigureAwait(false);
             var presented = OfflineLibraryClient.Present(result);
@@ -81,10 +81,13 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
         => Present(() => client.Required().PreferInstallationAsync(details.Token, id, cancellation));
     private static async Task<ClientResult> Present(Func<Task<CommitResult<LibraryEntry>>> action)
     { try { return OfflineLibraryClient.Present(await action().ConfigureAwait(false)); } catch (Exception e) when (OfflineLibraryClient.Expected(e)) { return OfflineLibraryClient.Failure(e); } }
-    private PreparedInstallation Prepare(InstallationInput input, CancellationToken cancellation)
+    private PreparedInstallation Prepare(InstallationInput input, CancellationToken cancellation, PathObservation? reviewedCandidate = null)
     {
         cancellation.ThrowIfCancellationRequested();
-        var folder = identity.Inspect(input.Folder); if (!folder.IsValid) throw new InvalidDataException(folder.Message);
+        var folder = identity.Inspect(input.Folder);
+        if (reviewedCandidate is not null && (!folder.IsValid || !InstallationPreflightService.SameObservation(reviewedCandidate, folder.Observation!)))
+            throw new CandidateStaleException();
+        if (!folder.IsValid) throw new InvalidDataException(folder.Message);
         PathObservation? executable = null, working = null;
         if (!string.IsNullOrEmpty(input.Executable))
         {
@@ -102,6 +105,6 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
         }
         if (input.Arguments.IsDefault || input.Arguments.Length > 100 || input.Arguments.Any(a => a is null || a.Length > 8192 || a.Contains('\0')))
             throw new InvalidDataException("参数须为不超过 100 项的字符串数组，每项最多 8192 字符。");
-        return new(new(input.Id, input.Folder, executable?.StoredPath, input.Arguments, working?.StoredPath), folder.Observation!, executable, working);
+        return new(new(input.Id, input.Folder, executable?.StoredPath, input.Arguments, working?.StoredPath), folder.Observation!, executable, working, reviewedCandidate);
     }
 }

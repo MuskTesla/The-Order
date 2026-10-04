@@ -25,7 +25,7 @@ public sealed class OfflineFilesystemTests : IDisposable
         return TransactionalLibrary.Open(Codec, new IsolatedLibraryPersistence(profile.Root));
     }
     private PreparedInstallation Prepared(string path, string id = "install", string? executable = null, string? working = null, ImmutableArray<string> args = default)
-        => new(new(id, path, executable, args.IsDefault ? [] : args, working), identity.Inspect(path).Observation!, executable is null ? null : identity.Inspect(executable, false).Observation, working is null ? null : identity.Inspect(working).Observation);
+        => new(new(id, path, executable, args.IsDefault ? [] : args, working), identity.Inspect(path).Observation!, executable is null ? null : identity.Inspect(executable, false).Observation, working is null ? null : identity.Inspect(working).Observation, identity.Inspect(path).Observation!);
     [Fact] public async Task ScannerMatchesBoundedCandidateSemanticsAndDoesNotWrite()
     {
         var a = Game("A", "A.exe", "uninstall.exe", "setup.exe", "launcher.exe"); Game("B", "setup.exe"); Game("补丁", "patch.exe");

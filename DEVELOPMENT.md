@@ -1,6 +1,48 @@
 # 开发与维护
 
-## WinUI Phase 3B：文件系统、安装与图片（本机验收完成）
+## WinUI Phase 3B.1：Filesystem Boundary Remediation（整改自检完成）
+
+起点 `e75663c42fff9b0eea194cbca7d2706cbae45412`，保持 `codex/winui-phase3`。Phase 3B 独立 Gate 判为 NO-GO；本节 supersede 下方历史阶段关于扫描范围、不可用历史 identity 和候选连续性已经可靠的判断。只修复三项 filesystem MAJOR、深度提示和过期导航；没有 Phase 4、在线 API、识别、启动、计时、SQLite、Liquid Glass 或正式迁移。
+
+### 授权根与枚举边界
+
+- `BoundedScanner` 首次取得的 root observation 始终不变：stored/display/final path、volume + 128-bit file ID、目录属性、reparse tag 和 lexical reparse components。出队、枚举后及结束前确认根仍是该观察；根不可用、替换或重定向使整次扫描 Failed，UI 不接受本次候选。
+- 队列保存子目录 observation，出队必须仍与原 observation 一致。范围判断结合目录属性、相同卷、final path 组件边界、根当前 identity 和 reparse 链，不只靠字符串前缀。支持显式选择 root alias，但根下不跟随额外子级 reparse，即使指回 root 内。普通目录换成 junction/symlink、另一个普通目录或删除时跳过并提示。
+- Windows adapter 枚举时对 lexical/final 两条祖先链持有短期 no-follow 句柄、限制 write/delete sharing；持有后重验 root/目录，再进入顶层枚举。句柄随枚举器退出、异常、取消释放。占用或无法安全枚举时跳过并提示，可重新检查；不是永久文件系统锁，也不承诺任意第三方 filter 的绝对 sandbox。
+- 预算仍为深度6、目录5000、条目50000、候选2000。`ScanResult.Truncation=DepthLimit` / `IsPartial` 表示因深度未入队的普通子目录；保留已找到候选，零候选也说明深度限制。发现 exe 后不再递归该游戏目录的既有策略保留。
+
+### 重复性、连续性与导航
+
+- `DuplicateStatus` 区分 NotChecked、ConfirmedUnique、ConfirmedDuplicate、Indeterminate。候选 identity 不可用仍拒绝；历史安装无法比较时，同规范路径保守判重复，不同路径进入 `PreflightStatus.DuplicateIndeterminate`，携带 `Unresolved` 路径/状态。核对页解释原因，不能全选为可导入；即使手动勾选，事务仍拒绝。
+- 这是比旧 Electron 更保守的 intentional strengthening：不同字符串不能证明不同目标。不可比较的历史关系可能阻止新关系写入，但记录不删除。本轮无人工强行放行。恢复历史路径/权限后使用“重新检查当前目录”重新判定，或到安装管理明确处理关系。
+- `PreparedInstallation.ReviewedCandidate` 保留原核对 observation。预处理必须与它一致；事务处理及 final precommit 先重验原候选，再检查 prepared folder/exe/working directory、重复与范围。变化返回结构化 `ClientOutcome.CandidateStale`，要求重新扫描/核对。同卷 rename 即使保留 ID，原路径失效或 final path 改变也不能自动接受；99 stable + 1 stale 整批零写入。一次串行原子事务保留，最后重验至持久化之间仍有窄 TOCTOU 窗口。
+- `InstallationNavigation` 为异步打开安装页设置 generation。其他导航及停止使旧意图失效；完成后只有当前意图能导航，连续请求最新者生效。既有 draft/token、mutation drain、已保存但刷新失败的语义保留。
+
+### 验证与证据范围
+
+新增 **32 项**：`FilesystemBoundaryTests` 27、`FilesPresentationTests` 新增5。前者在真实临时合成目录上运行 Windows identity/枚举器，注入确定性的变更时机；导入经过生产 `OfflineFilesClient` 和 `TransactionalLibrary`，计数 persistence 证明零写入/一次写入，不只是 helper 判定。部分不可用状态为受控 identity 故障注入，不冒充全部真实 OS 故障。
+
+| Gate | 实际验证 |
+| --- | --- |
+| M1 | 排队目录换成库外 junction/symlink、库内 junction、普通新目录、删除或环路，不枚举新目标，库外 marker 不进入结果；根替换/重定向停止。Windows 枚举边界直接拒绝 observation 后替换；显式 root alias 正常扫描。 |
+| M2 | 同路径判重复；AccessDenied/NotFound/IdentityUnavailable/OtherIOError 注入判 indeterminate；真实 junction 因目标 rename 断链、同 ID 新路径仍可用时判 indeterminate，恢复后 Retry 判 duplicate；无关 missing 不假装 unique，批次零写入并保留历史。 |
+| M3 | 首次重验后、exe 检查前真实换目录/junction/删除/rename，CandidateStale 且零 persistence 调用；100项在 final precommit 换最后一项，整批零写入；正常 scan→import 一次提交。 |
+| Depth | 真目录 no-deeper、deeper、另有有效候选三个分支；不进入更深目录，partial 原因与候选保留正确。FilesViewModel 显示 partial 提示，Retry 复用 root。 |
+| Navigation | 生产 coordinator + FilesViewModel + WorkspaceViewModel 的受控异步集成回归：Library、Settings、仍当前、两次请求；旧结果不夺回页面。不是新的桌面点击/截图证据。 |
+
+锁定 restore；Debug/Release build 各 **0 warnings / 0 errors**；full C# 各 **472 passed / 0 failed / 0 skipped**。保留102 differential、14 fault injection、13 filesystem/cover differential。Artifact **18/0/0**；相同 Electron relevant 集合 **183/0/0**；Electron build/desktop-import 通过（37新增、重复0/37、个人资料/重启保留、文件未删、renderer errors0）。Release publish 到 `.artifacts/native-phase3b1/publish/win-x64` 成功。
+
+本轮 isolated filesystem smoke 是上述自动化 Win32 lab；没有使用真实游戏目录或正式资料。Navigation 为生产 Presentation 集成 smoke；没有新增 WinUI 桌面截图、重跑10k图片baseline，也不声称最终发布包重新通过整套桌面验收。旧38组Phase3B图保留历史用途，不证明本轮竞态整改。`.artifacts/native-phase3b1/` 保存 ignored 日志/TRX/发布文件/验证摘要。
+
+图片架构、decoder、64MiB/128MiB cache与source transport未改，10k unique cover压力测试留到Phase7。UNC/非NTFS/ReFS/generic reparse没有新增真实fixture，仍为未验证/不支持边界；套件0 skipped不代表这些环境通过。
+
+### 正式资料与降级 Gate
+
+`workingDirectory` 是 native optional 字段，旧 Electron rewrite 会丢弃。**最迟 Phase 6，且先于首次允许 WinUI 写正式用户库**，必须建立独立 authoritative migrated store、版本/写入门禁或其他可执行机制，阻止旧 Electron 无提示回写丢字段；备份提醒或禁止同时打开不够。有损 backward export 必须明确损失。本轮不实施迁移。
+
+五项整改与规定自动化验证自检通过：**PASS FOR PHASE 4（整改自检）**。建立 Phase3B.1 checkpoint 后暂停，不进入 Phase4；后续独立 Gate 应按上述证据层级审查。
+
+## WinUI Phase 3B：文件系统、安装与图片（历史本机验收；后续 Gate 与整改见上）
 
 用户在 Phase 3A.1 Gate 通过后明确授权本阶段。分支仍为 `codex/winui-phase3`，起点 `55069ac4fddd1491e3122fd4c69a24487a3b2d86`；以下旧阶段的“不进入 Phase 3B”是当时的停点，不覆盖此次新授权。只使用带 `.the-order-synthetic` 标记的隔离 profile，没有接管正式资料、读取真实凭据、联网匹配、执行游戏、计时、SQLite、Liquid Glass 或删除 Electron。最终 checkpoint 后暂停，不自动进入 Phase 4。
 

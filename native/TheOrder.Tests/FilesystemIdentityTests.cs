@@ -45,7 +45,8 @@ public sealed class FilesystemIdentityTests : IDisposable
         var link = Junction("alias", Target); var service = new InstallationPreflightService(identity);
         var duplicate = await service.CheckAsync(link, [new("old", "已入库", "install", Target)]);
         Assert.Equal(PreflightStatus.SameTargetViaAlias, duplicate.Path.Status); Assert.Equal("old", duplicate.Duplicate!.GameId);
-        Assert.True((await service.CheckAsync(Target, [new("gone", "离线", "missing", Path.Combine(root, "gone"))])).CanAttach);
+        var unknown = await service.CheckAsync(Target, [new("gone", "离线", "missing", Path.Combine(root, "gone"))]);
+        Assert.False(unknown.CanAttach); Assert.Equal(DuplicateStatus.Indeterminate, unknown.DuplicateStatus);
     }
     [Fact] public void RenamePreservesIdentityButInvalidatesPathSnapshot()
     {

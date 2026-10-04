@@ -15,6 +15,8 @@ public sealed partial class ImportPage : Page
     private async void OnChoose(object sender, RoutedEventArgs e)
     { try { if (ChooseFolder is not null && await ChooseFolder() is { } path) await ViewModel.ScanAsync(path); } catch (Exception) { Workspace.ReportUnexpected(); } }
     private void OnCancel(object sender, RoutedEventArgs e) => ViewModel.CancelScan();
+    private async void OnRetry(object sender, RoutedEventArgs e)
+    { try { await ViewModel.RetryScanAsync(); } catch (Exception) { Workspace.ReportUnexpected(); } }
     private void OnSelectAll(object sender, RoutedEventArgs e) { CandidateList.SelectedItems.Clear(); foreach (var item in ViewModel.Candidates.Where(c => c.Preflight.CanAttach)) CandidateList.SelectedItems.Add(item); }
     private async void OnImport(object sender, RoutedEventArgs e)
     {

@@ -20,6 +20,7 @@ public sealed partial class MainWindow : Window
     private readonly ImportPage importPage;
     private readonly InstallationsPage installationsPage;
     private readonly FilesViewModel files;
+    private readonly InstallationNavigation installationNavigation;
     private readonly IImagePipeline images;
     private bool navigating, synchronizing;
     private Task? initialization;
@@ -29,9 +30,10 @@ public sealed partial class MainWindow : Window
     {
         this.scenario = scenario;
         this.files = files; this.images = images;
+        installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import) };
-        detailsPage = new(workspace, images) { ManageInstallations = async () => { if (workspace.SelectedId is { } id && await ResolveUnsavedAsync()) { await files.LoadInstallationsAsync(id); await Navigate(WorkspacePage.Installations); } },
+        detailsPage = new(workspace, images) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         settingsPage = new(workspace);
         importPage = new(files, workspace) { ChooseFolder = PickFolder };
@@ -62,7 +64,7 @@ public sealed partial class MainWindow : Window
         if (e.PropertyName == nameof(WorkspaceViewModel.Notice))
             NoticeBar.Severity = ViewModel.Notice.Outcome switch
             {
-                ClientOutcome.Committed => InfoBarSeverity.Success, ClientOutcome.CommittedWithWarning or ClientOutcome.ReadOnly or ClientOutcome.Conflict => InfoBarSeverity.Warning,
+                ClientOutcome.Committed => InfoBarSeverity.Success, ClientOutcome.CommittedWithWarning or ClientOutcome.ReadOnly or ClientOutcome.Conflict or ClientOutcome.CandidateStale => InfoBarSeverity.Warning,
                 ClientOutcome.ValidationFailure or ClientOutcome.IoFailure or ClientOutcome.LoadFailure => InfoBarSeverity.Error, _ => InfoBarSeverity.Informational
             };
     }
@@ -76,6 +78,7 @@ public sealed partial class MainWindow : Window
     }
     private async Task Navigate(WorkspacePage page, string? id = null)
     {
+        installationNavigation.Invalidate();
         if (navigating) return; navigating = true;
         try { if (await ResolveInstallationDraft()) { await ViewModel.NavigateAsync(page, id, ChooseUnsaved); ShowPage(); } }
         catch (Exception) { ViewModel.ReportUnexpected(); }
@@ -112,6 +115,7 @@ public sealed partial class MainWindow : Window
     private void ApplyTheme() => Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
     public async ValueTask StopAsync()
     {
+        installationNavigation.Invalidate();
         if (diagnosticsTimer is not null) { diagnosticsTimer.Stop(); diagnosticsTimer.Tick -= OnDiagnostics; }
         ViewModel.ThemeChanged -= ApplyTheme; ViewModel.PropertyChanged -= OnState;
         // Startup may still hold user preference overrides. Finish loading/merging them

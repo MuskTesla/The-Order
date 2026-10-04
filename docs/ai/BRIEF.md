@@ -1,6 +1,18 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 3B：Filesystem / Installations / Image Pipeline（本机验收完成）
+## WinUI Phase 3B.1：Filesystem Boundary Remediation（整改自检完成）
+
+- 基线 `e75663c42fff9b0eea194cbca7d2706cbae45412`，保持 `codex/winui-phase3`。Phase3B独立Gate曾判NO-GO；本节supersede下方历史阶段关于扫描边界/未知identity/候选连续性的完成判断。只修复M1–M3、Depth、Navigation，无Phase4或正式数据操作。
+- M1：root observation固定，queue携带子目录observation；dequeue/枚举边界检查根当前identity、卷、组件范围和reparse链。Windows枚举在lexical/final祖先链短期句柄保护后重验；根变化整次失败，子级替换/额外reparse跳过提示，root alias仍支持。不是绝对文件系统sandbox。
+- M2：ConfirmedUnique / ConfirmedDuplicate / Indeterminate / NotChecked明确分开。不同字符串的不可比较历史安装阻止自动导入，保留记录并展示路径/状态；恢复后“重新检查当前目录”。无人工强行放行，比Electron更保守；同路径仍保守判重复。
+- M3：PreparedInstallation保留原ReviewedCandidate，预处理与final precommit确认它仍有效，不能把A的核对依据替换成B。变化返回CandidateStale；99 stable + 1 stale整批零写入。原路径拼写、一次原子事务与窄TOCTOU边界保留。
+- 深度6且仍有未入队目录时ScanResult明确IsPartial / DepthLimit，保留有效候选，零候选不假装完整扫描。InstallationNavigation generation防止晚加载夺回Library/Settings，连续请求最新者生效。
+- 新增32项：FilesystemBoundary27 + Presentation5；真实临时目录/junction/symlink/rename/删除/断链测试，生产OfflineFilesClient/事务＋计数persistence验证零写入。Navigation为生产Presentation集成验证，没有新桌面截图。Debug/Release各472/0/0、build各0 warnings/errors；保留102 differential、14 fault、13 filesystem/cover differential；Artifact18、Electron relevant183、Electron build/import（37新增、重复0/37）通过；Release publish成功。
+- `.artifacts/native-phase3b1/`保存本轮ignored证据。旧38组Phase3B UI evidence不证明本轮竞态；未重采图片baseline或修改图片架构/decoder/cache预算。UNC/generic reparse真实环境仍未验证；10k unique images留到Phase7。
+- **workingDirectory降级保护最迟Phase6，且先于首次写正式库**：必须有独立迁移库/版本或写入门禁，阻止旧Electron无提示回写丢字段；备份提醒不能替代机制。本轮不做migration。
+- 五项整改自检通过：**PASS FOR PHASE 4（整改自检）**。建立Phase3B.1 checkpoint后暂停；不开始Phase4，不访问正式资料/真实凭据，不执行或修改真实游戏。用例及验证限制见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
+## WinUI Phase 3B：Filesystem / Installations / Image Pipeline（历史本机验收；后续 Gate 与整改见上）
 
 - 用户在 Phase 3A.1 Gate 后正式授权本阶段；沿用 `codex/winui-phase3`，起点 `55069ac4fddd1491e3122fd4c69a24487a3b2d86`。本阶段 checkpoint 后暂停，不进入 Phase 4。下面旧阶段的“尚未进入 Phase 3B”是历史停点；当前实现和限制以本节及 DEVELOPMENT 的 Phase 3B 节为准。
 - 七项目分层未推翻，无 NuGet/npm 升级。Application 增加 filesystem/preflight、bounded scanner、安装和个人封面事务、image/source/codec/cache 接口；Platform.Windows 实现 Win32 handle identity、顶层枚举、WIC decode/normalize、隔离派生缓存；Presentation 管理扫描/草稿/受跟踪 mutation 和请求 generation；WinUI 使用标准 picker 与复用安全的 CoverPresenter。IO/扫描/identity/解码均在后台，最终像素上传在 UI。

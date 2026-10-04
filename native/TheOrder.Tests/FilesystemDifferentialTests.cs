@@ -52,7 +52,7 @@ public sealed class FilesystemDifferentialTests
         var codec = new NativeLibraryCodec(); File.WriteAllBytes(profile.Main, codec.Encode([], "2026-10-04T00:00:00.000Z"));
         await using var library = TransactionalLibrary.Open(codec, new IsolatedLibraryPersistence(profile.Root)); var preflight = new InstallationPreflightService(identity);
         PreparedInstallation Prepare(string folder, string id, string? executable) => new(new(id, folder, executable, []), identity.Inspect(folder).Observation!, executable is null ? null : identity.Inspect(executable, false).Observation, null);
-        var inputs = scan.Candidates.Select(c => new LocalImportItem(c.Name, Prepare(c.Folder.StoredPath, c.Id, c.Executables.Length == 1 ? c.Executables[0] : null), [.. c.Executables.Select(e => identity.Inspect(e, false).Observation!)])).ToImmutableArray();
+        var inputs = scan.Candidates.Select(c => new LocalImportItem(c.Name, Prepare(c.Folder.StoredPath, c.Id, c.Executables.Length == 1 ? c.Executables[0] : null) with { ReviewedCandidate = c.Folder }, [.. c.Executables.Select(e => identity.Inspect(e, false).Observation!)])).ToImmutableArray();
         var operations = oracle.RootElement.GetProperty("operations");
         for (var i = 0; i < 2; i++) { var result = (await library.ImportLocalAsync(inputs, preflight)).Value; Assert.Equal(operations[i].GetProperty("result").GetProperty("added").GetInt32(), result.Added); Assert.Equal(operations[i].GetProperty("result").GetProperty("skipped").GetInt32(), result.Skipped); }
         var game = library.Snapshot.Entries.Single(g => g.Name == "A"); var extra = Make("extra", "game.exe");
