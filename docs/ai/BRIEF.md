@@ -1,6 +1,18 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 4B：Metadata Recognition & Review Queue（本机验收完成）
+## WinUI Phase 4B.1：Recognition / Review Boundary Remediation（整改自检完成）
+
+- 从 `codex/winui-phase4` / `7da6eebab3c79b66af65e628daad8ae1788644d4` 整改独立Gate的M1–M5及两个MINOR。保持分支，未进入Phase5。本节 supersede 下方旧Phase4B关于证据完整性、候选详情绑定、provider自动名称、历史校验与预算已经充分通过的判断；下方同名“4B.1内部checkpoint”是旧开发子步骤，不是本轮整改。
+- **M1** 保留Electron兼容PE fingerprint和`electron-review-identity-v1`；新增`pe-evidence-v1`（消费的四字段、presence/effective output、Ordinal排序、SHA256、原资源边界），纳入`native-local-evidence-v2`。Apply在原事务beforeCommit重新读取证据，PE原地变更即Stale/zero writes。LegalCopyright等未消费metadata不参与新摘要；资源顺序/culture不影响相同有效证据。algorithm为`electron-recognition-v1-native-3`。
+- **M2/M3** 候选选择独立generation，切换即取消并清空详情；接纳绑定review/candidate/selection/request/auth。Reidentify只把NameIsCustom=true的个人名作为名称证据；有旧metadata的false/null自动名不进入scoring，原authoritative Input.Entry仍保留。reader继续提供目录、程序、配置/说明和索引来源。
+- **M4/M5** historicalCandidates即使Result=null也验证非null/编号/有界文本/有限0–1分数/数量，live result校验证据和veto状态。坏Review保留原文件且持续显示明确告警，不覆盖、不冒充空队列，Library可用。接纳前对拟定状态精确有界序列化：10000总条目/16MiB/5候选；保护NeedsReview，Stale/NeedsRecheck按CreatedAt再Guid最旧先退役，历史最多256条且必要时再缩减。空间仍不足则显式ReviewCapacity且旧状态不变；启动、失效说明及Manual清理同样先预算，已提交后清理错误仍是CommittedWithWarning。
+- **两个MINOR** VersionNeedsConfirmation与confirmed conflicts分开，但均阻止不安全直接Apply；凭据epoch变更只撤销remote enrichment，保留current local identity/candidates/evidence，recognition generation/lifecycle变更仍使全结果过期。
+- 新增**44**项production-path整改回归；locked restore成功，最终Debug/Release build各0 warnings/errors，C#各**988/0/0**。保留102 original、13 filesystem/cover组、32 online、254 recognition差分及14 fault；artifact tests **32/0/0**；Electron完整**665/0/0**、build/import回归通过，Release publish成功。`test-audit.json`核对两份TRX；未升级依赖或修改Electron。
+- 真WinUI隔离验收：200已加载切201、延迟200切201后迟到丢弃、Apply精确保存201、FD显示“版本信息不足，需要确认”、重新识别旧provider标题排除、模拟凭据变更保留Summer Pockets本地索引、Ignore和Manual均完成。损坏历史原SHA256不变且新识别5项完成；容量10000历史→256→接纳5项261→Apply260→Ignore259→Manual258（256历史+2待核对），个人名称/笔记保留。最终两个实例exit0。PE zero-writes/ABA/最终publish前auth时点等由确定性集成测试证明，不冒称真实游戏/API操作。
+- `.artifacts/native-phase4b1/`保存**11组manifest/UI tree/JPEG，11个不同截图hash**，requested==runtime、树状态、长度/SHA256已独立核对，并目视复核关键文件。8组早期publish证据覆盖候选/版本/名称/auth/普通决定，3组publish-final证据覆盖损坏提示及容量/决定最终修复；范围和全层DLL/EXE hash见`build-smoke1.json`、`build-final.json`及DEVELOPMENT。最终WinUI MVID `7d69294c-61ee-411f-baad-1df14773ac6e`；二进制内checkpoint仍是父SHA，不能当作最终commit身份。旧Phase4B证据不证明本轮整改，旧Phase3A作废证据继续作废。
+- **PASS FOR PHASE 5（仅Phase4B.1整改自检）**。独立targeted re-Gate和其后的真实API smoke尚未执行，需按既定顺序继续；本轮未访问正式profile、真实credential或游戏目录/执行。合成HTTP不代表真实catalog/CDN、长期压力、全部真实游戏或干净机发布；旧UNC/图片/workingDirectory门禁仍保留。完成checkpoint后暂停，**不进入Phase5**。设计、production位置、回归及精确artifact范围见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
+## WinUI Phase 4B：Metadata Recognition & Review Queue（历史本机验收；独立 Gate NO-GO，整改见上）
 
 - 用户已授权 Phase4B，保持 `codex/winui-phase4`，起点 `0de0b342623c0e6a047fd354843903779e564e2e`；不得进入 Phase5。下方 Phase4A.1 的“无 Phase4B”仅描述该历史 checkpoint。
 - 已重新审计实际 Electron recognition/local evidence/review/manual/merge/lifecycle 源码，行为地图留在 DEVELOPMENT.md。先完成 4B.1 内部 checkpoint `7f858ad54b6d90e2668ffd24dfdf2bcffc3fd0a2`，再实现 4B.2；本节 supersede 其“仅核心、未接入 Apply/UI”的中间状态。

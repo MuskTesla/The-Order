@@ -55,6 +55,7 @@ public sealed partial class MainWindow : Window
         if (configuration.Diagnostics)
         {
             DiagnosticsPanel.Visibility = Visibility.Visible;
+            if (onlineFixture?.BoundaryFixture == true) RecognitionBoundaryControls.Visibility = Visibility.Visible;
             diagnosticsTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
             diagnosticsTimer.Tick += OnDiagnostics; diagnosticsTimer.Start();
         }
@@ -129,6 +130,7 @@ public sealed partial class MainWindow : Window
     public void CancelOnlineRequests() => online.Leave();
     public async ValueTask StopAsync()
     {
+        onlineFixture?.ReleaseCandidate();
         installationNavigation.Invalidate();
         if (diagnosticsTimer is not null) { diagnosticsTimer.Stop(); diagnosticsTimer.Tick -= OnDiagnostics; }
         ViewModel.ThemeChanged -= ApplyTheme; ViewModel.PropertyChanged -= OnState;
@@ -141,6 +143,10 @@ public sealed partial class MainWindow : Window
         await ViewModel.DisposeAsync();
     }
     private void OnDelayDetails(object sender, RoutedEventArgs e) => scenario?.DelayDetails();
+    private void OnDelayCandidate(object sender, RoutedEventArgs e) => onlineFixture?.DelayCandidate();
+    private void OnReleaseCandidate(object sender, RoutedEventArgs e) => onlineFixture?.ReleaseCandidate();
+    private async void OnSyntheticAuthChange(object sender, RoutedEventArgs e)
+    { if (onlineFixture?.BoundaryFixture == true) await online.SaveCredentialAsync("synthetic-only-replacement"); }
     private void OnFailRefresh(object sender, RoutedEventArgs e) => scenario?.FailNextCommittedRefresh();
     private void OnDelayBatch(object sender, RoutedEventArgs e) => scenario?.DelayBatch();
     private void OnDelayQuery(object sender, RoutedEventArgs e) => scenario?.DelayQuery();
@@ -179,8 +185,9 @@ public sealed partial class MainWindow : Window
                 progress = recognition.Progress, reviewCount = recognition.Reviews.Count,
                 selectedGame = recognition.SelectedGameId, selectedReview = recognition.SelectedId,
                 status = recognition.SelectedReview?.Status.ToString(), candidateCount = recognition.Candidates.Count,
-                candidates = recognition.SelectedReview?.Result?.Candidates.Select(c => new { id = c.Work.Id, high = c.HighConfidence, veto = c.Vetoed, score = c.Confidence }),
+                candidates = recognition.SelectedReview?.Result?.Candidates.Select(c => new { id = c.Work.Id, high = c.HighConfidence, veto = c.Vetoed, uncertain = c.VersionNeedsConfirmation, score = c.Confidence }),
                 selectedCandidate = recognition.SelectedCandidateId, canApply = recognition.CanApply,
+                displayedCandidate = recognition.DisplayedCandidateId, remoteFacts = recognition.RemoteFacts, hasRemoteCover = recognition.RemoteCoverKey is not null,
                 localCandidates = recognition.SelectedReview?.Result?.Identity.LocalCandidates.Length,
                 unavailable = recognition.SelectedReview?.Result?.EnrichmentUnavailable,
                 algorithm = recognition.SelectedReview?.AlgorithmVersion, decision = recognition.LastDecision?.Outcome.ToString(),

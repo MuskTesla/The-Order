@@ -24,6 +24,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
     private readonly Task pump;
     private bool loaded, storageSafe = true, disposed;
     public string? PersistenceError { get; private set; }
+    public string? CapacityError { get; private set; }
     public bool Loaded => loaded;
     public event Action? Changed;
     public RecognitionReviewService(OfflineLibraryClient offline, RecognitionQueue queue, IRecognitionReviewStorage storage,
@@ -44,7 +45,8 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             try
             {
                 var restored = await Task.Run(async () => codec.Read(await storage.ReadAsync(cancellation).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
-                foreach (var review in restored)
+                var opening = new List<RecognitionReview>();
+                foreach (var review in codec.PrepareAdmission(restored))
                 {
                     cancellation.ThrowIfCancellationRequested(); var value = review;
                     try
@@ -54,8 +56,11 @@ public sealed class RecognitionReviewService : IAsyncDisposable
                         if (previous is not null && previous != fingerprint(current.Entry)) value = review with { Status = RecognitionReviewStatus.Stale, Message = "本地名称、安装或关联已变化，请重新识别。" };
                     }
                     catch (InvalidDataException) { value = review with { Status = RecognitionReviewStatus.Stale, Message = "原条目已不存在，请核对后忽略。" }; }
-                    lock (gate) reviews.TryAdd(value.Id, value);
+                    opening.Add(value);
                 }
+                // Lifecycle diagnostics can increase serialized size too. Publish only the final budgeted state.
+                var admitted = codec.PrepareAdmission([.. opening]);
+                lock (gate) foreach (var value in admitted) reviews.TryAdd(value.Id, value);
             }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or DataIsolationException)
             { storageSafe = false; PersistenceError = "历史核对队列无法安全读取，原文件已保留；本次建议暂不持久保存。"; }
@@ -65,17 +70,34 @@ public sealed class RecognitionReviewService : IAsyncDisposable
     }
     private void OnQueueChanged()
     {
+        var rejected = new List<Guid>();
         lock (gate)
         {
+            var proposed = new Dictionary<Guid, RecognitionReview>(reviews);
             foreach (var job in queue.Snapshot)
             {
                 if (job.State == RecognitionJobState.NeedsReview && job.Result is { } result && (!reviews.TryGetValue(job.Id, out var prior) || prior.Status == RecognitionReviewStatus.NeedsReview))
-                    reviews[job.Id] = new(job.Id, job.GameId, job.Title, job.CreatedAt, RecognitionReviewStatus.NeedsReview, result.AlgorithmVersion, result, [], Message: result.EnrichmentMessage);
+                    proposed[job.Id] = new(job.Id, job.GameId, job.Title, job.CreatedAt, RecognitionReviewStatus.NeedsReview, result.AlgorithmVersion, result, [], Message: result.EnrichmentMessage);
                 else if (job.State == RecognitionJobState.Stale && reviews.TryGetValue(job.Id, out var previous))
-                    reviews[job.Id] = previous with { Status = RecognitionReviewStatus.Stale, Message = job.Message };
-                else if (job.State is RecognitionJobState.Completed or RecognitionJobState.Cancelled) reviews.Remove(job.Id);
+                    proposed[job.Id] = previous with { Status = RecognitionReviewStatus.Stale, Message = job.Message };
+                else if (job.State is RecognitionJobState.Completed or RecognitionJobState.Cancelled) proposed.Remove(job.Id);
+            }
+            if (proposed.Count != reviews.Count || proposed.Any(p => !reviews.TryGetValue(p.Key, out var old) || old != p.Value))
+            {
+                try
+                {
+                    var admitted = codec.PrepareAdmission([.. proposed.Values]);
+                    reviews.Clear(); foreach (var item in admitted) reviews.Add(item.Id, item);
+                    CapacityError = null;
+                }
+                catch (ReviewCapacityException e)
+                {
+                    CapacityError = e.Message;
+                    rejected.AddRange(proposed.Keys.Where(id => !reviews.ContainsKey(id)));
+                }
             }
         }
+        foreach (var id in rejected) queue.RejectCapacity(id);
         if (loaded && !disposed) dirty.Writer.TryWrite(true);
         Notify();
     }
@@ -85,13 +107,12 @@ public sealed class RecognitionReviewService : IAsyncDisposable
         {
             bool current = false;
             try { current = await offline.IsRecognitionCurrentAsync(review.Result!.Input, cancellation).ConfigureAwait(false); } catch (InvalidOperationException) { }
-            if (review.Result!.AuthGeneration is { } epoch && epoch != auth.Generation) current = false;
+            if (current && review.Result!.AuthGeneration is { } epoch && epoch != auth.Generation)
+            { queue.InvalidateEnrichment(review.Id); continue; }
             if (current) continue;
             const string message = "条目、请求或凭据已变化，请重新识别。";
-            bool changed = false;
-            lock (gate) if (reviews.TryGetValue(review.Id, out var existing) && existing == review)
-            { reviews[review.Id] = review with { Status = RecognitionReviewStatus.Stale, Message = message }; changed = true; }
-            if (changed) queue.MarkStale(review.Id, message);
+            // OnQueueChanged stages and budgets the status/message update before publishing it.
+            queue.MarkStale(review.Id, message);
         }
         if (loaded && !disposed) dirty.Writer.TryWrite(true);
         Notify();
@@ -117,7 +138,8 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             await Task.Delay(50).ConfigureAwait(false);
             while (dirty.Reader.TryRead(out _)) { }
             try { await FlushAsync().ConfigureAwait(false); }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or DataIsolationException) { PersistenceError = "核对建议未能保存，已有文件保留；请检查隔离目录后重试。"; Notify(); }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or DataIsolationException)
+            { if (storageSafe) PersistenceError = "核对建议未能保存，已有文件保留；请检查隔离目录后重试。"; Notify(); }
         }
     }
     private RecognitionReview Require(Guid id)
@@ -158,7 +180,7 @@ public sealed class RecognitionReviewService : IAsyncDisposable
                 if (Require(id).Status != RecognitionReviewStatus.NeedsReview) throw new StaleLibraryRequestException();
                 result = queue.RequireCurrentResult(id);
                 var candidate = result.Candidates.FirstOrDefault(c => c.Work.Id == workId) ?? throw new StaleLibraryRequestException();
-                if (candidate.Vetoed) throw new InvalidDataException("此候选存在身份冲突，不能直接应用；请核对版本后使用手动关联。");
+                if (candidate.Vetoed) throw new InvalidDataException(candidate.VersionNeedsConfirmation ? "版本信息不足，需要确认；不能直接应用。" : "此候选存在身份冲突，不能直接应用；请核对版本后使用手动关联。");
                 if (result.SourceFingerprint != fingerprint(result.Input.Entry)) throw new StaleLibraryRequestException();
             }
             var input = result?.Input ?? await offline.CaptureRecognitionAsync(manualGameId!, stopping.Token).ConfigureAwait(false);
@@ -182,24 +204,33 @@ public sealed class RecognitionReviewService : IAsyncDisposable
                 if (result is not null)
                 {
                     _ = queue.RequireCurrentResult(reviewId!.Value);
-                    var actual = await evidence.ReadAsync(input.Entry, result.Local.IncludePe, token).ConfigureAwait(false);
-                    if (actual.Fingerprint != result.Local.Fingerprint) throw new StaleLibraryRequestException();
+                    var actual = await evidence.ReadAsync(input.EvidenceEntry, result.Local.IncludePe, token).ConfigureAwait(false);
+                    if (actual.Fingerprint != result.Local.Fingerprint)
+                    { queue.MarkStale(reviewId!.Value, "本地识别证据已变化，请重新识别。"); throw new StaleLibraryRequestException(); }
                     _ = queue.RequireCurrentResult(reviewId.Value);
                 }
                 auth.Accept(authSnapshot, () => { token.ThrowIfCancellationRequested(); return true; });
             }).ConfigureAwait(false);
             var presented = OfflineLibraryClient.Present(receipt);
             // The durable library result is authoritative even if review cleanup subsequently fails.
-            if (reviewId is { } resolved) { lock (gate) reviews.Remove(resolved); queue.MarkResolved(resolved, "已保存关联。"); }
-            else
+            try
             {
-                foreach (var old in Snapshot.Where(r => r.GameId == input.Entry.Id))
+                if (reviewId is { } resolved) { lock (gate) reviews.Remove(resolved); queue.MarkResolved(resolved, "已保存关联。"); }
+                else
                 {
-                    lock (gate) reviews[old.Id] = old with { Status = RecognitionReviewStatus.Stale, Message = "已手动关联，旧建议失效。" };
-                    queue.MarkStale(old.Id, "已手动关联，旧建议失效。");
+                    Guid[] superseded;
+                    lock (gate)
+                    {
+                        superseded = [.. reviews.Values.Where(r => r.GameId == input.Entry.Id).Select(r => r.Id)];
+                        var proposed = reviews.Values.Select(r => r.GameId == input.Entry.Id
+                            ? r with { Status = RecognitionReviewStatus.Stale, Message = "已手动关联，旧建议失效。" } : r);
+                        var admitted = codec.PrepareAdmission([.. proposed]);
+                        reviews.Clear(); foreach (var item in admitted) reviews.Add(item.Id, item);
+                    }
+                    foreach (var oldId in superseded) queue.MarkStale(oldId, "已手动关联，旧建议失效。");
                 }
+                await FlushAsync(CancellationToken.None).ConfigureAwait(false);
             }
-            try { await FlushAsync(CancellationToken.None).ConfigureAwait(false); }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or DataIsolationException)
             { PersistenceError = "关联已经保存，但核对队列更新失败。"; presented = new(ClientOutcome.CommittedWithWarning, PersistenceError); }
             Notify(); return presented;

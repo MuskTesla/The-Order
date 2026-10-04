@@ -70,7 +70,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
         Notify();
         try
         {
-            var input = await library.CaptureRecognitionAsync(gameId, lifetime.Token).ConfigureAwait(false);
+            var input = (await library.CaptureRecognitionAsync(gameId, lifetime.Token).ConfigureAwait(false)) with { Mode = mode };
             if (input.Entry.Installations.IsEmpty) throw new InvalidDataException("愿望条目没有本地安装，不参与本地识别。");
             var work = new Work(id, input, online, includePe, lifetime);
             lock (gate)
@@ -148,6 +148,19 @@ public sealed class RecognitionQueue : IAsyncDisposable
         lock (gate) { if (jobs.TryGetValue(id, out var job)) { jobs[id] = job with { State = RecognitionJobState.Completed, Result = null, Message = message }; if (settled.Contains(id) && current.TryGetValue(job.GameId, out var work) && work.Id == id) { current.Remove(job.GameId); work.Cancellation.Dispose(); } } }
         Notify();
     }
+    public void RejectCapacity(Guid id)
+    {
+        MarkStale(id, new ReviewCapacityException().Message);
+    }
+    public void InvalidateEnrichment(Guid id)
+    {
+        lock (gate)
+        {
+            if (jobs.TryGetValue(id, out var job) && job.State == RecognitionJobState.NeedsReview && job.Result is { } result)
+                jobs[id] = job with { Result = result.WithoutEnrichment(), Message = "在线补充已失效，本地结果保留。" };
+        }
+        Notify();
+    }
     public void MarkStale(Guid id, string message)
     {
         lock (gate)
@@ -186,8 +199,8 @@ public sealed class RecognitionQueue : IAsyncDisposable
                 lock (gate)
                 {
                     work.Cancellation.Token.ThrowIfCancellationRequested();
-                    if (!IsCurrentLocked(work) || result.Generation != work.Id || result.Input != work.Input
-                        || result.AuthGeneration is { } epoch && auth is not null && auth.Generation != epoch) throw new StaleLibraryRequestException();
+                    if (!IsCurrentLocked(work) || result.Generation != work.Id || result.Input != work.Input) throw new StaleLibraryRequestException();
+                    if (result.AuthGeneration is { } epoch && auth is not null && auth.Generation != epoch) result = result.WithoutEnrichment();
                     jobs[work.Id] = jobs[work.Id] with { State = RecognitionJobState.NeedsReview, Result = result };
                 }
             }

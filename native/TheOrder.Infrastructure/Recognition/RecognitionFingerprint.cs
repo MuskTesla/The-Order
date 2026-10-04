@@ -8,7 +8,7 @@ namespace TheOrder.Infrastructure.Recognition;
 public static class RecognitionFingerprint
 {
     public const string LegacyVersion = "electron-review-identity-v1";
-    public const string EvidenceVersion = "native-local-evidence-v1";
+    public const string EvidenceVersion = "native-local-evidence-v2";
     private static readonly JsonSerializerOptions Options = new() { Converters = { new LegacyLibraryCodec.Utf16Writer() } };
     public static string SerializeIdentity(LibraryEntry entry) => JsonSerializer.Serialize(new object?[] {
         entry.Name, entry.NameIsCustom, entry.Metadata?.Id, entry.PreferredInstallationId,

@@ -12,8 +12,14 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
     public HttpClient Client { get; }
     private readonly bool slowConnection;
     private readonly bool recognitionFixture;
+    public bool BoundaryFixture { get; }
+    private TimeSpan clockOffset;
+    private TaskCompletionSource? delayedCandidate;
+    public DateTimeOffset Now => DateTimeOffset.UtcNow + clockOffset;
+    public void DelayCandidate() { if (!BoundaryFixture) return; clockOffset += TimeSpan.FromMinutes(10); delayedCandidate = new(TaskCreationOptions.RunContinuationsAsynchronously); }
+    public void ReleaseCandidate() { delayedCandidate?.TrySetResult(); delayedCandidate = null; }
     public int DetailRequests { get; private set; }
-    public SyntheticOnline(bool slowConnection = false, bool recognitionFixture = false) { this.slowConnection = slowConnection; this.recognitionFixture = recognitionFixture; Client = new(this, false) { Timeout = Timeout.InfiniteTimeSpan }; }
+    public SyntheticOnline(bool slowConnection = false, bool recognitionFixture = false, bool boundaryFixture = false) { this.slowConnection = slowConnection; this.recognitionFixture = recognitionFixture; BoundaryFixture = recognitionFixture && boundaryFixture; Client = new(this, false) { Timeout = Timeout.InfiniteTimeSpan }; }
     protected override void Dispose(bool disposing) { if (disposing) Client.Dispose(); base.Dispose(disposing); }
     private bool saved = true;
     public Task<string?> ReadAsync(CancellationToken cancellation) => Task.FromResult<string?>(saved ? "synthetic-only" : null);
@@ -36,7 +42,7 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
             if (q?.Contains("遅延", StringComparison.Ordinal) == true) await Task.Delay(20000, cancellation);
             if (uri.AbsolutePath.EndsWith("/search", StringComparison.Ordinal))
             {
-                string[] ids = q?.Contains("双子", StringComparison.Ordinal) == true ? ["210", "211"] : q?.Contains("第2章", StringComparison.Ordinal) == true ? ["220"] : q?.Contains("星空", StringComparison.Ordinal) == true ? ["200"] : [];
+                string[] ids = q?.Contains("双子", StringComparison.Ordinal) == true ? ["210", "211"] : q?.Contains("第2章", StringComparison.Ordinal) == true ? ["220"] : q?.Contains("星空", StringComparison.Ordinal) == true ? BoundaryFixture ? ["200", "201"] : ["200"] : [];
                 return Json(new { @object = "list", items = ids.Select(id => new { @object = "search_result", target_object = "work", id }) });
             }
             if (query.TryGetValue("ids", out var idsQuery)) return Json(new { @object = "list", items = idsQuery.Split(',').Select(RecognitionWork) });
@@ -45,6 +51,8 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
             if (query.ContainsKey("limit")) return Json(new { @object = "list", items = Array.Empty<object>() });
             DetailRequests++;
             string workId = uri.Segments.Last();
+            // Deliberately return after cancellation to exercise real transport/Presentation rejection.
+            if (workId == "200" && delayedCandidate is { } delay) await delay.Task;
             if (workId == "404") return Json(new { code = "NOT_FOUND" }, 404);
             return Json(RecognitionWork(workId == "86" ? "90" : workId));
         }
@@ -70,8 +78,8 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
     private static object RecognitionWork(string id) => new { @object = "work", id,
         display_name = id is "210" or "211" ? "双子の庭" : id == "220" ? "航路 第1章" : "星空の航路",
         cover = new { url = "https://images.example/cover.png" },
-        refs = new[] { new { source = "steam", external_id = id == "200" ? "123456" : id == "210" ? "210001" : id == "211" ? "211001" : "220001" } },
-        intros = new[] { new { lang = "zh-Hans", value = "Phase 4B 虚构识别语料，仅用于独立资料验收。" } },
+        refs = new[] { new { source = "steam", external_id = id is "200" or "201" ? "123456" : id == "210" ? "210001" : id == "211" ? "211001" : "220001" } },
+        intros = new[] { new { lang = "zh-Hans", value = "Phase 4B 虚构识别语料，候选编号 " + id + "，仅用于独立资料验收。" } },
         companies = new[] { new { attribution_role = "developer", display_name = "Synthetic Studio" } } };
     private static HttpResponseMessage Json(object value, int status = 200) => new((HttpStatusCode)status) { Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json") };
 }

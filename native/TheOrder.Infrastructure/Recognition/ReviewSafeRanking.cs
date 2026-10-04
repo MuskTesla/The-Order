@@ -22,8 +22,7 @@ public sealed class ReviewSafeRanking : IRecognitionRanker
                 .Any(local => canonical.Any(remote => { var comparison = TitleMatching.Compare(local.Value, remote); return comparison.Version == "unspecified" && comparison.Score >= .5 && (TitleMatching.HasVersion(local.Value) || TitleMatching.HasVersion(remote)); })
                     && !canonical.Any(remote => { var comparison = TitleMatching.Compare(local.Value, remote); return comparison.Exact && comparison.Version == "same"; }));
             return !unresolved || candidate.Vetoed ? candidate : candidate with {
-                Vetoed = true, HighConfidence = false, EvidenceLevel = 0,
-                Conflicts = candidate.Conflicts.Add("本地与候选的版本或追加篇标识未完整对应"),
+                Vetoed = true, VersionNeedsConfirmation = true, HighConfidence = false, EvidenceLevel = 0,
                 Reason = "版本身份尚未确认；请核对后重新识别，或明确手动关联。"
             };
         }).OrderBy(c => c.Vetoed)]; // Stable within each group; score remains the legacy score.

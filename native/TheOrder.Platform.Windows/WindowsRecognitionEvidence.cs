@@ -85,7 +85,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
             foreach (var readme in Enumerate(root, root.StoredPath, 512).Where(e => !e.IsDirectory && !e.IsReparsePoint && Match(e.Name, @"^(?:readme|read me|说明|必读|开始前请读|汉化说明|游戏说明|遊戲說明)[^\\/]*\.txt$")).Take(3))
                 ReadFile(root, readme.Path, "readme-heading", 64 * 1024, 64 * 1024);
         }
-        if (!titles.Any(t => t.Source == "folder" && t.Value == entry.Name)) titles.Add(new(entry.Name, "custom-name"));
+        if (entry.Name.Length > 0 && !titles.Any(t => t.Source == "folder" && t.Value == entry.Name)) titles.Add(new(entry.Name, "custom-name"));
         var preferred = installations.FirstOrDefault();
         var selectedRoot = roots.FirstOrDefault(r => r.StoredPath == preferred?.Folder);
         if (preferred is not null && selectedRoot is { } selected)
@@ -115,8 +115,9 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                     Revalidate(selected); Revalidate(file);
                     var parsed = executableParser.Read(stream, Path.GetFileName(path), cancellation);
                     Revalidate(selected); Revalidate(file); Observe(file);
+                    observations.Add(path + "|pe|" + parsed.EvidenceDigest);
                     if (parsed.RejectExecutable) { titles.RemoveRange(titlesBefore, titles.Count - titlesBefore); observations.Add(path + "|helper"); continue; }
-                    observations.Add(path + "|pe|" + parsed.Fingerprint); Add(parsed.Evidence);
+                    Add(parsed.Evidence);
                     if (parsed.Fingerprint.Length > 0) peHashes.Add(parsed.Fingerprint);
                     if (string.Equals(path, preferred.Executable, StringComparison.OrdinalIgnoreCase) && parsed.Evidence.Titles.Any(t => t.Source is "product-name" or "file-description")) includePe = false;
                 }

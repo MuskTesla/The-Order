@@ -32,7 +32,7 @@ internal static class Composition
         var fixtureOnline = nativeConfiguration.Diagnostics && configuration["ONLINE_FIXTURE"] == "1";
         if (fixtureOnline)
         {
-            services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1", configuration["RECOGNITION_FIXTURE"] == "1"));
+            services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1", configuration["RECOGNITION_FIXTURE"] == "1", configuration["RECOGNITION_BOUNDARY_FIXTURE"] == "1"));
         }
         var fixtureCredentials = fixtureOnline && configuration["ONLINE_REAL_STORE"] != "1";
         services.AddSingleton(p => new AuthenticatedCredentials(
@@ -43,7 +43,7 @@ internal static class Composition
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
         services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
-        services.AddSingleton<NextMoeCatalog>();
+        services.AddSingleton(p => new NextMoeCatalog(p.GetRequiredService<CatalogTransport>(), clock: fixtureOnline ? () => p.GetRequiredService<SyntheticOnline>().Now : null));
         services.AddSingleton<IOnlineCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton<IRecognitionCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton(p => p.GetRequiredService<AuthenticatedCredentials>().AuthContext);

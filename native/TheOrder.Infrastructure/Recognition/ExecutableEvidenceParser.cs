@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using TheOrder.Application;
 using TheOrder.Infrastructure.Legacy;
 
@@ -94,7 +95,8 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
             }
         }
         var parsed = resources.Select(r => ParseVersion(r, cancellation)).ToArray();
-        if (parsed.Any(f => f.OriginalNames.Any(n => Match(Path.GetFileName(n), Helper, true) || Match(Path.GetFileName(n), OtherHelper, true)))) return new(new([], [], [], []), "", true);
+        if (parsed.Any(f => f.OriginalNames.Any(n => Match(Path.GetFileName(n), Helper, true) || Match(Path.GetFileName(n), OtherHelper, true))))
+            return new(new([], [], [], []), "", true) { EvidenceDigest = Digest(parsed, [], [], true) };
         var titles = new List<LocalTitleEvidence>(); var companies = new List<string>(); bool fingerprintable = false;
         void Title(string value, string source)
         {
@@ -120,7 +122,19 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
             digest.AppendData(Encoding.UTF8.GetBytes("\0" + LegacyPathCase.Lower(basename.Normalize(NormalizationForm.FormKC))));
             hash = "pe-version-sha256:" + Convert.ToHexStringLower(digest.GetHashAndReset());
         }
-        return new(new([.. titles.Take(16)], [], [.. companies.Distinct(StringComparer.Ordinal).Take(8)], []), hash);
+        var acceptedTitles = titles.Take(16).ToImmutableArray();
+        var acceptedCompanies = companies.Distinct(StringComparer.Ordinal).Take(8).ToImmutableArray();
+        return new(new(acceptedTitles, [], acceptedCompanies, []), hash) { EvidenceDigest = Digest(parsed, acceptedTitles, acceptedCompanies, false) };
+    }
+    // Only the four consumed version fields, their presence (missing [] != present [""]),
+    // and the bounded effective output participate. Resource order and unrelated metadata do not.
+    private static string Digest(Fields[] fields, ImmutableArray<LocalTitleEvidence> titles, ImmutableArray<string> companies, bool rejected)
+    {
+        static string[] Ordered(IEnumerable<string> values) => values.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        var resources = Ordered(fields.Select(f => JsonSerializer.Serialize(new[] { Ordered(f.Products), Ordered(f.Descriptions), Ordered(f.Companies), Ordered(f.OriginalNames) })));
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { Version = 1, Resources = resources,
+            Titles = titles.OrderBy(t => t.Source, StringComparer.Ordinal).ThenBy(t => t.Value, StringComparer.Ordinal), Companies = Ordered(companies), Rejected = rejected });
+        return "pe-evidence-v1:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
     private static Fields ParseVersion(byte[] bytes, CancellationToken cancellation)
     {
@@ -142,7 +156,7 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
             cursor = Align(cursor + 2); int valueBytes = valueLength * (type == 1 ? 2 : 1);
             if (valueBytes > 0 && !Range(cursor, valueBytes, blockEnd)) throw Invalid();
             if (parents.Length == 3 && parents[0] == "VS_VERSION_INFO" && parents[1] == "StringFileInfo" && Match(parents[2], @"^[0-9a-f]{8}$", true) && type == 1 && targets.TryGetValue(key, out var target))
-            { string value = Clean(decoder.GetString(bytes, cursor, valueBytes)); if (value.Length > 0) target.Add(value); }
+            { string value = Clean(decoder.GetString(bytes, cursor, valueBytes)); target.Add(value); }
             cursor = Align(cursor + valueBytes);
             while (cursor + 6 <= blockEnd)
             {

@@ -27,7 +27,7 @@ public sealed class RecognitionReviewTests
         public string Hash = new('a', 64);
         public Func<CancellationToken, Task>? Pause { get; set; }
         public async Task<LocalEvidenceSnapshot> ReadAsync(LibraryEntry entry, bool includePe, CancellationToken cancellation)
-        { if (Pause is { } pause) await pause(cancellation); return new(Evidence(new LocalTitleEvidence(entry.Name, "folder")), [], [], Hash); }
+        { if (Pause is { } pause) await pause(cancellation); return new(Evidence(new LocalTitleEvidence(entry.Name.Length > 0 ? entry.Name : Path.GetFileName(entry.Installations[0].Folder), "folder")), [], [], Hash); }
     }
     internal sealed class Catalog : IRecognitionCatalog
     {
@@ -40,10 +40,10 @@ public sealed class RecognitionReviewTests
         public Task TestConnectionAsync(CancellationToken c) => Task.CompletedTask;
         public void ClearCache() { }
     }
-    private sealed class Factory(TransactionProfile profile) : ITransactionalLibraryFactory
+    private sealed class Factory(TransactionProfile profile, IPersistenceProbe? probe) : ITransactionalLibraryFactory
     {
         public TransactionalLibrary Library = null!;
-        public Task<TransactionalLibrary> OpenAsync(CancellationToken cancellation) => Task.FromResult(Library = profile.Open());
+        public Task<TransactionalLibrary> OpenAsync(CancellationToken cancellation) => Task.FromResult(Library = profile.Open(probe));
     }
     internal sealed class Lab : IAsyncDisposable
     {
@@ -53,14 +53,15 @@ public sealed class RecognitionReviewTests
         public readonly AuthenticatedCredentials Credentials;
         private readonly Factory factory;
         public TransactionalLibrary Library => factory.Library;
-        public Lab(MemoryStore? store = null, LibraryEntry? entry = null, IRecognitionCatalog? catalog = null)
+        public Lab(MemoryStore? store = null, LibraryEntry? entry = null, IRecognitionCatalog? catalog = null,
+            IRecognitionEvidenceReader? reader = null, IRecognitionReviewCodec? codec = null, ITitleIndex? titleIndex = null, IPersistenceProbe? probe = null)
         {
-            Profile = new(new LegacyLibraryCodec().Encode([entry ?? Entry(folder: @"C:\synthetic\game")], Clock)); factory = new(Profile);
+            Profile = new(new LegacyLibraryCodec().Encode([entry ?? Entry(folder: @"C:\synthetic\game")], Clock)); factory = new(Profile, probe);
             Store = store ?? new(); Offline = new(factory, new LegacyClientTextRules());
             var secret = new OnlineTransportTests.Credential(); Credentials = new(secret, secret);
             var index = new TitleIndex(() => new MemoryStream(Gzip("{\"version\":1,\"records\":[]}")));
-            Queue = new(Offline, new RecognitionEngine(index, Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
-            Reviews = new(Offline, Queue, Store, new RecognitionReviewCodec(), Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
+            Queue = new(Offline, new RecognitionEngine(titleIndex ?? index, reader ?? Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
+            Reviews = new(Offline, Queue, Store, codec ?? new RecognitionReviewCodec(), reader ?? Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
         }
         public async Task Init() { Assert.Equal(ClientOutcome.Success, (await Offline.LoadAsync(default)).Outcome); await Reviews.InitializeAsync(default); }
         public async Task<Guid> Recognize()
@@ -135,7 +136,8 @@ public sealed class RecognitionReviewTests
     }
     [Fact] public async Task DifferentWorkRecognitionNeverAutomaticallyReplacesExistingRelation()
     {
-        await using var lab = new Lab(entry: Entry(folder: @"C:\synthetic\game") with { Metadata = Work("100", "原作品") }); await lab.Init();
+        // Re-identification needs independent local evidence, not the old provider display name.
+        await using var lab = new Lab(entry: Entry(folder: @"C:\synthetic\星空の航路") with { Metadata = Work("100", "原作品") }); await lab.Init();
         var id = await lab.Recognize(); Assert.Equal("100", lab.Library.Snapshot.Entries[0].Metadata?.Id); Assert.Contains(lab.Queue.RequireCurrentResult(id).Candidates, c => c.Work.Id == "200");
         Assert.True((await lab.Reviews.ApplyAsync(id, "200", default)).IsCommitted);
     }

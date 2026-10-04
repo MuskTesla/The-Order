@@ -12,10 +12,10 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
         Action<RecognitionJobState> progress, CancellationToken cancellation) => Task.Run(async () =>
     {
         cancellation.ThrowIfCancellationRequested(); progress(RecognitionJobState.CollectingEvidence);
-        var local = await evidenceReader.ReadAsync(input.Entry, includePe, cancellation).ConfigureAwait(false);
+        var local = await evidenceReader.ReadAsync(input.EvidenceEntry, includePe, cancellation).ConfigureAwait(false);
         progress(RecognitionJobState.Matching);
         RecognitionIdentity identity;
-        try { identity = await RecognitionIdentityBuilder.BuildAsync(input.Entry, local.Evidence, index, cancellation).ConfigureAwait(false); }
+        try { identity = await RecognitionIdentityBuilder.BuildAsync(input.EvidenceEntry, local.Evidence, index, cancellation).ConfigureAwait(false); }
         catch (Exception e) when (e is IOException or InvalidDataException or System.Text.Json.JsonException)
         {
             var fallback = local.Evidence with { Titles = [.. local.Evidence.Titles.Where(t => t.Source != "readme-heading")], Warnings = local.Evidence.Warnings.Add("本地标题索引不可用，保留已读取的本地证据。") };
@@ -23,7 +23,7 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
         }
         var works = new Dictionary<string, WorkMetadata>(StringComparer.Ordinal);
         // An existing relation is only another candidate. It never authorizes replacement.
-        if (input.Entry.Metadata is { } prior) works[prior.Id] = prior;
+        if (input.EvidenceEntry.Metadata is { } prior) works[prior.Id] = prior;
         var releases = new Dictionary<string, ImmutableArray<ReleaseIdentity>>(StringComparer.Ordinal);
         bool unavailable = !online || catalog is null; string? message = unavailable ? "本地识别已完成，在线补充未启用。" : null;
         OnlineAuthSnapshot? authSnapshot = null;
@@ -63,7 +63,7 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
         cancellation.ThrowIfCancellationRequested();
         // Discard the entire remote aggregate on an epoch change, including earlier successful queries.
         if (authSnapshot is { } captured && (captured.Changed.IsCancellationRequested || auth!.Generation != captured.Generation))
-        { works.Clear(); releases.Clear(); if (input.Entry.Metadata is { } priorLocal) works[priorLocal.Id] = priorLocal; unavailable = true; message = "凭据已变化，请重新补充在线候选。"; authSnapshot = null; }
+        { works.Clear(); releases.Clear(); if (input.EvidenceEntry.Metadata is { } priorLocal) works[priorLocal.Id] = priorLocal; unavailable = true; message = "凭据已变化，请重新补充在线候选。"; authSnapshot = null; }
         var ranked = ranker.Rank(identity.Evidence, works.Values, releases, cancellation).Take(5).ToImmutableArray();
         if (works.Count >= 128 || identity.LocalCandidates.Length >= 128)
             ranked = [.. ranked.Select(c => c with { HighConfidence = false, Reason = c.Reason + "；候选达到上限，无法确认唯一性。" })];
@@ -72,6 +72,6 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
         // Final result admission shares the auth boundary; the queue also checks it when publishing.
         try { return authSnapshot is { } accepted ? auth!.Accept(accepted, () => { cancellation.ThrowIfCancellationRequested(); return result; }) : result; }
         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
-        { return result with { Candidates = [], AuthGeneration = null, EnrichmentUnavailable = true, EnrichmentMessage = "凭据已变化，请重新补充在线候选。" }; }
+        { return result.WithoutEnrichment(); }
     }, cancellation);
 }

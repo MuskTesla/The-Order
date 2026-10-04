@@ -6,7 +6,7 @@ using TheOrder.Application;
 
 namespace TheOrder.Infrastructure.Recognition;
 
-public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
+public sealed class RecognitionReviewCodec(int admissionEntries = 10000, int admissionBytes = 16 * 1024 * 1024, int retainedHistory = 256) : IRecognitionReviewCodec
 {
     private const int MaximumBytes = 16 * 1024 * 1024;
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) { MaxDepth = 32, Converters = { new Utf16() } };
@@ -18,6 +18,13 @@ public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
         public override void Write(Utf8JsonWriter json, string value, JsonSerializerOptions options) => writer.Write(json, value, options);
     }
     private sealed record Envelope(int Version, ImmutableArray<RecognitionReview> Reviews);
+    private sealed class BoundedBuffer : MemoryStream
+    {
+        private void Check(int count) { if (Position + count > MaximumBytes) throw new InvalidDataException("核对队列超过 16 MiB，未覆盖已保存建议。"); }
+        public override void Write(byte[] buffer, int offset, int count) { Check(count); base.Write(buffer, offset, count); }
+        public override void Write(ReadOnlySpan<byte> buffer) { Check(buffer.Length); base.Write(buffer); }
+        public override void WriteByte(byte value) { Check(1); base.WriteByte(value); }
+    }
     public ImmutableArray<RecognitionReview> Read(RecognitionReviewDocuments documents)
     {
         try
@@ -54,7 +61,7 @@ public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
                 reviews.Add(new(id, gameId, title, DateTimeOffset.UnixEpoch, Text(row, "sourceStatus", 50) == "stale" ? RecognitionReviewStatus.Stale : RecognitionReviewStatus.NeedsRecheck,
                     "electron-legacy", null, candidates.ToImmutable(), folder, oldFingerprint, "旧版建议需要重新核对。" + reason));
             }
-            return reviews.ToImmutable();
+            var imported = reviews.ToImmutable(); Validate(imported); return imported;
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException or ArgumentException)
         { throw new InvalidDataException("核对队列损坏或格式无效，原文件已保留。", e); }
@@ -67,9 +74,28 @@ public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
         reviews = [.. reviews.Select(r => r.Result is { } result ? r with { Result = result with {
             Input = result.Input with { Entry = result.Input.Entry with { Notes = "", Categories = [], CustomTags = [], Sessions = [], LocalCover = null, CoverChoice = null } }
         } } : r)];
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new Envelope(1, reviews), Options);
-        if (bytes.Length > MaximumBytes) throw new InvalidDataException("核对队列超过 16 MiB，未覆盖已保存建议。");
-        return bytes;
+        using var stream = new BoundedBuffer();
+        JsonSerializer.Serialize(stream, new Envelope(1, reviews), Options);
+        return stream.ToArray();
+    }
+    public ImmutableArray<RecognitionReview> PrepareAdmission(ImmutableArray<RecognitionReview> reviews)
+    {
+        // Only current actionable suggestions are protected. History is oldest-first, UUID tie break.
+        var historical = reviews.Where(r => r.Status != RecognitionReviewStatus.NeedsReview)
+            .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).ToArray();
+        int retire = Math.Max(0, historical.Length - retainedHistory);
+        bool Fits(int count, out ImmutableArray<RecognitionReview> state)
+        {
+            var removed = historical.Take(count).Select(r => r.Id).ToHashSet();
+            state = [.. reviews.Where(r => !removed.Contains(r.Id))];
+            if (state.Length > Math.Min(10000, admissionEntries)) return false;
+            try { return Write(state).Length <= Math.Min(MaximumBytes, admissionBytes); } catch (InvalidDataException) { return false; }
+        }
+        if (Fits(retire, out var admitted)) return admitted;
+        if (!Fits(historical.Length, out _)) throw new ReviewCapacityException();
+        int low = retire, high = historical.Length;
+        while (low < high) { int mid = low + (high - low) / 2; if (Fits(mid, out _)) high = mid; else low = mid + 1; }
+        _ = Fits(low, out admitted); return admitted;
     }
     private static string Text(JsonElement element, string key, int maximum)
     {
@@ -87,8 +113,15 @@ public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
         {
             if (review is null || review.Id == Guid.Empty || review.GameId is not { Length: > 0 and <= 300 } || review.Title is not { Length: <= 2000 }
                 || review.AlgorithmVersion is not { Length: > 0 and <= 100 } || !Enum.IsDefined(review.Status) || review.HistoricalCandidates.IsDefault || review.HistoricalCandidates.Length > 5) throw new InvalidDataException("核对建议格式无效。");
-            if (review.Result is not { } result) continue;
-            if (result.Generation != review.Id || result.Input?.Entry?.Id != review.GameId || result.Input.Lifecycle is null || result.AlgorithmVersion != review.AlgorithmVersion
+            foreach (var history in review.HistoricalCandidates)
+                if (history is null || !RemoteId(history.Id) || !Bounded(history.Title, 2000) || !Bounded(history.OriginalTitle, 2000)
+                    || !Bounded(history.Reason, 2000) || !double.IsFinite(history.Confidence) || history.Confidence is < 0 or > 1)
+                    throw new InvalidDataException("历史核对候选格式无效，原文件已保留。");
+            if (review.HistoricalFolder is { } folder && !Bounded(folder, 32768) || review.Message is { } message && !Bounded(message, 4000))
+                throw new InvalidDataException("历史核对说明无效。");
+            if (review.Result is not { } result)
+            { if (review.Status == RecognitionReviewStatus.NeedsReview) throw new InvalidDataException("有效核对建议缺少识别结果。"); continue; }
+            if (result.Generation != review.Id || result.Input?.Entry?.Id != review.GameId || result.Input.Lifecycle is null || !Enum.IsDefined(result.Input.Mode) || result.AlgorithmVersion != review.AlgorithmVersion
                 || result.SourceFingerprint is not { Length: 64 } || result.Local?.Fingerprint is not { Length: 64 } || result.Candidates.IsDefault || result.Candidates.Length > 5
                 || result.Identity is null || result.Identity.LocalCandidates.IsDefault || result.Identity.LocalCandidates.Length > 128) throw new InvalidDataException("核对结果身份不完整。");
             Array(result.Input.Entry.Installations, 100);
@@ -104,14 +137,18 @@ public sealed class RecognitionReviewCodec : IRecognitionReviewCodec
             }
             foreach (var candidate in result.Candidates)
             {
-                if (candidate is null || candidate.Work?.Id is not { Length: > 0 and <= 20 } || !candidate.Work.Id.All(c => c is >= '0' and <= '9') || !double.IsFinite(candidate.Confidence) || candidate.Confidence is < 0 or > 1 || candidate.Vetoed && candidate.HighConfidence)
+                if (candidate is null || candidate.Work is null || !RemoteId(candidate.Work.Id) || !double.IsFinite(candidate.Confidence) || candidate.Confidence is < 0 or > 1 || candidate.Vetoed && candidate.HighConfidence
+                    || candidate.VersionNeedsConfirmation && (!candidate.Vetoed || !candidate.Conflicts.IsDefault && !candidate.Conflicts.IsEmpty))
                     throw new InvalidDataException("核对候选不符合约束。");
                 Array(candidate.Conflicts, 100); Array(candidate.MatchedReferences, 100); Array(candidate.Evidence, 1000);
-                if (candidate.Work.Title is null || candidate.Work.OriginalTitle is null || candidate.Reason is null || candidate.Evidence.Any(e => e is null || e.Source is null || e.ObservedTitle is null || e.MatchedTitle is null || !double.IsFinite(e.Similarity))) throw new InvalidDataException("候选说明无效。");
+                if (!candidate.Vetoed && !candidate.Conflicts.IsEmpty) throw new InvalidDataException("候选冲突状态无效。");
+                if (!Bounded(candidate.Work.Title, 2000) || !Bounded(candidate.Work.OriginalTitle, 2000) || !Bounded(candidate.Reason, 4000) || candidate.Evidence.Any(e => e is null || e.Source is null || e.ObservedTitle is null || e.MatchedTitle is null || !double.IsFinite(e.Similarity) || e.Similarity is < 0 or > 1)) throw new InvalidDataException("候选说明无效。");
                 Array(candidate.Work.Aliases, 1000); Array(candidate.Work.References, 1000);
             }
         }
     }
+    private static bool RemoteId(string? value) => value is { Length: > 0 and <= 20 } && value.All(c => c is >= '0' and <= '9');
+    private static bool Bounded(string? value, int maximum) => value is not null && value.Length <= maximum && !value.Contains('\0');
     private static void Array<T>(ImmutableArray<T> array, int maximum)
     { if (array.IsDefault || array.Length > maximum || array.Any(v => v is null)) throw new InvalidDataException("核对数据集合无效或超过限制。"); }
     private static void Evidence(RecognitionEvidence evidence)

@@ -13,7 +13,10 @@ public sealed record ReleaseIdentity(string Id,string WorkId,string Title,string
 public sealed record CandidateExplanation(string Source,string ObservedTitle,string MatchedTitle,double Similarity,bool Exact,string Version,string? Conflict);
 public sealed record RankedRecognitionCandidate(WorkMetadata Work,double Confidence,string Reason,bool HighConfidence,
     bool Vetoed,ImmutableArray<string> Conflicts,int EvidenceLevel,ImmutableArray<string> MatchedReferences,
-    ImmutableArray<CandidateExplanation> Evidence);
+    ImmutableArray<CandidateExplanation> Evidence)
+{
+    public bool VersionNeedsConfirmation { get; init; }
+}
 public interface IRecognitionRanker
 {
     ImmutableArray<RankedRecognitionCandidate> Rank(RecognitionEvidence evidence,IEnumerable<WorkMetadata> works,
@@ -41,7 +44,10 @@ public interface IRecognitionEvidenceReader
 {
     Task<LocalEvidenceSnapshot> ReadAsync(LibraryEntry entry, bool includePe, CancellationToken cancellation);
 }
-public sealed record ExecutableEvidence(ParsedLocalEvidence Evidence, string Fingerprint, bool RejectExecutable = false);
+public sealed record ExecutableEvidence(ParsedLocalEvidence Evidence, string Fingerprint, bool RejectExecutable = false)
+{
+    public string EvidenceDigest { get; init; } = "pe-evidence-v1:missing";
+}
 public interface IExecutableEvidenceParser
 {
     bool IsUsefulExecutable(string name);
@@ -59,7 +65,11 @@ public sealed record RecognitionIdentity(RecognitionEvidence Evidence, Immutable
     ImmutableArray<string> Queries, ImmutableArray<string> References);
 public sealed record RecognitionResult(Guid Generation, RecognitionEntrySnapshot Input, LocalEvidenceSnapshot Local,
     RecognitionIdentity Identity, ImmutableArray<RankedRecognitionCandidate> Candidates, string AlgorithmVersion,
-    string SourceFingerprint, bool EnrichmentUnavailable, string? EnrichmentMessage, long? AuthGeneration);
+    string SourceFingerprint, bool EnrichmentUnavailable, string? EnrichmentMessage, long? AuthGeneration)
+{
+    public RecognitionResult WithoutEnrichment() => this with { Candidates = [], AuthGeneration = null,
+        EnrichmentUnavailable = true, EnrichmentMessage = "凭据已变化，在线候选已撤销；本地识别结果保留。" };
+}
 public interface IRecognitionEngine
 {
     Task<RecognitionResult> RecognizeAsync(RecognitionEntrySnapshot input, Guid generation, bool online, bool includePe,

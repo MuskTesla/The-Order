@@ -1,6 +1,63 @@
 # 开发与维护
 
-## WinUI Phase 4B：Recognition / Review（本机验收完成，2026-10-05）
+## WinUI Phase 4B.1：Recognition / Review 边界整改（2026-10-05）
+
+本轮从 `codex/winui-phase4` / `7da6eebab3c79b66af65e628daad8ae1788644d4` 开始，只修独立 Gate 的 M1–M5 和两个 MINOR。不是下方 Phase4B 开发过程中的同名内部子步骤。本节 supersede 旧 Phase4B 关于 PE freshness 完整、候选详情绑定、重新识别标题独立性、历史候选安全及队列预算已经充分成立的判断；保留旧功能与测试记录的历史身份。未修改事务、Filesystem、Online、Image 核心架构、依赖或旧 Electron 实现，未进入 Phase5。
+
+### 整改契约与生产路径回归
+
+| Gate | 当前生产实现 | 本轮回归与实际结果 |
+| --- | --- | --- |
+| M1 PE digest | `ExecutableEvidenceParser` 保留旧 `Fingerprint`；新增 `pe-evidence-v1`，`WindowsRecognitionEvidence` 将其纳入 `native-local-evidence-v2` | 6组真实 Windows reader → engine → queue → review → Apply 的合成 PE 原地变化：物理身份不变，旧决定 Stale，库字节不变、持久化 probe 0 calls；全部通过 |
+| M2 candidate/detail | `RecognitionViewModel` 独立 candidateSelectionGeneration；改变选择即取消并清空，接纳同时检查 review/candidate/selection/request/auth/cancellation | 已加载切换、200迟到、ABA、跨review、所选/显示ID及Apply目标均通过；真 WinUI 延迟200后切201，放行200仍显示201，Apply持久保存201 |
+| M3 provider title | `RecognitionEntrySnapshot.EvidenceEntry` 仅在 Reidentify、有旧metadata且 NameIsCustom!=true 时去掉自动名称与旧metadata；原 `Input.Entry` 不变 | false/null/true三路径通过；目录/程序/配置/说明/索引仍由原reader提供。真UI中旧provider名称仍是快照展示，但新识别线索只有通用目录game，候选0；原关联和个人数据保留 |
+| M4 corrupt history | `RecognitionReviewCodec.Validate` 对 Result=null 的 historicalCandidates 也逐个验证；`RecognitionReviewService` 保留初始化损坏诊断及原文件 | null、999、NaN/Infinity、缺ID、超长/超量、坏evidence/veto/conflicts、有效历史回归通过。codec→storage→Presentation选择无NRE；坏文件写入0次。真UI主库5条可用，重新识别5项完成且持续显示明确损坏提示，坏文件SHA256不变 |
+| M5 admission | codec `PrepareAdmission` + service 在接纳前对拟定状态检查；启动生命周期说明、RefreshValidity及Manual清理也先预算后发布 | 9999/10000历史、无安全可退役时拒绝且旧状态/文件不变、反复rerun、Ignore/Apply、重启、算法过期、先触及字节预算及说明文字增长均通过；真UI容量闭环见下 |
+| MINOR version | `RankedRecognitionCandidate.VersionNeedsConfirmation` 与 `Conflicts` 分开；`ReviewSafeRanking`/Presentation使用不同理由 | 不确定版本、章节冲突均阻止直接Apply，但只有后者称身份冲突；真实FD场景显示“版本信息不足，需要确认” |
+| MINOR auth | `RecognitionResult.WithoutEnrichment` 保留 Input/Local/Identity，仅撤销 remote candidates/auth；queue末端和已发布review均处理 | credential clear/replace发生于最终current检查时，本地索引候选/证据不变；generation/lifecycle变化仍整项过期。真UI模拟替换后Summer Pockets的1条本地索引及VNDB/Bangumi来源仍在 |
+
+新增测试集中于 `native/TheOrder.Tests/RecognitionRemediationTests.cs`，**44例**，生产路径优先。既有 `DifferentWorkRecognitionNeverAutomaticallyReplacesExistingRelation` 改为明确独立目录标题，避免测试本身依赖被禁止的旧provider自动名称；安全断言仍保留。
+
+PE摘要只纳入parser实际消费的 ProductName / FileDescription / CompanyName / OriginalFilename、有效有界输出及helper拒绝状态。清洗仍沿原契约；字段值、资源集合及有效输出以Ordinal稳定排序，SHA-256使用固定版本JSON，不依赖culture、字典迭代或进程hash。缺失字段`[]`与存在但空字段`[""]`分开，无版本资源为显式missing。受原PE读取字节/资源/块数/标题数量上限约束。LegalCopyright等未消费字段不影响新摘要（可能仍影响兼容旧原始资源hash）；资源遍历顺序改变且有效证据相同时摘要相同，包括tr-TR测试。若资源顺序改变实际截断后的有效输出，则摘要也变化，拒绝旧Apply。Apply在既有事务beforeCommit内再次读取同一EvidenceEntry，差异先置Stale再拒绝，零库写入。旧 `electron-review-identity-v1` 及 Electron PE fingerprint 契约不变；algorithm提升为 **`electron-recognition-v1-native-3`**，旧算法建议恢复后不能获得提交权限。
+
+候选详情在加载时显示loading、失败/取消显示“详情不可用”，绝不保留其他候选的封面和说明。DisplayedCandidateId绑定请求身份，remote canonical身份仍由既有catalog严格验证；合法remote merge不绕过显式本地决定。
+
+### Review 数据、预算与退役策略
+
+Review是可重新生成的建议，不是authoritative library。版本化文件格式继续为 `native-recognition.json` v1；不迁移正式资料。坏历史文件只读保留、拒绝自动覆盖，主书架可以打开；当前识别可在内存继续，但页面明确“历史核对队列无法安全读取，原文件已保留；本次建议暂不持久保存”。后台保存不能把此诊断覆盖为泛化失败。清理/重建坏文件须另有明确处理，不引入自动删除或额外backup系统。
+
+历史候选要求非null、目录ID为1–20位数字、title/original/reason各<=2000字符且无NUL、confidence有限且0–1、每项<=5候选；非历史result另校验证据数组、分数、veto/conflict/uncertain一致性和mode/status枚举。Result=null不能成为NeedsReview，也不能跳过历史检查。NaN/Infinity非标准JSON或字符串都按损坏处理。
+
+接纳同时限制 **10000总条目、16MiB精确有界序列化、每条5候选**。NeedsReview是受保护的actionable状态，不因空间不足删除；Stale/NeedsRecheck（包括算法过期历史）可退役，按CreatedAt升序再Guid排序，最旧先退役。历史常规最多保留**256条**，再按总数量/字节继续退役。无历史可安全退役且新状态仍超预算时，返回明确ReviewCapacity、撤销新job的决定资格，不部分修改旧review字典或已保存文件。Ignore释放精确ID，Apply后清理同样受预算与CommittedWithWarning语义保护。启动和手动关联新增的中文状态说明也可能增加字节，必须重新预算，不能绕过接纳约束。
+
+### 本轮验证及证据范围
+
+产物均在 ignored `.artifacts/native-phase4b1/`，不提交。
+
+| 验证 | 重新执行的结果 / 文件 |
+| --- | --- |
+| locked restore | 成功，`restore.log`，未更新锁文件或依赖 |
+| Debug / Release solution build | 各 **0 warnings / 0 errors**，`final-debug-build.log` / `final-release-build.log` |
+| Debug / Release完整C# | 各 **988 / 0 / 0**，`final-debug.trx` / `final-release.trx`；944既有+44整改 |
+| 保留差分 / fault | **102 original、13 filesystem/cover组、32 online、254 recognition、14 fault**全部通过；13组包含原source freshness检查，254为220标题/排序+34PE/text，不把其他单元测试算为差分。`test-audit.json`从两份TRX交叉提取 |
+| Artifact pipeline | **32 / 0 / 0**，`artifact-tests.log`；实际采集先assert requested/runtime再写文件 |
+| Electron | 完整 **665 / 0 / 0**；build成功；import回归37新增、重复0新增/37跳过、个人字段/reload/游戏文件保留、renderer errors0；`electron-*.log` |
+| Release publish | `publish-final/win-x64`，`final-publish.log`成功；最终包真WinUI启动、识别、Apply/Ignore/Manual、正常退出 |
+
+真UI全部使用 `.the-order-synthetic` 标记隔离profile、合成HTTP和内存fixture credential。`generate-recognition-remediation-profile.mjs`拒绝复用已存在目录和正式目录边界，生成5条与不可执行的占位文件，可选normal/corrupt/capacity。只有DIAGNOSTICS+ONLINE_FIXTURE+RECOGNITION_FIXTURE+RECOGNITION_BOUNDARY_FIXTURE显式同时启用时才显示候选延迟/放行/模拟凭据变化按钮；没有真实网络/凭据验收。PE原地变化由生产Windows reader集成回归验证，没有实际游戏EXE桌面操作。
+
+真实容量过程：初始10000条旧历史 → 打开退役为256 → 5条新建议接纳为261 → Apply目标201后260 → Ignore精确建议后259 → 同条目Manual目标300后258（256历史+2 actionable，132887B）。原个人名称/笔记保留，Ignored ID落盘消失；`capacity-before.json`、`capacity-open-runtime.json`、`capacity-apply-runtime.json`、`capacity-ignore-runtime.json`及`capacity-after.json`可交叉核对。最终corrupt实例PID8288、capacity实例PID22668均exit0，见`final-*-exit.json`。坏文件在两轮打开、识别及关闭后SHA256仍为 `D3828B380D87E94531E7C281A67DA2C6C02A015D1EBD55B50A09B4D2C64A6785`。
+
+新UI证据共**11组manifest/UI tree/JPEG，11个不同截图hash**；全部requested/runtime、tree内runtime、文件长度和SHA256独立复核，`artifact-audit.json`记录结果，关键已保存图片再次目视核验。分两批：
+
+- `publish`（WinUI MVID `01e9cb52-bd8c-4e54-9bfd-31b111dfd403`）8组：`candidate-loaded-200-to-201`、`candidate-200-delayed`、`candidate-late-200-discarded`、`apply-selected-201`、`version-needs-confirmation`、`reidentify-provider-title-excluded`、`auth-change-local-preserved`、`manual-link-preserved-local-fields`。随后发现并修正损坏提示被后台保存覆盖，以及状态说明预算收尾；此批不能证明这些最终修复。
+- `publish-final`（WinUI MVID `7d69294c-61ee-411f-baad-1df14773ac6e`）3组：`review-storage-corrupt`、`review-capacity-admission`、`review-capacity-decisions`；复核最终保存和退役路径。各层DLL/EXE hash分别保存在`build-smoke1.json` / `build-final.json`，完整回归针对最终源码。
+
+两批程序集checkpoint都仍指向构建父提交`7da6eeb...`，不是即将创建的4B.1提交；MVID+全层hash区分工作区构建，提交后补本机checkpoint receipt绑定，不能冒称二进制内已嵌入新SHA。旧`.artifacts/native-phase4b`仅为当时功能证据，不能证明本轮七项整改；本轮corrupt最终证据取代早期泛化告警观察。旧Phase3A作废证据仍作废。
+
+**M1–M5和两个MINOR整改自检通过；PASS FOR PHASE 5仅指本轮整改自检，不代表独立targeted re-Gate已执行，也不是Phase5实施授权。** 接下来应先targeted re-Gate，再安排用户授权的真实API smoke。本轮真实API明确未执行（按整改范围禁止），正式profile/真实credential/游戏目录均未访问。合成验收不证明真实catalog/CDN、全部游戏、长期压力或干净机安装/签名/升级。此前UNC/generic reparse、10k unique images及正式库写入前workingDirectory门禁继续保留；性能未重新优化或建立新SLA。建立Phase4B.1 checkpoint后暂停。
+
+## WinUI Phase 4B：Recognition / Review（历史本机验收；独立 Gate NO-GO，整改见上，2026-10-05）
 
 基线 `0de0b342623c0e6a047fd354843903779e564e2e`，保持 `codex/winui-phase4`。用户已授权4B，禁止Phase5/正式资料或凭据/真实游戏执行。先4B.1纯识别、差分和lifecycle，再4B.2持久核对/提交/WinUI；下表来自本轮重新阅读旧源码，不是完成声明。
 

@@ -3,7 +3,14 @@ using TheOrder.Domain;
 namespace TheOrder.Application;
 
 public sealed record RecognitionLifecycle(Guid Epoch, Guid Generation, long Revision, long Request);
-public sealed record RecognitionEntrySnapshot(LibraryEntry Entry, RecognitionLifecycle Lifecycle);
+public sealed record RecognitionEntrySnapshot(LibraryEntry Entry, RecognitionLifecycle Lifecycle)
+{
+    public RecognitionMode Mode { get; init; }
+    // Keep the authoritative snapshot intact. A provider name is not independent local evidence.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public LibraryEntry EvidenceEntry => Mode == RecognitionMode.Reidentify && Entry.Metadata is not null && Entry.NameIsCustom != true
+        ? Entry with { Name = "", Metadata = null } : Entry;
+}
 public interface IRecognitionLibrarySource
 {
     Task<RecognitionEntrySnapshot> CaptureRecognitionAsync(string id, CancellationToken cancellation);
