@@ -1,5 +1,17 @@
 # The Order：当前实现与评审交接
 
+## WinUI 并行候选：Phase 1（2026-10-04）
+
+- 用户在审计通过后授权 Phase 1；新源码位于 `native/`，从 Electron 基线 `387336801981ae30e9de317916024b016dee3605` 建立 `codex/winui-phase1`。这不是正式程序替换，也不是 Phase 2 授权。下文既有 Electron 基线、功能和发布入口仍有效。
+- 六项目 Solution：Domain、Application、Infrastructure、Platform.Windows、WinUI、Tests。Presentation 置于 WinUI 内部，没有独立 Materials 项目。实际锁定 .NET SDK **10.0.401**、.NET runtime **10.0.12**、Windows App SDK **2.5.1**（WinUI 3 的 NuGet 子包 `Microsoft.WindowsAppSDK.WinUI` **2.3.9**），目标 `win-x64` / Windows 11。SDK 通过官方 ZIP 与 SHA-512 验证后安装在忽略目录；未修改系统 PATH 或 VS 工作负载。
+- 已实现原生窗口、系统标题栏、书架/设置导航、System/Light/Dark 会话主题、全局读取错误、轻量摘要 ListView、旧版 v1 JSON DTO/校验/映射。只读，无自动修复写回；本地 Base64 图片只保留数据和结构校验，页面使用占位图，不宣称完成原生解码与 EXIF 校验。
+- 资料仅来自显式 `THE_ORDER_NATIVE_DATA_DIR`，还必须带 `.the-order-synthetic` 标记。拒绝正式目录及其父子目录、重解析目录/文件和硬链接；缺目录/损坏/真空库分别反馈。未指定目录时可开壳，但拒绝数据操作。没有读取正式 settings、真实密钥、用户库或 Chromium 存储。
+- Debug/Release 构建、锁文件 restore、39 项测试已实际通过；Debug/Release 原生窗口、发布目录运行、导航、主题、正常/损坏/空库和退出有真实验证。证据在 `.artifacts/native-phase1/`，操作见 DEVELOPMENT。发布过程中发现应用 XBF/PRI 未被默认 pipeline 纳入，已在项目声明发布资源并复验。
+- 两项合成实验：① Electron 44.5.1 密文不能直接 DPAPI 解密；同一合成 profile 的 `Local State` 中 DPAPI 加密主密钥 + v10 AES-GCM 可在 C# 验证，三个独立 profile 均通过解密/重新保护/篡改拒绝。仅测试代码，无生产迁移器；遗失 profile 密钥或账户不兼容时仍应重新输入凭据。② 从当前 TypeScript 提取 `reviewIdentity` / `decisionFingerprint` 生成 6 组向量，Unicode、缺项、null、属性顺序、孤立代理项的序列化及 SHA-256 对照通过；新进程不能继承旧决定授权，后续仍需重建 token/重新确认。
+- 发布为未签名 unpackaged、自包含目录，.NET 与 Windows App Runtime / WinUI 从发布目录加载；VC++ 运行库实际从本机 System32 加载。未验证无 VC++ 运行库的干净机器、ARM64、完整图像解码、大库性能、真实 API/游戏/私库或 MSIX 安装。
+- Electron 源码、npm 锁文件及发布脚本未改动；`npm run build` 和 `tests/packaged-b-smoke.mjs` 通过。额外运行 `tests/desktop-import.mjs` 在导入 37 条后旧网格启动按钮定位处超时（第76行；当前 compact grid 无该按钮），未修改范围外页面或旧测试，不宣称整套 Electron 回归通过。
+- Phase 1 完成后停止。Phase 2 建议只做旧格式兼容/事务与失败恢复的差分验证；任何正式资料接管、SQLite、联网识别、游戏启动或高级材质均需后续明确范围。
+
 ## 基线与用途
 
 - 正式项目：`D:\Projects\The-Order`，内部版本 **0.7.1**；用户于2026-10-04在三风格候选交付后明确要求“替换正版”，已部署第六轮候选至原`release\win-unpacked`，完整备份旧夜间程序。正式资料未读取、迁移或修改；准确入口、备份与替换验证见[第六轮替换](ITERATION.md#用户授权替换第六轮正式程序2026-10-04)。

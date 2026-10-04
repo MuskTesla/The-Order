@@ -1,0 +1,121 @@
+{
+  "format": "kun-gal-manager",
+  "version": 1,
+  "exportedAt": "2026-10-04T00:00:00.000Z",
+  "games": [
+    {
+      "id": "synthetic-a",
+      "name": "我的自定义名称 · 星海",
+      "metadata": {
+        "id": "18446744073709551616",
+        "title": "虚构作品",
+        "originalTitle": "架空の物語",
+        "aliases": [
+          "Fictional Story"
+        ],
+        "coverUrl": null,
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "合成开发组"
+        ],
+        "tags": [
+          "测试"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-a",
+          "folderPath": "C:\\TheOrder-Synthetic\\星海",
+          "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+          "arguments": [
+            "--test",
+            "空 格"
+          ]
+        },
+        {
+          "id": "install-b",
+          "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+          "executablePath": null,
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-a",
+      "status": "planned",
+      "personalRating": 0,
+      "favorite": true,
+      "categories": [
+        "合成资料"
+      ],
+      "customTags": [
+        "中文"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 7200,
+      "playCount": 3,
+      "sessions": [
+        {
+          "id": "session-a",
+          "startedAt": "2026-10-04T00:00:00.000Z",
+          "endedAt": "2026-10-04T00:10:00.000Z",
+          "seconds": 600
+        }
+      ],
+      "addedAt": "2026-10-04T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "synthetic-b",
+      "name": "未命名来源 · 雨夜",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "planned",
+      "personalRating": null,
+      "favorite": false,
+      "categories": [],
+      "customTags": [],
+      "notes": "",
+      "totalPlaySeconds": 0,
+      "playCount": 0,
+      "sessions": [],
+      "addedAt": "2026-10-04T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "localCover": {
+        "dataUrl": "data:image/jpeg;base64,/9j/wAALCAADAAQBAREA/9oACAEBAAA/AAH/2Q==",
+        "width": 4,
+        "height": 3
+      },
+      "nonPortraitCoverDisplay": null
+    },
+    {
+      "id": "synthetic-c",
+      "name": "原始名称 · 晨光",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "planned",
+      "personalRating": null,
+      "favorite": false,
+      "categories": [],
+      "customTags": [],
+      "notes": "",
+      "totalPlaySeconds": 0,
+      "playCount": 0,
+      "sessions": [],
+      "addedAt": "2026-10-04T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": false,
+      "nonPortraitCoverDisplay": "crop"
+    }
+  ]
+}

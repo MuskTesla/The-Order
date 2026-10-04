@@ -1,5 +1,13 @@
 # Attribution
 
+## Parallel native Phase 1 candidate
+
+`native/` is part of The Order and retains the repository's AGPL-3.0-or-later source license. It uses .NET 10, Microsoft Windows App SDK / WinUI 3, and Microsoft.Extensions components under their respective upstream licenses; exact direct and transitive versions and package hashes are recorded in `native/**/packages.lock.json`. Windows App SDK's package license is supplied by Microsoft, not relicensed as application source. See [Windows App SDK](https://github.com/microsoft/WindowsAppSDK), [.NET](https://github.com/dotnet/runtime), and the corresponding NuGet package license metadata. xUnit and Microsoft.NET.Test.Sdk are development-only dependencies, not shipped application code.
+
+The native Phase 1 candidate uses system symbols and fictional test records. It does not bundle KunUI, the title index, game artwork, or personal user data. The Electron application and its attribution below remain unchanged.
+
+## Existing Electron distribution
+
 The Order (previously Kun Galgame Manager / 鲸屿) is an independent personal project. It is not an official product of Kun, NextMoe, PotatoVN, or the referenced game.
 
 - **KunUI** — official `@kungal/ui-vue`, `@kungal/ui-core`, and `@kungal/ui-tokens`, version 2.56.2. Copyright the KunUI contributors. Licensed under AGPL-3.0-only. [Upstream source](https://github.com/kungal/kun-ui). The original application source is licensed under AGPL-3.0-or-later; KunUI retains its own AGPL-3.0-only license. Complete corresponding application source is supplied alongside the Windows application in this delivery.

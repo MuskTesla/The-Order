@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="TheOrder.Application/TheOrder.Application.csproj" />
+  <Project Path="TheOrder.Domain/TheOrder.Domain.csproj" />
+  <Project Path="TheOrder.Infrastructure/TheOrder.Infrastructure.csproj" />
+  <Project Path="TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
+  <Project Path="TheOrder.Tests/TheOrder.Tests.csproj" />
+  <Project Path="TheOrder.WinUI/TheOrder.WinUI.csproj" />
+</Solution>

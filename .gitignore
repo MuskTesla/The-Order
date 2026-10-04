@@ -66,3 +66,9 @@ the-order-*-private-compat.json
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Parallel native candidate; keep fixtures and NuGet lock files tracked
+/native/**/bin/
+/native/**/obj/
+/native/.vs/
+/native/TestResults/
