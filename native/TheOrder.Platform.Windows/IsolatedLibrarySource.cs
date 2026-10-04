@@ -12,6 +12,9 @@ public sealed class IsolatedLibrarySource : IIsolatedLibrarySource
     public const string MarkerValue = "the-order-native-phase1-synthetic-v1";
 
     public Stream OpenRead(string? explicitDirectory)
+        => OpenChecked(Path.Combine(ValidateDirectory(explicitDirectory), "library.json"));
+
+    internal static string ValidateDirectory(string? explicitDirectory)
     {
         if (string.IsNullOrWhiteSpace(explicitDirectory) || !Path.IsPathFullyQualified(explicitDirectory))
             throw new DataIsolationException("未指定绝对路径的合成资料目录。请通过 THE_ORDER_NATIVE_DATA_DIR 设置；不会读取正式书架。");
@@ -31,11 +34,11 @@ public sealed class IsolatedLibrarySource : IIsolatedLibrarySource
             using var text = new StreamReader(marker, Encoding.UTF8, true, 128);
             if (text.ReadToEnd().Trim() != MarkerValue) throw new DataIsolationException("缺少有效合成资料标记，已拒绝读取。");
         }
-        return OpenChecked(Path.Combine(root, "library.json"));
+        return root;
     }
 
     private static bool Within(string root, string child) => child.Equals(root, StringComparison.OrdinalIgnoreCase) || child.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
-    private static FileStream OpenChecked(string path)
+    internal static FileStream OpenChecked(string path)
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new DataIsolationException("拒绝读取链接文件。");
         var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan);

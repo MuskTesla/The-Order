@@ -50,7 +50,7 @@ internal static class LegacyValidation
         if (s.Length == 0) return;
         if (!Uri.TryCreate(s, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || uri.UserInfo.Length != 0) Fail(n);
     }
-    private static string Id(JsonElement p, string n) => S(p, n, 300, false);
+    private static string Id(JsonElement p, string n) => S(p, n, 300, false).Trim(LegacyLibraryCodec.Whitespace);
     private static void Unique(IEnumerable<string> values, string n, IEqualityComparer<string>? comparer = null)
     {
         var seen = new HashSet<string>(comparer);

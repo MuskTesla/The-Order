@@ -1,5 +1,18 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 2：Legacy Compatibility & Transaction Kernel（2026-10-04）
+
+- 从已通过 Gate 的 `d988d2bf75d6885061e4a860337c95ada1371b7b` 新建 `codex/winui-phase2`。当前新增内容是 **仅用于显式合成目录的事务内核**；WinUI 仍只读，没有注册 writer，也没有迁移正式资料、网络、扫描、启动、计时或视觉系统。Electron 产品源码、依赖、正式发布目录不变。完成本 checkpoint 后暂停，不能把本文当作 Phase 3 授权。
+- 先运行真实 Electron 44.5.1 `LibraryStore` 建立 oracle，再实现 C#。`native/scripts/generate-transaction-oracle.mjs` 使用锁定 Electron 的 Node 模式、固定时钟/UUID 提供器、临时虚构目录，调用原类而非抄写一份参考算法。`transaction-oracle.json` 包含 50 个 mutation 场景、5 个异步生命周期序列、5 个旧恢复观察和 43 个 Phase 1.1 字符串/路径/数字向量；记录 library/title-matching/local-cover 原文件 SHA-256，改动参考必须重新审查和生成。
+- Application `TransactionalLibrary` 持有 immutable authoritative snapshot、候选值、串行队列、生命周期 token；Infrastructure `LegacyLibraryCodec` 负责旧格式规范化、全库验证/序列化、目录身份及名称保护；Platform.Windows `IsolatedLibraryPersistence` 负责隔离、目录/独占 writer lease、备份和原子替换。六项目依赖方向未改变，无新增 NuGet 包。代表性操作为 add、个人字段、安装记录增删、delete、旧备份 append/restore、明确作品 ID 的 link/merge。
+- 必须保持的顺序：**取队列中的最新状态 → immutable candidate → 全库验证/规范化 → 大小校验 → 最后取消检查 → 保存 lastGood 备份 → 保存主文件 → 更新 generation/revision → 发布 authoritative snapshot**。IO 前失败不得更改内存；主文件替换成功后出现检查异常，必须按已提交返回 warning，并同步内存，不能谎报回滚。备份可能先于失败的主保存更新为 lastGood，这与旧版一致。
+- 取消在队列前/等待时可中止；进入持久化后不向文件 API 传递取消令牌，完成最小安全提交，结果 `CancellationAfterCommit` 表示取消发生于提交阶段。请求 token 独立于 cancellation，包含仓库 epoch、条目 generation、request ID 和 revision。后发请求使先发结果失效；名称/关联/安装身份变化、每次 link、删除再同 ID 恢复均使旧 token 失效；普通个人字段编辑可与资料返回共存。目标条目有待完成请求或较新意图时拒绝合并。
+- unknown fields **按旧版主动丢弃**：`parseBackup` 是白名单重建对象，不保留扩展。本阶段保持这一行为并用 oracle 验证；没有承诺任意未来 schema 的无损转存。显式 null / 0 / false / 缺省 nameIsCustom / 缺省或 null 的封面模式分别保留。旧格式 version/format 不变；ID、数组顺序、字段存在性、数值和 UTF-16 内容逐项比较，空白与 JSON escape 拼写不要求字节相同。旧版 trim 后 ID 相等的首选安装检查现已补齐，Phase 1.1 原值读取保持不变。
+- **有意差异和边界**：旧 Electron initialize 会创建空主文件或从备份修复并隔离损坏文件；C# 打开只加载 Main/Backup/New 状态，不改主/备份。首次显式 mutation 才保存；若从备份恢复，此次保存以恢复后的有效库作为 lastGood，替换损坏主文件，不另生成 corrupt 副本。打开会留下无内容 `.the-order-writer.lock`，不应描述为整个目录绝对零写入。安装移除是新增的纯记录操作，首选项被移除时设 null，永不删游戏文件。安装添加接受上游已授权的值，不扫描/打开路径；import 使用 lexical Windows identity，没有移植旧 realpath 对真实目录别名的解析，因而不是可用于正式资料的完整导入/迁移器。当前 token 是单一显式请求通道，未实现旧 automatic batch / association / cover 的完整多通道调度。
+- 实际验证：locked restore、Debug/Release solution build（均 0 warnings/errors）；Debug/Release C# 各 **234 passed / 0 failed / 0 skipped**，比可信基线新增 **150**。其中 **98 个差分测试**（50 mutation + 5 lifecycle + 43 codec），**14 个标记 fault-injection 测试**（13 个备份/主文件阶段组合 + 1 个包含权限/目录消失/ENOSPC 三种异常的测试），此外有真实只读文件、主/备份锁定、硬链接、目录固定和互斥验证。Electron 6 个相关单元文件 **120/0/0**；构建和 desktop-import 全通过：37 条导入、重复 0/37、个人字段/重启一致、游戏文件保留、renderer errors 0。
+- 整库成本如实保留：candidate 初始共享 immutable 记录，验证会重建整库；一次事务约三次整库序列化、两次整库 parse，加 identity 比较。10k 个最简条目约 5.02 MB，本机完整套件中 Debug/Release 单次事务约 577/703 ms，进程累计分配观测约 198/185 MB（并行测试会干扰，不是独立微基准）；单条 10k sessions 约 1.76 MB，约 299/334 ms。不得在 UI 线程执行这种路径；真实大元数据/图片/session 库和 UI 流畅度未验收。32 MiB 上限可能早于 10k 条达到；此证据供后续数据库阶段使用，本阶段未引入 SQLite。
+- `.artifacts/native-phase2/` 保存本机日志/TRX，不提交。合成 fault injection 不等同于断电实验；网络盘/非 NTFS、恶意外部进程、突然断电、任意手工日期/WHATWG URL 文法、完整 JPEG 解码/EXIF、真实资料与凭据仍未验证。目录 lease 和 writer lock 只协调 native writers，Electron 不识别此锁；禁止两端共用同一 profile。详细恢复矩阵、合并表和复验步骤见 DEVELOPMENT 的 Phase 2 节。
+
 ## WinUI Phase 1.1 Gate Remediation（2026-10-04）
 
 - 在 `codex/winui-phase1` / `775450e` 上完成限定整改；Gate 为 **PASS FOR PHASE 2**，但尚未开始 Phase 2。无可写 repository、事务、数据库、联网或正式资料迁移；Electron 产品源码与 npm 依赖未改动。

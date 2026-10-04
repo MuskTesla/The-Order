@@ -1,5 +1,87 @@
 # 开发与维护
 
+## WinUI Phase 2：事务内核约束与复验
+
+Phase 2 在 `codex/winui-phase2`，基于 Phase 1.1 checkpoint `d988d2b`。它没有将 WinUI 页面连接到 writer。禁止把 `TransactionalLibrary` 的合成验证解释成真实用户迁移已经获准；正式 `%APPDATA%\KunGalManager`、真实 settings/密钥/游戏目录仍不可作为输入。Phase 3 必须另获用户明确指令。
+
+### 实际旧版 oracle 与分层
+
+- `electron/library.ts` 的真实 `mutate`：queue → structuredClone → operation → parseBackup(envelope) → stringify + 32 MiB 检查 → beforeCommit → atomicWrite(backup,lastGood) → atomicWrite(main,candidate) → 生命周期更新 → games/lastGood → clone(operation result)。没有数据库，也没有写后通知总线。
+- 旧 atomicWrite 是同目录唯一 `wx` 临时文件，writeFile、sync、close、rename，finally 尝试删本次 temp。initialize 在主文件缺失/损坏且备份有效时会恢复主文件；主文件存在时还先复制 corrupt 文件；两者缺失会写空库；两者不可读拒绝启动。
+- 新 Application 层只依赖 `ILibraryCodec` / `ILibraryPersistence`，不依赖 XAML、JSON、Windows API。Domain 仍是 immutable records；Legacy codec 和命名保护在 Infrastructure；文件句柄、隔离与原子替换在 Platform.Windows。`AddInstallationAsync` 是已授权安装**值**的提交入口，不是任意文件路径访问授权，未来目录选择/扫描必须另建受限 filesystem service。
+- `native/scripts/generate-transaction-oracle.mjs` 在真实锁定 Electron 的 Node 模式调用上述原类；临时合成数据全部自行创建/清理，不传入 KGM_DATA_DIR 或真实 profile。固定时钟和 UUID 是测试依赖控制；C# add 的 ID 工厂注入 oracle 输出 ID，其余保留/跳过/合并 ID 均直接比较。真实生成的 GUID 唯一性由平台提供，不以两种实现碰巧生成同一个随机数为验收标准。
+- JSON 比较检查属性存在性、精确 UTF-16 字符串（包括孤立 surrogate）、数字、数组顺序、操作结果、主/备份和重启结果；不依赖属性排列和空白。write codec 保持 legacy v1 字段，已知嵌套属性按旧白名单映射；未知属性首次显式写入时按旧版丢弃，没有扩展保存框架。不得声称这能无损降级未来客户端的新 schema。
+
+### 事务和保存保证
+
+1. 一个实例内所有写操作和请求意图注册共用串行队列，排队任务执行时才取最新 authoritative snapshot，不能在队列外先基于旧值构造“全库替换”。
+2. 业务只改 immutable candidate；先验证完整候选（包括全局路径/ID、首选安装、时长下限、条数和字节上限），再做任何保存。输入备份在入队前完整解析并冻结；失败不能只导入半份。
+3. `IsolatedLibraryPersistence` 只允许显式绝对目录+合成标记，复用既有正式目录及父子目录/重解析/硬链接拒绝规则。固定目录祖先句柄，保留 marker 句柄，并持有 `.the-order-writer.lock` 的独占句柄；没有自动创建父目录。锁文件是空的协调文件，打开后保留，不能当成用户数据。
+4. 先把 canonical lastGood 保存到 `.bak`，再保存新主文件。每个目标使用本目录独占创建的 GUID temp，写入、`FileStream.Flush(true)`、关闭，然后调用 `MoveFileExW(REPLACE_EXISTING | WRITE_THROUGH)`。没有先删除/截断目标，也不使用跨卷 copy/delete。只清理本次 temp；遗留的其他 temp 不作为恢复来源，也不自动删除。
+5. 主替换前任何失败：authoritative 内存仍是旧版，主文件未变，备份最多推进到 lastGood。主替换已成功后的检查异常：发布新 snapshot，返回 warning；不能抛“保存失败”却让磁盘保存了新版。备份替换后的检查 warning 也保留在返回结果中。
+6. 这保证了本机测试覆盖的正常退出和可预期 I/O 失败一致性，不宣称所有文件系统或断电绝对原子。微软的 [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw) 和 [Flush(true)](https://learn.microsoft.com/en-us/dotnet/api/system.io.filestream.flush?view=net-10.0) 文档不能被解释成目录项/硬件缓存的全面断电保证。未测试 SMB、云同步目录、不同 ACL 继承策略或硬件故障。Electron 不遵循 native writer lock，禁止双写。
+
+### 恢复矩阵：选库一致，打开时不自愈
+
+| 主文件 | 备份 | Native 打开结果 | 文件动作 |
+| --- | --- | --- | --- |
+| 有效（包括真空库） | 有效/损坏 | Main，选主库 | 不修改主/备份 |
+| 损坏 | 有效 | Backup，明确报告恢复来源 | 不修改主/备份 |
+| 缺失 | 有效 | Backup | 不创建主文件 |
+| 损坏 | 损坏/缺失 | 错误 | 不当作空库 |
+| 缺失 | 损坏 | 错误 | 不当作空库 |
+| 缺失 | 缺失 | New，真正新库 | 显式 mutation 前不创建主/备份 |
+
+这是明确偏离旧 initialize 自动写回的设计，以满足本阶段“读取不偷偷自愈”的要求。恢复后的第一次显式 mutation 会以已恢复的有效内容更新 backup，再替换主文件；当前不另外生成旧 Electron 的 `library.corrupt-*` 副本，所以需要保留损坏原件的诊断工作必须先在调用者授权范围内另行保存。没有 UI 自动保存恢复状态。
+
+### 合并字段表（source 主动关联到 target 的作品 ID）
+
+| 字段 | 与旧版一致的规则 |
+| --- | --- |
+| 游戏 ID / 加入时间 / 顺序 | 保留 source ID、addedAt；删除 target，其他条目相对顺序不变 |
+| installations | source 后接 target，不悄悄去重；重复安装 ID 或全局目录导致全事务拒绝 |
+| preferredInstallationId | source 非 null 优先，否则 target；完整校验必须指向现存安装 |
+| categories / customTags | source 顺序后追加 target 未出现项；区分大小写 |
+| name / nameIsCustom | 缺省来源标记视为可能个人名；显式版本/章节名、与原 metadata.title 不同的名称受保护；否则采用新资料标题；preserveName/preserveMergedName 分别遵循旧优先级 |
+| status | 仅 source 为 planned 时采用 target |
+| personalRating / favorite | source rating 非 null 优先，0 不能视为缺失；favorite 取 OR |
+| notes | target 非空且不同才以两个换行追加；相同不重复 |
+| sessions | source 顺序，追加新 ID；同 ID 不同 startedAt 拒绝；同开始时间保留 seconds 较大的完整 session，等长保留 source |
+| totalPlaySeconds | 两侧累计之和减重叠 session 的较小 seconds；不从 session 重新计算历史累计 |
+| playCount | 两侧累计之和减两侧 seconds 都大于 0 的重复 session 数 |
+| lastPlayedAt | 取较新的非 null ISO 时间 |
+| metadata | 使用本次规范化资料，只按明确相同 work ID 合并，名称不是身份 |
+| cover | 删 source 不再对应 work ID 的资料封面；source 无个人封面时才继承 target localCover 或对应作品 coverChoice |
+| cover display | source 缺省时才继承；source 显式 null 不等于缺省 |
+
+### 取消、生命周期与尚未移植的边界
+
+- cancellation 只决定是否继续排队/进入提交，token 决定结果是否仍有权限提交，两者不得混为一谈。进入备份持久化前最后检查取消；之后完成提交并用 `CancellationAfterCommit` 回报。主替换前真实 IO 失败仍是失败，即使同时收到取消。
+- `BeginRequestAsync` 在同一队列中登记最新意图。token 带 epoch、generation、request、revision；旧结果、跨实例 token、rename/metadata/installations 改变前 token、delete→restore 同 ID 前 token 全部拒绝。个人 notes/rating/favorite 等不改变资料证据身份。每次 link 即使内容相同也消费原 generation。
+- 合并目标的 pending request 或晚于 source token 的 revision 阻止合并；较新请求即使失败/finish，其意图 revision 仍有效。当前只迁移代表性的单一显式请求通道，**没有**完整移植 automatic-batch sibling exception、refresh/association/cover 多通道；后续迁移 matching 时必须以原 `metadata-concurrency.test.ts` 的相应场景补齐，不能宣称本内核已经覆盖完整识别协议。
+- append/restore 保留旧 ID、顺序、重复 ID/work ID/路径跳过和个人数据；目录键为 legacy Windows lexical identity。本阶段不访问安装指向的文件系统，因此不等价于旧 importBackup 对真实 junction/目录别名的 `realpath` 解析。未来正式导入需要独立受限预检。新增 remove-installation 只删记录，移除首选时置 null，不自动猜选另一个安装，不删游戏文件。
+- 命名保护仅移植旧 predicate 所需规则，没有引入完整匹配引擎。任意手工非标准 Date.parse/WHATWG URL 输入、完整图像解码/EXIF 和所有未来 Unicode normalization 边界未证明全等；当前固定导出数据与列出的 oracle 才是已验证范围。
+
+### 实际复验命令与证据
+
+```powershell
+# 从仓库根目录运行。已装锁定 npm 依赖与 portable SDK，无需升级包。
+node native/scripts/generate-transaction-oracle.mjs
+& ./native/scripts/native.ps1 -Action Restore
+& ./native/scripts/native.ps1 -Action Build -Configuration Debug
+& ./native/scripts/native.ps1 -Action Build -Configuration Release
+& ./native/scripts/native.ps1 -Action Test -Configuration Debug
+& ./native/scripts/native.ps1 -Action Test -Configuration Release
+& ./node_modules/.bin/tsx.cmd --test tests/library.test.ts tests/bulk-library.test.ts tests/metadata-concurrency.test.ts tests/title-matching.test.ts tests/library-cover.test.ts tests/library-local-cover.test.ts
+Remove-Item Env:KGM_TEST_EXECUTABLE -ErrorAction SilentlyContinue
+npm run build
+node tests/desktop-import.mjs
+```
+
+`native.ps1 Test` 默认覆盖 `.artifacts/native-phase1/test-results/compatibility.trx`，每种配置完成后需复制到自己的证据目录；日志输出路径请使用绝对路径，避免脚本内部 Push-Location 导致相对路径变化。Phase 2 已保存 `.artifacts/native-phase2/{restore.log,debug-build.log,release-build.log,debug-tests.trx,release-tests.trx,electron-unit.log,electron-build.log,electron-import.json}`。上述 native 两配置各 234/0/0；比 Phase 1.1 新增 150，含 98 个差分、14 个标记故障注入测试；Electron 单元 120/0/0，desktop import 37 条与重启校验全部通过。生成 fixture 是可提交的虚构参考；TRX、bin/obj、SDK、临时凭据均不是维护源码。
+
+性能测试有 10k 简化 entries 和单条 10k sessions 两种形状。前者 JSON 5,019,006 字节，本机 Debug/Release 完整套件内事务约 577/703 ms；后者 1,759,515 字节，约 299/334 ms。进程累计分配观测约 198/185 MB，受同进程并行测试影响，只用于量级观察。当前候选共享不可变记录，但验证会重建整个库，约三次序列化/两次 parse，成本随总 JSON/session 历史增长；32 MiB 是硬上限。这是后台事务和未来 SQLite 评估依据，不是大库 UI 性能验收，也没有以优化为理由削弱验证或迁入 SQLite。
+
 ## 项目边界
 
 这是 The Order 的长期源码仓库。Windows 正式工作目录为 `D:\Projects\The-Order`；Claude Code、终端和编辑器都从这里开始工作。

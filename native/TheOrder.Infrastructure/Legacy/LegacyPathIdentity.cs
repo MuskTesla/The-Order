@@ -29,6 +29,19 @@ public static class LegacyPathIdentity
     public static bool Contains(string rootKey, string targetKey) => targetKey == rootKey ||
         targetKey.StartsWith(rootKey.TrimEnd('\\') + "\\", StringComparison.Ordinal);
 
+    // path.win32.normalize retains case, root-relative paths and a trailing separator.
+    public static string Normalize(string storedPath)
+    {
+        var path = storedPath.Trim(EcmaWhitespace).Replace('/', '\\');
+        var (device, start, absolute) = Root(path);
+        if (!absolute) throw new InvalidDataException("旧版安装路径必须为绝对路径。");
+        var parts = new List<string>();
+        foreach (var part in path[start..].Split('\\', StringSplitOptions.RemoveEmptyEntries))
+            if (part == "..") { if (parts.Count > 0) parts.RemoveAt(parts.Count - 1); }
+            else if (part != ".") parts.Add(part);
+        return device + "\\" + string.Join('\\', parts) + (parts.Count > 0 && path.EndsWith('\\') ? "\\" : "");
+    }
+
     private static (string Device, int Start, bool Absolute) Root(string path)
     {
         if (path.Length == 0) return ("", 0, false);
