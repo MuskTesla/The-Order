@@ -63,16 +63,25 @@ public sealed class RemoteCoverSource(HttpClient http) : IImageSourceProvider, I
     }
     public static HttpClient CreateClient()
     {
+        return new(CreateHandler(Dns.GetHostAddressesAsync, ConnectSocket)) { Timeout = Timeout.InfiniteTimeSpan };
+    }
+    internal static SocketsHttpHandler CreateHandler(Func<string, CancellationToken, Task<IPAddress[]>> resolve,
+        Func<IPAddress[], int, CancellationToken, ValueTask<Stream>> connect)
+    {
         var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false, MaxConnectionsPerServer = 2,
             PooledConnectionLifetime = TimeSpan.FromMinutes(5), ConnectTimeout = TimeSpan.FromSeconds(10), AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli };
         handler.ConnectCallback = async (context, cancellation) =>
         {
-            var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, cancellation).ConfigureAwait(false);
+            var addresses = await resolve(context.DnsEndPoint.Host, cancellation).ConfigureAwait(false);
             if (addresses.Length == 0 || addresses.Any(a => !IsPublic(a))) throw new HttpRequestException("Image source is not public.");
-            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            try { await socket.ConnectAsync(addresses, context.DnsEndPoint.Port, cancellation).ConfigureAwait(false); return new NetworkStream(socket, true); }
-            catch { socket.Dispose(); throw; }
+            return await connect(addresses, context.DnsEndPoint.Port, cancellation).ConfigureAwait(false);
         };
-        return new(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        return handler;
+    }
+    private static async ValueTask<Stream> ConnectSocket(IPAddress[] addresses, int port, CancellationToken cancellation)
+    {
+        var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+        try { await socket.ConnectAsync(addresses, port, cancellation).ConfigureAwait(false); return new NetworkStream(socket, true); }
+        catch { socket.Dispose(); throw; }
     }
 }

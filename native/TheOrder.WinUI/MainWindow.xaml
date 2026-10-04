@@ -1,4 +1,4 @@
-<Window x:Class="TheOrder.WinUI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="The Order · 原生候选 Phase 4A">
+<Window x:Class="TheOrder.WinUI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="The Order · 原生候选 Phase 4A.1">
  <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <InfoBar x:Name="NoticeBar" IsClosable="False" IsOpen="{x:Bind ViewModel.HasNotice, Mode=OneWay}" Message="{x:Bind ViewModel.Notice.Message, Mode=OneWay}" AutomationProperties.AutomationId="TransactionNotice"/>
   <InfoBar Grid.Row="1" Title="当前书架为只读" Severity="Warning" IsClosable="False" IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}" Message="{x:Bind ViewModel.CapabilityMessage, Mode=OneWay}" AutomationProperties.AutomationId="ReadOnlyNotice"/>

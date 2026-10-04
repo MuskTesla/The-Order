@@ -28,9 +28,10 @@ public sealed partial class MainWindow : Window
     private Task? initialization;
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, SyntheticScenario? scenario = null)
+    private readonly SyntheticOnline? onlineFixture;
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
-        this.scenario = scenario; this.online = online;
+        this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture;
         this.files = files; this.images = images;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
@@ -165,6 +166,7 @@ public sealed partial class MainWindow : Window
             installationDraft = files.Draft is not null, imageMetrics = images.Metrics,
             localCoverCount = ViewModel.Items.Count(i => i.HasLocalCover),
             onlineState = online.SearchState.ToString(), onlineCount = online.Items.Count, onlineDetails = online.DetailState.ToString(), onlineWorkId = online.Details?.Id, onlineHasCover = online.DetailCoverKey is not null, onlineConnection = online.ConnectionState.ToString(),
+            onlineAuthGeneration = online.AuthGeneration, onlineCredentialPresent = online.HasCredential, syntheticDetailRequests = onlineFixture?.DetailRequests,
             onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim())))
         };
         RuntimeState.Text = "THE_ORDER_RUNTIME " + JsonSerializer.Serialize(snapshot);

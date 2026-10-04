@@ -7,10 +7,12 @@ namespace TheOrder.WinUI.Startup;
 
 // Explicit DIAGNOSTICS + ONLINE_FIXTURE opt-in only. The normal client never installs this handler.
 // Exercises the real transport/parser/VM/image decoder against synthetic HTTP responses, without networking.
-internal sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, ICredentialSettings
+public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, ICredentialSettings
 {
     public HttpClient Client { get; }
-    public SyntheticOnline() { Client = new(this, false) { Timeout = Timeout.InfiniteTimeSpan }; }
+    private readonly bool slowConnection;
+    public int DetailRequests { get; private set; }
+    public SyntheticOnline(bool slowConnection = false) { this.slowConnection = slowConnection; Client = new(this, false) { Timeout = Timeout.InfiniteTimeSpan }; }
     protected override void Dispose(bool disposing) { if (disposing) Client.Dispose(); base.Dispose(disposing); }
     private bool saved = true;
     public Task<string?> ReadAsync(CancellationToken cancellation) => Task.FromResult<string?>(saved ? "synthetic-only" : null);
@@ -34,12 +36,15 @@ internal sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider,
         if (q is "slow" or "A") await Task.Delay(40000, cancellation);
         if (uri.AbsolutePath.EndsWith("/search", StringComparison.Ordinal))
         {
-            string[] ids = q == "empty" ? [] : q == "invalid-cover" ? ["99"] : query.ContainsKey("cursor") ? ["2", "3"] : ["1", "2"];
+            string[] ids = q == "empty" ? [] : q == "invalid-cover" ? ["99"] : q == "mismatched-detail" ? ["86"] : q == "slow-detail" ? ["87"] : query.ContainsKey("cursor") ? ["2", "3"] : ["1", "2"];
             return Json(new { @object = "list", items = ids.Select(id => new { @object = "search_result", target_object = "work", id }), next_cursor = query.ContainsKey("cursor") || q is "empty" or "invalid-cover" ? null : "cur_page2" });
         }
         if (query.TryGetValue("ids", out var joined)) return Json(new { @object = "list", items = joined.Split(',').Reverse().Select(Work) });
-        if (query.ContainsKey("limit")) return Json(new { @object = "list", items = Array.Empty<object>() });
-        return Json(Work(uri.Segments.Last()));
+        if (query.ContainsKey("limit")) { if (slowConnection) await Task.Delay(40000, cancellation); return Json(new { @object = "list", items = Array.Empty<object>() }); }
+        DetailRequests++;
+        var id = uri.Segments.Last();
+        if (id == "87") await Task.Delay(40000, cancellation);
+        return Json(Work(id == "86" ? "90" : id));
     }
     private static object Work(string id) => new { @object = "work", id, display_name = "合成在线作品 " + id, cover = new { url = "https://images.example/" + (id == "99" ? "invalid" : "cover") + ".png" },
         intros = new[] { new { lang = "zh-Hans", value = "这是隔离验收使用的虚构作品。资料按需加载；加入愿望单后可离线查看与编辑。" } }, companies = new[] { new { attribution_role = "developer", display_name = "Synthetic Studio" } } };

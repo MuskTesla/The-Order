@@ -9,7 +9,8 @@ namespace TheOrder.Infrastructure.Online;
 public sealed class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IOnlineCatalog
 {
     private readonly object gate = new();
-    private readonly Dictionary<string, (WorkMetadata Work, DateTimeOffset Until, int Bytes)> cache = [];
+    private sealed record CachedDetail(WorkMetadata Work, DateTimeOffset Until, int Bytes, long AuthGeneration);
+    private readonly Dictionary<string, CachedDetail> cache = [];
     private long cacheGeneration;
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public void ClearCache() { lock (gate) { cache.Clear(); cacheGeneration++; } }
@@ -35,15 +36,26 @@ public sealed class NextMoeCatalog(CatalogTransport transport, bool includeExpli
             using var batch = await transport.GetAsync("catalog/works", p, scope).ConfigureAwait(false);
             RequireList(batch.RootElement); var works = new Dictionary<string, WorkMetadata>();
             foreach (var dto in Rows(batch.RootElement, "items")) if (ids.Contains(Text(dto, "id"))) { var work = new RemoteWorkDto(dto).Map(includeExplicit, Now); works[work.Id] = work; }
+            scope.Checkpoint(OnlineAcceptanceStage.Mapped);
             return new([.. ids.Where(works.ContainsKey).Select(id => works[id])], next.Length == 0 ? null : next);
         }, cancellation);
     }
     public Task<WorkMetadata> DetailsAsync(string id, bool refresh, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested(); if (!ValidId(id)) throw new OnlineException(OnlineFailure.InvalidRequest);
-        long generation; lock (gate) { if (!refresh && cache.TryGetValue(id, out var hit) && hit.Until > Now) return Task.FromResult(hit.Work); generation = ++cacheGeneration; }
         return transport.Operation(async scope =>
         {
+            long generation = 0;
+            var cached = transport.ReadCurrent<WorkMetadata?>(scope, () =>
+            {
+                lock (gate)
+                {
+                    if (!refresh && cache.TryGetValue(id, out var hit) && hit.Until > Now && hit.AuthGeneration == scope.Auth.Generation) return hit.Work;
+                    generation = ++cacheGeneration;
+                    return null;
+                }
+            });
+            if (cached is not null) return cached;
             var visited = new HashSet<string>(); var current = id;
             for (int merge = 0; merge <= 3; merge++)
             {
@@ -53,18 +65,27 @@ public sealed class NextMoeCatalog(CatalogTransport transport, bool includeExpli
                     var p = Parameters(); p["include"] = "titles,refs,links,intros,covers,companies,ratings,tags,characters";
                     using var body = await transport.GetAsync("catalog/works/" + current, p, scope).ConfigureAwait(false);
                     var work = new RemoteWorkDto(body.RootElement).Map(includeExplicit, Now);
+                    if (!string.Equals(work.Id, current, StringComparison.Ordinal)) throw new OnlineException(OnlineFailure.InvalidResponse);
+                    scope.Checkpoint(OnlineAcceptanceStage.Mapped);
                     int bytes = System.Text.Encoding.UTF8.GetByteCount(body.RootElement.GetRawText());
-                    lock (gate)
+                    scope.DeferCache(() =>
                     {
-                        if (generation == cacheGeneration)
+                        lock (gate)
                         {
-                            // Simple TTL cache, 32 entries / 8 MiB of source JSON. Search cards never masquerade as full details.
-                            cache.Remove(id);
-                            while (cache.Count >= 32 || cache.Values.Sum(v => (long)v.Bytes) + bytes > CatalogTransport.MaximumBytes)
-                            { if (cache.Count == 0) break; cache.Remove(cache.OrderBy(k => k.Value.Until).First().Key); }
-                            if (bytes <= CatalogTransport.MaximumBytes) cache[id] = (work, Now.AddMinutes(5), bytes);
+                            scope.Check();
+                            if (generation == cacheGeneration)
+                            {
+                                // Simple TTL cache, 32 entries / 8 MiB of source JSON. Search cards never masquerade as full details.
+                                cache.Remove(id, out var previous);
+                                while (cache.Count >= 32 || cache.Values.Sum(v => (long)v.Bytes) + bytes > CatalogTransport.MaximumBytes)
+                                { if (cache.Count == 0) break; cache.Remove(cache.OrderBy(k => k.Value.Until).First().Key); }
+                                var accepted = new CachedDetail(work, Now.AddMinutes(5), bytes, scope.Auth.Generation);
+                                if (bytes <= CatalogTransport.MaximumBytes) cache[id] = accepted;
+                                return () => { lock (gate) { if (cache.TryGetValue(id, out var entry) && ReferenceEquals(entry, accepted)) { cache.Remove(id); if (previous is not null) cache[id] = previous; } } };
+                            }
+                            return null;
                         }
-                    }
+                    });
                     return work;
                 }
                 catch (MergedWorkException merged) { current = merged.CanonicalId; }

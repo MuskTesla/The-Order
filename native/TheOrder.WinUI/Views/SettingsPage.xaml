@@ -12,6 +12,6 @@
   <TextBlock Text="{x:Bind ViewModel.DataDirectory}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="DataDirectory"/>
   <TextBlock Text="仅使用带合成标记的指定开发目录。书架修改通过完整事务保存；外观、排序和常用筛选保存在独立的 native-ui.json。不会读取正式书架或旧密钥。" Style="{StaticResource SecondaryTextStyle}"/>
   <TextBlock Text="浏览器 localStorage 偏好迁移尚未接入。当前临时搜索条件不会自动成为常用筛选。" Style="{StaticResource SecondaryTextStyle}"/>
-  <TextBlock Text="The Order · 原生候选 · Phase 4A" Style="{StaticResource SecondaryTextStyle}"/>
+  <TextBlock Text="The Order · 原生候选 · Phase 4A.1" Style="{StaticResource SecondaryTextStyle}"/>
  </StackPanel></ScrollViewer>
 </Page>

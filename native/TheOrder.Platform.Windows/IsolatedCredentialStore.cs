@@ -9,21 +9,24 @@ namespace TheOrder.Platform.Windows;
 public sealed class IsolatedCredentialStore(NativeConfiguration configuration) : ICredentialSettings, ICredentialProvider
 {
     private readonly SemaphoreSlim queue = new(1, 1);
-    public Task<bool> HasCredentialAsync(CancellationToken cancellation) => Run(root =>
-    {
-        try { using var stream = IsolatedLibrarySource.OpenChecked(Path.Combine(root, "native-online-key.dpapi")); return stream.Length is > 0 and <= 16384; }
-        catch (FileNotFoundException) { return false; }
-    }, cancellation);
+    public async Task<bool> HasCredentialAsync(CancellationToken cancellation) => await ReadAsync(cancellation).ConfigureAwait(false) is not null;
     public Task<string?> ReadAsync(CancellationToken cancellation) => Run<string?>(root =>
     {
         try
         {
             using var input = IsolatedLibrarySource.OpenChecked(Path.Combine(root, "native-online-key.dpapi"));
-            if (input.Length is <= 0 or > 16384) throw new OnlineException(OnlineFailure.CredentialStorage);
+            if (input.Length is <= 0 or > 16384) throw new OnlineException(OnlineFailure.CredentialStorageCorrupt);
             var encrypted = new byte[(int)input.Length]; input.ReadExactly(encrypted); var plain = Protect(encrypted, false);
-            try { return Encoding.UTF8.GetString(plain); } finally { CryptographicOperations.ZeroMemory(plain); }
+            try
+            {
+                var secret = new UTF8Encoding(false, true).GetString(plain);
+                if (secret.Length is < 1 or > 4096 || secret.Any(c => c < 0x21 || c > 0x7e)) throw new OnlineException(OnlineFailure.CredentialStorageCorrupt);
+                return secret;
+            }
+            finally { CryptographicOperations.ZeroMemory(plain); }
         }
         catch (FileNotFoundException) { return null; }
+        catch (Exception e) when (e is CryptographicException or DecoderFallbackException) { throw new OnlineException(OnlineFailure.CredentialStorageCorrupt); }
     }, cancellation);
     public Task SaveAsync(string secret, CancellationToken cancellation)
     {

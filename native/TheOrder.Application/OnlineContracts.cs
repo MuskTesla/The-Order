@@ -3,7 +3,7 @@ using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-public enum OnlineFailure { NoCredential, InvalidCredential, Unauthorized, Forbidden, NotFound, RateLimited, Server, Offline, Timeout, InvalidResponse, ResponseTooLarge, InvalidRequest, RedirectBlocked, MergeLoop, MergeLimit, CredentialStorage }
+public enum OnlineFailure { NoCredential, InvalidCredential, Unauthorized, Forbidden, NotFound, RateLimited, Server, Offline, Timeout, InvalidResponse, ResponseTooLarge, InvalidRequest, RedirectBlocked, MergeLoop, MergeLimit, CredentialStorage, CredentialStorageCorrupt }
 public sealed class OnlineException(OnlineFailure failure, TimeSpan? retryAfter = null) : Exception(MessageFor(failure))
 {
     public OnlineFailure Failure { get; } = failure;
@@ -24,6 +24,7 @@ public sealed class OnlineException(OnlineFailure failure, TimeSpan? retryAfter 
         OnlineFailure.RedirectBlocked => "服务返回了不允许的跳转，已停止请求。",
         OnlineFailure.MergeLoop or OnlineFailure.MergeLimit => "作品合并信息异常，已停止跟随，请稍后重试。",
         OnlineFailure.CredentialStorage => "隔离凭据无法读取或保存，请检查目录和 Windows 账户保护。",
+        OnlineFailure.CredentialStorageCorrupt => "凭据存储损坏或无法由当前 Windows 账户解密。原文件已保留，请重新保存或明确移除。",
         _ => "服务返回了不完整或无效的数据。"
     };
 }

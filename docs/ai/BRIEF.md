@@ -1,6 +1,19 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 4A：Online Data / API / Remote Assets（本机验收完成）
+## WinUI Phase 4A.1：Online Result Acceptance Remediation（整改自检完成）
+
+- 起点 `f737bf7c4174cdabe66d25ffa60629d939ca69dd`，保持 `codex/winui-phase4`。Phase4A Gate 为 NO-GO；本节 supersede 下方历史阶段关于 credential lifecycle、detail identity 和结果接纳完整性的判断。仅修 M1–M3、corrupt-vs-missing 和 DNS callback 测试覆盖，无 Phase4B、正式数据/凭据操作或识别功能。
+- M1：`AuthenticatedCredentials` 按调用次序执行 save/clear，每次用户意图立即推进共享进程内 auth epoch 并取消旧上下文；请求等待已排队 credential mutation 完成。失败的旧保存不丢弃新保存。Presentation 分离连接测试和凭据操作；旧测试即使忽略取消后完成也不能覆盖新状态。PasswordBox 仅在当前保存成功且输入未再变化时清空，失败保留输入，删除失败不宣称已移除。
+- auth generation 由 composition root 的共享 adapter 提供；connection/search/details/cache 均通过 transport 捕获、取消和接纳检查，不要求每个 caller 手动 ClearCache。详情缓存带 epoch；匿名图片不无意义清空，秘密或其 hash 不作为认证缓存身份。Phase4B 新调用者必须复用该 adapter/transport，并保留自身用户意图和事务 token 检查。
+- M2：最终 `work.Id == current`，`current` 仅由合法 ENTITY_MERGED 修改。直接86→work90及多跳终点不符拒绝为 InvalidResponse，无错误缓存、alias 或库写入；这是对 Electron 盲点的明确加强，不退化为旧行为。合法3跳/防环保留。
+- M3：EOF、parse、map、cache admission、final return 检查取消/45秒预算；统一最终接纳在 auth 锁中完成，失败回滚本次 provisional cache entry；缓存读取也使用该锁，不暴露尚未最终接纳的条目。保留 DTO/identity、cache generation、auth generation 检查、8MiB/严格UTF-8/最多2次重试。
+- credential 只有文件不存在表示缺失；空、超大、坏DPAPI或坏格式为 CredentialStorageCorrupt，检查不自动删除/覆盖。当前仍为 **raw DPAPI blob，无应用层版本 envelope**；Phase6/migration 前评估 versioned envelope + legacy raw-DPAPI compatibility。图片生产 DNS/IP/无代理/无自动跳转策略不变，仅增加 resolver/connector seam，测试真正穿过 HttpClient 的生产 ConnectCallback，不连接内网。
+- 最终 locked restore 成功；Debug/Release build 各 **0 warnings / 0 errors**；完整 C# 各 **609/0/0**，新增52项 OnlineAcceptance 回归。原102 transaction differential、13 filesystem/cover differential、32 online differential、14 fault injection 全通过。Artifact **24/0/0**；Electron 完整 **665/0/0**（含 relevant），build/import 通过：37新增、重复0新增/37跳过，个人字段/重启/游戏文件保留，renderer errors0。Release publish 成功。
+- 真WinUI使用合成 HTTP + **实际隔离 DPAPI store**，验证损坏提示、保存失败保留输入、慢连接时删除/替换、超过旧响应窗口仍不回退、错误ID、取消后重新发HTTP、正常搜索2→分页3/详情/合成远程封面、愿望单3→4且重复仍4、活动请求关闭exit0。EOF精确取消、deadline、失败clear及不合作迟到回调由生产路径/Presentation确定性回归证明，不冒充真实服务桌面测试。
+- `.artifacts/native-phase4a1/` 保存 ignored 证据：**19组 JPEG/UI tree/manifest**，requested/runtime、tree、文件长度及SHA-256一致，19个不同截图hash。初批11场景在 `publish`，最终8场景在 `publish-final/win-x64`；最终复核clear、正常流程、错误ID、取消/重新请求与关闭。最终 WinUI MVID `4f81d976-2eb5-43be-8ec1-67ed3d5c6d87`；两批各层hash及范围在 `build-bundles.json`，不能声称全部截图来自最终包。旧4A的26组为历史功能证据，不证明本轮整改；旧3A作废证据仍作废。
+- **PASS FOR PHASE 4B（Phase4A.1整改自检）**，不是Phase4B实施授权。真实API：**SKIPPED — no safe development credential**；真实API/CDN/代理/WebP兼容、长时间故障压力、干净机安装仍属后续Gate。Phase3的UNC/generic reparse/10k unique images和正式库写入前workingDirectory降级门禁仍保留。完成checkpoint后暂停。详细位置、回归与证据见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
+## WinUI Phase 4A：Online Data / API / Remote Assets（历史本机验收；后续 Gate 与整改见上）
 
 - 从可信 Phase 3B.1 `9ae2199aba6aedbb8e8012ab38e4a3ec8eb1a1a2` 新建 `codex/winui-phase4`。本节为当前实现；下方历史阶段的“无 Phase 4 / 远程图片尚不下载”不再描述当前候选。没有进入 Phase 4B、读取正式资料或真实 credential、扫描或执行真实游戏。
 - 已实际审计 `electron/nextmoe.ts`、settings、library 与 Vue 在线入口，并以当前 Electron 生成32个在线 oracle。Application 定义在线/credential/cover 接口；Infrastructure 分离 transport、DTO mapping、catalog/cache、remote source；Platform.Windows 提供隔离 DPAPI；Presentation 管理请求 generation/取消/显式状态；WinUI 只负责输入和展示。保留事务、filesystem、图片管线和七项目依赖方向，无依赖升级。

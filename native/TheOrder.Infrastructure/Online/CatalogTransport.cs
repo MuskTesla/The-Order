@@ -7,28 +7,62 @@ using TheOrder.Application;
 namespace TheOrder.Infrastructure.Online;
 
 public sealed record NetworkEvent(string Method, string Host, int? Status, long ElapsedMs, int RetryCount, Guid RequestId);
+internal enum OnlineAcceptanceStage { BodyComplete, Parsed, Mapped, BeforeCache, AfterCache, BeforeReturn }
 public sealed class RequestBudget : IDisposable
 {
     private readonly CancellationTokenSource timeout;
     private readonly CancellationTokenSource linked;
     private readonly Stopwatch elapsed = Stopwatch.StartNew();
     private readonly TimeSpan duration;
+    private CancellationTokenRegistration authCancellation;
+    internal OnlineAuthSnapshot Auth { get; private set; }
+    internal bool HasAuth { get; private set; }
+    internal Action<OnlineAcceptanceStage>? Probe { get; set; }
+    internal Func<TimeSpan>? Elapsed { get; set; }
+    private Func<Action?>? admission;
     public CancellationToken Token => linked.Token;
-    public TimeSpan Remaining => duration - elapsed.Elapsed;
+    public TimeSpan Remaining => duration - (Elapsed?.Invoke() ?? elapsed.Elapsed);
     public int Retries { get; set; }
     public RequestBudget(TimeSpan duration, CancellationToken cancellation)
     { this.duration = duration; timeout = new(duration); linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token); }
-    public void Dispose() { linked.Dispose(); timeout.Dispose(); }
+    internal void Attach(OnlineAuthSnapshot auth) { Auth = auth; HasAuth = true; authCancellation = auth.Changed.Register(() => linked.Cancel()); }
+    public void Check() { Token.ThrowIfCancellationRequested(); if (Remaining <= TimeSpan.Zero) throw new OnlineException(OnlineFailure.Timeout); }
+    internal void Checkpoint(OnlineAcceptanceStage stage) { Probe?.Invoke(stage); Check(); }
+    internal void DeferCache(Func<Action?> commit) => admission = commit;
+    internal T Complete<T>(T value)
+    {
+        Action? rollback = null;
+        try
+        {
+            Checkpoint(OnlineAcceptanceStage.BeforeCache);
+            rollback = admission?.Invoke();
+            Checkpoint(OnlineAcceptanceStage.AfterCache);
+            Checkpoint(OnlineAcceptanceStage.BeforeReturn);
+            return value;
+        }
+        catch { rollback?.Invoke(); throw; }
+    }
+    public void Dispose() { authCancellation.Dispose(); linked.Dispose(); timeout.Dispose(); }
 }
 public sealed class CatalogTransport(HttpClient client, ICredentialProvider credentials, Uri endpoint, Action<NetworkEvent>? log = null,
     TimeSpan? timeout = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
 {
     public const int MaximumBytes = 8 * 1024 * 1024;
+    private readonly OnlineAuthContext auth = (credentials as IOnlineAuthContextSource)?.AuthContext ?? new();
+    internal Action<OnlineAcceptanceStage>? AcceptanceProbe { get; set; }
+    internal Func<TimeSpan>? OperationElapsed { get; set; }
+    // Cache reads use the same auth lock as admission/rollback, so provisional entries cannot escape.
+    internal T ReadCurrent<T>(RequestBudget budget, Func<T> read) => auth.Accept(budget.Auth, () => { budget.Check(); return read(); });
     public async Task<T> Operation<T>(Func<RequestBudget, Task<T>> action, CancellationToken cancellation)
     {
-        using var budget = new RequestBudget(timeout ?? TimeSpan.FromSeconds(45), cancellation);
-        try { return await action(budget).ConfigureAwait(false); }
-        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested) { throw new OnlineException(OnlineFailure.Timeout); }
+        using var budget = new RequestBudget(timeout ?? TimeSpan.FromSeconds(45), cancellation) { Probe = AcceptanceProbe, Elapsed = OperationElapsed };
+        try
+        {
+            budget.Attach(await auth.CaptureAsync(budget.Token).ConfigureAwait(false));
+            var value = await action(budget).ConfigureAwait(false);
+            return auth.Accept(budget.Auth, () => budget.Complete(value));
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && (!budget.HasAuth || !budget.Auth.Changed.IsCancellationRequested && budget.Auth.Generation == auth.Generation)) { throw new OnlineException(OnlineFailure.Timeout); }
     }
     public async Task<JsonDocument> GetAsync(string path, IReadOnlyDictionary<string, string> query, RequestBudget budget)
     {
@@ -38,7 +72,7 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
         var uri = new Uri(endpoint, path + "?" + string.Join("&", query.Select(k => Uri.EscapeDataString(k.Key) + "=" + Uri.EscapeDataString(k.Value))));
         while (true)
         {
-            budget.Token.ThrowIfCancellationRequested();
+            budget.Check();
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
             request.Headers.Accept.Add(new("application/json"));
@@ -55,8 +89,10 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
                 if (response.IsSuccessStatusCode || type.Equals("application/json", StringComparison.OrdinalIgnoreCase) || type.EndsWith("+json", StringComparison.OrdinalIgnoreCase))
                 {
                     var bytes = await ReadBoundedAsync(response.Content, MaximumBytes, budget.Token).ConfigureAwait(false);
+                    budget.Checkpoint(OnlineAcceptanceStage.BodyComplete);
                     try { _ = new System.Text.UTF8Encoding(false, true).GetCharCount(bytes); body = JsonDocument.Parse(bytes); }
                     catch (Exception e) when (e is JsonException or System.Text.DecoderFallbackException) { throw new OnlineException(OnlineFailure.InvalidResponse); }
+                    try { budget.Checkpoint(OnlineAcceptanceStage.Parsed); } catch { body.Dispose(); throw; }
                 }
                 if (response.IsSuccessStatusCode) return body ?? throw new OnlineException(OnlineFailure.InvalidResponse);
                 using (body)
@@ -96,6 +132,7 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
             while (true)
             {
                 int count = await input.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, maximum + 1 - (int)output.Length)), cancellation).ConfigureAwait(false);
+                cancellation.ThrowIfCancellationRequested();
                 if (count == 0) return output.ToArray();
                 if (output.Length + count > maximum) throw new OnlineException(OnlineFailure.ResponseTooLarge);
                 output.Write(buffer, 0, count);

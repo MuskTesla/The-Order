@@ -28,15 +28,17 @@ internal static class Composition
         services.AddSingleton<OfflineFilesClient>();
         services.AddSingleton<LocalCoverSources>();
         services.AddSingleton<IsolatedCredentialStore>();
-        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<IsolatedCredentialStore>());
-        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<IsolatedCredentialStore>());
         var fixtureOnline = nativeConfiguration.Diagnostics && configuration["ONLINE_FIXTURE"] == "1";
         if (fixtureOnline)
         {
-            services.AddSingleton<SyntheticOnline>();
-            services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<SyntheticOnline>());
-            services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<SyntheticOnline>());
+            services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1"));
         }
+        var fixtureCredentials = fixtureOnline && configuration["ONLINE_REAL_STORE"] != "1";
+        services.AddSingleton(p => new AuthenticatedCredentials(
+            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>(),
+            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>()));
+        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<AuthenticatedCredentials>());
+        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<AuthenticatedCredentials>());
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
         services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));

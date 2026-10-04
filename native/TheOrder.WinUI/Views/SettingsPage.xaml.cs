@@ -17,7 +17,11 @@ public sealed partial class SettingsPage : Page
         Loaded += (_, _) => { ViewModel.PropertyChanged += OnState; Synchronize(); };
         Unloaded += (_, _) => ViewModel.PropertyChanged -= OnState;
     }
-    private async void OnSaveCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { var secret = ApiCredential.Password; ApiCredential.Password = ""; await Online.SaveCredentialAsync(secret); }
+    private async void OnSaveCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        var secret = ApiCredential.Password;
+        if (await Online.SaveCredentialAsync(secret) && ApiCredential.Password == secret) ApiCredential.Password = "";
+    }
     private async void OnClearCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { ApiCredential.Password = ""; await Online.ClearCredentialAsync(); }
     private async void OnTestConnection(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await Online.TestConnectionAsync();
     private void OnState(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName is nameof(ViewModel.Theme) or nameof(ViewModel.Layout)) Synchronize(); }

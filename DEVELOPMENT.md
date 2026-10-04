@@ -1,6 +1,68 @@
 # 开发与维护
 
-## WinUI Phase 4A：Online Data / API / Remote Assets（本机验收完成）
+## WinUI Phase 4A.1：Online Result Acceptance Remediation（2026-10-05）
+
+基线 `f737bf7c4174cdabe66d25ffa60629d939ca69dd`，保持 `codex/winui-phase4`。本节 supersede 下方 Phase4A 的结果接纳及凭据操作完成判断；原 Gate 为 NO-GO、无 BLOCKER，原有分层保留。没有 Phase4B、识别/匹配/review queue、正式资料/凭据、真实游戏操作、依赖升级或正式程序替换。以下为整改自检证据，不把确定性测试说成真实API兼容保证。
+
+### Gate 自检：生产位置、回归与结果
+
+所有新增回归位于 `native/TheOrder.Tests/OnlineAcceptanceTests.cs`，最终 Debug/Release 各52条全部通过。
+
+| 项目 | 生产位置 / 契约 | 回归与实际结果 |
+| --- | --- | --- |
+| M1 fixed | `Application/OnlineAuthContext.cs` 的 AuthenticatedCredentials 排队并立即作废旧auth；`Presentation/OnlineViewModel.cs` 的 CredentialMutation/TestConnectionAsync 分离，`WinUI/Views/SettingsPage.xaml.cs` 成功后才清当前输入 | CredentialIntentSupersedesUncooperativeConnectionTest、FailedCredentialMutationDoesNotClaimSuccess、CredentialWritesKeepInvocationOrderAndLatestIntent、FailedQueuedIntentDoesNotDropNewerSave；save/clear均真正执行，SaveA→B、Clear→Save最终为新值，失败不误报。真UI慢连接期间删除/替换成功，失败保存输入仍在 |
+| Auth generation centralized | composition root 同时向 ICredentialProvider/ICredentialSettings 注入同一 AuthenticatedCredentials；transport 每operation CaptureAsync/Accept，details缓存带epoch；VM检查用户请求generation及auth generation | AuthEpochInvalidatesCachedDetailsWithoutCallerClearCache、AuthChangeRejectsOldProductionResult、OldSearchSuccessOrUnauthorizedCannotReplaceNewAuthenticatedSearch；旧连接/搜索/详情和401均不能覆盖新上下文，无需调用者主动清缓存 |
+| M2 fixed | `Infrastructure/Online/NextMoeCatalog.cs` 在Map后严格比较work.Id和已验证merge链current，失败不DeferCache | OnlyValidatedMergeChainCanChangeIdentity六例含直接错配、多跳正确/错误、重复HTTP计数；WrongDetailIdentityCannotMutateWishlistOrRefresh实际生产OnlineLibraryClient/事务路径保持库文件字节不变，拒绝在CommitLinkAsync之前；真UI86→work90显示无效数据且Details为空 |
+| M3 fixed | `CatalogTransport.cs` ReadBoundedAsync在EOF也检查取消；RequestBudget的BodyComplete/Parsed/Mapped/BeforeCache/AfterCache/BeforeReturn gates；Operation在auth锁中完成最终接纳；NextMoeCatalog延迟提交缓存并可回滚，ReadCurrent保护并发读 | EofCancellationRejectsResultAndDoesNotFillCache、CancelledAcceptanceStageNeverLeavesReusableCache、OverallDeadlineIncludesMappingAndFinalReturn、RetryBoundaryCancellationDoesNotIssueAnotherRequest、CancellationAfterMappingDoesNotPublishDetails、CancelledPaginationNeverAppendsResults、AuthChangeAtAcceptanceRejectsAndRollsBackOldCache、CacheReadersCannotObserveProvisionalAdmission；取消/过期后新请求真实走HTTP，无分页追加或provisional cache泄露 |
+| Corrupt-vs-missing fixed | `Platform.Windows/IsolatedCredentialStore.cs` HasCredentialAsync复用ReadAsync验证；`Application/OnlineContracts.cs` CredentialStorageCorrupt；VM映射CredentialCorrupt | CredentialStatusAndReadAgreeAndNeverOverwriteCorruption七例：missing/empty/oversized/random/tampered/invalid-plaintext/valid；真实DPAPI与原文件字节保留；CorruptCredentialStatusHasIndependentPresentationState及真UI损坏提示通过 |
+| DNS callback tested | `Infrastructure/Online/RemoteCoverSource.cs` CreateHandler注入resolver/connector，CreateClient仍使用系统DNS和原ConnectSocket；检查所有地址公开后直接把同一地址数组传给connector | ProductionHttpHandlerUsesOnlyOnceResolvedValidatedAddresses从HttpClient.SendAsync穿过真实ConnectCallback：public允许、private/mixed/IPv4-mapped private拒绝且connector0次、rebinding仅解析一次；ImageRedirectToPrivateIsNotFollowedOrAuthenticated证明不跟随/不带auth或cookie。synthetic connector在socket/TLS之前终止，无内网访问 |
+
+凭据意图优先于连接测试，调用即推进进程内epoch，串行完成各个显式save/clear；排队期间新请求等到凭据稳定，不读取中间值。失败旧意图不吞掉后续意图。epoch只代表进程内上下文，既不持久化也不是secret或credential hash。已有可复用详情只在epoch一致时命中；旧epoch条目可留在有界缓存中等待替换/淘汰但不可复用。匿名图片缓存与auth无关，不为形式统一清空。新Phase4B caller必须复用共享adapter/transport，并继续执行自己的请求时效和本地事务token检查；本轮没有实现该阶段。
+
+结果接纳覆盖完整body→parse→map/identity→cache→return。默认45秒仍包括排队、网络、重试及CPU映射，max retry2、8MiB、严格UTF-8、merge最多3跳/防环不变；测试以受控elapsed 44.9→45.1秒验证后半段deadline。缓存写入与最终检查失败回滚位于同一auth锁，cache读取也在该锁内，不让并发读取得临时写入；取消可以淘汰无关的可丢缓存项，但不会把取消结果作为缓存留下。成功的最终acceptance之后才发生的取消不追溯撤销已完成请求。旧Electron未检查最终identity，这里是有意加强，32个既有online oracle并未为了兼容而豁免本规则。
+
+凭据仍保存为 **raw DPAPI blob，尚无应用层format/version envelope**。仅文件不存在是NoCredential；无效长度、解密或格式失败是CredentialStorageCorrupt，自动检查保留原文件；只有用户明确保存/移除才覆盖/删除。Phase6/migration前评估versioned envelope与legacy raw-DPAPI兼容。PasswordBox仅在保存成功、该意图仍最新且输入未被再次编辑时清空，不能把旧文档的“保存立即清空输入”理解为当前行为。
+
+### 实际回归
+
+| 验证 | 最终结果 / ignored证据 |
+| --- | --- |
+| locked restore | 成功，`restore.log`；无依赖变化 |
+| Debug / Release solution build | 各0 warnings / 0 errors，`debug-build-final.log` / `release-build-final.log` |
+| 完整C# | 各609 passed / 0 failed / 0 skipped，`tests/debug-final.trx` / `tests/release-final.trx`，557+52 |
+| 差分 / fault | 原transaction102（TRX类合计103含freshness）、filesystem/cover13、online32、fault injection14，两个配置均通过 |
+| Artifact tests | 24/0/0，`artifact-tests.log`，保留错配拒绝、fresh snapshot、禁止覆盖旧场景 |
+| Electron | 完整665/0/0，`electron-full-unit.log`；早期relevant192也通过，不用缩小集合代替完整回归 |
+| Electron build / import | `electron-build.log` / `electron-import.log`：37新增、重复0新增/37跳过，个人字段/重启/游戏文件保留，renderer errors0 |
+| Release publish | `publish-final/win-x64`成功，`publish-final.log`；实际启动及请求活动期间正常关闭exit0 |
+| 真实API | **SKIPPED — no safe development credential**；未读取正式Electron凭据来补验收 |
+
+以上位于 `.artifacts/native-phase4a1/`。最终测试和发布之后只更新原交接文档及ignored证据，不再改产品源码。`artifact-sanity.json`逐场景核对，`build-bundles.json`保存两批所有TheOrder DLL/EXE hash；`validation.json`保存最终测试计数与日志hash，`checkpoint-receipt.json`将证据绑定到新checkpoint。程序集InformationalVersion仍为构建前基线 `1.0.0+f737bf7c4174cdabe66d25ffa60629d939ca69dd`，不是新checkpoint SHA；必须结合实际包路径、MVID、各层hash和源码清单核对。
+
+### 真实WinUI synthetic-network smoke与证据范围
+
+使用 `.artifacts/native-phase4a1/ui-profile` 的已标记隔离3条库。显式设置 `THE_ORDER_NATIVE_DATA_DIR`、`THE_ORDER_NATIVE_DIAGNOSTICS=1`、`THE_ORDER_NATIVE_ONLINE_FIXTURE=1`、`THE_ORDER_NATIVE_ONLINE_REAL_STORE=1`、`THE_ORDER_NATIVE_ONLINE_SLOW_CONNECTION=1`。REAL_STORE仅指实际 **隔离DPAPI store**，不访问正式凭据；所有输入为合成token。HTTP由SyntheticOnline生成，生产transport/parser/catalog/VM/事务/图片解码仍执行；slow connection/detail为40秒且响应取消。正常装配不启用这些seam。结束后不保留进程环境覆盖、不替换正式应用。
+
+| 真实观察 | 新Artifact ID |
+| --- | --- |
+| 空凭据文件显示损坏并保留；失败保存PasswordBox仍有输入 | `credential-corrupt`、`save-failure-input-retained` |
+| 慢连接→删除：Loading/credential present→Idle/absent，实际隔离文件已移除 | `connection-active-before-clear`、`credential-removed-during-test`；最终包复验 `final-connection-active`、`final-credential-removed` |
+| 慢连接→替换：新值成功保存、输入清空、auth epoch递增；超过旧响应窗口仍Idle | `connection-active-before-replace`、`credential-replaced-during-test`、`replacement-after-old-deadline` |
+| 86返回work90被拒绝，无详情/库变化；初批再次点击确实增加请求计数 | `invalid-detail-identity`；最终包 `final-invalid-detail` |
+| 慢详情→取消→再次普通点击（非refresh）重新发HTTP，计数5→6 | `detail-active-before-cancel`、`detail-cancelled`、`cancelled-detail-reissues-http`；最终包 `final-detail-before-cancel`、`final-detail-cancelled`、`final-reissued-request-before-close` |
+| 搜索2项→分页去重3项/下一页disabled；canonical1详情与合成远程渐变封面 | `final-normal-pagination-details` |
+| 显式愿望单加入：3→4，重复加入仍4，Committed/refresh Success | `final-wishlist-deduplicated` |
+| 请求Loading时关闭，PID21428 exit0 | `final-reissued-request-before-close` + `final-ui-exit.json`；16:02:43.885Z发出关闭、16:02:44.327Z退出，约0.44秒，仅本机观察非SLA |
+
+共 **19份manifest / 19份UI tree / 19张JPEG**，requested==actual、tree/runtime、文件长度/hash全部通过，19个不同截图SHA-256；逐次观察真实候选窗口，并重新打开关键落盘截图检查损坏/失败保留/删除/替换。初批 `publish` 为11场景，WinUI MVID `f41b84a0-0a95-4a5c-8553-e0febc16a37f`；随后收紧cache并发读取与mutation入口可见性并追加4项回归，最终 `publish-final` 为8场景，MVID `4f81d976-2eb5-43be-8ec1-67ed3d5c6d87`，Infrastructure SHA-256 `10e05d04ebed9a3c9af2199450faaa075c57a304bff93212e929682e7011be82`。不能只凭一个assembly的MVID认定全部层相同，也不能把初批证据标成最终包采集。
+
+UI计数器是合成handler的累计详情分支计数，初始值含旧合成库图片fallback请求；只用同进程、图片完成后的5→6增量证明重发，不把绝对初值当作纯用户点击数。精确EOF/CPU映射deadline、失败clear和不合作迟到回调由确定性生产路径/VM回归证明；真实桌面验证的是可取消延迟HTTP，不能声称通过点击精确命中EOF。首批退出未留exit code；exit0证据仅归最终进程。
+
+旧 `.artifacts/native-phase4a/` 的26组保留历史功能用途，不作为M1–M3整改通过证据。旧Phase3A已作废截图仍作废，不修改其历史文件或假装补齐。新证据继续使用requested→fresh runtime assertion→capture→manifest，失败不保存成功manifest，不扩大截图数量或重做性能baseline。
+
+**PASS FOR PHASE 4B（Phase4A.1整改自检）**。本轮六项Gate整改均有生产位置、回归和实际结果；建立checkpoint后暂停，不进入Phase4B。后续release/migration Gate仍需真实API/CDN/代理兼容、WebP/跳转fallback范围、长时间网络故障压力、干净机安装；既有UNC/generic reparse/10k unique images边界及正式库写入前workingDirectory降级门禁继续保留。没有正式credential迁移或版本envelope完成声明。
+
+## WinUI Phase 4A：Online Data / API / Remote Assets（历史本机验收；后续 Gate 与整改见上）
 
 起点 `9ae2199aba6aedbb8e8012ab38e4a3ec8eb1a1a2`，分支 `codex/winui-phase4`。仅在线数据基础，无 metadata matching、title-index识别、ranking/veto/review queue、game launch/playtime、Liquid Glass或正式数据迁移。旧Electron产品源码未修改，未升级NuGet/npm依赖。
 

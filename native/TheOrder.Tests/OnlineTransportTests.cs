@@ -123,7 +123,7 @@ public sealed class OnlineTransportTests
         const string secret = "only-a-synthetic-dpapi-test";
         Assert.False(await store.HasCredentialAsync(default)); await store.SaveAsync(secret, default); Assert.Equal(secret, await store.ReadAsync(default));
         var path = Path.Combine(profile.Root, "native-online-key.dpapi"); Assert.DoesNotContain(secret, Encoding.UTF8.GetString(File.ReadAllBytes(path)));
-        File.WriteAllBytes(path, [1, 2, 3]); Assert.Equal(OnlineFailure.CredentialStorage, (await Assert.ThrowsAsync<OnlineException>(() => store.ReadAsync(default))).Failure);
+        File.WriteAllBytes(path, [1, 2, 3]); Assert.Equal(OnlineFailure.CredentialStorageCorrupt, (await Assert.ThrowsAsync<OnlineException>(() => store.ReadAsync(default))).Failure);
         await store.ClearAsync(default); Assert.Null(await store.ReadAsync(default)); Assert.False(File.Exists(Path.Combine(profile.Root, "settings.json")));
     }
     [Fact] public async Task OlderDetailsCannotPoisonCacheAfterNewerRefreshOrClear()
