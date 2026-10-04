@@ -33,7 +33,7 @@
   </VariableSizedWrapGrid>
   <Grid Grid.Row="3" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel Orientation="Horizontal" Spacing="8"><ComboBox x:Name="SavedChoice" Width="150" PlaceholderText="常用筛选" ItemsSource="{x:Bind ViewModel.SavedFilters, Mode=OneWay}" DisplayMemberPath="Name" SelectionChanged="OnSavedFilter" AutomationProperties.AutomationId="SavedFilters"/><Button Content="保存筛选" Click="OnSaveFilter" IsEnabled="{x:Bind ViewModel.CanManageFilters, Mode=OneWay}"/><Button Content="清除条件" Click="OnClear"/></StackPanel>
-   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Content="查看详情" Click="OnOpen" AutomationProperties.AutomationId="OpenDetails"/><Button Content="批量编辑" Click="OnBatch" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="BatchEdit"/></StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Content="识别所选" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeSelected"/><Button Content="查看详情" Click="OnOpen" AutomationProperties.AutomationId="OpenDetails"/><Button Content="批量编辑" Click="OnBatch" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="BatchEdit"/></StackPanel>
   </Grid>
   <!-- Bounded viewport; default ItemsWrapGrid / ItemsStackPanel; inactive source is null. -->
   <Grid Grid.Row="4">

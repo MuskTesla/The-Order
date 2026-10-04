@@ -17,6 +17,12 @@ public sealed partial class LibraryPage : Page, IImageHost
     public Func<string, Task>? OpenDetails { get; set; }
     public Func<Task<bool>>? ResolveUnsaved { get; set; }
     public Func<Task>? OpenImport { get; set; }
+    public Func<ImmutableArray<string>, Task>? RecognizeSelected { get; set; }
+    private async void OnRecognize(object sender, RoutedEventArgs e)
+    {
+        try { var selected = Active.SelectedItems.OfType<GameSummary>().Select(g => g.Id).ToImmutableArray(); if (!selected.IsEmpty && RecognizeSelected is not null) await RecognizeSelected(selected); }
+        catch (Exception) { ViewModel.ReportUnexpected(); }
+    }
     private async void OnImport(object sender, RoutedEventArgs e) { try { if (OpenImport is not null) await OpenImport(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     private bool synchronizing = true;
     private readonly bool diagnostics;

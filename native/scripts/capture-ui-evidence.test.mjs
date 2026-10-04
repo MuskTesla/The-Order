@@ -23,6 +23,12 @@ test('image workload assertions use actual nested metrics', () => {
   assert.throws(() => runtimeFromState(state, { 'imageMetrics.Errors': 0 }), /mismatch/)
   assert.throws(() => runtimeFromState(fixture({ imageMetrics: { ActiveDecodes: 5, MaximumActiveDecodes: 2, Outstanding: 1 } }), {}), /metrics/)
 })
+
+for (const [key, value] of Object.entries({ 'recognition.status': 'Stale', 'recognition.candidateCount': 2,
+  'recognition.candidates.0.veto': true, 'recognition.candidates.0.high': true, 'recognition.unavailable': true,
+  'recognition.decision': 'Committed', 'recognition.progress.Processing': 2, 'recognition.reviewCount': 7 })) {
+  test(`reject mismatched ${key}`, () => assert.throws(() => runtimeFromState(fixture({ page:'Recognition', recognition:{ status:'NeedsReview', candidateCount:0, candidates:[], unavailable:false, decision:null, progress:{ Processing:0 }, reviewCount:0 } }), { [key]:value }), /Scenario mismatch/))
+}
 test('every scene obtains its own snapshot and mismatch writes no evidence', async () => {
   const outputDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'the-order-capture-test-'))
   let current = fixture(); let captures = 0

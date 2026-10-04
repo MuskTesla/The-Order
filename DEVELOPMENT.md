@@ -1,12 +1,12 @@
 # 开发与维护
 
-## WinUI Phase 4B：Recognition / Review（实施中，尚未验收）
+## WinUI Phase 4B：Recognition / Review（本机验收完成，2026-10-05）
 
 基线 `0de0b342623c0e6a047fd354843903779e564e2e`，保持 `codex/winui-phase4`。用户已授权4B，禁止Phase5/正式资料或凭据/真实游戏执行。先4B.1纯识别、差分和lifecycle，再4B.2持久核对/提交/WinUI；下表来自本轮重新阅读旧源码，不是完成声明。
 
-4B.1 内部自检：纯 `RecognitionEngine` 不持库，`RecognitionQueue` 仅依赖 `IRecognitionLibrarySource`；两 worker、1000 项调度上限。每项最多6个搜索、2个详情/发行补充；先对全体有界候选评分再保留5个 review options。索引128项饱和时不作唯一身份桥接，显式提示候选不完整；这是自检补上的危险截断边界。旧忽略/持久化/Apply 尚未接入，不能据此宣称4B完成。
+4B.1 内部 checkpoint `7f858ad54b6d90e2668ffd24dfdf2bcffc3fd0a2` 先于 Review/UI：纯 `RecognitionEngine` 不持库，`RecognitionQueue` 仅依赖 `IRecognitionLibrarySource`；两 worker、1000 项调度上限。每项最多6个搜索、2个详情/发行补充；先对全体有界候选评分再保留5个 review options。索引128项饱和时不作唯一身份桥接，显式提示候选不完整。随后完成下面4B.2与最终验收；内部checkpoint不单独代表整个4B通过。
 
-核心测试证据 `.artifacts/native-phase4b/core-*`：Debug/Release全套各911/0/0（原609+新增302），两配置 solution build 0 warnings/errors。254组实际 Electron 差分（220标题/排序+34文本/PE），生产指纹继续通过六向量（含孤立surrogate）；另有索引炸弹、物理文件变化、ABA/新请求/安装/关联变化、双worker/取消、网络降级/错误ID/auth变化回归。最后的候选饱和保护以 `core-final-recognition` 专项复核补证。未进行4B桌面验收、性能baseline或最终Electron/publish回归。
+核心测试历史证据 `.artifacts/native-phase4b/core-*`：Debug/Release各911/0/0（原609+新增302）。254组实际 Electron 差分（220标题/排序+34文本/PE），生产指纹六向量（含孤立surrogate）；另有索引炸弹、物理文件变化、ABA/新请求/安装/关联变化、双worker/取消、网络降级/错误ID/auth变化回归。下面最终结果含新增Review/Presentation验收，不再以核心测试数替代全量。
 
 有意差异：建议默认不自动提交；新增8MiB单次文本总预算、候选128/结果5上限、无效索引保留本地证据、在线补充失败不终止其他项。索引和PE保留原文件/资源大小限制；PE默认关闭。所有重工作在后台；SHA256只比对输入，生命周期仍由Phase2队列及独立recognition generation保护。暂不做跨请求识别结果缓存，避免把缓存当review权限。
 
@@ -27,6 +27,84 @@
 | Network failures | 旧凭据前置及某些ref/API错误会终止batch；新要求明确加强为本地候选可用、enrichment unavailable，每项失败独立。旧auth迟到结果丢弃，auth epoch不是recognition generation |
 
 已读相关 title/evidence/game-identification/local-game/local-text/metadata-matching tests，以及main的review resolve/manual link/refresh和library token/merge契约；危险用例包括copied sidecar、polluted alias、跨语言同一索引行、正式发行与不同VNDB竞争、queued cancellation、review persistence失败、关联ABA、same-ID重建、late UI decision。实现期间以生产路径回归补证，不能用此审计表代替测试或桌面验收。
+
+### 4B.2 最终架构、决定语义与有意加强
+
+`RecognitionEntrySnapshot` 固定 immutable entry 与 epoch/generation/revision/request；`RecognitionQueue` 在第一次 await 前保留独立随机 generation，旧同ID工作不得胜出。auth epoch只由4A.1共享adapter管理。Windows读取器复用物理身份/祖先目录保护并限制文件数量、字节、目录、编码、PE资源；不执行EXE或加载DLL。索引异步惰性加载，上限8MiB压缩/32MiB解压/150k行。查询与候选有界、同ID去重、排序固定；工作者无可写库引用。
+
+最终 algorithm version **`electron-recognition-v1-native-2`**。纯 `EvidenceRanking` 继续与实际Electron oracle相符；`ReviewSafeRanking` 在其外增加保守版本规则：非弱本地标题显式FD/remake/edition等，与目标官方/主名相比版本不确定且无同版本明确匹配时，设veto、取消high-confidence，不抬低原排序分。完整golden `FD → base` 用例暴露了旧helper对此仅降分的盲点，因此此加强是记录在案的行为差异。分数仍是排序系数；所有候选，包括高置信，均非自动批准。
+
+`RecognitionReviewService` 是独立写入用例层。`native-recognition.json` version1，上限16MiB/10000建议/5候选，合并保存通知、串行落盘、Flush+原子替换；不复制个人笔记/分类/游玩记录/本地封面作为第二份用户库。旧metadata-matching只读导入为历史；重启重新核验源指纹并降为NeedsRecheck/保留Stale，进程权限不序列化。坏历史文件拒绝覆盖并显示持久化错误，不把它当空队列。
+
+- **Apply**：精确review ID、当前generation、未veto候选、源快照 → 原事务token → refresh canonical详情/必要发行/重新rank → 事务队列内再次读本地证据及auth/cancellation/current-result → 原CommitLinkAsync。取消或stale发生在durable边界前不写；开始原子写后沿用原有一致性/drain。允许后来兼容的个人编辑并保留；提交后的review cleanup故障返回CommittedWithWarning，UI刷新状态仍独立，不能误报“保存失败”或自动重复提交。
+- **Ignore**：先持久保存移除该ID的候选队列，再移除内存/标记Completed；失败保留建议。不是永久黑名单，不修改游戏/个人资料；以后可重新识别。
+- **Manual Link**：显式编号意图与自动证据分开，仍验证严格编号/canonical/当前token并通过事务内核；错误ID/missing/非法merge不落库。成功后同条目的旧建议及队列计数变Stale。
+- **Re-identify / batch**：从书架所选、详情或review进入，已有资料也能识别；缺项模式只选本地安装且metadata/cover缺失，愿望条目不参加。最多1000、2worker；各项失败独立。已有work只作为候选，识别本身不更换关联。取消撤销本轮未决建议，历史NeedsRecheck仍是历史，不能获得新权限。
+- **Offline**：保留本地证据、同一索引行/独立引用与local candidates，在线关闭/故障标记EnrichmentUnavailable。在线使用4A生产transport/canonical/auth/cache，60秒识别补充预算，不读取正式credential。未新增跨识别结果缓存；算法版本与fingerprint不充当授权。
+- **WinUI**：RecognitionViewModel跟踪排队、决定及详情任务，按需详情、分数/来源/veto/失效说明、显式Apply/Ignore/Manual；100ms更新dirty投影。实测后保留相等卡片实例、支持键盘SelectionChanged、切换重置详情滚动、清除旧详情，快照标明“识别时关联”。关闭先取消非durable识别并等待受跟踪决定/持久化，再关闭原workspace。
+
+### 最终验证和证据身份
+
+所有下列本机生成物位于 `.artifacts/native-phase4b/`，不提交。
+
+| 验证 | 实际结果 / 文件 |
+| --- | --- |
+| locked restore | 成功，`restore.log`，无依赖升级 |
+| Debug / Release solution build | 各0 warnings/errors，`final-debug-build.log` / `final-release-build.log` |
+| 完整C# | 各 **944/0/0**，`final-debug-verified.trx` / `final-release-verified.trx`；最后只加强fixture生成测试，发布产品字节未变 |
+| Recognition新增 | **335**：core222、boundary18、PE/text36、online17、queue9、review15、acceptance14、presentation4。core包含220 oracle+2契约，PE/text包含34 oracle+2契约；335不是335个差分 |
+| 保留回归 | original transaction102（该类103含freshness）、filesystem/cover13、online32、fault injection14，均在完整套件 |
+| Golden / invariant | 三例实际engine→queue→review：正例、章节冲突、FD歧义；另验证固定排序、增加无关候选不改top evidence、veto不能high、stale/cancel拒绝Apply、同ID/ABA/重启/个人字段保留 |
+| Artifact collector | **32/0/0**，`final-artifact-tests.log`；含8个recognition嵌套状态错配；真实采集一次目标切换未完成时assert拒绝保存，随后观察实际状态再采集 |
+| Electron | 完整 **665/0/0**，`electron-full.log`；build成功；`electron-import.log`：37新增、重复0/37、个人字段/reload/游戏文件保留、renderer errors0 |
+| Release publish | `publish-final/win-x64`成功，`final-publish.log`；真实启动、决定、取消、重启、关闭 |
+| 真实API | **SKIPPED — no safe development credential**；不以合成HTTP冒充真实服务 |
+
+基线工具测试在通常套件不运行耗时测量，另以 `THE_ORDER_RECOGNITION_BASELINE=1` 显式执行，`baseline.trx`实际1通过/33秒。fixture生成测试每次在临时隔离目录真正运行Node生成器并以生产codec读取7条，不依赖之前遗留的UI profile。正式资料、真实游戏目录、密钥均未读取。
+
+### Phase 4B baseline（非SLA）
+
+实际分布索引+Windows有界本地读取+识别engine/双worker；在线走生产transport与1ms合成HTTP。一个测试进程顺序跑六组，使用重复合成标题/目录，存在JIT/详情缓存复用，非1000个独立真实游戏、非UI review持久化总耗时或公网基准。真实索引每组均56064行/97038标题。数据在`recognition-baseline.json`。
+
+| 模式 | entries | 总耗时 ms | entries/s | working set MiB | index load ms | 最大jobs / HTTP |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| local | 1 | 1614.8 | 0.62 | 181.3 | 1515.8 | 1 / 0 |
+| local | 100 | 1576.1 | 63.45 | 216.5 | 962.7 | 2 / 0 |
+| local | 1000 | 6457.0 | 154.87 | 220.0 | 724.0 | 2 / 0 |
+| synthetic online | 1 | 853.0 | 1.17 | 248.8 | 762.1 | 1 / 1 |
+| synthetic online | 100 | 2871.1 | 34.83 | 241.9 | 838.5 | 2 / 2 |
+| synthetic online | 1000 | 19612.5 | 50.99 | 246.9 | 706.7 | 2 / 2 |
+
+在线实际HTTP数4/302/3002；本地模式0。首组本地含冷启动，不能从1-entry行声称在线更快。baseline发生在最后纯显示/队列Stale计数修复前，识别算法及证据读取源码未变，但不是最后发布包重新计时；无FPS或正式SLA声明。
+
+### 真实WinUI smoke与23组artifact
+
+`native/scripts/generate-recognition-profile.mjs <new-directory>` 只生成新合成目录，拒绝存在目的地和正式profile边界。使用7个虚构安装（game.exe是非可执行纯文本），其中Summer Pockets仅借用公开索引标题测试，不读取真实游戏。启动显式设置 `THE_ORDER_NATIVE_DATA_DIR`、`THE_ORDER_NATIVE_DIAGNOSTICS=1`、`THE_ORDER_NATIVE_ONLINE_FIXTURE=1`、`THE_ORDER_NATIVE_RECOGNITION_FIXTURE=1`。合成handler覆盖搜索/详情/发行/图像；生产transport、mapper、cache、事务、WinUI和图片pipeline仍执行。普通装配不启用该fixture。
+
+| 真实场景 | Artifact ID |
+| --- | --- |
+| 单条本地Steam+标题高置信；已有资料也能重新识别 | `local-high-confidence`；最终`final-high-confidence-selected` |
+| 明确Apply，提交成功且个人资料保留 | `review-apply-committed`；最终`final-apply-clears-details` |
+| 批量缺失资料、活动进度 | `batch-progress`（总7，含先前已完成1） |
+| 章节冲突veto、应用禁用 | `conflict-veto`；最终`final-reidentify-veto` |
+| 多候选、非high、两个明确编号 | `multiple-candidates` → **`final-multiple-candidates` supersede其错误高亮** |
+| 无候选 | `no-candidate` |
+| 在线连接失败仍保留本地线索 | `offline-enrichment-failure` |
+| 纯本地模式实际索引命中/来源编号 | `final-offline-local-index` |
+| review持久化与重启NeedsRecheck，不恢复Apply权限 | `final-restart-review-queue` |
+| 重新识别使旧review Stale；真实计数一致 | `final-stale-review` |
+| 手动错误86→90拒绝、正确300保存 | `manual-wrong-id-rejected` / `manual-link-committed` |
+| 最终手动301保存、旧review与计数Stale | `final-manual-link-progress` |
+| Ignore只移除精确建议，已有详情清空 | `final-ignore-clears-details` |
+| 键盘切换同步详情和高亮 | `final-keyboard-selection` |
+| 识别活动→取消→超过旧响应窗口不复活 | `final-recognition-active` / `final-recognition-cancelled` / `final-cancel-after-old-response` |
+| 活动时关闭 | `final-active-before-close` + `final2-exit.json`，PID42136 exit0；17:49:25.841Z请求关闭、17:49:26.366Z退出，约0.52秒，非退出SLA |
+
+采集pipeline每次重新读真实窗口，requested字段（含nested recognition）等于actual才允许写artifact，manifest最后落盘。`artifact-sanity.json`实读23manifest/23UI tree/23JPEG，逐项requested/runtime/tree/字节数/hash一致，23个不同截图hash；又实际重开落盘关键截图检查。9组来自早期`publish`，14组来自最终`publish-final`；不把早期截图说成最终UI修复证据。早期Apply/Manual不证明后来的详情清理和stale计数修复，以上对应final场景负责补证。旧Phase3A作废截图保持作废。
+
+两批程序集checkpoint均为构建前 `1.0.0+7f858ad54b6d90e2668ffd24dfdf2bcffc3fd0a2`，必须结合manifest MVID、`build-bundles.json`各层hash、最终源码清单及`checkpoint-receipt.json`绑定；不可把该assembly version当最终提交SHA。初批MVID `25c1d592-b817-4022-bc68-df143ffdb94a`，最终MVID见manifest。最终包重启两次正常；最后PID31524 exit0。`active-close-data-receipt.json`记录活动退出后7条库/7历史建议；后续多候选复核新增1建议，最终`data-receipt.json`为7条库/8建议。关联200/300/301、名称、个人笔记、分类、安装均实读保留；其余未关联条目未自动改变。
+
+范围限制：这是隔离合成验收，不证明真实catalog/CDN内容、所有PE/编码/游戏、长时间大规模review IO、断电/干净机安装/签名升级；既有UNC及generic filter环境缺口仍在。早期人工恢复窗口/读取几何失败属于工具状态，刷新窗口后恢复，没有为绕过automation改变业务语义。可进入独立 **Phase4B Gate Review**；本阶段checkpoint后暂停，Phase5不获自动授权。
 
 ## WinUI Phase 4A.1：Online Result Acceptance Remediation（2026-10-05）
 

@@ -148,6 +148,20 @@ public sealed class RecognitionQueue : IAsyncDisposable
         lock (gate) { if (jobs.TryGetValue(id, out var job)) { jobs[id] = job with { State = RecognitionJobState.Completed, Result = null, Message = message }; if (settled.Contains(id) && current.TryGetValue(job.GameId, out var work) && work.Id == id) { current.Remove(job.GameId); work.Cancellation.Dispose(); } } }
         Notify();
     }
+    public void MarkStale(Guid id, string message)
+    {
+        lock (gate)
+        {
+            if (!jobs.TryGetValue(id, out var job) || job.State != RecognitionJobState.NeedsReview) return;
+            jobs[id] = job with { State = RecognitionJobState.Stale, Result = null, Message = message };
+            if (current.TryGetValue(job.GameId, out var work) && work.Id == id)
+            {
+                work.Cancellation.Cancel();
+                if (settled.Contains(id)) { current.Remove(job.GameId); work.Cancellation.Dispose(); }
+            }
+        }
+        Notify();
+    }
     private void Update(Work work, RecognitionJobState state)
     {
         lock (gate)

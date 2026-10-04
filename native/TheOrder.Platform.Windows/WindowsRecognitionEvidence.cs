@@ -22,6 +22,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
         => Task.Run(() => Read(entry, includePe, cancellation), cancellation);
     private LocalEvidenceSnapshot Read(LibraryEntry entry, bool includePe, CancellationToken cancellation)
     {
+        bool requestedPe = includePe;
         var titles = new List<LocalTitleEvidence>(); var refs = new List<ReferenceEvidence>(); var companies = new List<string>();
         var warnings = new List<string>(); var observations = new List<string>(); var roots = new List<PathObservation>(); var peHashes = new List<string>();
         long remaining = 8 * 1024 * 1024;
@@ -98,6 +99,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 var filenameCheck = filesystem.Inspect(path, false);
                 if (!filenameCheck.IsValid || !InstallationPreflightService.Within(filenameCheck.Observation!.FinalPath, selected.FinalPath)
                     || filenameCheck.Observation.ReparsePaths.Except(selected.ReparsePaths, StringComparer.OrdinalIgnoreCase).Any()) continue;
+                Observe(filenameCheck.Observation);
                 int titlesBefore = titles.Count;
                 var name = Path.GetFileNameWithoutExtension(path);
                 if (executableParser!.IsUsefulTitle(name)) titles.Add(new(name, "executable-name"));
@@ -139,7 +141,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
         cancellation.ThrowIfCancellationRequested();
         var evidence = new RecognitionEvidence([.. titles.Take(40)], [.. refs.Distinct().Take(40)], [.. companies.Distinct(StringComparer.Ordinal).Take(16)],
             [.. warnings.Distinct(StringComparer.Ordinal)], [.. peHashes], entry.Installations.Any(i => Match(i.Folder, @"(?:^|[\\/])(?:汉化补丁|补丁|patches|_patch|backup|beifen)(?:[\\/]|$)")), []);
-        return new(evidence, [.. roots], [.. observations], fingerprint(observations));
+        return new(evidence, [.. roots], [.. observations], fingerprint(observations)) { IncludePe = requestedPe };
     }
     private void Revalidate(PathObservation value) => new InstallationPreflightService(filesystem).Revalidate(value);
     private sealed class PathLease : IDisposable

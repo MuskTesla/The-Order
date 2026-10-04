@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using TheOrder.Application;
 using TheOrder.Infrastructure.Legacy;
 using TheOrder.Infrastructure.Online;
+using TheOrder.Infrastructure.Recognition;
 using TheOrder.Platform.Windows;
 using TheOrder.Presentation;
 
@@ -31,7 +32,7 @@ internal static class Composition
         var fixtureOnline = nativeConfiguration.Diagnostics && configuration["ONLINE_FIXTURE"] == "1";
         if (fixtureOnline)
         {
-            services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1"));
+            services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1", configuration["RECOGNITION_FIXTURE"] == "1"));
         }
         var fixtureCredentials = fixtureOnline && configuration["ONLINE_REAL_STORE"] != "1";
         services.AddSingleton(p => new AuthenticatedCredentials(
@@ -42,7 +43,24 @@ internal static class Composition
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
         services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
-        services.AddSingleton<IOnlineCatalog, NextMoeCatalog>();
+        services.AddSingleton<NextMoeCatalog>();
+        services.AddSingleton<IOnlineCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton<IRecognitionCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton(p => p.GetRequiredService<AuthenticatedCredentials>().AuthContext);
+        services.AddSingleton<ILocalEvidenceParser, LocalEvidenceParser>();
+        services.AddSingleton<IExecutableEvidenceParser, ExecutableEvidenceParser>();
+        services.AddSingleton<IRecognitionEvidenceReader>(p => new WindowsRecognitionEvidence(p.GetRequiredService<ILocalEvidenceParser>(), RecognitionFingerprint.Evidence, p.GetRequiredService<IExecutableEvidenceParser>()));
+        services.AddSingleton<ITitleIndex>(_ => new TitleIndex(() => File.OpenRead(Path.Combine(AppContext.BaseDirectory, "data", "title-index.json.gz"))));
+        services.AddSingleton<IRecognitionRanker, ReviewSafeRanking>();
+        services.AddSingleton<IRecognitionEngine, RecognitionEngine>();
+        services.AddSingleton<IRecognitionLibrarySource>(p => p.GetRequiredService<OfflineLibraryClient>());
+        services.AddSingleton<RecognitionQueue>();
+        services.AddSingleton<IRecognitionReviewStorage, IsolatedRecognitionReviewStorage>();
+        services.AddSingleton<IRecognitionReviewCodec, RecognitionReviewCodec>();
+        services.AddSingleton(p => new RecognitionReviewService(p.GetRequiredService<OfflineLibraryClient>(), p.GetRequiredService<RecognitionQueue>(),
+            p.GetRequiredService<IRecognitionReviewStorage>(), p.GetRequiredService<IRecognitionReviewCodec>(), p.GetRequiredService<IRecognitionEvidenceReader>(),
+            p.GetRequiredService<IRecognitionRanker>(), p.GetRequiredService<IRecognitionCatalog>(), p.GetRequiredService<OnlineAuthContext>(), RecognitionFingerprint.Identity));
+        services.AddSingleton<RecognitionViewModel>();
         services.AddSingleton(p => new RemoteCoverSource(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<ImageNetwork>().Client));
         services.AddSingleton<IRemoteCoverRegistry>(p => p.GetRequiredService<RemoteCoverSource>());
         services.AddSingleton(p => new CombinedCoverSources(p.GetRequiredService<LocalCoverSources>(), p.GetRequiredService<OfflineLibraryClient>(), p.GetRequiredService<IRemoteCoverRegistry>(), p.GetRequiredService<RemoteCoverSource>()));

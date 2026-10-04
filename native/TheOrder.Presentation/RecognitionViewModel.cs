@@ -1,0 +1,190 @@
+using System.Collections.Immutable;
+using TheOrder.Application;
+using TheOrder.Domain;
+
+namespace TheOrder.Presentation;
+
+public sealed record RecognitionReviewCard(Guid Id, string GameId, string Title, string Status, string Summary);
+public sealed record RecognitionCandidateCard(string Id, string Title, string Summary, string Evidence, string Conflicts, bool CanApply);
+
+public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
+{
+    private readonly OfflineLibraryClient offline;
+    private readonly RecognitionQueue queue;
+    private readonly RecognitionReviewService reviews;
+    private readonly IRecognitionCatalog catalog;
+    private readonly IRemoteCoverRegistry covers;
+    private readonly OnlineAuthContext auth;
+    private readonly WorkspaceViewModel workspace;
+    private readonly CancellationTokenSource lifetime = new();
+    private readonly HashSet<Task> pending = [];
+    private CancellationTokenSource? batch, details;
+    private long detailsGeneration, authGeneration;
+    private int dirty = 1;
+    private bool disposed, busy;
+    private Guid? selectedId;
+    private string manualId = "", selectedCandidate = "";
+    public RecognitionViewModel(OfflineLibraryClient offline, RecognitionQueue queue, RecognitionReviewService reviews,
+        IRecognitionCatalog catalog, IRemoteCoverRegistry covers, OnlineAuthContext auth, WorkspaceViewModel workspace)
+    {
+        this.offline = offline; this.queue = queue; this.reviews = reviews; this.catalog = catalog; this.covers = covers; this.auth = auth; this.workspace = workspace;
+        authGeneration = auth.Generation; reviews.Changed += OnChanged; queue.Changed += OnChanged;
+    }
+    public bool UseOnline { get; set; } = true;
+    public bool IncludePe { get; set; }
+    public string ManualId { get => manualId; set => Set(ref manualId, value); }
+    public bool Busy => busy;
+    public string Message { get; private set; } = "从书架选择条目进行识别，或仅补全缺失资料。建议均需明确确认。";
+    public string ProgressText { get; private set; } = "尚未开始识别。";
+    public RecognitionProgress Progress => queue.Progress;
+    public IReadOnlyList<RecognitionReviewCard> Reviews { get; private set; } = Array.Empty<RecognitionReviewCard>();
+    public IReadOnlyList<RecognitionCandidateCard> Candidates { get; private set; } = Array.Empty<RecognitionCandidateCard>();
+    public Guid? SelectedId => selectedId;
+    public RecognitionReviewCard? SelectedReviewItem => Reviews.FirstOrDefault(r => r.Id == selectedId);
+    public RecognitionCandidateCard? SelectedCandidateItem => Candidates.FirstOrDefault(c => c.Id == selectedCandidate);
+    public RecognitionReview? SelectedReview => selectedId is { } id ? reviews.Snapshot.FirstOrDefault(r => r.Id == id) : null;
+    public string SelectedCandidateId => selectedCandidate;
+    public string? SelectedGameId => selectedId is { } id ? reviews.Snapshot.FirstOrDefault(r => r.Id == id)?.GameId : null;
+    public string SelectedTitle { get; private set; } = "选择一项核对建议";
+    public string LocalFacts { get; private set; } = "";
+    public string SelectedMessage { get; private set; } = "";
+    public string RemoteFacts { get; private set; } = "选择候选的“查看详情”，按需读取完整资料。";
+    public string? RemoteCoverKey { get; private set; }
+    public string? PersistenceError => reviews.PersistenceError;
+    public bool HasSelection => selectedId is not null;
+    public bool CanApply => !busy && workspace.CanEdit && selectedId is { } id && reviews.Snapshot.FirstOrDefault(r => r.Id == id)?.Status == RecognitionReviewStatus.NeedsReview && Candidates.Any(c => c.Id == selectedCandidate && c.CanApply);
+    public ClientResult? LastDecision { get; private set; }
+    public RecognitionJobState? LastJobState => queue.Snapshot.LastOrDefault()?.State;
+    private void OnChanged() => Interlocked.Exchange(ref dirty, 1);
+    public Task InitializeAsync() => Track(async () => { if (!offline.Capability.Loaded) return; await reviews.InitializeAsync(lifetime.Token); await reviews.RefreshValidityAsync(lifetime.Token); Refresh(); });
+    public void RefreshIfDirty()
+    {
+        if (disposed) return;
+        if (authGeneration != auth.Generation)
+        {
+            authGeneration = auth.Generation; CancelDetails(); RemoteFacts = "凭据已变化，请重新读取候选详情。"; RemoteCoverKey = null;
+            _ = Track(async () => { await reviews.RefreshValidityAsync(lifetime.Token); Refresh(); });
+            Interlocked.Exchange(ref dirty, 1);
+        }
+        if (Interlocked.Exchange(ref dirty, 0) != 0) Refresh();
+    }
+    public void Refresh()
+    {
+        var all = reviews.Snapshot;
+        var cards = all.Select(r => new RecognitionReviewCard(r.Id, r.GameId, r.Title, r.Status switch { RecognitionReviewStatus.NeedsReview => "待核对", RecognitionReviewStatus.NeedsRecheck => "需重新识别", _ => "建议已失效" },
+            r.Message ?? (r.Result is { } result ? $"{result.Candidates.Length} 个在线候选 · {result.Identity.LocalCandidates.Length} 条本地索引线索" : "旧版历史建议"))).ToArray();
+        if (!Reviews.SequenceEqual(cards)) Reviews = cards;
+        var p = queue.Progress;
+        ProgressText = $"{p.Processed} / {p.Total} 已处理 · 排队 {p.Queued} · 处理中 {p.Processing} · 待核对 {p.NeedsReview} · 完成 {p.Completed} · 失败 {p.Failed} · 取消 {p.Cancelled} · 失效 {p.Stale}";
+        var selected = selectedId is { } id ? all.FirstOrDefault(r => r.Id == id) : null;
+        if (selected is null)
+        {
+            if (selectedId is not null) CancelDetails();
+            selectedId = null; Candidates = []; LocalFacts = ""; SelectedMessage = ""; SelectedTitle = "选择一项核对建议"; selectedCandidate = "";
+            RemoteCoverKey = null; RemoteFacts = "选择候选后可查看完整详情。";
+        }
+        else
+        {
+            SelectedTitle = selected.Title; SelectedMessage = selected.Status switch { RecognitionReviewStatus.NeedsRecheck => "历史建议不能直接应用，请重新识别。", RecognitionReviewStatus.Stale => "建议已失效，请重新识别或明确手动关联。", _ => selected.Message ?? "先核对作品与版本，再应用建议。" };
+            if (selected.Result is { } result)
+            {
+                LocalFacts = "识别时本地名称：" + result.Input.Entry.Name + "\n识别时关联：" + (result.Input.Entry.Metadata is { } relation ? relation.Title + " · " + relation.Id : "尚未关联")
+                    + "\n安装：" + string.Join("\n", result.Input.Entry.Installations.Take(4).Select(i => i.Folder))
+                    + "\n线索：" + string.Join("；", result.Identity.Evidence.Titles.Take(12).Select(t => t.Value + "（" + SourceName(t.Source) + "）"))
+                    + "\n来源编号：" + string.Join("、", result.Identity.References) + "\n" + string.Join("；", result.Identity.Evidence.Warnings)
+                    + (result.Identity.LocalCandidates.IsEmpty ? "" : "\n本地索引：" + string.Join("；", result.Identity.LocalCandidates.Take(6).Select(c => string.Join(" / ", c.Record.Names.Take(2)) + " · " + string.Join(", ", c.Record.References.Take(3)))));
+                var candidates = result.Candidates.Select(c => new RecognitionCandidateCard(c.Work.Id, c.Work.Title + " · " + c.Work.Id,
+                    $"排序分 {c.Confidence:0.000} · {(c.Vetoed ? "身份冲突" : c.HighConfidence ? "高置信建议" : "需要核对")} · {c.Reason}",
+                    string.Join("\n", c.Evidence.Take(6).Select(e => $"{SourceName(e.Source)}：{e.ObservedTitle} → {e.MatchedTitle} · 相似度 {e.Similarity:0.000}")) + "\n一致来源：" + string.Join("、", c.MatchedReferences),
+                    string.Join("；", c.Conflicts), selected.Status == RecognitionReviewStatus.NeedsReview && !c.Vetoed)).ToArray();
+                if (!Candidates.SequenceEqual(candidates)) Candidates = candidates;
+                if (result.Candidates.IsEmpty && selected.Status == RecognitionReviewStatus.NeedsReview && selected.Message is null)
+                    SelectedMessage = "未获得在线候选。本地线索已保留，可重新识别或核对编号后手动关联。";
+            }
+            else
+            {
+                LocalFacts = "历史安装：" + selected.HistoricalFolder + "\n" + selected.Message;
+                Candidates = selected.HistoricalCandidates.Select(c => new RecognitionCandidateCard(c.Id, c.Title, $"历史排序分 {c.Confidence:0.000}", c.Reason, "需要重新识别", false)).ToArray();
+            }
+        }
+        Notify();
+    }
+    private static string SourceName(string source) => source switch { "folder" => "目录名", "custom-name" => "书架名称", "sidecar" => "旧版侧车资料", "title-index" => "独立标题索引", "executable-name" => "程序名", "archive-name" => "资源文件名", "product-name" => "程序产品名", "file-description" => "程序说明", "manual-title" or "readme-title" => "说明标题", "config-title" => "配置标题", "steam-config" or "steam-file" => "Steam 配置", _ => source };
+    public void Select(Guid id)
+    {
+        if (selectedId == id) return; CancelDetails(); selectedId = id; selectedCandidate = ""; RemoteCoverKey = null; RemoteFacts = "选择候选后可查看完整详情。"; LastDecision = null; Refresh();
+    }
+    public void SelectCandidate(string id) { selectedCandidate = id; Changed(nameof(CanApply)); Changed(nameof(SelectedCandidateItem)); }
+    public void ReportLocalDetailsFailure() => workspace.ReportUnexpected();
+    public Task StartAsync(ImmutableArray<string> selected, RecognitionMode mode) => Track(async () =>
+    {
+        if (batch is not null || !offline.Capability.Loaded) return;
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token); batch = stop;
+        try
+        {
+            await reviews.InitializeAsync(stop.Token); var targets = await offline.RecognitionTargetsAsync(selected, mode, stop.Token);
+            if (targets.IsEmpty) { Message = "没有符合条件的本地安装条目。愿望条目不参与本地识别。"; return; }
+            int added = 0, failed = 0; bool online = UseOnline, pe = IncludePe;
+            foreach (string id in targets)
+            {
+                stop.Token.ThrowIfCancellationRequested();
+                try { await queue.EnqueueAsync(id, mode, online, pe, stop.Token); added++; }
+                catch (Exception e) when (e is InvalidDataException or InvalidOperationException) { failed++; }
+            }
+            Message = $"已排队 {added} 项" + (failed > 0 ? $"，{failed} 项未能进入队列。" : "。高分建议仍需确认，不会自动更换关联。");
+        }
+        finally { batch = null; Refresh(); }
+    });
+    public void CancelAll() { batch?.Cancel(); queue.CancelAll(); Message = "已取消识别及本轮可用建议。"; Refresh(); }
+    public Task RerunAsync() => SelectedGameId is { } id ? StartAsync([id], RecognitionMode.Reidentify) : Task.CompletedTask;
+    public Task IgnoreAsync() => selectedId is { } id ? Track(async () => { LastDecision = await reviews.IgnoreAsync(id, lifetime.Token); Message = LastDecision.Message; Refresh(); }) : Task.CompletedTask;
+    public Task ApplyAsync() => selectedId is { } id && CanApply ? Mutate(c => reviews.ApplyAsync(id, selectedCandidate, c), SelectedGameId) : Task.CompletedTask;
+    public Task ManualLinkAsync() => SelectedGameId is { } id ? Mutate(c => reviews.ManualLinkAsync(id, ManualId.Trim(), c), id) : Task.CompletedTask;
+    private Task Mutate(Func<CancellationToken, Task<ClientResult>> action, string? gameId) => Track(async () =>
+    {
+        if (busy) return; busy = true; Notify();
+        try
+        {
+            LastDecision = await workspace.ExecuteFileMutationAsync(async token => { using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime.Token); return await action(linked.Token); }, gameId);
+            Message = LastDecision.Message; await reviews.RefreshValidityAsync(lifetime.Token);
+        }
+        finally { busy = false; Refresh(); }
+    });
+    public Task OpenDetailsAsync(string candidateId) => Track(async () =>
+    {
+        if (selectedId is not { } review || !Candidates.Any(c => c.Id == candidateId)) return;
+        CancelDetails(); selectedCandidate = candidateId; details = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        var token = details.Token; long generation = detailsGeneration, epoch = auth.Generation;
+        RemoteCoverKey = null; RemoteFacts = "正在读取候选详情…"; Notify();
+        try
+        {
+            var result = await catalog.DetailsAsync(candidateId, false, token);
+            if (generation != detailsGeneration || selectedId != review || epoch != auth.Generation || token.IsCancellationRequested) return;
+            RemoteCoverKey = covers.Register(result.CoverUrl, result.FetchedAt);
+            RemoteFacts = $"{result.Title}\n原名：{result.OriginalTitle}\n别名：{string.Join(" / ", result.Aliases)}\n发行：{result.ReleaseDate}\n开发商：{string.Join("、", result.Developers)}\n编号：{result.Id}\n来源：{string.Join("、", result.References.Select(r => r.Source + ":" + r.Id))}\n{result.Description}";
+        }
+        catch (OperationCanceledException) { if (generation == detailsGeneration) RemoteFacts = "详情读取已取消。"; }
+        catch (Exception e) { if (generation == detailsGeneration && selectedId == review && epoch == auth.Generation) RemoteFacts = e is OnlineException ? e.Message : "候选详情读取失败，请重试。"; }
+        finally { if (generation == detailsGeneration) Notify(); }
+    });
+    private void CancelDetails() { detailsGeneration++; details?.Cancel(); details?.Dispose(); details = null; }
+    private Task Track(Func<Task> action)
+    {
+        if (disposed) return Task.CompletedTask; var task = Run(); lock (pending) pending.Add(task); _ = Observe(task); return task;
+        async Task Run()
+        {
+            try { await action(); }
+            catch (OperationCanceledException) { Message = "操作已取消。"; Notify(); }
+            catch (Exception e) { Message = e is OnlineException or InvalidDataException or InvalidOperationException ? e.Message : "操作未完成，请重试；已有书架不会因此被替换。"; Notify(); }
+        }
+    }
+    private async Task Observe(Task task) { try { await task; } finally { lock (pending) pending.Remove(task); } }
+    private void Notify() { foreach (string name in new[] { nameof(Reviews), nameof(Candidates), nameof(SelectedReviewItem), nameof(SelectedCandidateItem), nameof(SelectedTitle), nameof(SelectedId), nameof(SelectedGameId), nameof(LocalFacts), nameof(SelectedMessage), nameof(RemoteFacts), nameof(RemoteCoverKey), nameof(ProgressText), nameof(Progress), nameof(Message), nameof(Busy), nameof(CanApply), nameof(HasSelection), nameof(PersistenceError), nameof(LastDecision), nameof(LastJobState) }) Changed(name); }
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed) return; disposed = true; lifetime.Cancel(); CancelDetails();
+        Task[] tasks; lock (pending) tasks = pending.ToArray(); await Task.WhenAll(tasks);
+        await queue.DisposeAsync(); try { await reviews.FlushAsync(); } catch (Exception e) when (e is IOException or InvalidDataException or DataIsolationException or UnauthorizedAccessException) { }
+        reviews.Changed -= OnChanged; queue.Changed -= OnChanged; await reviews.DisposeAsync(); lifetime.Dispose();
+    }
+}

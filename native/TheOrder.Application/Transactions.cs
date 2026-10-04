@@ -129,7 +129,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             });
         }
     }
-    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null)
+    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null, Func<Task>? verifyBeforeCommit = null)
         => Enqueue(async () =>
         {
             if (current.Access != LibraryAccess.ValidWritable) throw new LibraryReadOnlyException(current.ReadOnlyReason!);
@@ -152,6 +152,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
                 .Select(pair => pair.Value.Request).ToArray();
             var nextSnapshot = new LibrarySnapshot(validated, LibraryRecovery.Main);
             precommit?.Invoke();
+            if (verifyBeforeCommit is not null) await verifyBeforeCommit().ConfigureAwait(false);
             cancellation.ThrowIfCancellationRequested();
             // No cancellation inside the durable phase. A post-replace warning is a committed result.
             var receipt = await persistence.SaveAsync(lastGood, serialized).ConfigureAwait(false);
@@ -278,10 +279,10 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
     // Immediate explicit user intent only. Delayed API/identification results MUST use CommitLinkAsync.
     public Task<CommitResult<LibraryEntry>> LinkAsync(string id, WorkMetadata work, bool preserveName = false, bool preserveMergedName = false, CancellationToken cancellation = default)
         => LinkCoreAsync(id, work, preserveName, preserveMergedName, null, cancellation);
-    public async Task<CommitResult<LibraryEntry>> CommitLinkAsync(string id, WorkMetadata work, RequestToken token, bool preserveName = false, bool preserveMergedName = false, CancellationToken cancellation = default)
+    public async Task<CommitResult<LibraryEntry>> CommitLinkAsync(string id, WorkMetadata work, RequestToken token, bool preserveName = false, bool preserveMergedName = false, CancellationToken cancellation = default, Func<Task>? verifyBeforeCommit = null)
     {
         ArgumentNullException.ThrowIfNull(token);
-        try { return await LinkCoreAsync(id, work, preserveName, preserveMergedName, token, cancellation).ConfigureAwait(false); }
+        try { return await LinkCoreAsync(id, work, preserveName, preserveMergedName, token, cancellation, verifyBeforeCommit).ConfigureAwait(false); }
         finally
         {
             Task cleanup;
@@ -289,7 +290,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             await cleanup.ConfigureAwait(false);
         }
     }
-    private Task<CommitResult<LibraryEntry>> LinkCoreAsync(string id, WorkMetadata work, bool preserveName, bool preserveMergedName, RequestToken? token, CancellationToken cancellation)
+    private Task<CommitResult<LibraryEntry>> LinkCoreAsync(string id, WorkMetadata work, bool preserveName, bool preserveMergedName, RequestToken? token, CancellationToken cancellation, Func<Task>? verifyBeforeCommit = null)
     {
         return Mutate(games =>
         {
@@ -331,7 +332,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             }
             e = e with { Metadata = work, Name = mergedName ?? (keep ? e.Name : work.Title), NameIsCustom = mergedName is not null || keep };
             return (games.Replace(source, e), e);
-        }, cancellation, id);
+        }, cancellation, id, verifyBeforeCommit: verifyBeforeCommit);
     }
     private static LibraryEntry Find(ImmutableArray<LibraryEntry> entries, string id) => entries.FirstOrDefault(e => e.Id == id) ?? throw new InvalidDataException("游戏不存在。");
     public void Dispose()

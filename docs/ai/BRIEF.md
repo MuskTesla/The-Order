@@ -1,13 +1,16 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 4B：识别核心内部检查点（实施中，非最终 Gate）
+## WinUI Phase 4B：Metadata Recognition & Review Queue（本机验收完成）
 
 - 用户已授权 Phase4B，保持 `codex/winui-phase4`，起点 `0de0b342623c0e6a047fd354843903779e564e2e`；不得进入 Phase5。下方 Phase4A.1 的“无 Phase4B”仅描述该历史 checkpoint。
-- 已重新读取 Electron recognition、local evidence、pending review、manual/merge/lifecycle 源码和相关测试，行为表维护在 DEVELOPMENT.md。当前仅完成核心：纯标题/证据排序、显式 veto、有界延迟加载索引、Windows 安全证据读取、可选有界 PE 资源、原 JS 指纹与独立 evidence 指纹、只读生命周期快照、双 worker 调度、有限在线补充。
-- 算法 `electron-recognition-v1-native-1`。索引为现有 56,064 records / 97,038 titles，保留许可。源指纹保持 JS JSON UTF-16 契约；局部证据摘要加入文件/目录物理身份和所读字节摘要。二者均不提供提交权限。
-- 已新增 302 项核心测试，其中实际 Electron 标题/排序 oracle 220 组、PE/文本 oracle 34 组、生产指纹六向量及索引/边界/乱序/ABA/取消/在线降级回归。Debug/Release 全套各 911/0/0，两配置 solution build 均 0 warnings / 0 errors。自检补充了索引饱和时拒绝唯一身份推断的保护，另以 `core-final-recognition` 专项复核。
-- 核心检查确认：RecognitionEngine 没有 writable repository；队列仅取得 IRecognitionLibrarySource。新结果只有建议，Apply 层尚未接入。旧自动关联策略将改为显式确认；两个 worker、每项最多六次搜索/两个详情与发行补充、结果最多五项，不把截断候选当唯一匹配。
-- **尚未交付**：持久化 Review、Apply/Ignore/Manual、完整 WinUI 接入、真实桌面 smoke/artifacts、Phase4B 性能基线和最终全量验收。此内部检查点不能作为 Phase4B PASS 或 Phase5 授权。正式资料和 credential 未访问，真实 API 仍为 SKIPPED — no safe development credential。
+- 已重新审计实际 Electron recognition/local evidence/review/manual/merge/lifecycle 源码，行为地图留在 DEVELOPMENT.md。先完成 4B.1 内部 checkpoint `7f858ad54b6d90e2668ffd24dfdf2bcffc3fd0a2`，再实现 4B.2；本节 supersede 其“仅核心、未接入 Apply/UI”的中间状态。
+- 分层为 Windows 有界证据读取 → Infrastructure 纯识别 → Application 只读双 worker 队列 → 持久化 Review → 显式决定服务 → 原事务内核。RecognitionEngine 不持 writable repository，Presentation 不直接读文件/JSON/HTTP。WinUI 提供单条、所选、只补缺失、重新识别、取消、核对、Apply、Ignore、Manual Link，所有高分仍需确认。
+- 最终算法 `electron-recognition-v1-native-2`。原标题/证据 helper 保持 Electron oracle；独立 ReviewSafeRanking 对 FD/remake 等显式版本与无版本目标的歧义增加 veto，不改变原分数。索引沿用 56,064 records / 97,038 titles 及许可，惰性有界加载；128候选饱和拒绝唯一身份推断，结果最多5项。源指纹 `electron-review-identity-v1` 保持 JS JSON UTF-16 契约；证据指纹 `native-local-evidence-v1` 覆盖所读字节和物理身份，两者均不是提交权限。
+- `native-recognition.json` 保存有版本的建议，旧 `metadata-matching.json` 仅作为历史输入；重启后 NeedsRecheck，坏文件保留并禁止覆盖。Apply 重验 generation/lifecycle/auth、canonical detail、发行/证据与最终本地 fingerprint，再进入原串行原子事务；个人字段保留，已持久提交后的附加错误不会伪装未保存。Ignore 只删除该 review ID；Manual 仍走 canonical+token；重新识别保留旧关联，旧建议失效。
+- 最终 locked restore、Debug/Release solution build 各0 warnings/errors、C#各 **944/0/0**（原609+新增335）。新增包含254实际Electron差分、六指纹、三例完整 golden 流程、状态/持久化/Apply/UI回归；保留原102 transaction differential、13 filesystem/cover、32 online、14 fault。Artifact tests **32/0/0**；Electron完整 **665/0/0**、build/import regression通过；Release publish成功。性能工具默认不跑，另以显式开关实际完成1/100/1000本地与合成HTTP基线，详见 DEVELOPMENT，不是SLA。
+- 真实 WinUI 隔离合成 smoke 完成：单条/批量、offline/local index、多候选、veto、Apply/Ignore/Manual错误ID与成功、重新识别、stale、restart、活动取消/迟到响应、活动关闭。实测修正卡片反复重建导致选择高亮不同步、详情残留、快照误标“当前关联”和 stale进度计数；最终包重新核验含键盘选择。活动关闭PID42136 exit0，约0.52秒；再次正常关闭PID31524 exit0。
+- `.artifacts/native-phase4b/` 为 ignored 本机证据：**23组manifest/UI tree/JPEG，23个不同截图hash**；9组早期publish、14组最终publish-final。requested/runtime、tree、字节数/SHA256逐项校验。早期`multiple-candidates`的高亮问题由`final-multiple-candidates` supersede，早期Apply/Manual截图不能证明最终清理/计数修复；最终场景另有明确证据。最终MVID与各层DLL hash见build-bundles及manifest，程序集checkpoint仍指向构建前4B.1，不冒称最终提交已嵌入二进制。
+- 正式资料、真实 credential、真实游戏目录/执行均未访问。真实 API **SKIPPED — no safe development credential**。合成HTTP不证明真实catalog/CDN、全部真实游戏识别或长时间稳定；干净机器发布/签名/升级及既有UNC/filter环境缺口仍在。**可进入独立 Phase 4B Gate Review；完成本阶段checkpoint后暂停，不进入 Phase5。**
 
 ## WinUI Phase 4A.1：Online Result Acceptance Remediation（整改自检完成）
 

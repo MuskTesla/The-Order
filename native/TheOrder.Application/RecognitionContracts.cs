@@ -33,7 +33,10 @@ public interface ILocalEvidenceParser
     ParsedLocalEvidence Parse(string kind, string name, ReadOnlyMemory<byte> bytes, bool truncated);
 }
 public sealed record LocalEvidenceSnapshot(RecognitionEvidence Evidence, ImmutableArray<PathObservation> Installations,
-    ImmutableArray<string> Observations, string Fingerprint);
+    ImmutableArray<string> Observations, string Fingerprint)
+{
+    public bool IncludePe { get; init; }
+}
 public interface IRecognitionEvidenceReader
 {
     Task<LocalEvidenceSnapshot> ReadAsync(LibraryEntry entry, bool includePe, CancellationToken cancellation);

@@ -11,6 +11,8 @@ public sealed partial class DetailsPage : Page, IImageHost
     public IImagePipeline Images { get; }
     public Func<Task>? ManageInstallations { get; set; }
     public Func<Task>? RefreshOnline { get; set; }
+    public Func<Task>? Recognize { get; set; }
+    private async void OnRecognize(object sender, RoutedEventArgs e) { try { if (Recognize is not null) await Recognize(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     public Func<Task>? RemoveWishlist { get; set; }
     private async void OnRefreshOnline(object sender, RoutedEventArgs e) { try { if (RefreshOnline is not null) await RefreshOnline(); } catch { ViewModel.ReportUnexpected(); } }
     private async void OnRemoveWishlist(object sender, RoutedEventArgs e) { try { if (RemoveWishlist is not null) await RemoveWishlist(); } catch { ViewModel.ReportUnexpected(); } }

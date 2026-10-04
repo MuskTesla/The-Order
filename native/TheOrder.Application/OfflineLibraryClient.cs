@@ -4,7 +4,7 @@ using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, IClientTextRules text) : IOfflineLibraryClient
+public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, IClientTextRules text) : IOfflineLibraryClient, IRecognitionLibrarySource
 {
     private readonly SemaphoreSlim lifetime = new(1, 1);
     private TransactionalLibrary? library;
@@ -37,6 +37,16 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         finally { lifetime.Release(); }
     }
     internal TransactionalLibrary Required() => library ?? throw new InvalidOperationException("书架尚未加载。");
+    public Task<RecognitionEntrySnapshot> CaptureRecognitionAsync(string id, CancellationToken cancellation) => Required().CaptureRecognitionAsync(id, cancellation);
+    public Task<bool> IsRecognitionCurrentAsync(RecognitionEntrySnapshot snapshot, CancellationToken cancellation) => Required().IsRecognitionCurrentAsync(snapshot, cancellation);
+    public Task<ImmutableArray<string>> RecognitionTargetsAsync(ImmutableArray<string> selected, RecognitionMode mode, CancellationToken cancellation)
+    {
+        var snapshot = Required().Snapshot;
+        return Task.Run(() => { cancellation.ThrowIfCancellationRequested(); var requested = selected.IsDefaultOrEmpty ? null : selected.ToHashSet(StringComparer.Ordinal);
+            var ids = snapshot.Entries.Where(e => (requested is null || requested.Contains(e.Id)) && !e.Installations.IsEmpty && (mode == RecognitionMode.Reidentify || e.Metadata is null || string.IsNullOrWhiteSpace(e.Metadata.CoverUrl))).Select(e => e.Id).Take(RecognitionQueue.MaximumJobs + 1).ToImmutableArray();
+            if (ids.Length > RecognitionQueue.MaximumJobs) throw new InvalidDataException("一次最多识别 1,000 个条目，请缩小选择范围。"); return ids;
+        }, cancellation);
+    }
     public Task<LibraryQueryResult> QueryAsync(LibraryQuery query, CancellationToken cancellation)
     {
         var snapshot = Required().Snapshot;

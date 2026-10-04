@@ -19,6 +19,8 @@ public sealed partial class MainWindow : Window
     private readonly SettingsPage settingsPage;
     private readonly Views.OnlinePage onlinePage;
     private readonly OnlineViewModel online;
+    private readonly RecognitionViewModel recognition;
+    private readonly RecognitionPage recognitionPage;
     private readonly ImportPage importPage;
     private readonly InstallationsPage installationsPage;
     private readonly FilesViewModel files;
@@ -29,9 +31,10 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture;
+        this.recognition = recognition;
         this.files = files; this.images = images;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
@@ -39,6 +42,9 @@ public sealed partial class MainWindow : Window
         detailsPage = new(workspace, images) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         onlinePage = new(online, images);
+        recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };
+        libraryPage.RecognizeSelected = async ids => { if (await ResolveUnsavedAsync()) { await recognition.StartAsync(ids, RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
+        detailsPage.Recognize = async () => { if (workspace.SelectedId is { } id && await ResolveUnsavedAsync()) { await recognition.StartAsync([id], RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
         settingsPage = new(workspace, online);
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) await online.RefreshEntryAsync(id); };
         detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
@@ -77,8 +83,8 @@ public sealed partial class MainWindow : Window
     private void ShowPage()
     {
         synchronizing = true;
-        PageContent.Content = ViewModel.Page switch { WorkspacePage.Online => onlinePage, WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
-        Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : LibraryNavigation;
+        PageContent.Content = ViewModel.Page switch { WorkspacePage.Recognition => recognitionPage, WorkspacePage.Online => onlinePage, WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
+        Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : ViewModel.Page == WorkspacePage.Recognition ? RecognitionNavigation : LibraryNavigation;
         Navigation.IsBackEnabled = ViewModel.Page != WorkspacePage.Library;
         synchronizing = false;
     }
@@ -93,7 +99,7 @@ public sealed partial class MainWindow : Window
     }
     private async void OnNavigationInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
-        if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate((item.Tag as string) switch { "settings" => WorkspacePage.Settings, "online" => WorkspacePage.Online, _ => WorkspacePage.Library });
+        if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate((item.Tag as string) switch { "settings" => WorkspacePage.Settings, "online" => WorkspacePage.Online, "recognition" => WorkspacePage.Recognition, _ => WorkspacePage.Library });
     }
     private async void OnBack(NavigationView sender, NavigationViewBackRequestedEventArgs args) => await Navigate(WorkspacePage.Library);
     private async Task<UnsavedChoice> ChooseUnsaved()
@@ -129,6 +135,7 @@ public sealed partial class MainWindow : Window
         // Startup may still hold user preference overrides. Finish loading/merging them
         // before disposal cancels the lifetime, then drain the resulting persistence queue.
         if (initialization is not null) await initialization;
+        await recognition.DisposeAsync();
         await online.DisposeAsync();
         await files.DisposeAsync();
         await ViewModel.DisposeAsync();
@@ -167,7 +174,18 @@ public sealed partial class MainWindow : Window
             localCoverCount = ViewModel.Items.Count(i => i.HasLocalCover),
             onlineState = online.SearchState.ToString(), onlineCount = online.Items.Count, onlineDetails = online.DetailState.ToString(), onlineWorkId = online.Details?.Id, onlineHasCover = online.DetailCoverKey is not null, onlineConnection = online.ConnectionState.ToString(),
             onlineAuthGeneration = online.AuthGeneration, onlineCredentialPresent = online.HasCredential, syntheticDetailRequests = onlineFixture?.DetailRequests,
-            onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim())))
+            onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim()))),
+            recognition = new {
+                progress = recognition.Progress, reviewCount = recognition.Reviews.Count,
+                selectedGame = recognition.SelectedGameId, selectedReview = recognition.SelectedId,
+                status = recognition.SelectedReview?.Status.ToString(), candidateCount = recognition.Candidates.Count,
+                candidates = recognition.SelectedReview?.Result?.Candidates.Select(c => new { id = c.Work.Id, high = c.HighConfidence, veto = c.Vetoed, score = c.Confidence }),
+                selectedCandidate = recognition.SelectedCandidateId, canApply = recognition.CanApply,
+                localCandidates = recognition.SelectedReview?.Result?.Identity.LocalCandidates.Length,
+                unavailable = recognition.SelectedReview?.Result?.EnrichmentUnavailable,
+                algorithm = recognition.SelectedReview?.AlgorithmVersion, decision = recognition.LastDecision?.Outcome.ToString(),
+                lastJob = recognition.LastJobState?.ToString(), online = recognition.UseOnline, persistenceError = recognition.PersistenceError
+            }
         };
         RuntimeState.Text = "THE_ORDER_RUNTIME " + JsonSerializer.Serialize(snapshot);
     }
