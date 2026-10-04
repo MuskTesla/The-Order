@@ -22,6 +22,8 @@ public sealed partial class LibraryPage : Page
     private int createdContainers;
     private double firstDisplay;
     private int maxRealized;
+    private string measuredLayout = "";
+    private double modeStarted;
     private ListViewBase Active => ViewModel.Layout == "grid" ? GameGrid : GameList;
     public LibraryPage(WorkspaceViewModel viewModel, bool diagnostics)
     {
@@ -32,12 +34,16 @@ public sealed partial class LibraryPage : Page
     public Visibility Visible(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        GameGrid.SelectedItems.Clear(); GameList.SelectedItems.Clear();
         ViewModel.PropertyChanged += OnState; Synchronize();
         if (diagnostics) { DiagnosticsText.Visibility = Visibility.Visible; LayoutUpdated += OnLayout; }
     }
     private void OnUnloaded(object sender, RoutedEventArgs e) { ViewModel.PropertyChanged -= OnState; LayoutUpdated -= OnLayout; }
     private void OnState(object? sender, PropertyChangedEventArgs e)
-    { if (e.PropertyName is nameof(WorkspaceViewModel.Items) or nameof(WorkspaceViewModel.Layout) or nameof(WorkspaceViewModel.Query)) Synchronize(); }
+    {
+        if (e.PropertyName == nameof(WorkspaceViewModel.SelectionVersion)) { GameGrid.SelectedItems.Clear(); GameList.SelectedItems.Clear(); }
+        if (e.PropertyName is nameof(WorkspaceViewModel.Items) or nameof(WorkspaceViewModel.Layout) or nameof(WorkspaceViewModel.Query)) Synchronize();
+    }
     private static string Value(ComboBox box, string fallback = "all") => (box.SelectedItem as ComboBoxItem)?.Tag as string ?? fallback;
     private static void Select(ComboBox box, string value) => box.SelectedItem = box.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (i.Tag as string ?? "") == value);
     private void Synchronize()
@@ -47,6 +53,8 @@ public sealed partial class LibraryPage : Page
         SearchBox.Text = q.Text; CategoryFilter.Text = q.Category; TagFilter.Text = q.Tag; FavoriteFilter.IsChecked = q.Favorites;
         Select(ViewChoice, q.View); Select(SortChoice, q.Sort); Select(StatusChoice, q.Status); Select(MinimumChoice, q.MinRating);
         var grid = ViewModel.Layout == "grid";
+        if (measuredLayout != ViewModel.Layout)
+        { measuredLayout = ViewModel.Layout; firstDisplay = 0; maxRealized = 0; modeStarted = measuredLayout == "grid" && createdContainers == 0 ? 0 : display.Elapsed.TotalMilliseconds; }
         GameGrid.Visibility = Visible(grid); GameList.Visibility = Visible(!grid);
         if (grid) { GameList.ItemsSource = null; if (!ReferenceEquals(GameGrid.ItemsSource, ViewModel.Items)) GameGrid.ItemsSource = ViewModel.Items; }
         else { GameGrid.ItemsSource = null; if (!ReferenceEquals(GameList.ItemsSource, ViewModel.Items)) GameList.ItemsSource = ViewModel.Items; }
@@ -74,6 +82,8 @@ public sealed partial class LibraryPage : Page
     }
     private async void OnBatch(object sender, RoutedEventArgs e)
     {
+        try
+        {
         var ids = Active.SelectedItems.Cast<GameSummary>().Select(i => i.Id).ToImmutableArray();
         if (ids.Length is < 1 or > 1000)
         { await new ContentDialog { XamlRoot = XamlRoot, Title = "请选择作品", Content = "批量修改支持 1 至 1000 个条目。可使用卡片勾选框多选。", CloseButtonText = "知道了" }.ShowAsync(); return; }
@@ -84,18 +94,34 @@ public sealed partial class LibraryPage : Page
         var panel = new StackPanel { Spacing = 12 }; foreach (var element in new UIElement[] { status, favorite, categories, tags, remove }) panel.Children.Add(element);
         var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = $"批量修改 {ids.Length} 部作品", Content = panel, PrimaryButtonText = "保存一次修改", CloseButtonText = "取消" };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-            await ViewModel.ApplyBatchAsync(ids, PreferenceValidation.Statuses[status.SelectedIndex], new[] { "keep", "yes", "no" }[favorite.SelectedIndex], categories.Text, tags.Text, remove.IsChecked == true);
+             await ViewModel.ApplyBatchAsync(ids, PreferenceValidation.Statuses[status.SelectedIndex], new[] { "keep", "yes", "no" }[favorite.SelectedIndex], categories.Text, tags.Text, remove.IsChecked == true);
+        }
+        catch (Exception) { ViewModel.ReportUnexpected(); }
     }
     private void OnContainerChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (!diagnostics || args.InRecycleQueue) return;
         if (!seenContainers.TryGetValue(args.ItemContainer, out _)) { seenContainers.Add(args.ItemContainer, new object()); createdContainers++; }
-        if (firstDisplay == 0) firstDisplay = display.Elapsed.TotalMilliseconds;
+        if (firstDisplay == 0) firstDisplay = display.Elapsed.TotalMilliseconds - modeStarted;
     }
     private void OnLayout(object? sender, object e)
     {
         var realized = Active.ItemsPanelRoot?.Children.Count ?? 0; maxRealized = Math.Max(maxRealized, realized);
         var value = $"{ViewModel.Layout} | items={ViewModel.Items.Count} | realized={realized} | max={maxRealized} | containers={createdContainers} | first={firstDisplay:F0}ms | query={ViewModel.LastQueryMilliseconds:F1}ms";
         if (DiagnosticsText.Text != value) DiagnosticsText.Text = value;
+    }
+    internal object RuntimeViewport() => new
+    {
+        realizedContainerCount = Active.ItemsPanelRoot?.Children.Count ?? 0, maxRealized,
+        firstContainerMs = firstDisplay, viewportWidth = Active.ActualWidth, viewportHeight = Active.ActualHeight,
+        selectedCount = Active.SelectedItems.Count,
+        scrollOffset = FindScroll(Active)?.VerticalOffset ?? 0
+    };
+    private static ScrollViewer? FindScroll(DependencyObject root)
+    {
+        if (root is ScrollViewer scroll) return scroll;
+        for (var i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            if (FindScroll(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i)) is { } found) return found;
+        return null;
     }
 }

@@ -1,5 +1,16 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 3A.1：Presentation State Remediation（验收完成）
+
+- 基线 `codex/winui-phase3` / `29e5577c0e82384b66ce9d12fd6b06b996dc8b9c`；仅整改 M1–M5、Search lifecycle 和 Selection contract。没有 Phase 3B 授权，不访问正式资料、真实凭据或游戏目录。
+- Presentation 保留原分层和事务内核：详情响应检查请求 generation、草稿修订号和同条目 lifecycle；偏好有 Uninitialized/Loading/Ready/LoadFailed，启动操作按字段合并，读取失败后本次运行只作临时修改；完整批量操作从解析起受关闭等待；PersistenceResult 与 LastRefresh 分开，提交后的刷新故障明确提示已保存。
+- 选择契约为明确清空：Grid/List、查询/排序/筛选、Reload、projection 替换和重新进入 Library 都清空选择；隐藏后重现、删除/同 ID 恢复均不自动恢复选择，也不继承旧草稿 token。
+- **旧 Phase 3A UI 证据作废**：`.artifacts/native-phase3a` 的 31 PNG / 31 UI txt 都是初始 1k Dark Grid 快照。已查到 `saveState` 闭包绑定旧 REPL cell 的 `state`，并以两次 cell 调用复现。旧首屏/容器表不能作为验收依据；build/TRX/Electron 记录不因此作废。
+- 新采集入口 `native/scripts/capture-ui-evidence.mjs` 每次自行读取当前窗口；先比较期望场景与应用运行时 metadata，再保存 screenshot、UI tree、含时间/进程/MVID/checkpoint/状态/容器/内存/文件 hash 的 manifest。场景不符、快照过期、无可视容器均失败；不再闭包引用外部快照。
+- 重启 Codex 后桌面工具恢复，已实际完成 M1 新草稿抗延迟覆盖、M2 启动偏好合并并保留已有筛选、M3 真实事务提交后的刷新故障、M4 后台预处理期间关闭等待/放行提交及主动取消、Search active → Reload failure，以及 Grid/List/Search/Filter/Reload 选择清空。批量取消实测发现提示误称保留草稿，已改为明确未写入，不改变取消或事务行为。CommittedWithWarning + RefreshFailed 有确定性回归，未冒称真实桌面故障注入。
+- 真实 UI 新证据位于 `.artifacts/native-phase3a1/ui`，逐场景 manifest 与 UI metadata、文件 SHA-256 已交叉核验；旧 `.artifacts/native-phase3a` 截图继续作废。1k/5k/10k 均为 Grid **45→51**、List **29→31**（首屏→快速滚动后）；Light/Dark、Normal/Read-only/Corrupt/Empty/Zero-results 独立场景齐全。原生发布版本实际启动、滚动、持久化、重启及正常退出。baseline 与构建身份分层见 DEVELOPMENT，不是 FPS 或正式性能 SLA。
+- Debug/Release build（各 0 warnings/errors）、C# full（各 **379/0/0**；新增 30，原 102 differential / 14 fault injection 保留）、artifact tests **10/0/0**、Electron relevant **130/0/0**、build/import 与 Release publish 通过。验收只使用隔离合成库，无正式资料、真实凭据、API 或游戏启动。**PASS FOR PHASE 3B** 表示本阶段 Gate 就绪，不是执行授权；建立 Phase 3A.1 checkpoint 后暂停，不进入 Phase 3B。
+
 ## WinUI Phase 3A：Library & Personal Data UI（2026-10-04，候选待 Gate）
 
 - 从可信 `codex/winui-phase2` / `d0702cafe1b6762069d63fe08bcba07b199ca713` 建立 **`codex/winui-phase3`**。本节为当前状态，下面 Phase 1/2 的“尚未接入 UI writer”是历史状态。本阶段只开放带既有合成标记的隔离目录；没有访问正式 `%APPDATA%\KunGalManager`、凭据、真实游戏或联网目录 API。完成 Phase 3A checkpoint 后暂停，**没有 Phase 3B 授权**。
@@ -8,8 +19,7 @@
 - 搜索索引和查询在后台工作，120 ms 输入防抖与 cancellation/generation 防止旧结果覆盖新查询。迁移旧五种排序、五种库视图、状态/收藏/分类/个人和目录标签/最低评分筛选。实际 Electron oracle 提供 **38 查询 + 5 标签拆分 + 8 批量差分**；NFKC、Unicode lower、AND 搜索项、标签大小写/次序/追加/删除保持参考行为。排序使用 zh-CN 名称比较，ID 使用 en-US 比较；未声称任意 Windows/NLS/ICU 版本的所有 Unicode 排序等价。
 - 原 legacy v1 和提交内核不变；Application 新增个人草稿 token 与有限批量用例。`native-ui.json` 单独保存主题、Grid/List、排序和显式命名筛选；临时查询不自动保存，损坏偏好不覆盖旧文件。正式 Electron localStorage 迁移后置。只读能力来自统一 LibraryCapability；所有个人编辑入口禁用。CommittedWithWarning 显示“修改已经保存，但存在附加警告”，不自动重试；失败保留草稿；损坏库显示“尚未加载书架”，不显示为真实空库。
 - **实际验证**：locked restore、Debug/Release 全 solution build 均 0 warnings/errors；C# 两配置各 **349 passed / 0 failed / 0 skipped**，比 Phase 2.1 新增 79，原 102 differential / 14 fault injection 保留，新增 UI differential 51。Electron 7 个相关单元文件 **130/0/0**；build + desktop import 37 新增/重复 0 新增、37 跳过/个人字段与重启保留/renderer errors 0。独立 Release publish 成功，发布 EXE 实际启动、滚动、批量写入并正常关闭。
-- **真实 WinUI 证据**：Grid/List、选中/切换详情、草稿不提前落盘、保存/重启、取消、dirty 导航和关闭时保存、搜索/评分排序/收藏筛选、显式保存筛选、System→Light、只读/损坏/空库均已实际操作；发布包额外验证两条目的批量标签写入和大小写去重。保存已在进行时的关闭等待、warning、取消和故障分界还有受控生产内核/单线程 context 和 ViewModel 测试；人工速度的 UI smoke 不声称命中了每个 IO 阶段。
-- **最终发布包虚拟化**：1k/5k/10k 首个容器回调分别 **937/1563/2126 ms**；快速滚动后面板容器均约 **51**（含缓冲/池，非只计可见卡片），远少于 10k。工作集 **306.1/335.5/353.7 MiB**；这是单次本机合成观察，不是 P95/FPS 或正式性能承诺。早期锁屏与小窗口零可视高度数据已排除。计数使用 weak table，诊断本身不强引用历史可视元素。方法、详细数据、复验命令及截图索引见 DEVELOPMENT 的 Phase 3A 节。
+- **UI 验收记录已被 Gate 否定为有效证据**：原截图/UI tree 被错误重复保存，无法支持各场景声明；原首屏/虚拟化表撤回。详见上方 Phase 3A.1 根因与替代采集流程。旧进程内存 JSON 不能单独证明库规模和视图身份。
 - 仍保留的阶段边界：图片只是占位和数据说明；没有图片下载/解码/缓存、安装管理/扫描/导入 UI、启动/计时、API、识别或 Liquid Glass。长时间运行、全 Unicode 排序、干净机器/安装包签名/升级和无障碍完整验收尚未完成。当前可交给 **Phase 3A Gate Review**；通过后才能规划 Phase 3B filesystem identity/preflight，不能直接接入真实目录。
 
 ## WinUI Phase 2.1：Transaction Kernel Gate Remediation（2026-10-04）

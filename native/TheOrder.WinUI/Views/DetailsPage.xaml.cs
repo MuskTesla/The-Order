@@ -12,7 +12,6 @@ public sealed partial class DetailsPage : Page
     private async void OnSave(object sender, RoutedEventArgs e) => await ViewModel.SaveAsync();
     private async void OnCancel(object sender, RoutedEventArgs e)
     {
-        ViewModel.CancelDraft();
-        if (ViewModel.SelectedId is { } id) await ViewModel.NavigateAsync(WorkspacePage.Details, id, () => Task.FromResult(UnsavedChoice.Stay));
+        await ViewModel.CancelAndReloadDetailsAsync();
     }
 }

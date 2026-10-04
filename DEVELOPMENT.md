@@ -1,5 +1,95 @@
 # 开发与维护
 
+## WinUI Phase 3A.1：状态整改与场景证据（验收完成）
+
+本轮只在 `codex/winui-phase3` 修复 Phase 3A Gate 问题。基线 `29e5577c0e82384b66ce9d12fd6b06b996dc8b9c`，完成全部验证后才建立新 checkpoint；不进入 Phase 3B。
+
+### 状态契约
+
+- **M1**：`WorkspaceViewModel` 在详情请求开始捕获草稿修订号；SetDraft 与用户编辑均推进修订号。完成时同时核对请求 generation、取消、修订号、同条目 epoch/generation。Cancel 后仍允许继续输入，但旧结果不能覆盖新输入。离开 Details 释放已处理草稿；保存开始使旧详情请求失效。
+- **M2**：偏好有 Uninitialized/Loading/Ready/LoadFailed。Loading 时只记录用户真正更改的 Theme/Layout/Sort 字段；读取后与完整旧偏好合并，再排队持久化。常用筛选在 Ready 前禁用。读取失败保留旧文件，后续主动外观/排序操作仅本次有效，本次运行永不重写偏好；修复文件后须重启。
+- **M3**：`PersistenceResult` 是事务结果，`LastRefresh` 是刷新结果。已提交草稿退役，重新获取权威 projection；刷新失败仍首先说明已保存，并保留 commit warning。查询 helper 返回 structured outcome，不擅自覆盖提交提示，不重试 mutation。
+- **M4**：`ApplyBatchAsync` 在后台解析前进入 tracked operation / IsSaving。解析、校验、Application 调用与结果处理属于同一个 task；关闭等待此 task。主动取消在 admission 前检查，durable 阶段仍遵守原事务契约。异常统一处理，View 入口另有最后一层保护。
+- **Search**：Reload 取消并接管旧搜索，立即清理旧 busy 状态。打开新库前的新查询只更新意图；新库打开后的新查询可以取代 Reload 查询。旧结果和旧错误不能修改当前结果或 busy 状态。
+- **Selection**：选择使用明确清空规则，不依赖控件保留对象引用。Grid/List、Sort/Filter/Search、Reload、任何 projection 替换及重新进入 Library 都清空；即使 ID 仍存在也不恢复。被隐藏后重现、删除、同 ID 新 lifecycle 恢复同样不继承旧选择/草稿。当前没有 delete UI；事务 epoch/generation 校验保持不变。
+
+### 新证据采集
+
+`THE_ORDER_NATIVE_DIAGNOSTICS=1` 显示合成验收控制和 `RuntimeEvidence`。只有此开关开启时才装配 WinUI 内部 `SyntheticScenario`：可以受控延迟详情、后台批量预处理、搜索，触发下一次重读或提交后查询故障。`THE_ORDER_NATIVE_HOLD_PREFERENCES=1` 可暂停首次偏好读取，界面“放行”解除；只在 diagnostics 模式生效。底层仍是原 `IsolatedLibraryFactory` / `IsolatedUiPreferencesStore` 和真实事务，不改库格式、隔离校验或只读能力。普通启动没有这些控制和 timer。
+
+“延迟批量”必须在确认批量之前设置：现在暂停于后台 `IClientTextRules.SplitLabels` 入口，而非解析之后的 `BatchAsync`。诊断门只阻塞 Task.Run 工作线程，拒绝在 UI 线程等待，并有两分钟超时；放行后仍调用原文本规则。取消不会中断同步解析器，解析返回后、事务准入前观察取消。搜索门使用可取消异步等待。首次采集的 `m4-batch-held-*` 仅证明旧门处的事务准入等待；精确预处理证据为 `m4-preprocessing-*` / `m4-close-awaits-preprocessing`。
+
+运行时记录来自实际 ViewModel、ActualTheme、Grid/List panel、进程与 assembly：itemCount/totalCount、viewMode、theme、readOnly、state、page、viewport/scrollOffset、realized/maxRealized、firstContainerMs、内存、事务/刷新结果、MVID 和 assembly informational version。首容器计时是 LibraryPage 构造到首 Grid 容器，List 为切换模式到首 List 容器；不是完整冷启动 SLA。
+
+Computer Use 中先观察和执行单步 UI 操作，再调用仓库模块：
+
+```javascript
+const capture = await import('file:///D:/Projects/The-Order/native/scripts/capture-ui-evidence.mjs');
+const result = await capture.captureEvidence({
+  sky, window: targetWindow,
+  scenarioId: 'published-10000-grid-scroll',
+  outputDirectory: 'D:/Projects/The-Order/.artifacts/native-phase3a1/ui',
+  expected: { itemCount: 10000, totalCount: 10000, viewMode: 'grid', theme: 'Dark', readOnly: false, state: 'normal', page: 'Library' }
+});
+```
+
+模块内部自行捕获新 snapshot，不引用 REPL 外部 `state`。先验证场景身份、时间有效性、可视 viewport，再创建目录；任何不符直接失败且不生成成功 manifest。同名目录拒绝覆盖。manifest 最后写入，包含实际 runtime metadata、期望状态、窗口、输出文件 SHA-256。截图 hash 相同本身不判错，场景身份必须一致。
+
+### 验证状态
+
+证据写入 `.artifacts/native-phase3a1/`。当前锁定依赖 restore 成功；最终 Debug/Release solution build 各 0 warnings / 0 errors，full C# 各 **379 passed / 0 failed / 0 skipped**。原 102 differential / 14 fault-injection 保留全部通过，新增 `PresentationRemediationTests.cs` 30 项。采集反例 `node --test native/scripts/capture-ui-evidence.test.mjs` **10/0/0**。Electron 七个相关文件 **130/0/0**，build 成功，desktop import 37 新增、重复 0 新增/37 跳过、renderer errors 0。最终 Release publish 输出 `.artifacts/native-phase3a1/publish-checkpoint/win-x64`，旧采集批次 publish / publish-final 保留用于追溯；没有替换正式程序。最终发布 PID 33764 正常退出 exit 0，见 `checkpoint-publish-exit.json`。
+
+`debug-final.trx` / `release-final.trx` 与 `*-build-final.log` 是最终回归；Electron 与 artifact 日志沿用本轮已通过且对应源码未再改变的记录。普通产品路径没有同步等待或 ViewModel 文件 IO；诊断 `SyntheticScenario.TextRules` 与单测 `GatedText` 有明确受限的后台解析等待，用于确定性时序，不能当作生产等待方式。
+
+| Gate 项 | 实际 UI 证据与结果 |
+| --- | --- |
+| M1 | `m1-cancel-details-held` 确认 Cancel 后 detailsLoading=true；`m1-new-draft-survives` 放行后笔记仍为新输入、dirty=true、detailsLoading=false。 |
+| M2 | `debug-preferences-held` Loading 时改 Light/List/name；`debug-preferences-merged-light-list` Ready、savedFilterCount=1。`preference-merge-readback.json` 核对实际文件中原 keep 筛选及最新三项 override。 |
+| M3 | `m3-committed-refresh-failed` 为 Committed + Failed，提示“修改已经保存…不要重复提交”，Save 禁用。`m3-readback.json` 主库为新笔记、备份仍为旧笔记，未自动重复提交。CommittedWithWarning 的查询/详情刷新故障由 C# 确定性测试覆盖，未在桌面注入真实写后警告。 |
+| M4 | `m4-preprocessing-held` / `m4-close-awaits-preprocessing` 均为 saving=true、batch-preprocessing-held；关闭等待，放行后退出并实际写入标签，`m4-preprocessing-readback.json` 核验。发布版主动取消后库 SHA-256 不变，`m4-cancel-readback.json` 核验；没有未处理 async void 导致的崩溃。诊断暂停点改进不改变事务实现。 |
+| Search | `search-active-held` 确认 searching/query-held 与实际进度条；重读故障后 `search-active-reload-failed-ended` 为 error/reload-failed，进度结束，界面明确尚未加载书架。先前 `search-filter-reload-failed` 只是查询条件存在，不用它证明搜索并发。 |
+| Selection | List→Grid 的前后截图为 selectedCount 1→0；`selection-journal.jsonl` 逐对记录 Grid→List、Search、Filter、Reload 的 1→0，既有 ID 继续存在也不保留选择。 |
+| Artifact pipeline | `pipeline-negative-runtime.json`：故意请求 10k Grid Light normal、实际为 0/10k List Dark zero-results，采集拒绝且不创建场景目录。`artifact-sanity.json` 全量核验 manifest 与实际 ui.txt metadata、文件大小与 SHA-256；`artifact-index.json` 保存逐场景摘要及 manifest hash。 |
+| 大库/主题/状态 | 1k/5k/10k Grid/List 首屏及快速滚动、Light/Dark、Normal/Read-only/Corrupt/Error/Empty/Zero-results 均有独立真实截图，详见下表及场景索引。 |
+
+### Phase 3A.1 baseline（本机合成数据）
+
+相同实际 viewport 1042 × 466.5 DIP；快速滚动后的 offset 均为 6989 DIP，截图中条目已改变。Grid 为 LibraryPage 构造到首次容器事件，List 为模式切换到首次容器事件；working set 是首屏采集时的进程值，包含诊断/桌面验收开销，不能解释成峰值或生产 SLA。基础批次每规模一次，10k 在补强诊断后的发布版重复一次。
+
+| 实际库规模 | Grid 首容器 ms | List 首容器 ms | Grid 容器首屏→滚动 | List 容器首屏→滚动 | Grid/List 采集 working set MiB |
+| --- | ---: | ---: | --- | --- | --- |
+| 1,000 | 1038.6 | 19.3 | 45→51 | 29→31 | 281.9 / 299.1 |
+| 5,000 | 1670.1 | 12.3 | 45→51 | 29→31 | 314.7 / 329.5 |
+| 10,000 | 2283.0 | 18.0 | 45→51 | 29→31 | 329.7 / 377.8 |
+| 10,000 复测 | 2282.6 | 11.8 | 45→51 | 29→31 | 331.7 / 376.6 |
+
+两个视图均实际接受快速滚动并显示新条目，容器没有随 1k→10k 近线性增长；没有进行 FPS、帧时间、图片解码或长期内存 benchmark。封面仍为占位，本阶段不宣称真实图片系统性能。
+
+场景目录（每项含 screenshot、ui.txt、manifest.json）：
+
+- `release-{1000,5000,10000}-{grid,list}-{initial,scrolled}`：12 个基础规模/滚动场景。
+- `final-release-10000-{grid,list}-{initial,scrolled}`：4 个 10k 复测场景。
+- `release-readonly`（2 条、200k sessions、编辑禁用）、`release-corrupt-error`（错误而非空库）、`release-empty`、`release-10000-zero-results`。
+- `debug-preferences-held`、`debug-preferences-merged-light-list`：Dark/Light 及启动偏好。
+- `m1-*`、`m3-*`、`m4-*`、`search-*`、`selection-*`、`final-release-smoke-reopened`：状态与重启证据；完整 ID、规模、状态、容器数与 SHA-256 以 `artifact-index.json` 为准。
+- `checkpoint-preprocessing-held`、`checkpoint-batch-cancelled`：最后取消文案修正的实际发布版复验；`checkpoint-cancel-readback.json` 确认文件未变。此前 `m4-preprocessing-cancelled` 截图保留为发现误导文案的历史证据，最终文案由此场景 supersede。
+
+最终 sanity 为 **39 screenshots / 39 manifests / 39 unique screenshot hashes**，全部 manifest 与 ui.txt runtime 一致、文件大小及 SHA-256 一致，规模/主题/状态覆盖完整。`artifact-index.json` SHA-256：`3E91DBF0853F1A17C522591C70E681EBBBE25AA571F48CBD77E5C87448ABEBE9`。最终源码/程序集清单 SHA-256：`1FC45A10480B1775027BE74B53174284A88D3C38497F4E25ED555D8E26D97536`。
+
+### 构建与证据可追溯性
+
+场景 manifest 自报 assembly MVID、进程、时间、基线 informational version；未提交阶段的 informational version 仍指向 `29e5577...`，不能把它误称成最终提交 SHA。`build-source-manifest.json`、`build-source-manifest-diagnostic.json`、`build-source-manifest-final.json` 分别记录各批次的完整 native 源码哈希；最后的 checkpoint 与最终清单绑定。
+
+MVID 只标识 WinUI 模块，不唯一标识全部依赖：最后只修改 Presentation 文案，WinUI MVID 仍为 `87a7e110-842f-4126-b958-4871597f8cf7`。因此还核对 manifest 的实际 executable 路径/PID、对应发布目录中各 TheOrder DLL 的 SHA-256，以及源文件 SHA-256 / Git blob；不能只凭 MVID 相同断言完整构建相同。
+
+基础 Release MVID 为 `6e9c983a-1826-40ab-9011-2aa85f744ccb`；补强诊断后的 Release 为 `87a7e110-842f-4126-b958-4871597f8cf7`。中间只改变四个诊断相关文件，五个核心分层 DLL 字节一致，证据 `build-equivalence-diagnostic.json`。最后一次真实取消发现共用文案错误，按 detailId 区分批量/详情提示，并在既有取消测试中增加断言；最终构建清单另行记录该差异，不把先前 DLL 等价性扩大到最后文案修正。该修正不改变布局、搜索、选择、解析、事务或持久化，最终发布版再次实际确认取消文案和文件不变。
+
+旧 `.artifacts/native-phase3a/` 的 31 PNG/31 txt 不作为有效 UI 证据，标记文件继续保留；本轮新 index/manifest 明确 supersede 旧截图与旧首容器表，不删除历史。旧 automated build/TRX/Electron 记录没有因截图错误而被作废。
+
+重启 Codex 后原 `foreground window did not report a process id` 故障消失。验收中单次输入几何信息缺失和一次 monitor lookup 失败，均停止使用旧索引、重新选择窗口后仅重试一次即恢复；没有据此改产品业务逻辑。此次额外改动只包含精确合成验收门和实测暴露的批量取消提示。
+
+**PASS FOR PHASE 3B**：本阶段要求的 M1–M4、Search lifecycle、Selection、artifact pipeline、大库、主题、只读/损坏/空/零结果均有对应证据。Phase 3A.1 checkpoint 后暂停，不将 Gate 结论当成 Phase 3B 授权。剩余边界：CommittedWithWarning + RefreshFailed 仅确定性回归；合成资料/单机诊断 baseline 不代表真实图片、大 session 库的长期运行、任意机器、干净机器安装/签名/升级或断电保证；不涉及正式数据、API、filesystem identity、游戏启动或 Liquid Glass。
+
 ## WinUI Phase 3A：隔离离线客户端与验收
 
 当前候选分支 `codex/winui-phase3`，起点为 Phase 2.1 的 `d0702cafe1b6762069d63fe08bcba07b199ca713`。仅 Phase 3A；下面各阶段描述保留为历史证据。Phase 3A checkpoint 后暂停等待 Gate，不能自动进入 Phase 3B。
@@ -63,20 +153,9 @@ node tests/desktop-import.mjs
 
 - Locked restore、Debug/Release 全 solution build：0 warnings / 0 errors；两配置全量 C# **349 passed / 0 failed / 0 skipped**（原 270 + 新增 79），原 102 differential / 14 fault-injection 测试全部保留通过。Release publish 成功，发布目录实际启动与正常退出。
 - Electron 七个相关单元文件 **130 passed / 0 failed / 0 skipped**；build + desktop import 通过：37 条新增，重复 0 新增 / 37 跳过，个人字段和重启一致，游戏文件保留，renderer errors 0。未宣称运行了整个 npm test 或全部 desktop suite。
-- 新 UI 的实际自动化操作通过 Computer Use 的 WinUI accessibility / 窗口截图完成，没有浏览器替代。先前锁屏造成的激活失败与壁纸截图均不计入结果；用户解锁后重新执行。发现并修正 DPI 下初始物理窗口过小、空 Tag 的评分选项未选中；初始大小现按 XamlRoot scale 转成物理像素并限制在当前工作区。窗口缩放/最大化也已观察。
-- 真实 smoke：1k Grid/List、多选/详情、输入时磁盘不变、保存后名称/NameIsCustom 落盘、退出重启搜索命中、取消笔记、dirty 导航的继续编辑、System/Light 外观；10k 末尾条目详情、搜索、评分排序、收藏筛选 2500/10000、显式保存命名筛选、清除临时条件、切换另一详情、关闭时选择保存并继续，最终两处笔记落盘且进程退出。发布包额外批量更新两条标签，Case/case 分别保留且同大小写重复项去重。
-- ValidReadOnly 的两条/200k sessions 主库能查看；批量、名称、状态、评分、收藏、分类、标签、笔记、保存全部禁用。损坏库显示读取错误/尚未加载书架；合法空库显示 0/0 和空状态。
-- 已在进行中的事务关闭等待、commit 后 warning/取消、IO failure 等精确时序由生产 persistence probe + 单线程 context 及 ViewModel gate 测试覆盖。实际 UI smoke 覆盖“保存完成后关闭”和“关闭时保存草稿”；不声称人工输入准确落在某个 durable IO 指令之间。没有 UI 自动重试路径。
-
-**最终 Release 发布包观察**（无图片下载/解码；本机一次启动、一次大幅滚动，诊断开启）：
-
-| 合成条目 | 首个容器回调 ms | 首屏 / 滚动后面板容器 | 工作集 MiB | Private MiB |
-| --- | --- | --- | --- | --- |
-| 1,000 | 937 | 45 / 51 | 306.1 | 203.6 |
-| 5,000 | 1563 | 45 / 51 | 335.5 | 236.9 |
-| 10,000 | 2126 | 45 / 51 | 353.7 | 256.5 |
-
-时间从 LibraryPage 构造至首个非回收 ContainerContentChanging 回调，**不是完整冷启动或首帧像素呈现测量**。容器值为 ItemsPanelRoot.Children.Count（包含缓冲/池）；有首屏与滚动截图，10k 没有创建 10k 个完整可视元素。先前 Debug smoke 还验证列表 1k/5k/10k 分别约 14–32/32/28 个面板容器，窗口大小不同不能直接横比。累计 containers 计的是“曾创建过”，不同查询/模式切换会增加，不等于同时存活。没有帧时间/FPS/长时间泄漏测试，不把单次 working set 作为内存上限。
+- **Gate 更正：旧 UI 场景证据无效，原首屏和 realized-container 表撤回。** 31 张 PNG 和 31 份 UI 文本全部来自同一初始 1000 条 Dark Grid 快照，不能证明 List、Light、只读、损坏、空库、10k 或滚动场景。原始材料保留并由 `.artifacts/native-phase3a/INVALID-UI-EVIDENCE.txt` 明确标记，不用于新 Gate。
+- 根因来自原采集代码：`saveState = async name => { ... state.accessibility ... state.screenshots ... }` 闭包捕获第一次 REPL cell 的 `state`；后续 cell 的 `var state = await ...` 是新绑定。两 cell 的最小复现输出 `current=second, captured=first`。不是依据 hash 猜测 UI 操作未生效。
+- 原 build/TRX/Electron 日志及 Application 微基准可继续按各自范围查阅；旧进程内存文件没有完整场景身份，不作为新 UI baseline。
 
 布局按 [Microsoft GridView/ListView 虚拟化指导](https://learn.microsoft.com/en-us/windows/apps/develop/performance/optimize-gridview-and-listview)：有限 viewport、保留默认 ItemsWrapGrid/ItemsStackPanel、无外层整页 ScrollViewer，inactive view 的 ItemsSource 为 null。窗口尺寸换算参考 [Microsoft 窗口管理](https://learn.microsoft.com/zh-cn/windows/apps/develop/ui/manage-app-windows)。
 
@@ -88,7 +167,7 @@ node tests/desktop-import.mjs
 | 5,000 | 87.5 | 22.4 | 0.79 | 2.81 | 0.40 |
 | 10,000 | 179.7 | 41.9 | 0.50 | 4.94 | 0.41 |
 
-证据目录 `.artifacts/native-phase3a/`（不提交）：`restore.log`、`debug-build.log`、`release-build.log`、`debug-full.trx`、`release-full.trx`、`publish.log`、`electron-unit.log`、`electron-build.log`、`electron-import.log`、`oracle-repeat.json`；`ui-*.txt/png` 为真实交互、只读/损坏/空库；`published-{1000,5000,10000}-{initial,scroll}.txt/png` 与 `published-memory-*.json` 为最终发布包数据；`ui-close-persistence.json`、`published-batch.json` 为合成文件回读。所有测试窗口已正常关闭。复验应从新生成目录开始，不把本次编辑过的 profile 当原始基准。
+证据目录 `.artifacts/native-phase3a/`（不提交）：`restore.log`、`debug-build.log`、`release-build.log`、`debug-full.trx`、`release-full.trx`、`publish.log`、`electron-unit.log`、`electron-build.log`、`electron-import.log`、`oracle-repeat.json`；`ui-*.txt/png` 与 `published-*-{initial,scroll}.txt/png` 已作废，不支持对应场景；`published-memory-*.json` 只保留为缺少完整场景身份的历史进程记录；`ui-close-persistence.json`、`published-batch.json` 为合成文件回读。所有测试窗口已正常关闭。复验应从新生成目录开始，不把本次编辑过的 profile 当原始基准。
 
 **Gate 剩余边界**：Phase 3A 尚待独立 review，不自行宣告 Phase 3B GO。长时间运行、全 Unicode/其他 ICU/NLS 版本比较、全屏幕尺寸与无障碍、真实用户库、断电/网络盘、干净机器安装/签名/升级未验收。图片仍是占位，数据中的本地 cover 未当作缓存删除；安装、文件系统 identity/preflight、扫描/导入、ImageService/ThumbnailService 都属于 Phase 3B。通过 Gate 前不实现，不运行真实游戏，不接入 API/凭据、匹配、SQLite 或 Liquid Glass。
 
