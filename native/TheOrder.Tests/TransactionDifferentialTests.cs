@@ -81,7 +81,7 @@ public sealed class TransactionDifferentialTests
     public void OracleIsFreshForAllMutationDependencies()
     {
         using var doc = Oracle();
-        Assert.Equal(50, doc.RootElement.GetProperty("cases").GetArrayLength());
+        Assert.Equal(54, doc.RootElement.GetProperty("cases").GetArrayLength());
         Assert.Equal(43, doc.RootElement.GetProperty("validation").GetArrayLength());
         Assert.Equal(5, doc.RootElement.GetProperty("lifecycle").GetArrayLength());
         Assert.Equal(5, doc.RootElement.GetProperty("recovery").GetArrayLength());
@@ -115,7 +115,7 @@ public sealed class TransactionDifferentialTests
                 switch (s.GetProperty("kind").GetString())
                 {
                     case "begin": tokens[token] = await library.BeginRequestAsync(id); break;
-                    case "link": await library.LinkAsync(id, Work(s.GetProperty("work")), token: tokens[token]); break;
+                    case "link": await library.CommitLinkAsync(id, Work(s.GetProperty("work")), token: tokens[token]); break;
                     case "delete": await library.DeleteAsync(id); break;
                     case "import": await library.ImportAsync(Encoding.UTF8.GetBytes(s.GetProperty("backup").GetRawText())); break;
                     case "update": await library.UpdateAsync(id, LegacyLibraryCodec.ReadPersonalPatch(s.GetProperty("patch"))); break;

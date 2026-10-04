@@ -28,9 +28,9 @@ internal static class Composition
     }
 }
 
-internal sealed class NativeHost(ServiceProvider provider, MainWindow window, ILogger<NativeHost> logger) : IDisposable
+internal sealed class NativeHost(ServiceProvider provider, MainWindow window, ILogger<NativeHost> logger) : IAsyncDisposable
 {
     public MainWindow Window { get; } = window;
     public void LogFatal(Exception exception) => logger.LogCritical("Native client terminated: {ExceptionType}", exception.GetType().Name);
-    public void Dispose() { Window.CancelOperations(); provider.Dispose(); }
+    public async ValueTask DisposeAsync() { Window.CancelOperations(); await provider.DisposeAsync(); }
 }

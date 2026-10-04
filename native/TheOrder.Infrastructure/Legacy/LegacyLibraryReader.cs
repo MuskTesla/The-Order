@@ -41,6 +41,13 @@ public sealed class LegacyLibraryReader(IIsolatedLibrarySource source, NativeCon
     public static ImmutableArray<LibraryEntry> Parse(ReadOnlyMemory<byte> utf8, CancellationToken cancellationToken = default)
     {
         if (utf8.Length > MaximumBytes) throw new InvalidDataException("书架文件超过 32 MiB。");
+        return ParseCanonical(utf8, cancellationToken);
+    }
+
+    // Only codec-generated JSON reaches this internal path. Input bytes remain capped above;
+    // indentation expansion is a writer capability, not an input validity condition.
+    internal static ImmutableArray<LibraryEntry> ParseCanonical(ReadOnlyMemory<byte> utf8, CancellationToken cancellationToken = default)
+    {
         using var document = JsonDocument.Parse(utf8, new() { MaxDepth = 64 });
         LegacyValidation.Validate(document.RootElement, cancellationToken);
         var dto = document.RootElement.Deserialize<LegacyLibraryDto>(LegacyJson.Options) ?? throw new InvalidDataException("缺少书架对象。");

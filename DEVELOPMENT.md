@@ -1,6 +1,57 @@
 # 开发与维护
 
-## WinUI Phase 2：事务内核约束与复验
+## WinUI Phase 2.1：Gate 整改与验证边界
+
+本轮从 `codex/winui-phase2` / `f495d06c6b3b6d8dc2b6125405490876b5d7fab1` 整改，不新增架构层或依赖，不允许正式 profile / 凭据，也没有 Phase 3 授权。以下规则替代旧 Phase 2 中相应的输入预处理和同步释放描述。
+
+| Gate 项 | 生产位置 | 专项回归 |
+| --- | --- | --- |
+| B1 | Application/Transactions.cs 的 LibraryAccess、Open、Mutate；Infrastructure/LegacyLibraryCodec.cs 的 Inspect/Decode；LegacyLibraryReader.ParseCanonical | ValidLargeMainRemainsReadOnlyNeverFallsBackOrWrites（旧有效、损坏、无备份三种）；ValidWritableAndInvalidInputAreDistinct（两种） |
+| B2 | TransactionalLibrary.Open 默认 Now：TimeProvider → UTC → CultureInfo.InvariantCulture；Legacy codec/validation 日期解析均显式 invariant | DefaultProductionTimestampIsUtcInvariantAcrossCalendars（5 种 culture，含 Buddhist / UmAlQura） |
+| M1 | TransactionalLibrary.Enqueue / ShutdownAsync / DisposeAsync；IsolatedLibraryPersistence 内部 await；WinUI App.Closing / NativeHost.DisposeAsync | SingleThreadUiCanCloseWhileKernelDrains（7 种状态）；CancellationDuringCandidateThenShutdownDoesNotPersist；UiEntryPointsDoNotNormalizeOrDecodeOnCaller（3 个入口） |
+| M2 | TransactionalLibrary.LinkCoreAsync 的 sessionIndices | EightyThousandSessionMergePreservesOrderTotalsAndLimits（6 种）；真实 Electron 新增 partial / reverse / equal-seconds whole-source / duplicate-input 差分 |
+| 异步 token | CommitLinkAsync 必填 RequestToken；FinishRequestAsync / 取消登记和退休清理 | AsyncCommitRequiresTokenAndRejectsDeletedThenRestoredId；CancelledRequestEventuallyClearsPendingWithoutCancellingNewerRequest（3 种） |
+
+**输入有效性与可写能力**：外部输入始终先检查 32 MiB，再做完整 schema 校验。只有 codec 自身生成的规范化 JSON 可走 internal ParseCanonical（完整校验仍保留），输出字节上限单独由 Encode 执行。InvalidInput 才属于损坏输入；ValidReadOnly 不读旧备份，构造不再 Encode，Snapshot.Access/ReadOnlyReason 可供未来 UI 展示。只读 mutation 在调用 operation 前拒绝，主/备份字节保留。旧 unknown-field 白名单没有为大小边界作特例，未删除/压缩 session 或改写用户内容来绕过限制。真实 Electron validateLibraryBackup 已验证同一形状的 200k sessions 紧凑输入合法；具体字节记录在 oracle 的 largeInputReference。
+
+**线程与关闭协议**：UI 只发起操作并 await。admission lock 内同步登记 SemaphoreSlim.WaitAsync 保持接单顺序，随后 Task.Run 执行业务和 IO，不在 UI 线程创建 candidate、规范化 metadata 或解析导入。导入 ReadOnlyMemory 的调用方必须在任务结束前保持缓冲区内容稳定，工作线程先复制完整输入再解析/验证。不要把 cancellation 当作 stale token，也不要从 UI 同步等待 transaction。
+
+| 关闭时状态 | 行为 |
+| --- | --- |
+| 空闲 | 异步释放资源；重复关闭幂等 |
+| 已接收但排队 | 停止新增接单，已有工作继续按序；已取消的排队工作跳过 |
+| 正在构造/校验 candidate | 允许完成验证，在进入持久化前最后检查取消；未持久化则无内存/磁盘提交 |
+| 备份或主文件持久化中 | 不把关闭/取消传入 durable IO；完成最小安全提交或按原 IO 故障语义失败 |
+| 主文件已替换 | 必须发布准备好的内存 snapshot；不能报告回滚 |
+| 提交后检查警告 | 返回 committed-with-warning，再完成 drain/release |
+
+生产窗口在 AppWindow.Closing 中 Cancel=true，await provider.DisposeAsync 后通过 DispatcherQueue 发起真正关闭，保持关闭等待期间 dispatcher 存活。容器尚未注册 writer；“保存中关闭”证据来自实际生产内核/文件适配器置于真实单线程 SynchronizationContext 的测试，不等于已迁移完整 WinUI 保存命令。同步 Dispose 仅为无事务的旧调用保留，忙时抛明确错误，不能用来等待。
+
+**异步结果**：即时明确点击采用 LinkAsync；远程响应/后台识别/延迟结果采用 CommitLinkAsync（无 token 默认值），token 携带 epoch/generation/request/revision。BeginRequestAsync 可用请求 cancellation 安排 Pending 清理；显式 FinishRequestAsync 的 cleanup 不受已取消 token 阻止。CommitLinkAsync 在完成、失败、取消后清理同一 token，较新请求不会被旧清理取消。关闭中的剩余登记在排空后清除。
+
+**性能方法**：WarmedMultiRunOrdinaryTransactionAndMergeGrowth 独占测试 collection，10k 普通条目及 20k/40k/80k 每侧 session 合并，各 1 轮预热 + 3 轮测量。计时覆盖发起事务、候选、完整验证、备份/主文件 IO 和提交，不包括打开库。报告 median/min/max；三个样本不足以宣称稳定 P95。仅检查字典循环结构并观察增长，不设置机器相关绝对毫秒门槛；不借此优化普通整库事务。
+
+复验使用下方历史 Phase 2 的同一组命令。当前日志和两配置 TRX 保存到 `.artifacts/native-phase2.1/`（不提交）；测试工具仍默认覆盖 `.artifacts/native-phase1/test-results/compatibility.trx`，每次结束后复制为本阶段 `debug-tests.trx` / `release-tests.trx`。不升级 NuGet/npm 依赖，也不替换正式程序。
+
+### Phase 2.1 实际结果（2026-10-04）
+
+- Locked restore 成功；Debug / Release 全 solution build 均 **0 warnings / 0 errors**。完整 C# suite 两配置均 **270 passed / 0 failed / 0 skipped**，较 Phase 2 的 234 新增 **36**：32 个专项实例 + 4 个真实 Electron 小型差分。
+- 原 98 个 differential 全保留并通过，现共 **102**（54 mutation + 5 lifecycle + 43 codec）；原 **14** 个 FaultInjection 标记用例也全部通过。Electron oracle 重新生成且哈希与测试时 fixture 一致：54 mutation（41 接受 / 13 预期拒绝）全部验证旧端重启，另有 5 lifecycle / 5 recovery / 43 codec 参考。大主库参考为 **20,978,558 bytes compact / 34,178,884 bytes pretty**，Electron 校验合法；C# 三种备份组合均加载当前 2 条/200k sessions，拒绝修改且主/备份逐字节不变。
+- 默认时间实测 en-US / zh-CN / ja-JP（Gregorian）、th-TH（ThaiBuddhist）、ar-SA（UmAlQura）均为 `2026-10-04T00:00:00.000Z`。单线程 UI context 专项同时断言 codec/probe 在非 UI 线程、SynchronizationContext=null；覆盖空闲、排队、candidate、取消、持久化、已替换 warning，关闭后 writer lease 释放、重开成功、disk/snapshot 一致。
+- Electron 6 个相关单元文件 **120/0/0**；Electron build 与真实 desktop-import 通过：37 新增、重复 0 新增/37 跳过、个人字段/重启一致、游戏文件保留、renderer errors 0。原生 Debug/Release EXE 均实际启动至窗口，通过正常窗口关闭消息退出（exit 0），合成资料 SHA-256 未变。此 smoke 只验证启动/关闭，不代表完整 UI 功能或发布包验收。
+
+| 完整事务（每项 warmup 1 + measured 3） | Debug median [min, max] ms | Release median [min, max] ms |
+| --- | --- | --- |
+| 10k 普通条目修改 | 228.8 [224.9, 236.2] | 182.1 [173.0, 183.6] |
+| 20k + 20k 逆序完全重叠合并 | 200.4 [198.2, 228.8] | 160.1 [149.8, 211.1] |
+| 40k + 40k 逆序完全重叠合并 | 391.3 [378.2, 412.6] | 294.3 [290.1, 332.4] |
+| 80k + 80k 逆序完全重叠合并 | 717.0 [704.3, 748.9] | 604.7 [562.4, 620.5] |
+
+本机完整事务增长与线性 session 索引一致；这些是合成、无并行测试干扰的有限样本，不能当作所有机器/真实库的 SLA，也不宜直接与历史单次并行套件数字比较。80k+80k 不相交的 160k 候选按原 100k 上限整笔拒绝；部分重叠合并到 100k 成功，逆序、重复 ID、startedAt 冲突和历史累计保持契约。大库整库解析/重建仍有 CPU 与内存成本，ValidReadOnly 不承诺可编辑。
+
+证据：`restore.log`、`debug-build.log`、`release-build.log`、`debug-test.log`、`release-test.log`、两配置 TRX、`oracle.log`、`electron-unit.log`、`electron-build.log`、`electron-import.json`、`native-close.json`，均在 `.artifacts/native-phase2.1/`。B1/B2/M1/M2 自检有生产位置、专项回归和实际通过结果，结论 **PASS FOR PHASE 3（仅表示可交接下一阶段；没有实施授权）**。仍未验证正式用户资料、真实凭据、断电/非 NTFS/网络盘、完整 WinUI 写入集成和干净机器发布；本轮没有 SQLite、完整 UI 功能或用户迁移。checkpoint 后暂停。
+
+## WinUI Phase 2：事务内核约束与复验（历史 checkpoint）
 
 Phase 2 在 `codex/winui-phase2`，基于 Phase 1.1 checkpoint `d988d2b`。它没有将 WinUI 页面连接到 writer。禁止把 `TransactionalLibrary` 的合成验证解释成真实用户迁移已经获准；正式 `%APPDATA%\KunGalManager`、真实 settings/密钥/游戏目录仍不可作为输入。Phase 3 必须另获用户明确指令。
 

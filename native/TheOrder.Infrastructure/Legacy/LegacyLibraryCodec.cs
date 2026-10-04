@@ -22,14 +22,24 @@ public sealed class LegacyLibraryCodec : ILibraryCodec
             // Validate original lengths/types before normalization, then validate the canonical whole.
             var raw = LegacyLibraryReader.Parse(document);
             var normalized = raw.Select(Normalize).ToImmutableArray();
-            return LegacyLibraryReader.Parse(Encode(normalized, "2000-01-01T00:00:00.000Z"));
+            return LegacyLibraryReader.ParseCanonical(Serialize(normalized, "2000-01-01T00:00:00.000Z"));
         }
         catch (JsonException e) { throw new InvalidDataException("旧版书架 JSON 无效。", e); }
     }
+    public LibraryDocument Inspect(ReadOnlyMemory<byte> document, string exportedAt)
+    {
+        ImmutableArray<LibraryEntry> entries;
+        try { entries = Decode(document); }
+        catch (InvalidDataException e) { return new(LibraryAccess.InvalidInput, [], null, e.Message); }
+        try { return new(LibraryAccess.ValidWritable, entries, Encode(entries, exportedAt)); }
+        catch (LibraryWriteLimitException e) { return new(LibraryAccess.ValidReadOnly, entries, null, e.Message); }
+    }
+    private static byte[] Serialize(ImmutableArray<LibraryEntry> entries, string exportedAt)
+        => JsonSerializer.SerializeToUtf8Bytes(new { format = "kun-gal-manager", version = 1, exportedAt, games = entries.Select(Project) }, Options);
     public byte[] Encode(ImmutableArray<LibraryEntry> entries, string exportedAt)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new { format = "kun-gal-manager", version = 1, exportedAt, games = entries.Select(Project) }, Options);
-        if (bytes.Length > LegacyLibraryReader.MaximumBytes) throw new InvalidDataException("游戏库超过 32 MiB，未保存修改。");
+        var bytes = Serialize(entries, exportedAt);
+        if (bytes.Length > LegacyLibraryReader.MaximumBytes) throw new LibraryWriteLimitException();
         return bytes;
     }
     public string InstallationKey(string path) => LegacyPathIdentity.Create(path);

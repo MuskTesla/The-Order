@@ -1,6 +1,17 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 2：Legacy Compatibility & Transaction Kernel（2026-10-04）
+## WinUI Phase 2.1：Transaction Kernel Gate Remediation（2026-10-04）
+
+- 当前工作基于 `codex/winui-phase2` / `f495d06c6b3b6d8dc2b6125405490876b5d7fab1`，只整改 B1/B2/M1/M2 和异步 token 入口。六项目结构、legacy v1、32 MiB / 每条目 100k sessions 上限、事务提交顺序与正式资料隔离保持不变。WinUI 仍未注册 writer，未进入 Phase 3，未访问正式资料或真实凭据；完成 checkpoint 后暂停。
+- **B1**：`LegacyLibraryCodec.Inspect` 明确返回 InvalidInput / ValidReadOnly / ValidWritable。原始输入仍经 32 MiB 限制和完整验证；规范化后内部验证不把缩进扩张当作输入损坏，输出能力另行检查。有效但不可写的主库保持 Main，snapshot 提供 Access/ReadOnlyReason，mutation 在 candidate 与 IO 之前拒绝。构造实例不再重新 Encode，因此也不会从构造路径误回退备份。没有提高限制、压缩内容或删 session；既有 unknown-field 白名单规则未作任何“腾空间”变更。
+- **B2**：默认时间通过 TimeProvider 获取 UTC instant，再用明确 invariant Gregorian 格式生成 persisted timestamp。测试注入 instant 而非字符串，覆盖 en-US / zh-CN / ja-JP / th-TH / ar-SA 的 addedAt、exportedAt、metadata 时间及主/备份；输入日期规范化和校验原本即显式 invariant。UI 本地化显示不受此约束。
+- **M1**：在轻量 admission lock 内登记原 semaphore 的等待顺序，然后通过 Task.Run 在后台执行 candidate、导入解析、规范化、验证、序列化及持久化；持久化内部 await 不捕获 UI context。ShutdownAsync 停止接单，异步排空已经接收的操作；排队/候选阶段仍可取消，已开始 durable 阶段完成最小提交并发布状态。DisposeAsync 用此协议，旧同步 Dispose 仅允许空闲调用，忙时明确拒绝而不阻塞。WinUI Closing 先取消关闭、await 容器异步释放，再投递真正关闭；当前窗口只读，不能把内核测试称为完整 UI 写入集成验证。
+- **M2**：session ID → index 字典替代循环扫描/IndexOf；source 顺序、同 ID 冲突、等长 source 优先、较长整条替换和历史累计算法不变。80k+80k 不相交时仍因 160k 超过单条 100k 上限而整笔拒绝，不调整契约。
+- 即时用户意图继续用 LinkAsync；所有延迟 API/识别结果必须用 token 必填的 CommitLinkAsync。提交结束（含失败/取消）清理本次 Pending；BeginRequestAsync 的取消也安排无取消的清理，清理不影响较新 generation/request。退休请求注销取消回调，关闭排空后释放剩余登记。ReadOnlyMemory 导入遵循异步缓冲区所有权约定：调用方在任务结束前不修改输入；后台复制/验证后才构造候选。
+- 专项回归位于 `TransactionRemediationTests.cs`，真实 Electron oracle 增加 4 个小型 session 差分和大输入边界观察。最新实际验证、性能与证据路径见 DEVELOPMENT 的 Phase 2.1 节；下面 Phase 2 数值是整改前历史证据。
+- **实际结果 / Gate 自检**：locked restore、Debug/Release 全 solution build（0 warnings/errors）；两配置 C# 各 **270/0/0**，新增 **36**（32 专项 + 4 差分），包含 **102 differential / 14 fault injection**。Electron oracle 可重复生成，相关单元 **120/0/0**，desktop import 37 新增/重复 0/37/个人字段和重启保留/renderer errors 0。Debug/Release 原生窗口实际正常关闭 exit 0、合成资料哈希未变。Release 完整事务中位数：10k 普通条目 **182.1 ms**，20k/40k/80k 每侧重叠合并 **160.1/294.3/604.7 ms**（各预热 1、测量 3；范围见 DEVELOPMENT）。B1/B2/M1/M2 均有实测回归，**PASS FOR PHASE 3**；此结论不是下一阶段执行授权，仍须暂停。真实资料、完整 UI 写入、断电/网络盘和干净机器发布未在本轮验收。
+
+## WinUI Phase 2：Legacy Compatibility & Transaction Kernel（2026-10-04，历史 checkpoint）
 
 - 从已通过 Gate 的 `d988d2bf75d6885061e4a860337c95ada1371b7b` 新建 `codex/winui-phase2`。当前新增内容是 **仅用于显式合成目录的事务内核**；WinUI 仍只读，没有注册 writer，也没有迁移正式资料、网络、扫描、启动、计时或视觉系统。Electron 产品源码、依赖、正式发布目录不变。完成本 checkpoint 后暂停，不能把本文当作 Phase 3 授权。
 - 先运行真实 Electron 44.5.1 `LibraryStore` 建立 oracle，再实现 C#。`native/scripts/generate-transaction-oracle.mjs` 使用锁定 Electron 的 Node 模式、固定时钟/UUID 提供器、临时虚构目录，调用原类而非抄写一份参考算法。`transaction-oracle.json` 包含 50 个 mutation 场景、5 个异步生命周期序列、5 个旧恢复观察和 43 个 Phase 1.1 字符串/路径/数字向量；记录 library/title-matching/local-cover 原文件 SHA-256，改动参考必须重新审查和生成。

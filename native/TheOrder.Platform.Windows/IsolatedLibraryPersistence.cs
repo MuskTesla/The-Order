@@ -60,9 +60,9 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         IsolatedLibrarySource.ValidateDirectory(root);
-        await Reach(PersistenceTarget.Backup, PersistenceStage.BeforeBackup);
-        var backup = await WriteAtomic("library.json.bak", previous, PersistenceTarget.Backup);
-        var main = await WriteAtomic("library.json", candidate, PersistenceTarget.Main);
+        await Reach(PersistenceTarget.Backup, PersistenceStage.BeforeBackup).ConfigureAwait(false);
+        var backup = await WriteAtomic("library.json.bak", previous, PersistenceTarget.Backup).ConfigureAwait(false);
+        var main = await WriteAtomic("library.json", candidate, PersistenceTarget.Main).ConfigureAwait(false);
         return new(main.Warning ?? backup.Warning);
     }
     private async Task<PersistenceReceipt> WriteAtomic(string name, ReadOnlyMemory<byte> bytes, PersistenceTarget kind)
@@ -72,24 +72,24 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
         try
         {
             CheckExisting(target);
-            await Reach(kind, PersistenceStage.BeforeTempWrite);
+            await Reach(kind, PersistenceStage.BeforeTempWrite).ConfigureAwait(false);
             using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous | FileOptions.WriteThrough))
             {
                 var split = bytes.Length / 2;
-                await file.WriteAsync(bytes[..split]);
-                await Reach(kind, PersistenceStage.DuringTempWrite);
-                await file.WriteAsync(bytes[split..]);
+                await file.WriteAsync(bytes[..split]).ConfigureAwait(false);
+                await Reach(kind, PersistenceStage.DuringTempWrite).ConfigureAwait(false);
+                await file.WriteAsync(bytes[split..]).ConfigureAwait(false);
                 file.Flush(flushToDisk: true);
             }
-            await Reach(kind, PersistenceStage.AfterTempWrite);
-            await Reach(kind, PersistenceStage.BeforeReplace);
+            await Reach(kind, PersistenceStage.AfterTempWrite).ConfigureAwait(false);
+            await Reach(kind, PersistenceStage.BeforeReplace).ConfigureAwait(false);
             CheckExisting(target);
-            await Reach(kind, PersistenceStage.Replace);
+            await Reach(kind, PersistenceStage.Replace).ConfigureAwait(false);
             // Same-directory MoveFileEx REPLACE_EXISTING | WRITE_THROUGH, one atomic namespace switch.
             // No target is ever truncated or deleted first. The backup is the canonical lastGood.
             if (!MoveFileEx(temp, target, 0x1 | 0x8)) throw new IOException("原子替换失败。", new Win32Exception());
             committed = true;
-            await Reach(kind, PersistenceStage.AfterReplace);
+            await Reach(kind, PersistenceStage.AfterReplace).ConfigureAwait(false);
             return new();
         }
         catch (Exception) when (committed)

@@ -152,8 +152,8 @@ public sealed class TransactionSafetyTests(ITestOutputHelper output)
     {
         using var p = new TransactionProfile(Document(Entry())); using var library = p.Open();
         var a = await library.BeginRequestAsync("a"); var b = await library.BeginRequestAsync("a");
-        await library.LinkAsync("a", Work("newer"), token: b); var bytes = File.ReadAllBytes(p.Main);
-        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work("older"), token: a));
+        await library.CommitLinkAsync("a", Work("newer"), token: b); var bytes = File.ReadAllBytes(p.Main);
+        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work("older"), token: a));
         Assert.Equal(bytes, File.ReadAllBytes(p.Main)); Assert.Equal("newer", library.Snapshot.Entries[0].Metadata!.Title);
     }
     [Fact]
@@ -161,28 +161,28 @@ public sealed class TransactionSafetyTests(ITestOutputHelper output)
     {
         var original = Document(Entry()); using var p = new TransactionProfile(original); using var library = p.Open();
         var token = await library.BeginRequestAsync("a"); await library.DeleteAsync("a"); await library.ImportAsync(original);
-        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work(), token: token));
+        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work(), token: token));
         Assert.Null(library.Snapshot.Entries[0].Metadata);
         var fresh = await library.BeginRequestAsync("a"); Assert.NotEqual(token.Generation, fresh.Generation);
-        await library.LinkAsync("a", Work(), token: fresh);
+        await library.CommitLinkAsync("a", Work(), token: fresh);
     }
     [Fact]
     public async Task PersonalEditsCoexistButRenameInvalidatesEvidence()
     {
         using var p = new TransactionProfile(Document(Entry())); using var library = p.Open();
         var token = await library.BeginRequestAsync("a"); await library.UpdateAsync("a", new() { Notes = "private", Favorite = true });
-        await library.LinkAsync("a", Work(), token: token); Assert.Equal("private", library.Snapshot.Entries[0].Notes);
+        await library.CommitLinkAsync("a", Work(), token: token); Assert.Equal("private", library.Snapshot.Entries[0].Notes);
         token = await library.BeginRequestAsync("a"); await library.UpdateAsync("a", new() { Name = "user rename" });
-        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work(), token: token));
+        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work(), token: token));
     }
     [Fact]
     public async Task MergeCannotConsumeNewerOrPendingTargetEvenIfNewerRequestFails()
     {
         using var p = new TransactionProfile(Document(Entry(), Entry("b") with { Metadata = Work() })); using var library = p.Open();
         var a = await library.BeginRequestAsync("a"); var b = await library.BeginRequestAsync("b");
-        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work(), token: a));
+        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work(), token: a));
         await library.FinishRequestAsync(b);
-        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work(), token: a));
+        await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work(), token: a));
         Assert.Equal(2, library.Snapshot.Entries.Length);
     }
     [Fact]
@@ -191,10 +191,10 @@ public sealed class TransactionSafetyTests(ITestOutputHelper output)
         using var p = new TransactionProfile(Document(Entry() with { Name = "new title", Metadata = Work() })); RequestToken token;
         using (var library = p.Open())
         {
-            token = await library.BeginRequestAsync("a"); await library.LinkAsync("a", Work(), token: token);
-            await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.LinkAsync("a", Work(), token: token));
+            token = await library.BeginRequestAsync("a"); await library.CommitLinkAsync("a", Work(), token: token);
+            await Assert.ThrowsAsync<StaleLibraryRequestException>(() => library.CommitLinkAsync("a", Work(), token: token));
         }
-        using var reopened = p.Open(); await Assert.ThrowsAsync<StaleLibraryRequestException>(() => reopened.LinkAsync("a", Work(), token: token));
+        using var reopened = p.Open(); await Assert.ThrowsAsync<StaleLibraryRequestException>(() => reopened.CommitLinkAsync("a", Work(), token: token));
     }
     [Fact]
     public async Task InstallationRecordsRequireCurrentTokenAndDoNotTouchGameFiles()

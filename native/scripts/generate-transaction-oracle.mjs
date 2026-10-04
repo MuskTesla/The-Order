@@ -55,6 +55,10 @@ merge('merge-installation-id-conflict', { installations: [install('same', 'A')] 
 merge('merge-history-cumulative', { totalPlaySeconds: 1000, playCount: 7, sessions: [session('s1', 100)] }, { totalPlaySeconds: 2000, playCount: 9, sessions: [session('s2', 200)], lastPlayedAt: clock })
 for (const [a, b] of [[100, 200], [200, 100], [0, 100], [100, 0], [0, 0], [100, 100]]) merge(`merge-duplicate-session-${a}-${b}`, { totalPlaySeconds: 1000, playCount: 5, sessions: [session('s', a)] }, { totalPlaySeconds: 2000, playCount: 6, sessions: [session('s', b)] })
 merge('merge-session-conflict', { totalPlaySeconds: 100, sessions: [session('s', 100)] }, { totalPlaySeconds: 200, sessions: [session('s', 200, { startedAt: '2026-10-03T00:00:00.000Z' })] })
+merge('merge-partial-order', { totalPlaySeconds: 1000, playCount: 10, sessions: [session('s0', 3), session('s1', 1)] }, { totalPlaySeconds: 2000, playCount: 20, sessions: [session('s1', 2), session('s2', 0)] })
+merge('merge-reverse-order', { totalPlaySeconds: 1000, sessions: [session('s0', 1), session('s1', 1), session('s2', 1)] }, { totalPlaySeconds: 2000, sessions: [session('s2', 2), session('s1', 2), session('s0', 2)] })
+merge('merge-equal-seconds-keeps-whole-source', { totalPlaySeconds: 1000, sessions: [session('s', 100, { endedAt: '2026-10-04T00:05:00.000Z' })] }, { totalPlaySeconds: 2000, sessions: [session('s', 100)] })
+add('import-duplicate-session-id', [entry('a')], { kind: 'import', backup: envelope([entry('b', { totalPlaySeconds: 100, sessions: [session('s', 1), session('s', 2)] })]) })
 merge('merge-absent-name', { nameIsCustom: undefined, name: 'Legacy name' })
 merge('merge-preserve-source', {}, {}, { preserveName: true })
 merge('merge-preserve-target', {}, { nameIsCustom: true, name: 'Target name' }, { preserveMergedName: true })
@@ -123,7 +127,13 @@ try {
     catch { result.accepted = false }
     return result
   }))
-  await fs.writeFile(path.join(repo, 'native/fixtures/transaction-oracle.json'), JSON.stringify({ clock, electron: process.versions.electron, hashes, cases, lifecycle, recovery, validation }, null, 2) + '\n')
+  // Size-boundary reference: validate compact input directly, without initialize rewriting it.
+  const largeInput = envelope(['current-a', 'current-b'].map(id => entry(id, { name: 'Current main', totalPlaySeconds: 101234, playCount: 100017, sessions: Array.from({ length: 100000 }, (_, i) => session(`s-${i}`, 1, { endedAt: clock })) })))
+  const largeValidated = module.exports.validateLibraryBackup(largeInput)
+  const largeInputReference = { accepted: true, entries: largeValidated.length, sessions: largeValidated.reduce((n, g) => n + g.sessions.length, 0), compactBytes: Buffer.byteLength(JSON.stringify(largeInput)), prettyBytes: Buffer.byteLength(JSON.stringify(largeInput, null, 2)) }
+  if (largeInputReference.compactBytes >= 32 * 1024 * 1024 || largeInputReference.prettyBytes <= 32 * 1024 * 1024) throw Error('Large boundary fixture no longer straddles writer limit')
+  await fs.writeFile(path.join(repo, 'native/fixtures/transaction-oracle.json'), JSON.stringify({ clock, electron: process.versions.electron, hashes, cases, lifecycle, recovery, validation, largeInputReference }, null, 2) + '\n')
+  console.log(JSON.stringify({ largeInputReference }))
   console.log(JSON.stringify({ cases: cases.length, accepted: cases.filter(c => c.accepted).length, rejected: cases.filter(c => !c.accepted).length, restartVerified: cases.length, lifecycle: lifecycle.length, recovery: recovery.length }))
 } finally {
   if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('the-order-oracle-')) throw Error('Unsafe cleanup')
