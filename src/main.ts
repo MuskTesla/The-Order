@@ -5,5 +5,6 @@ import './style.css'
 import './order-theme.css'
 import './library-refresh.css'
 import './workspace-refresh.css'
+import './detail-drafts.css'
 
 createApp(App).mount('#app')

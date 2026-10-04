@@ -215,7 +215,8 @@ async function startMatching(gameIds?: string[], mode: 'missing' | 'reidentify' 
   if (!ids.length) { useKunMessage(mode === 'reidentify' ? '没有可重新识别的本地游戏，请先添加本地安装。' : '当前没有需要补全资料的本地游戏。', 'info'); return false }
   if (!snapshot.value?.settings.hasApiKey) {
     useKunMessage(isPreview ? '自动识别需要在桌面版中连接 NextMoe。' : '请先保存 API 密钥，再识别本地游戏。', 'info')
-    detailOpen.value = false; scanOpen.value = false; navigate('settings'); return false
+    if (detailOpen.value && !await requestCloseDetail()) return false
+    scanOpen.value = false; navigate('settings'); return false
   }
   const started = await task('matching-start', async () => {
     dismissedMatchingId.value = null
@@ -380,6 +381,7 @@ const globalCoverDisplay = computed(() => snapshot.value?.settings.nonPortraitCo
 const detailCoverDisplay = computed(() => gameCoverDisplay(selectedGame.value, globalCoverDisplay.value))
 function resetCoverPicker() {
   coverLoadGeneration++; coverSaveGeneration++
+  coverDraftDirty.value = false
   coverPickerOpen.value = false; coverOptionsWork.value = null; coverError.value = ''
   busy.delete('cover-options'); busy.delete('cover-save')
 }
@@ -403,7 +405,7 @@ async function loadCoverOptions() {
   } finally { if (request === coverLoadGeneration) busy.delete('cover-options') }
 }
 async function toggleCoverPicker() {
-  if (coverPickerOpen.value) { closeCoverPicker(); return }
+  if (coverPickerOpen.value) { await requestCloseCoverPicker(); return }
   const generation = detailGeneration
   coverPickerOpen.value = true; detailTab.value = 'overview'
   void nextTick(() => { if (detailOpen.value && coverPickerOpen.value && generation === detailGeneration) document.querySelector?.<HTMLButtonElement>('#detail-cover-picker .picker-close')?.focus() })
@@ -446,6 +448,47 @@ async function pickLocalCover(display: NonPortraitCoverDisplay | null) {
   } finally { if (request === coverSaveGeneration) busy.delete('cover-save') }
 }
 const editor = reactive({ name: '', status: 'planned' as PlayStatus, personalRating: '', categories: '', tags: '', notes: '', launchArgs: '' })
+const draftBaseline = reactive({ name: '', status: 'planned' as PlayStatus, rating: null as number | null, categories: [] as string[], tags: [] as string[], notes: '', launchArgs: '[]', nameEdits: 0 })
+const coverDraftDirty = ref(false), detailClosePending = ref(false), detailReadNeeded = ref(false)
+const detailSaveError = ref(''), argumentsSaveError = ref('')
+const draftRating = () => String(editor.personalRating).trim() === '' ? null : Number(editor.personalRating)
+const draftLabels = (text: string) => [...new Set(text.split(/[,，\n]/).map(value => value.trim()).filter(Boolean))]
+const personalDraftDirty = computed(() => editor.status !== draftBaseline.status || draftRating() !== draftBaseline.rating || editor.notes !== draftBaseline.notes)
+const bookDraftDirty = computed(() => editor.name.trim() !== draftBaseline.name || nameEditGeneration !== draftBaseline.nameEdits || JSON.stringify(draftLabels(editor.categories)) !== JSON.stringify(draftBaseline.categories) || JSON.stringify(draftLabels(editor.tags)) !== JSON.stringify(draftBaseline.tags))
+function normalizedArguments(value: string) { try { const parsed = JSON.parse(value); return Array.isArray(parsed) && parsed.every(item => typeof item === 'string') ? JSON.stringify(parsed) : value } catch { return value } }
+const argumentsDraftDirty = computed(() => normalizedArguments(editor.launchArgs) !== draftBaseline.launchArgs)
+const detailDraftGroups = computed(() => [personalDraftDirty.value ? '个人记录' : '', bookDraftDirty.value ? '书架信息' : '', argumentsDraftDirty.value ? '启动参数' : '', coverDraftDirty.value ? '封面与展示' : ''].filter(Boolean))
+const detailWriteBusy = computed(() => ['save-game', 'args', 'cover-save', 'preferred'].some(key => busy.has(key)))
+const editingInstallation = computed(() => selectedGame.value?.installations.find(item => item.id === editorInstallationId))
+const detailModalOpen = computed({ get: () => detailOpen.value, set: value => { if (value) detailOpen.value = true; else void requestCloseDetail() } })
+function resetDetailSaveState() { detailSaveError.value = ''; argumentsSaveError.value = ''; detailReadNeeded.value = false; coverDraftDirty.value = false }
+function draftSignature() { return JSON.stringify([editor, nameEditGeneration, coverDraftDirty.value]) }
+async function confirmDiscardDetail(groups = detailDraftGroups.value): Promise<boolean> {
+  if (detailClosePending.value || detailWriteBusy.value) return false
+  if (!groups.length) return true
+  const generation = detailGeneration, gameId = selectedGame.value?.id, signature = draftSignature()
+  detailClosePending.value = true
+  try {
+    const confirmed = await useKunAlert({ title: '放弃未保存的修改？', message: `${groups.join('、')}尚未保存。选择继续编辑可保留当前输入；放弃不会撤回已经保存的内容。`, confirmText: '放弃修改', cancelText: '继续编辑', type: 'warning' })
+    return confirmed && detailOpen.value && detailGeneration === generation && selectedGame.value?.id === gameId && draftSignature() === signature && !detailWriteBusy.value
+  } finally { detailClosePending.value = false }
+}
+async function requestCloseCoverPicker() {
+  if (detailWriteBusy.value || detailClosePending.value) return
+  if (coverDraftDirty.value && !await confirmDiscardDetail(['封面与展示'])) return
+  coverDraftDirty.value = false; closeCoverPicker()
+}
+async function requestCloseDetail(): Promise<boolean> {
+  if (!detailOpen.value || detailClosePending.value || detailWriteBusy.value) return false
+  if (detailReadNeeded.value) {
+    const generation = detailGeneration, gameId = selectedGame.value?.id
+    await reloadDetailState()
+    if (!detailOpen.value || detailGeneration !== generation || selectedGame.value?.id !== gameId || detailReadNeeded.value || detailClosePending.value || detailWriteBusy.value) return false
+  }
+  if (detailDraftGroups.value.length && !await confirmDiscardDetail()) return false
+  detailOpen.value = false; return true
+}
+async function showDetailTag(tag: string) { if (await requestCloseDetail()) { page.value = 'library'; resetFilters(); tagFilter.value = tag } }
 let editorInitialName = ''
 let editorGameId: string | null = null
 let editorInstallationId: string | null = null
@@ -457,21 +500,29 @@ function loadInstallationArguments(game: LibraryGame) {
   const installation = editorInstallation(game)
   editorInstallationId = installation?.id ?? null
   editor.launchArgs = JSON.stringify(installation?.arguments ?? [])
+  draftBaseline.launchArgs = editor.launchArgs
   argumentsEditGeneration++
 }
 function fillEditor(game: LibraryGame) {
+  resetDetailSaveState()
   editorInitialName = game.name; editorGameId = game.id; savedNameEditGeneration = nameEditGeneration
   Object.assign(editor, { name: game.name, status: game.status, personalRating: game.personalRating == null ? '' : String(game.personalRating), categories: game.categories.join('，'), tags: game.customTags.join('，'), notes: game.notes })
+  Object.assign(draftBaseline, { name: game.name, status: game.status, rating: game.personalRating, categories: [...game.categories], tags: [...game.customTags], notes: game.notes, nameEdits: nameEditGeneration })
   loadInstallationArguments(game)
 }
 function clearEditor() {
+  resetDetailSaveState()
   editorInitialName = ''; editorGameId = null; editorInstallationId = null; savedNameEditGeneration = nameEditGeneration; argumentsEditGeneration++
   Object.assign(editor, { name: '', status: 'planned', personalRating: '', categories: '', tags: '', notes: '', launchArgs: '[]' })
+  Object.assign(draftBaseline, { name: '', status: 'planned', rating: null, categories: [], tags: [], notes: '', launchArgs: '[]', nameEdits: nameEditGeneration })
 }
 let detailGeneration = 0
 let detailOrigin: HTMLElement | null = null
 function closeDetailWithEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && detailOpen.value && !bindOpen.value && !reviewOpen.value && !scanOpen.value) { event.preventDefault(); detailOpen.value = false }
+  if (event.key === 'Escape' && detailOpen.value && !bindOpen.value && !reviewOpen.value && !scanOpen.value && !attachmentOpen.value && !reviewDetailOpen.value && !detailClosePending.value && !document.querySelector('[role="alertdialog"]')) {
+    // KunUI listens on window; this same Escape must not cancel the alert just opened here.
+    event.preventDefault(); event.stopPropagation(); void requestCloseDetail()
+  }
 }
 async function showGame(game: LibraryGame) { detailGeneration++; resetCoverPicker(); busy.delete('detail'); detailOrigin = typeof HTMLElement !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null; selectedGameId.value = game.id; selectedWork.value = game.metadata; fillEditor(game); detailTab.value = 'overview'; detailOpen.value = true }
 async function showWork(work: WorkMetadata) {
@@ -500,15 +551,16 @@ function sameDetail(gameId: string, generation: number) { return detailOpen.valu
 // IPC/reload callback must not overwrite edits made after that render.
 watch(() => selectedGame.value && editorInstallation(selectedGame.value)?.id, () => {
   const game = selectedGame.value
-  if (detailOpen.value && game && editorGameId === game.id && editorInstallationId !== (editorInstallation(game)?.id ?? null)) loadInstallationArguments(game)
+  if (detailOpen.value && game && editorGameId === game.id && !argumentsDraftDirty.value && editorInstallationId !== (editorInstallation(game)?.id ?? null)) loadInstallationArguments(game)
 }, { flush: 'sync' })
 function syncInstallationArguments(game: LibraryGame, generation: number, previousInstallation: string | null, edits: number) {
-  if (sameDetail(game.id, generation) && editorInstallation(selectedGame.value!)?.id === editorInstallation(game)?.id && editorInstallationId === previousInstallation && argumentsEditGeneration === edits && editorInstallationId !== (editorInstallation(game)?.id ?? null)) loadInstallationArguments(game)
+  if (sameDetail(game.id, generation) && !argumentsDraftDirty.value && editorInstallation(selectedGame.value!)?.id === editorInstallation(game)?.id && editorInstallationId === previousInstallation && argumentsEditGeneration === edits && editorInstallationId !== (editorInstallation(game)?.id ?? null)) loadInstallationArguments(game)
 }
 const personalRecordError = ref('')
 watch([detailOpen, () => selectedGame.value?.id], () => { personalRecordError.value = '' })
 async function savePersonalRecord() {
   const game = selectedGame.value; if (!detailOpen.value || !game || editorGameId !== game.id || busy.has('save-game')) return
+  if (detailReadNeeded.value) { await reloadDetailState(); return }
   const generation = detailGeneration
   personalRecordError.value = ''
   await task('save-game', async () => {
@@ -518,6 +570,7 @@ async function savePersonalRecord() {
       if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) throw new Error('个人评分请填写 0 到 10 之间的数字。')
       const patch = { status: editor.status, personalRating: rating, notes: editor.notes }
       await api.updateGame(game.id, patch); persisted = true
+      if (sameDetail(game.id, generation)) Object.assign(draftBaseline, { status: patch.status, rating: patch.personalRating, notes: patch.notes })
       await reload()
       if (sameDetail(game.id, generation)) {
         const newerDraft = editor.status !== patch.status || (String(editor.personalRating).trim() === '' ? null : Number(editor.personalRating)) !== patch.personalRating || editor.notes !== patch.notes
@@ -525,7 +578,8 @@ async function savePersonalRecord() {
       }
     } catch (error) {
       if (sameDetail(game.id, generation)) {
-        personalRecordError.value = persisted ? '记录已保存，但书架刷新失败。草稿已保留，可以稍后重试。' : error instanceof Error ? error.message : '个人记录未能保存，请重试。'
+        if (persisted) detailReadNeeded.value = true
+        personalRecordError.value = persisted ? '记录已保存，但书架刷新失败。草稿已保留，请重新读取书架，不会重复保存。' : settingsFailure(error)
         if (persisted) useKunMessage(personalRecordError.value, 'warn'); else notifyError(error)
       }
     }
@@ -533,14 +587,43 @@ async function savePersonalRecord() {
 }
 async function saveGame() {
   const game = selectedGame.value; if (!detailOpen.value || !game || editorGameId !== game.id) return
+  if (detailReadNeeded.value) { await reloadDetailState(); return }
+  if (busy.has('save-game')) return
+  const generation = detailGeneration, edits = nameEditGeneration
+  detailSaveError.value = ''
   await task('save-game', async () => {
-    const rating = String(editor.personalRating).trim() === '' ? null : Number(editor.personalRating)
-    if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) throw new Error('个人评分请填写 0 到 10 之间的数字。')
-    const generation = detailGeneration, edits = nameEditGeneration
-    const name = editor.name.trim() || editorInitialName, renamed = edits !== savedNameEditGeneration
-    await api.updateGame(game.id, { ...(renamed ? { name } : {}), status: editor.status, personalRating: rating, categories: splitTags(editor.categories), customTags: splitTags(editor.tags), notes: editor.notes })
-    if (renamed && sameDetail(game.id, generation)) { savedNameEditGeneration = edits; editorInitialName = name }
-    await reload(); useKunMessage('已保存到你的书架。', 'success')
+    let persisted = false
+    try {
+      const rating = draftRating()
+      if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) throw new Error('个人评分请填写 0 到 10 之间的数字。')
+      const name = editor.name.trim() || editorInitialName, renamed = edits !== savedNameEditGeneration
+      const patch = { ...(renamed ? { name } : {}), status: editor.status, personalRating: rating, categories: splitTags(editor.categories), customTags: splitTags(editor.tags), notes: editor.notes }
+      await api.updateGame(game.id, patch); persisted = true
+      if (sameDetail(game.id, generation)) {
+        Object.assign(draftBaseline, { status: patch.status, rating: rating, categories: patch.categories, tags: patch.customTags, notes: patch.notes })
+        if (renamed) { savedNameEditGeneration = edits; editorInitialName = name; draftBaseline.name = name; draftBaseline.nameEdits = edits }
+      }
+      await reload()
+      if (sameDetail(game.id, generation)) useKunMessage(personalDraftDirty.value || bookDraftDirty.value ? '提交的书架信息已保存；之后的输入尚未保存。' : '书架信息已保存，启动参数和封面按各自按钮保存。', 'success')
+    } catch (error) {
+      if (sameDetail(game.id, generation)) {
+        if (persisted) detailReadNeeded.value = true
+        detailSaveError.value = persisted ? '书架信息已保存，但书架刷新失败。请重新读取，未保存的输入仍保留。' : settingsFailure(error)
+      }
+    }
+  })
+}
+async function reloadDetailState() {
+  const game = selectedGame.value, generation = detailGeneration
+  if (!detailOpen.value || !game || !detailReadNeeded.value || detailWriteBusy.value || busy.has('detail-reload')) return
+  await task('detail-reload', async () => {
+    try {
+      await reload()
+      if (sameDetail(game.id, generation)) {
+        if (!argumentsDraftDirty.value && editorInstallationId !== (editorInstallation(selectedGame.value!)?.id ?? null)) loadInstallationArguments(selectedGame.value!)
+        detailReadNeeded.value = false; detailSaveError.value = ''; argumentsSaveError.value = ''; personalRecordError.value = ''; useKunMessage('书架状态已重新读取，未保存的输入仍保留。', 'success')
+      }
+    } catch (error) { if (sameDetail(game.id, generation)) detailSaveError.value = '书架仍未能读取，请重试；不会重复保存。' + settingsFailure(error) }
   })
 }
 async function addToLibrary() {
@@ -556,7 +639,31 @@ async function addToLibrary() {
   })
 }
 async function pickExecutable(targetInstallationId?: string) { const game = selectedGame.value; if (!game) return; if (!game.installations.length) { await prepareAttachment(game); return }; const generation = detailGeneration, edits = argumentsEditGeneration, installationId = editorInstallationId; await task('executable', async () => { const updated = await api.pickExecutable(game.id, targetInstallationId); if (updated) { await reload(); syncInstallationArguments(updated, generation, installationId, edits); useKunMessage('已设置游戏启动文件。', 'success') } }) }
-async function saveArguments() { const game = selectedGame.value; const installation = game?.installations.find(i => i.id === editorInstallationId); if (!detailOpen.value || !game || editorGameId !== game.id || !installation || installation.id !== editorInstallation(game)?.id) return; await task('args', async () => { let args: unknown; try { args = JSON.parse(editor.launchArgs) } catch { throw new Error('启动参数请使用 JSON 字符串数组，例如 ["-windowed"]。') } if (!Array.isArray(args) || args.some(a => typeof a !== 'string')) throw new Error('启动参数须为字符串数组。'); await api.setLaunchArguments(game.id, installation.id, args); await reload(); useKunMessage('启动参数已保存。', 'success') }) }
+async function saveArguments() {
+  const game = selectedGame.value, installation = editingInstallation.value, generation = detailGeneration
+  if (!detailOpen.value || !game || editorGameId !== game.id || !installation || busy.has('args')) return
+  if (detailReadNeeded.value) { await reloadDetailState(); return }
+  argumentsSaveError.value = ''
+  await task('args', async () => {
+    let persisted = false
+    try {
+      let args: unknown
+      try { args = JSON.parse(editor.launchArgs) } catch { throw new Error('启动参数请使用 JSON 字符串数组，例如 ["-windowed"]。') }
+      if (!Array.isArray(args) || args.some(item => typeof item !== 'string')) throw new Error('启动参数须为字符串数组。')
+      const submitted = JSON.stringify(args)
+      await api.setLaunchArguments(game.id, installation.id, args); persisted = true
+      if (sameDetail(game.id, generation) && editorInstallationId === installation.id) draftBaseline.launchArgs = submitted
+      await reload()
+      if (sameDetail(game.id, generation) && editorInstallationId === installation.id) {
+        const newer = argumentsDraftDirty.value
+        if (!newer && editorInstallation(selectedGame.value!)?.id !== installation.id) loadInstallationArguments(selectedGame.value!)
+        useKunMessage(newer ? '提交的参数已保存，之后的输入尚未保存。' : '启动参数已保存。', 'success')
+      }
+    } catch (error) {
+      if (sameDetail(game.id, generation) && editorInstallationId === installation.id) { if (persisted) detailReadNeeded.value = true; argumentsSaveError.value = persisted ? '启动参数已保存，但书架刷新失败。请重新读取，不会重复保存。' : settingsFailure(error) }
+    }
+  })
+}
 async function removeGame() {
   const game = selectedGame.value, generation = detailGeneration
   if (!detailOpen.value || !game) return
@@ -820,7 +927,17 @@ async function exportBackup() { await task('export', async () => { if (await api
 async function openDataFolder() { await task('data', () => api.openDataFolder()) }
 async function openGameFolder() { if (selectedGame.value) await task('folder', () => api.openGameFolder(selectedGame.value!.id)) }
 async function finishSession() { await task('finish', async () => { await api.finishSession(); await reload(); useKunMessage('本次计时已结束，游戏会继续运行。', 'info') }) }
-async function setPreferred(id: string) { const game = selectedGame.value; if (!game) return; const generation = detailGeneration, edits = argumentsEditGeneration, installationId = editorInstallationId; await task('preferred', async () => { const updated = await api.updateGame(game.id, { preferredInstallationId: id }); await reload(); syncInstallationArguments(updated, generation, installationId, edits) }) }
+async function setPreferred(id: string) {
+  const game = selectedGame.value; if (!game || detailWriteBusy.value || detailReadNeeded.value || id === game.preferredInstallationId) return
+  const generation = detailGeneration, edits = argumentsEditGeneration, installationId = editorInstallationId, signature = normalizedArguments(editor.launchArgs), discard = argumentsDraftDirty.value
+  if (discard && !await confirmDiscardDetail(['启动参数'])) return
+  if (!sameDetail(game.id, generation)) return
+  await task('preferred', async () => {
+    const updated = await api.updateGame(game.id, { preferredInstallationId: id })
+    if (discard && sameDetail(game.id, generation) && argumentsEditGeneration === edits && normalizedArguments(editor.launchArgs) === signature) loadInstallationArguments(updated)
+    await reload(); syncInstallationArguments(updated, generation, installationId, edits)
+  })
+}
 const activeSeconds = computed(() => snapshot.value?.activeSession?.elapsedSeconds ?? 0)
 const activeGame = computed(() => games.value.find(g => g.id === snapshot.value?.activeSession?.gameId))
 let unsubscribe: (() => void) | undefined
@@ -915,12 +1032,12 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
     </div>
   </div>
 
-  <KunModal v-model="detailOpen" :title="detailTitle" size="xl" inner-class-name="game-detail-modal" scroll-behavior="inside">
+  <KunModal v-model="detailModalOpen" :title="detailTitle" size="xl" inner-class-name="game-detail-modal" scroll-behavior="inside" :is-dismissable="!detailWriteBusy && !detailClosePending" :is-close-request-dismissable="!detailWriteBusy && !detailClosePending">
     <div class="detail-layout"><aside class="detail-aside"><div class="detail-cover-block"><DetailCover :url="detailCoverUrl" :title="detailTitle" :display="detailCoverDisplay" /><button v-if="selectedWork || selectedGame" type="button" class="detail-cover-settings" :aria-expanded="coverPickerOpen" aria-controls="detail-cover-picker" @click="toggleCoverPicker">封面与展示</button></div><div class="detail-aside-controls"><KunButton v-if="selectedGame && getLaunchInstallation(selectedGame)?.executablePath" color="primary" full-width :loading="busy.has('launch')" :disabled="!!snapshot?.activeSession" @click="launch(selectedGame)"><Play :size="17" fill="currentColor" /> 开始游戏</KunButton><KunButton v-else-if="selectedGame" color="primary" full-width :loading="busy.has('executable')" @click="pickExecutable()"><FolderPlus :size="17" /> {{ selectedGame.installations.length ? '设置启动程序' : '添加本地游戏' }}</KunButton><KunButton v-else color="primary" full-width :loading="busy.has('add-game')" @click="addToLibrary"><Plus :size="17" /> 加入愿望单</KunButton><button v-if="selectedGame" :class="['detail-favorite', { active: selectedGame.favorite }]" @click="favorite(selectedGame)"><Heart :size="16" :fill="selectedGame.favorite ? 'currentColor' : 'none'" />{{ selectedGame.favorite ? '特别喜欢' : '标记为特别喜欢' }}</button><div v-if="selectedGame" class="detail-time"><Clock3 :size="15" /><span>{{ hours(selectedGame.totalPlaySeconds) }}</span><small>游玩 {{ selectedGame.playCount }} 次</small></div><div class="detail-facts"><span>发行日期</span><strong>{{ releaseDate(selectedWork) }}</strong><span>制作公司</span><strong>{{ selectedWork?.developers.join(' / ') || '暂未收录' }}</strong></div></div></aside>
-      <div class="detail-main"><p v-if="selectedWork?.originalTitle && selectedWork.originalTitle !== detailTitle" class="original-title">{{ selectedWork.originalTitle }}</p><div class="detail-tabs"><button :class="{ active: detailTab === 'overview' }" @click="detailTab = 'overview'">作品资料</button><button :class="{ active: detailTab === 'characters' }" @click="detailTab = 'characters'">角色 <small>{{ selectedWork?.characters.length ?? 0 }}</small></button><button v-if="selectedGame" :class="{ active: detailTab === 'manage' }" @click="detailTab = 'manage'">管理</button><LoaderCircle v-if="busy.has('detail')" :size="17" class="spin" /></div>
-      <template v-if="detailTab === 'overview'"><PersonalRecord v-if="selectedGame && !coverPickerOpen" :status="editor.status" :rating="editor.personalRating" :notes="editor.notes" :saving="busy.has('save-game')" :error="personalRecordError" @status="editor.status = $event" @rating="editor.personalRating = $event" @notes="editor.notes = $event" @save="savePersonalRecord" /><CoverPicker v-if="coverPickerOpen" id="detail-cover-picker" :work="coverOptionsWork?.id === selectedWork?.id ? coverOptionsWork : selectedWork" :game="selectedGame" :loading="busy.has('cover-options')" :saving="busy.has('cover-save')" :error="coverError" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :global-display="globalCoverDisplay" @save="saveCover" @pick-local="pickLocalCover" @retry="loadCoverOptions" @close="closeCoverPicker" /><div v-if="selectedWork?.ratings.length" class="ratings-row"><div v-for="rating in selectedWork.ratings" :key="rating.source"><small>{{ sourceName(rating.source) }}</small><strong><Star :size="14" />{{ rating.score.toFixed(1) }}<em>/ {{ rating.scale }}</em></strong><span>{{ rating.votes != null ? `${rating.votes.toLocaleString()} 人评价` : '来源评分' }}</span></div></div><h3 class="detail-section-title">关于这段故事</h3><p class="description-text">{{ selectedWork?.description || '还没有关联简介。你可以在管理页搜索并关联准确的作品资料。' }}</p><div v-if="selectedWork?.tags.length" class="tag-cloud detail-tags"><button v-for="tag in selectedWork.tags" :key="tag" @click="detailOpen = false; page = 'library'; resetFilters(); tagFilter = tag">{{ tag }}</button></div><div v-if="selectedWork?.references.length || selectedWork?.webUrl" class="source-links"><h3 class="detail-section-title">资料出处</h3><button v-if="selectedWork.webUrl" @click="external(selectedWork.webUrl)">鲲 Galgame <ArrowUpRight :size="13" /></button><button v-for="reference in selectedWork?.references.filter(r => r.url)" :key="`${reference.source}-${reference.id}`" @click="external(reference.url)">{{ sourceName(reference.source) }} <ArrowUpRight :size="13" /></button></div></template>
+      <div class="detail-main"><aside v-if="detailDraftGroups.length || detailWriteBusy || detailReadNeeded" class="detail-draft-status" role="status"><strong>{{ detailWriteBusy ? '正在保存，完成前请留在此页' : detailReadNeeded ? '保存已完成，书架状态需要重新读取' : '有未保存的修改' }}</strong><span v-if="detailDraftGroups.length">{{ detailDraftGroups.join('、') }} · 按对应区域的按钮保存</span><button v-if="detailReadNeeded" type="button" :disabled="busy.has('detail-reload')" @click="reloadDetailState">{{ busy.has('detail-reload') ? '正在读取…' : '重新读取书架' }}</button></aside><p v-if="selectedWork?.originalTitle && selectedWork.originalTitle !== detailTitle" class="original-title">{{ selectedWork.originalTitle }}</p><div class="detail-tabs"><button :class="{ active: detailTab === 'overview' }" @click="detailTab = 'overview'">作品资料</button><button :class="{ active: detailTab === 'characters' }" @click="detailTab = 'characters'">角色 <small>{{ selectedWork?.characters.length ?? 0 }}</small></button><button v-if="selectedGame" :class="{ active: detailTab === 'manage' }" @click="detailTab = 'manage'">管理</button><LoaderCircle v-if="busy.has('detail')" :size="17" class="spin" /></div>
+      <CoverPicker v-if="coverPickerOpen" v-show="detailTab === 'overview'" id="detail-cover-picker" :work="coverOptionsWork?.id === selectedWork?.id ? coverOptionsWork : selectedWork" :game="selectedGame" :loading="busy.has('cover-options')" :saving="busy.has('cover-save')" :error="coverError" :include-nsfw="snapshot?.settings.includeNsfw ?? true" :global-display="globalCoverDisplay" @save="saveCover" @pick-local="pickLocalCover" @retry="loadCoverOptions" @dirty="coverDraftDirty = $event" @close="requestCloseCoverPicker" /><template v-if="detailTab === 'overview'"><PersonalRecord v-if="selectedGame && !coverPickerOpen" :status="editor.status" :rating="editor.personalRating" :notes="editor.notes" :saving="busy.has('save-game')" :error="personalRecordError" @status="editor.status = $event" @rating="editor.personalRating = $event" @notes="editor.notes = $event" @save="savePersonalRecord" /><div v-if="selectedWork?.ratings.length" class="ratings-row"><div v-for="rating in selectedWork.ratings" :key="rating.source"><small>{{ sourceName(rating.source) }}</small><strong><Star :size="14" />{{ rating.score.toFixed(1) }}<em>/ {{ rating.scale }}</em></strong><span>{{ rating.votes != null ? `${rating.votes.toLocaleString()} 人评价` : '来源评分' }}</span></div></div><h3 class="detail-section-title">关于这段故事</h3><p class="description-text">{{ selectedWork?.description || '还没有关联简介。你可以在管理页搜索并关联准确的作品资料。' }}</p><div v-if="selectedWork?.tags.length" class="tag-cloud detail-tags"><button v-for="tag in selectedWork.tags" :key="tag" @click="showDetailTag(tag)">{{ tag }}</button></div><div v-if="selectedWork?.references.length || selectedWork?.webUrl" class="source-links"><h3 class="detail-section-title">资料出处</h3><button v-if="selectedWork.webUrl" @click="external(selectedWork.webUrl)">鲲 Galgame <ArrowUpRight :size="13" /></button><button v-for="reference in selectedWork?.references.filter(r => r.url)" :key="`${reference.source}-${reference.id}`" @click="external(reference.url)">{{ sourceName(reference.source) }} <ArrowUpRight :size="13" /></button></div></template>
       <template v-else-if="detailTab === 'characters'"><div v-if="selectedWork?.characters.length" class="character-grid"><article v-for="character in selectedWork.characters" :key="character.id"><img v-if="character.imageUrl" :src="character.imageUrl" :alt="character.name" loading="lazy" referrerpolicy="no-referrer" /><div v-else class="character-placeholder"><BookOpen :size="22" /></div><strong>{{ character.name }}</strong><small>{{ character.voiceActors.length ? `CV · ${character.voiceActors.join(' / ')}` : character.originalName }}</small></article></div><div v-else class="small-empty"><BookOpen :size="28" /><p>该作品暂未收录角色资料。</p></div></template>
-      <template v-else-if="selectedGame"><div class="manage-form"><label class="field-label">书架名称<input v-model="editor.name" @input="markNameEdited" /></label><div class="form-columns"><label class="field-label">游玩状态<select v-model="editor.status"><option v-for="status in statuses" :key="status.value" :value="status.value">{{ status.label }}</option></select></label><label class="field-label">我的评分 <small>0–10，可留空</small><input v-model="editor.personalRating" type="text" inputmode="decimal" placeholder="还未评分" /></label></div><label class="field-label">分类<input v-model="editor.categories" placeholder="例如：视觉小说、待补票（逗号分隔）" /></label><label class="field-label">个人标签<input v-model="editor.tags" placeholder="例如：周末想玩、收藏版（逗号分隔）" /></label><label class="field-label">游玩笔记<textarea v-model="editor.notes" rows="4" placeholder="记下感想，或下一次想接着看的地方…"></textarea></label><KunButton color="primary" :loading="busy.has('save-game')" @click="saveGame"><Check :size="16" /> 保存书架信息</KunButton><div class="settings-divider"></div><h3>本地安装与资料</h3><div v-for="installation in selectedGame.installations" :key="installation.id" class="installation-row"><HardDrive :size="16" /><div><strong>{{ installation.executablePath ?? '尚未选择启动文件' }}</strong><small>{{ installation.folderPath }}</small></div><button class="text-button" :disabled="busy.has('executable')" @click="pickExecutable(installation.id)">设置程序</button><button v-if="selectedGame.installations.length > 1" class="text-button" @click="setPreferred(installation.id)">{{ selectedGame.preferredInstallationId === installation.id ? '默认启动' : '设为默认' }}</button></div><div class="button-row"><KunButton variant="bordered" size="sm" @click="pickExecutable()"><FolderPlus :size="14" /> {{ selectedGame.installations.length ? '设置启动程序' : '添加本地游戏' }}</KunButton><KunButton v-if="selectedGame.installations.length" variant="bordered" size="sm" @click="openGameFolder"><FolderOpen :size="14" /> 打开目录</KunButton><KunButton variant="bordered" size="sm" @click="beginBind"><Link2 :size="14" /> 关联作品</KunButton><KunButton v-if="selectedGame.installations.length" variant="bordered" size="sm" :disabled="matchingUnavailable" @click="identifyCurrentGame"><Sparkles :size="14" /> 重新识别此游戏</KunButton><KunButton v-if="selectedGame.metadata" variant="light" size="sm" :loading="busy.has('refresh')" @click="refreshMetadata"><RefreshCw :size="14" /> 刷新资料</KunButton></div><details v-if="selectedGame.installations.length" class="advanced-options"><summary>高级启动参数</summary><label class="field-label">参数数组<input v-model="editor.launchArgs" @input="markArgumentsEdited" placeholder='["-windowed"]' /></label><KunButton variant="flat" size="sm" @click="saveArguments">保存参数</KunButton></details><button class="remove-button" @click="removeGame">从书架移除这部游戏</button></div></template>
+      <template v-else-if="selectedGame"><div class="manage-form"><label class="field-label">书架名称<input v-model="editor.name" @input="markNameEdited" /></label><div class="form-columns"><label class="field-label">游玩状态<select v-model="editor.status"><option v-for="status in statuses" :key="status.value" :value="status.value">{{ status.label }}</option></select></label><label class="field-label">我的评分 <small>0–10，可留空</small><input v-model="editor.personalRating" type="text" inputmode="decimal" placeholder="还未评分" /></label></div><label class="field-label">分类<input v-model="editor.categories" placeholder="例如：视觉小说、待补票（逗号分隔）" /></label><label class="field-label">个人标签<input v-model="editor.tags" placeholder="例如：周末想玩、收藏版（逗号分隔）" /></label><label class="field-label">游玩笔记<textarea v-model="editor.notes" rows="4" placeholder="记下感想，或下一次想接着看的地方…"></textarea></label><KunButton color="primary" :loading="busy.has('save-game')" :disabled="detailReadNeeded" @click="saveGame"><Check :size="16" /> 保存书架信息</KunButton><p v-if="detailSaveError" class="detail-save-error" role="alert">{{ detailSaveError }}</p><div class="settings-divider"></div><h3>本地安装与资料</h3><div v-for="installation in selectedGame.installations" :key="installation.id" class="installation-row"><HardDrive :size="16" /><div><strong>{{ installation.executablePath ?? '尚未选择启动文件' }}</strong><small>{{ installation.folderPath }}</small></div><button class="text-button" :disabled="busy.has('executable')" @click="pickExecutable(installation.id)">设置程序</button><button v-if="selectedGame.installations.length > 1" class="text-button" @click="setPreferred(installation.id)">{{ selectedGame.preferredInstallationId === installation.id ? '默认启动' : '设为默认' }}</button></div><div class="button-row"><KunButton variant="bordered" size="sm" @click="pickExecutable()"><FolderPlus :size="14" /> {{ selectedGame.installations.length ? '设置启动程序' : '添加本地游戏' }}</KunButton><KunButton v-if="selectedGame.installations.length" variant="bordered" size="sm" @click="openGameFolder"><FolderOpen :size="14" /> 打开目录</KunButton><KunButton variant="bordered" size="sm" @click="beginBind"><Link2 :size="14" /> 关联作品</KunButton><KunButton v-if="selectedGame.installations.length" variant="bordered" size="sm" :disabled="matchingUnavailable" @click="identifyCurrentGame"><Sparkles :size="14" /> 重新识别此游戏</KunButton><KunButton v-if="selectedGame.metadata" variant="light" size="sm" :loading="busy.has('refresh')" @click="refreshMetadata"><RefreshCw :size="14" /> 刷新资料</KunButton></div><details v-if="selectedGame.installations.length" class="advanced-options"><summary>高级启动参数</summary><p class="arguments-target">参数对应：{{ editingInstallation?.folderPath || '原安装已不存在，请重新选择安装' }}<strong v-if="editingInstallation && editingInstallation.id !== selectedGame.preferredInstallationId">当前正在保留原安装的参数草稿，保存只作用于这个安装。</strong></p><label class="field-label">参数数组<input v-model="editor.launchArgs" @input="markArgumentsEdited" placeholder='["-windowed"]' /></label><KunButton variant="flat" size="sm" :loading="busy.has('args')" :disabled="detailReadNeeded || !editingInstallation" @click="saveArguments">保存参数</KunButton><p v-if="argumentsSaveError" class="arguments-save-error" role="alert">{{ argumentsSaveError }}</p></details><button class="remove-button" @click="removeGame">从书架移除这部游戏</button></div></template>
       </div></div>
   </KunModal>
 

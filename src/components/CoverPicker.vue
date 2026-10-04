@@ -19,6 +19,7 @@ const emit = defineEmits<{
   pickLocal: [display: NonPortraitCoverDisplay | null]
   retry: []
   close: []
+  dirty: [value: boolean]
 }>()
 
 const workId = computed(() => props.work?.id ?? props.game?.metadata?.id ?? '')
@@ -38,7 +39,7 @@ const group = ref<HTMLElement | null>(null)
 watch([() => identity.value, () => savedId.value, () => savedDisplay.value, () => props.game?.localCover?.dataUrl], () => {
   choice.value = savedId.value
   display.value = savedDisplay.value
-}, { immediate: true })
+}, { immediate: true, flush: 'sync' })
 watch(identity, () => { brokenUrls.value = new Set() })
 
 const knownExplicitUrls = computed(() => {
@@ -72,6 +73,9 @@ const effectiveRatio = computed(() => {
   return previewRatio.value || (cover?.width && cover.height ? cover.width / cover.height : 0)
 })
 const changed = computed(() => choice.value !== savedId.value || display.value !== savedDisplay.value)
+// The detail owns leave protection; report drafts immediately, including resets
+// after a confirmed save or switching to another game.
+watch(changed, value => emit('dirty', value), { immediate: true, flush: 'sync' })
 const canSave = computed(() => !!props.game && changed.value && !props.saving
   && (choice.value === savedId.value || !!currentOption.value))
 const previewPreserve = computed(() => shouldPreserveCover(effectiveRatio.value, 3 / 4, effectiveDisplay.value))

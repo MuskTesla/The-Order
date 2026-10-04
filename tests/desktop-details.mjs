@@ -44,7 +44,16 @@ try {
   const note = () => page.locator('.manage-form .field-label').filter({ hasText: '游玩笔记' }).locator('textarea')
   const title = () => page.getByRole('dialog').getByRole('heading').first().innerText()
   const manage = () => page.locator('.detail-tabs').getByRole('button', { name: '管理', exact: true }).click()
-  const close = async () => { await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click(); await page.getByRole('dialog').waitFor({ state: 'hidden' }) }
+  const close = async () => {
+    const detail = page.getByRole('dialog').filter({ has: page.locator('.detail-layout') })
+    await detail.getByRole('button', { name: '关闭', exact: true }).click()
+    const discard = page.getByRole('button', { name: '放弃修改', exact: true })
+    // These existing race scenarios deliberately leave the old draft and open
+    // another detail. Confirm that choice through the new leave protection.
+    await poll(async () => ({ closed: !await detail.isVisible(), discard: await discard.isVisible() }), value => value.closed || value.discard, 'detail close or explicit discard choice')
+    if (await discard.isVisible()) await discard.click()
+    await detail.waitFor({ state: 'hidden' })
+  }
   const snapshot = () => page.evaluate(() => window.kunManager.getState())
   const poll = async (read, predicate, label) => { for (let i = 0; i < 200; i++) { const value = await read(); if (predicate(value)) return value; await page.waitForTimeout(25) } throw Error(`Timed out: ${label}`) }
   const hold = id => application.evaluate((_, value) => { globalThis.__detailTest.holdId = value }, id)
@@ -60,7 +69,7 @@ try {
   await hold('102'); await page.getByRole('button', { name: 'Detail work B', exact: true }).click(); await held('102'); await manage()
   assert.equal(await title(), 'Detail game B'); assert.equal(await note().inputValue(), 'Saved note B')
   await page.getByRole('button', { name: '保存书架信息', exact: true }).click()
-  await page.getByText('已保存到你的书架。', { exact: true }).waitFor()
+  await page.getByText('书架信息已保存，启动参数和封面按各自按钮保存。', { exact: true }).waitFor()
   const saved = await snapshot()
   assert.equal(saved.games.find(game => game.id === 'A').notes, 'Saved note A')
   assert.equal(saved.games.find(game => game.id === 'B').notes, 'Saved note B')

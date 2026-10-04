@@ -35,14 +35,53 @@ const work = (covers: WorkCover[] | undefined = [cover('1'), cover('2', 1200, 60
 const game = (metadata = work()): LibraryGame => ({ id: 'synthetic', name: 'Synthetic cover selection', metadata, installations: [], preferredInstallationId: null, status: 'planned', personalRating: null, favorite: false, categories: [], customTags: [], notes: '', totalPlaySeconds: 0, playCount: 0, sessions: [], addedAt: '2026-10-03T00:00:00.000Z', lastPlayedAt: null })
 async function mount(input: Record<string, unknown> = {}) {
   const props = reactive({ game: game() as LibraryGame | null, work: work() as WorkMetadata | null, loading: false, saving: false, error: '', includeNsfw: false, globalDisplay: 'blur', ...input })
-  const events: unknown[][] = [], emit = (...args: unknown[]) => events.push(args)
+  const events: unknown[][] = [], dirtyEvents: boolean[] = []
+  const emit = (...args: unknown[]) => {
+    if (args[0] === 'dirty') dirtyEvents.push(args[1] as boolean)
+    else events.push(args)
+  }
   const render = (await component).setup(props, { expose() {}, emit })
   const tree = () => render({ $emit: emit }, []) as VNode
   const find = (name: string) => nodes(tree()).find(node => hasClass(node, name))!
   const radios = () => nodes(tree()).filter(node => node.props?.role === 'radio')
   const setDisplay = (value: string) => nodes(tree()).find(node => node.type === 'select')!.props!['onUpdate:modelValue'](value)
-  return { props, events, tree, find, radios, setDisplay }
+  return { props, events, dirtyEvents, tree, find, radios, setDisplay }
 }
+
+test('dirty reports synchronously and unrelated snapshots do not clear an unfinished choice', async () => {
+  const picker = await mount()
+  assert.deepEqual(picker.dirtyEvents, [false])
+  picker.radios()[2]!.props!.onClick()
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.radios()[0]!.props!.onClick()
+  assert.equal(picker.dirtyEvents.at(-1), false)
+  picker.setDisplay('plain')
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.props.game = { ...picker.props.game!, notes: 'Unrelated persisted note', metadata: { ...picker.props.game!.metadata! } }
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  await nextTick()
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.setDisplay('global')
+  assert.equal(picker.dirtyEvents.at(-1), false)
+})
+
+test('confirmed saved values and another detail identity synchronously reset reported dirtiness', async () => {
+  const picker = await mount()
+  picker.radios()[2]!.props!.onClick(); picker.setDisplay('plain')
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.props.game = { ...game(), coverChoice: { workId: '84', cover: cover('2') }, nonPortraitCoverDisplay: 'plain' }
+  assert.equal(picker.dirtyEvents.at(-1), false)
+  assert.equal(picker.find('picker-save').props!.disabled, true)
+  picker.setDisplay('crop')
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.props.game = { ...game(), id: 'another-game' }
+  assert.equal(picker.dirtyEvents.at(-1), false)
+  assert.equal(picker.radios()[0]!.props!['aria-checked'], true)
+  picker.setDisplay('plain')
+  assert.equal(picker.dirtyEvents.at(-1), true)
+  picker.props.work = { ...work(), id: 'another-work' }
+  assert.equal(picker.dirtyEvents.at(-1), false)
+})
 
 test('the initial selection is the source default even when another image has more votes', async () => {
   const picker = await mount()
