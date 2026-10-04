@@ -1,5 +1,20 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 3B：Filesystem / Installations / Image Pipeline（本机验收完成）
+
+- 用户在 Phase 3A.1 Gate 后正式授权本阶段；沿用 `codex/winui-phase3`，起点 `55069ac4fddd1491e3122fd4c69a24487a3b2d86`。本阶段 checkpoint 后暂停，不进入 Phase 4。下面旧阶段的“尚未进入 Phase 3B”是历史停点；当前实现和限制以本节及 DEVELOPMENT 的 Phase 3B 节为准。
+- 七项目分层未推翻，无 NuGet/npm 升级。Application 增加 filesystem/preflight、bounded scanner、安装和个人封面事务、image/source/codec/cache 接口；Platform.Windows 实现 Win32 handle identity、顶层枚举、WIC decode/normalize、隔离派生缓存；Presentation 管理扫描/草稿/受跟踪 mutation 和请求 generation；WinUI 使用标准 picker 与复用安全的 CoverPresenter。IO/扫描/identity/解码均在后台，最终像素上传在 UI。
+- stored user path、display path、final path、卷号+128-bit file ID 分开；保留原始路径拼写，基于真实身份判断相同目标/alias 重复，保守拒绝安装范围重叠。Preflight 有十类可解释结果；写盘前重验 snapshot。未知 reparse 或可靠 identity 不可取得时拒绝新关系，不把字符串当替代身份。目录离线只显示状态，保留历史安装。最后重验到写盘仍有窄 TOCTOU 窗口；未来启动必须再验证。
+- scan BFS 上限：深度6、目录5000、目录项50000、候选2000，队列有界，子 reparse 不跟随、identity 防重复、取消和节流进度；本阶段不读取 metadata/text、不执行 exe。用户先核对候选再确认一次批量事务；100项测试只保存一次。支持多安装、结构化 args、exe、范围内 working directory、首选切换、只移除关系。安装草稿有 stale token，已保存+刷新失败不变成未保存，不重复提交。
+- personal cover 继续在 v1 JSON 保存 Base64 JPEG，最多128KiB；不放入可丢缓存。PNG/JPEG输入≤20MiB、单帧/≤4000万像素、decode edge≤1600，按控件尺寸和DPI请求缩略图；有效IHDR的2.25亿像素测试明确在pixel decode前拒绝。默认并发2、64MiB LRU、128MiB派生磁盘缓存；坏图占位、旧结果不能覆盖复用后的条目，退出取消/drain。pending tasks没有另设全局硬上限，后续可调优；真实远程图片尚不下载。纯cover priority已差分，不能说在线封面系统完成。
+- NativeLibraryCodec 保留 legacy 校验与原始安装路径；workingDirectory 为 optional 扩展。旧 Electron 会忽略且在重写时丢掉 workingDirectory，回退前须保存候选 profile 副本，两端不能共用同一可写 profile。更严格的 identity/范围/队列/候选规则是记录在案的 intentional differences，未迁移正式资料。
+- 实际锁定 restore、Debug/Release build各0 warnings/errors、完整 C#各 **440/0/0**（保留102 differential/14 fault）；新增61项覆盖filesystem11、offline-files17、filesystem differential13、images10、presentation10。Artifact tests **18/0/0**；Electron relevant **183/0/0**，build/import regression通过：37新增、重复0/37、个人字段和重启保留、文件未删、renderer errors0。Release `publish-final/win-x64` 已实际启动/退出0。
+- identity 实际验证 lexical别名、长路径、junction/断链、symlink、8.3、subst、hardlink、rename/替换、ACL拒绝。`filesystem-capabilities.json` 将 UNC（没有获授权synthetic SMB share）、generic filter reparse（无可创建fixture）明确列为 **skipped**，不能用全套xUnit的0 skipped冒充这些环境通过。scan loop/unreadable/disappeared另有可控适配器注入，不等于所有OS环境验证。
+- 真 WinUI smoke覆盖目录picker→扫描→取消→再次扫描→核对→导入2条→重复0/1，多安装/参数/工作目录/首选/失效路径、本地封面/坏图保留、坏封面占位、Grid/List、重启持久化、scan/image活动关闭。用户额外指定 `D:\entertainment\PC` 后仅只读扫描36候选，未导入；隔离库仍2条synthetic。正式 `%APPDATA%\KunGalManager`、真实凭据、NextMoe、game launch/playtime、Liquid Glass、SQLite均未访问或实现。
+- `.artifacts/native-phase3b/` 是本机生成证据，不提交。38组截图/manifest逐项hash/runtime核验，38个不同截图hash；`debug-multi-install` 专门保留为草稿区残留bug诊断，由 `fixed-edit-draft-closed` supersede。其余场景用途、早期/最终build范围见DEVELOPMENT。最终WinUI MVID `c923ac56-5f7e-47f4-8970-c27611d5d95d`；最终与大库采集版只有Settings阶段标签的产品源码差异，五个核心层DLL字节相同，源文件/DLL/XBF/PRI清单保存以便复验。原Phase3A无效截图不恢复可信；Phase3A.1有效证据保留。
+- **Phase 3B baseline，非SLA**：1k/5k/10k带四张重复40×60真实JPEG，viewport1042×455.5；Grid首容器848.4/2359.1/3090.0ms，Grid容器45→51/45→46/45→46，List28→30（全部规模），Grid/List首屏working set295.4/342.7、373.9/427.1、451.7/485.1MiB。10k首次窗口被用户关闭，后续滚动/List来自磁盘缓存复测，Grid3014.2ms/462.8MiB。图片最高并发2、稳定后outstanding0/errors0，10k往返滚动与Light/Dark均实际检查。容器不随库规模线性增长；5k/10k读取时间和内存高于Phase3A.1无图片基线，不宣称正式性能SLA或万张大原图压力通过。
+- **本机验收完成，可进入独立 Phase 3B Gate Review；暂停等待下一阶段范围。** 仍缺UNC/未知filter真实环境、真实大库/长时间运行、干净机安装签名升级、断电证据；本阶段不是正式资料接管/联网/启动授权。完整架构、语义差异、baseline、复验命令与artifact列表见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
 ## WinUI Phase 3A.1：Presentation State Remediation（验收完成）
 
 - 基线 `codex/winui-phase3` / `29e5577c0e82384b66ce9d12fd6b06b996dc8b9c`；仅整改 M1–M5、Search lifecycle 和 Selection contract。没有 Phase 3B 授权，不访问正式资料、真实凭据或游戏目录。

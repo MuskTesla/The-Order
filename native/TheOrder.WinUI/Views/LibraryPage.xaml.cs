@@ -10,11 +10,14 @@ using TheOrder.Presentation;
 
 namespace TheOrder.WinUI.Views;
 
-public sealed partial class LibraryPage : Page
+public sealed partial class LibraryPage : Page, IImageHost
 {
     public WorkspaceViewModel ViewModel { get; }
+    public IImagePipeline Images { get; }
     public Func<string, Task>? OpenDetails { get; set; }
     public Func<Task<bool>>? ResolveUnsaved { get; set; }
+    public Func<Task>? OpenImport { get; set; }
+    private async void OnImport(object sender, RoutedEventArgs e) { try { if (OpenImport is not null) await OpenImport(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     private bool synchronizing = true;
     private readonly bool diagnostics;
     private readonly Stopwatch display = Stopwatch.StartNew();
@@ -25,9 +28,9 @@ public sealed partial class LibraryPage : Page
     private string measuredLayout = "";
     private double modeStarted;
     private ListViewBase Active => ViewModel.Layout == "grid" ? GameGrid : GameList;
-    public LibraryPage(WorkspaceViewModel viewModel, bool diagnostics)
+    public LibraryPage(WorkspaceViewModel viewModel, bool diagnostics, IImagePipeline images)
     {
-        ViewModel = viewModel; this.diagnostics = diagnostics; InitializeComponent();
+        ViewModel = viewModel; Images = images; this.diagnostics = diagnostics; InitializeComponent();
         Loaded += OnLoaded; Unloaded += OnUnloaded;
         Synchronize();
     }

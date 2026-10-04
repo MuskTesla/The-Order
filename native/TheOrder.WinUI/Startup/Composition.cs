@@ -17,20 +17,35 @@ internal static class Composition
         services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
         var nativeConfiguration = new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
         services.AddSingleton(nativeConfiguration);
-        services.AddSingleton<ILibraryCodec, LegacyLibraryCodec>();
+        services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
+        services.AddSingleton<OfflineLibraryClient>();
+        services.AddSingleton<IFilesystemIdentity, WindowsFilesystemIdentity>();
+        services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();
+        services.AddSingleton<BoundedScanner>();
+        services.AddSingleton<IRasterCodec, WindowsRasterCodec>();
+        services.AddSingleton<OfflineFilesClient>();
+        services.AddSingleton<LocalCoverSources>();
+        services.AddSingleton<IThumbnailDiskCache, IsolatedThumbnailCache>();
+        services.AddSingleton(new ImageOptions());
+        services.AddSingleton<IImagePipeline, ImagePipeline>();
+        services.AddSingleton<FilesViewModel>();
         if (nativeConfiguration.Diagnostics)
         {
-            services.AddSingleton(new SyntheticScenario(configuration["HOLD_PREFERENCES"] == "1"));
+            services.AddSingleton(new SyntheticScenario(configuration["HOLD_PREFERENCES"] == "1", configuration["HOLD_IMAGES"] == "1"));
+            services.AddSingleton<IOfflineFilesClient>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<OfflineFilesClient>()));
+            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<LocalCoverSources>()));
             services.AddSingleton<IClientTextRules>(p => p.GetRequiredService<SyntheticScenario>().Wrap(new LegacyClientTextRules()));
             services.AddSingleton<IUiPreferencesStore>(p => p.GetRequiredService<SyntheticScenario>().Wrap(new IsolatedUiPreferencesStore(nativeConfiguration)));
-            services.AddSingleton<IOfflineLibraryClient>(p => p.GetRequiredService<SyntheticScenario>().Wrap(new OfflineLibraryClient(p.GetRequiredService<ITransactionalLibraryFactory>(), p.GetRequiredService<IClientTextRules>())));
+            services.AddSingleton<IOfflineLibraryClient>(p => p.GetRequiredService<SyntheticScenario>().Wrap(p.GetRequiredService<OfflineLibraryClient>()));
         }
         else
         {
+            services.AddSingleton<IOfflineFilesClient>(p => p.GetRequiredService<OfflineFilesClient>());
+            services.AddSingleton<IImageSourceProvider>(p => p.GetRequiredService<LocalCoverSources>());
             services.AddSingleton<IClientTextRules, LegacyClientTextRules>();
             services.AddSingleton<IUiPreferencesStore, IsolatedUiPreferencesStore>();
-            services.AddSingleton<IOfflineLibraryClient, OfflineLibraryClient>();
+            services.AddSingleton<IOfflineLibraryClient>(p => p.GetRequiredService<OfflineLibraryClient>());
         }
         services.AddSingleton<WorkspaceViewModel>();
         services.AddSingleton<MainWindow>();

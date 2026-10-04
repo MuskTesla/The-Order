@@ -5,23 +5,52 @@ namespace TheOrder.WinUI.Startup;
 
 // Explicit diagnostic composition only. Real isolated services still validate every file access
 // and every mutation uses the production transaction kernel. No timer sleeps or dispatcher waits.
-public sealed class SyntheticScenario(bool holdPreferences)
+public sealed class SyntheticScenario(bool holdPreferences, bool holdImages = false)
 {
     private TaskCompletionSource? details, batch, query;
     private readonly int uiThreadId = Environment.CurrentManagedThreadId;
     private readonly TaskCompletionSource? preferences = holdPreferences ? NewGate() : null;
+    private TaskCompletionSource? scan;
+    private readonly TaskCompletionSource? image = holdImages ? NewGate() : null;
     private bool failReload, failRefreshAfterCommit, failQuery;
     private static TaskCompletionSource NewGate() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     public string Status { get; private set; } = holdPreferences ? "preferences-held" : "idle";
     public void DelayDetails() { details = NewGate(); Status = "details-armed"; }
     public void DelayBatch() { batch = NewGate(); Status = "batch-armed"; }
     public void DelayQuery() { query = NewGate(); Status = "query-armed"; }
+    public void DelayScan() { scan = NewGate(); Status = "scan-armed"; }
     public void FailNextReload() { failReload = true; Status = "reload-failure-armed"; }
     public void FailNextCommittedRefresh() { failRefreshAfterCommit = true; Status = "refresh-failure-armed"; }
-    public void Release() { details?.TrySetResult(); batch?.TrySetResult(); activePreprocessing?.TrySetResult(); query?.TrySetResult(); activeQuery?.TrySetResult(); preferences?.TrySetResult(); Status = "released"; }
+    public void Release() { details?.TrySetResult(); batch?.TrySetResult(); activePreprocessing?.TrySetResult(); query?.TrySetResult(); activeQuery?.TrySetResult(); preferences?.TrySetResult(); scan?.TrySetResult(); image?.TrySetResult(); Status = "released"; }
     internal IOfflineLibraryClient Wrap(IOfflineLibraryClient inner) => new Client(inner, this);
     internal IUiPreferencesStore Wrap(IUiPreferencesStore inner) => new Preferences(inner, this);
     internal IClientTextRules Wrap(IClientTextRules inner) => new TextRules(inner, this);
+    internal IOfflineFilesClient Wrap(IOfflineFilesClient inner) => new Files(inner, this);
+    internal IImageSourceProvider Wrap(IImageSourceProvider inner) => new Images(inner, this);
+    private sealed class Images(IImageSourceProvider inner, SyntheticScenario owner) : IImageSourceProvider
+    {
+        public async Task<byte[]?> ReadAsync(string key, CancellationToken cancellation)
+        { if (owner.image is { } held && !held.Task.IsCompleted) { owner.Status = "images-held"; await held.Task.WaitAsync(cancellation); } return await inner.ReadAsync(key, cancellation); }
+    }
+    private sealed class Files(IOfflineFilesClient inner, SyntheticScenario owner) : IOfflineFilesClient
+    {
+        public async Task<ScanResult> ScanAsync(string root, IProgress<ScanProgress>? progress, CancellationToken cancellation)
+        {
+            if (owner.scan is { } held)
+            {
+                owner.Status = "scan-held";
+                try { await held.Task.WaitAsync(cancellation); }
+                finally { if (ReferenceEquals(owner.scan, held)) owner.scan = null; }
+            }
+            return await inner.ScanAsync(root, progress, cancellation);
+        }
+        public Task<ClientResult> ImportAsync(ImmutableArray<ScanCandidate> candidates, CancellationToken cancellation) => inner.ImportAsync(candidates, cancellation);
+        public Task<InstallationView> InstallationsAsync(string id, CancellationToken cancellation) => inner.InstallationsAsync(id, cancellation);
+        public Task<ClientResult> SaveAsync(InstallationDetails details, InstallationInput input, CancellationToken cancellation) => inner.SaveAsync(details, input, cancellation);
+        public Task<ClientResult> RemoveAsync(InstallationDetails details, string id, CancellationToken cancellation) => inner.RemoveAsync(details, id, cancellation);
+        public Task<ClientResult> PreferAsync(InstallationDetails details, string id, CancellationToken cancellation) => inner.PreferAsync(details, id, cancellation);
+        public Task<ClientResult> CoverAsync(GameDetails details, string? path, CancellationToken cancellation) => inner.CoverAsync(details, path, cancellation);
+    }
     private sealed class TextRules(IClientTextRules inner, SyntheticScenario owner) : IClientTextRules
     {
         public string NormalizeSearch(string value) => inner.NormalizeSearch(value);

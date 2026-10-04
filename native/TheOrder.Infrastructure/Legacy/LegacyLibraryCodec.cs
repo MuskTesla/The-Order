@@ -60,7 +60,7 @@ public sealed class LegacyLibraryCodec : ILibraryCodec
         var d = new Dictionary<string, object?>();
         if (e.NameIsCustom is not null) d["nameIsCustom"] = e.NameIsCustom;
         d["id"] = e.Id; d["name"] = e.Name; d["metadata"] = e.Metadata is null ? null : Metadata(e.Metadata);
-        d["installations"] = e.Installations.Select(i => new { i.Id, folderPath = i.Folder, executablePath = i.Executable, i.Arguments });
+        d["installations"] = e.Installations.Select(i => { var location = new Dictionary<string, object?> { ["id"] = i.Id, ["folderPath"] = i.Folder, ["executablePath"] = i.Executable, ["arguments"] = i.Arguments }; if (i.WorkingDirectory is not null) location["workingDirectory"] = i.WorkingDirectory; return location; });
         d["preferredInstallationId"] = e.PreferredInstallationId; d["status"] = e.Status; d["personalRating"] = e.PersonalRating;
         d["favorite"] = e.Favorite; d["categories"] = e.Categories; d["customTags"] = e.CustomTags; d["notes"] = e.Notes;
         d["totalPlaySeconds"] = e.TotalPlaySeconds; d["playCount"] = e.PlayCount; d["sessions"] = e.Sessions.Select(s => new { s.Id, s.StartedAt, s.EndedAt, s.Seconds });

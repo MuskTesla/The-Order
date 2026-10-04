@@ -7,7 +7,7 @@ public static class LegacyMapping
 {
     public static LibraryEntry Map(LegacyGameDto dto, bool coverDisplaySpecified) => new(
         dto.Id, dto.Name, dto.NameIsCustom, dto.Metadata is null ? null : MapMetadata(dto.Metadata),
-        dto.Installations.Select(i => new Installation(i.Id, i.FolderPath, i.ExecutablePath, [.. i.Arguments])).ToImmutableArray(),
+        dto.Installations.Select(i => new Installation(i.Id, i.FolderPath, i.ExecutablePath, [.. i.Arguments], i.WorkingDirectory)).ToImmutableArray(),
         dto.PreferredInstallationId, dto.Status, dto.PersonalRating, dto.Favorite, [.. dto.Categories], [.. dto.CustomTags], dto.Notes,
         (long)Math.Floor(dto.TotalPlaySeconds), (long)Math.Floor(dto.PlayCount),
         dto.Sessions.Select(s => new PlaySession(s.Id, s.StartedAt, s.EndedAt, (long)Math.Floor(s.Seconds))).ToImmutableArray(),

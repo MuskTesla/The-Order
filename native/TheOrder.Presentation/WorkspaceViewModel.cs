@@ -4,7 +4,7 @@ using TheOrder.Application;
 
 namespace TheOrder.Presentation;
 
-public enum WorkspacePage { Library, Details, Settings }
+public enum WorkspacePage { Library, Details, Settings, Import, Installations }
 public enum UnsavedChoice { Stay, Save, Discard }
 public enum PreferenceInitialization { Uninitialized, Loading, Ready, LoadFailed }
 public enum RefreshOutcome { None, Success, Failed, Superseded }
@@ -32,6 +32,8 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
     private WorkspacePage page;
     private string? selectedId;
     private int total;
+    private bool externalBusy;
+    public void SetExternalBusy(bool value) { externalBusy = value; StateChanged(); }
     public IReadOnlyList<GameSummary> Items => itemView;
     public IReadOnlyList<string> Categories => categories;
     public IReadOnlyList<string> Tags => tags;
@@ -54,15 +56,15 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
     public RefreshOutcome LastRefresh { get; private set; }
     public long SelectionVersion { get; private set; }
     public int TotalCount => total;
-    public bool CanEdit => client.Capability.CanEdit && !loading && !IsSaving && !disposed;
+    public bool CanEdit => client.Capability.CanEdit && !loading && !IsSaving && !externalBusy && !disposed;
     public bool CanEditDetails => CanEdit && draft is not null;
     public bool CanSave => CanEdit && IsDirty;
-    public bool CanReload => !loading && !IsSaving && !disposed;
+    public bool CanReload => !loading && !IsSaving && !externalBusy && !disposed;
     public bool IsReadOnly => client.Capability.Loaded && !client.Capability.CanEdit;
     public string CapabilityMessage => client.Capability.Message;
     public bool IsLoaded => client.Capability.Loaded;
     public bool IsEmpty => IsLoaded && !loading && !searching && items.IsEmpty;
-    public string EmptyText => total == 0 ? "书架还没有作品。可使用开发脚本生成隔离资料。" : "没有符合当前条件的作品。试试清除筛选。";
+    public string EmptyText => total == 0 ? "书架还没有作品。选择“导入目录”添加本地游戏。" : "没有符合当前条件的作品。试试清除筛选。";
     public string CountText => IsLoaded ? $"{items.Length:N0} / {total:N0} 部作品" : "尚未加载书架";
     public ClientResult Notice => notice;
     public bool HasNotice => notice.Message.Length != 0;
@@ -270,6 +272,12 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
         }
     }
     public void CancelPendingOperation() => operationCancellation?.Cancel();
+    public Task<ClientResult> ExecuteFileMutationAsync(Func<CancellationToken, Task<ClientResult>> operation, string? detailId = null)
+    {
+        if (saving is { IsCompleted: false }) return saving;
+        if (!CanEdit || IsDirty) return Task.FromResult(new ClientResult(ClientOutcome.ReadOnly, "请先处理个人资料草稿，或等待当前操作完成。"));
+        return saving = RunMutationAsync(operation, detailId);
+    }
     private Task<ClientResult> StartBatchAsync(Func<CancellationToken, Task<ClientResult>> mutation)
     {
         if (saving is { IsCompleted: false }) return saving;

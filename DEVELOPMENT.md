@@ -1,5 +1,119 @@
 # 开发与维护
 
+## WinUI Phase 3B：文件系统、安装与图片（本机验收完成）
+
+用户在 Phase 3A.1 Gate 通过后明确授权本阶段。分支仍为 `codex/winui-phase3`，起点 `55069ac4fddd1491e3122fd4c69a24487a3b2d86`；以下旧阶段的“不进入 Phase 3B”是当时的停点，不覆盖此次新授权。只使用带 `.the-order-synthetic` 标记的隔离 profile，没有接管正式资料、读取真实凭据、联网匹配、执行游戏、计时、SQLite、Liquid Glass 或删除 Electron。最终 checkpoint 后暂停，不自动进入 Phase 4。
+
+### 架构与兼容性
+
+| 层 | 本阶段职责 |
+| --- | --- |
+| Domain | Installation 保留路径和结构化参数；新增可选 WorkingDirectory。文件 identity 不写入便携书架。 |
+| Application | `FilesystemContracts`、有界 `BoundedScanner`、安装/封面事务 token、`OfflineFilesClient`、`ImagePipeline` 与来源/解码/缓存接口。 |
+| Infrastructure/Legacy | `NativeLibraryCodec` 先执行既有 legacy 校验，再保留安装路径原始拼写；不改变旧差分 oracle 的路径归一化实现。 |
+| Platform.Windows | 句柄 identity/preflight、顶层目录枚举、WinRT WIC PNG/JPEG 解码/归一化、隔离缩略图磁盘缓存。 |
+| Presentation | `FilesViewModel` 管理扫描、安装草稿、受跟踪 mutation、取消/关闭收尾；`ImageRequestSlot` 管理复用容器的请求身份。 |
+| WinUI | Windows App SDK 标准 picker、候选核对/确认、安装管理、CoverPresenter；View 不自行访问 Win32、文件或解码原图。 |
+
+七项目 Solution 与既有事务内核保留，无新增 NuGet 包、无依赖升级。扫描、identity、图片 decode/normalize、磁盘缓存都在后台执行；UI 只接收进度、展示轻量 projection，并把已限制尺寸的 BGRA 上传至 WriteableBitmap。所有安装/个人封面写入仍经过完整校验、串行事务、原子持久化和已有 Committed/CommittedWithWarning/刷新失败语义。
+
+`StoredPath`、`DisplayPath`、`FinalPath`、`FilesystemIdentity(volume serial + 128-bit file ID)` 分开。通过 `CreateFileW` / `GetFileInformationByHandleEx(FileIdInfo)` / `GetFinalPathNameByHandleW` 得到实际对象身份；不使用 lowercase 字符串冒充 identity。目录需读取属性和列举权限，逐级检查重解析 tag；只接受普通路径、junction/mount point、symlink，未知 tag 和取不到可靠 identity 时拒绝新关系写入。
+
+Preflight 区分 Valid、NotFound、AccessDenied、FileInsteadOfDirectory、UnsupportedReparseCase、DuplicateExistingInstall、SameTargetViaAlias、BrokenLink、IdentityUnavailable、OtherIOError，提供中文提示。重复检查覆盖已有同游戏/其他游戏安装及同批候选；真实 identity 相同的别名为重复，已失效历史记录只对相同规范显示路径作保守重复判断。离线历史路径不会自动删除；可用别名、Missing、AccessDenied/Unknown 有独立状态。祖先/子目录重叠保守拒绝。
+
+identity 只代表当前机器/卷上的观察：同卷 rename/move 通常保留 file ID，但原路径 snapshot 会失效；跨卷复制/move 产生新身份；删除重建、恢复、卷序号冲突或文件 ID 重用均不能视为永久身份。网络 share 还依赖服务器是否支持 FileIdInfo 和 final path；本机没有获授权 SMB fixture，未声称网络可靠性。不可用路径没有字符串降级写入通道。
+
+PreparedInstallation 绑定原始值、目录/exe/工作目录 observation。事务生成 candidate 前及持久化前重新确认 identity、final path、范围和重复，拒绝检查后消失/替换的目标。没有对整个文件系统加事务锁，也不一直持有安装句柄：最后重验与写盘之间仍有窄 TOCTOU 窗口；未来真正使用路径时仍须重新验证。
+
+### 扫描、导入与多安装
+
+- BFS 显式队列；深度 **6**、目录 **5,000**、目录项 **50,000**、候选 **2,000**。目录项同时包括文件和子目录；队列本身也受目录预算约束。每目录/每项检查取消，进度至少每 50 ms 合并一次，读取提示最多 100 条。本阶段不读 metadata/说明文本，读取预算为 0。
+- 沿用旧 utility exe 排除、补丁/备份和系统目录保护；子级 reparse 不递归，另用已访问目录 identity 防环。根目录发现 exe 即作为候选，不再递归其子目录。目录不可读/消失会跳过并明确告知部分未检查；全局失败、取消、真空候选分别展示。
+- 选择目录 → 扫描 → 候选名称/路径/exe 线索/已有关系 → 手动选择 → 确认 → **一次事务**。一个 exe 自动选中，多个 exe 保留待用户选择；不做 metadata recognition。100 条批量导入测试实际只持久化一次。重复提交跳过已有关系，不增加安装；纯重复批次仍可更新导出时间/执行一次事务，不能拿整文件 hash 变化推断重复新增。
+- 安装支持新增、编辑 folder/exe/working directory/args array、切换首选、移除关系；已有模型没有独立安装标签字段，本阶段没有虚构 rename 字段。exe 和工作目录必须在解析后的安装范围内；args 保留独立字符串、空格、引号与空参数，不拼 shell command。移除首选关系令 preferred 为 null，保留其余安装；永不删游戏文件。
+- 安装编辑从 draft 经 preflight 提交，token 校验 epoch/game lifecycle/原安装集合及首选项，防乱序覆盖。提交后草稿退役；刷新失败仍表达“已经保存”，不重试 mutation。退出取消扫描/图片并等待已接受的 mutation；关闭过程中不抛出未处理 async void。
+
+旧版 v1 JSON / Base64 JPEG 封面继续保留。`workingDirectory` 是 optional 扩展，空值不输出；原 Electron 不使用它，并会在重新保存时丢弃未知字段。回退测试前保留 native profile 副本；禁止两端同时打开同一 profile。原始路径拼写保留是相对 Electron canonicalization 的有意加强，legacy backup reader 的既有差分行为保持原样。更早限制队列预算、拒绝无 exe/伪造候选、真实 identity 去重、保守范围检查也是明确差异。
+
+### 图片与缓存
+
+- `IImageSourceProvider` 为未来 remote source 保留接口，当前只取书架中的 local personal JPEG，未下载远程图片。`CoverSources.Selected` 的本地/当前作品个人选择/默认封面及内容分级优先级已与 Electron 做纯行为对照，但远程 transport 尚未接入；没有本地图片的条目仍显示占位。
+- 标准图片 picker 只选 PNG/JPEG，源文件最多 **20 MiB**，解码前检查宽高（每边至多 65,535）和总像素（至多 **4,000 万**），只接受单帧。请求目标最大边 1,600；卡片按实际尺寸×DPI向上取 64px 桶，详情最低目标 512。WIC 使用缩放 transform、EXIF orientation、sRGB；应用不先为整张原图分配 BGRA，但不宣称限制 WIC 内部所有临时分配。
+- 个人封面归一化为白底 JPEG、去源 metadata，质量/尺寸有限次回退至旧格式 **128 KiB** 上限；唯一用户副本始终在 library.json。坏图/截断/不支持格式/超尺寸/缺失/锁定/取消不替换原封面；已存坏图显示占位，错误计数不记录图像内容。
+- 默认 decode concurrency **2**（配置 clamp 1–8），LRU 原始像素缓存 **64 MiB**，按 BGRA 字节估算；派生磁盘缓存 **128 MiB**、最多枚举 4,097 个文件后拒绝继续写，按旧写入时间淘汰。key = 源内容 SHA-256 + 尺寸桶，像素文件有尺寸/长度/hash 校验；profile/cache 路径继续检查 reparse/hardlink。缓存删除不会改 personal cover。
+- Load/Unloaded/SourceKey/尺寸变化推进请求 generation 并取消旧任务；完成时再核对 generation/key/loaded，A 的晚结果不能写入复用后的 B。退出统一取消并 drain pipeline。待处理任务没有独立全局队列上限，目前由虚拟化容器数量和取消收敛；后续调优应关注并发请求合并、重复坏图负缓存和 pending queue，不能把两个解码槽宣称为所有 task 的硬上限。
+
+### Gate 与证据范围
+
+实际完成锁定 restore，Debug/Release build（0 warnings/errors），两配置完整 C# **440/0/0**，保留原 102 differential / 14 fault injection。新增 61 项：FilesystemIdentity 11、OfflineFilesystem 17、FilesystemDifferential 13、ImagePipeline 10、FilesPresentation 10。FilesystemDifferential 的 13 项含 1 项源 hash 新鲜度、7 项封面、4 项扫描边界、1 项复合扫描/安装行为。`generate-filesystem-oracle.mjs` 调用现有 Electron 实现生成参考；重复生成 SHA-256 不变（`oracle-repeat.json`）。
+
+Artifact tests **18/0/0**；Electron relevant **183/0/0**、build、desktop-import 均通过：37 新增、重复 0/37、个人字段/重启保留、文件未删、renderer errors 0。日志/TRX 在 `.artifacts/native-phase3b/`，不是提交的源码。正式 release 未替换。
+
+| 项目 | 本机实际证据 |
+| --- | --- |
+| identity | trailing、dot/dotdot、slash/case、长路径、junction/断链、symlink、8.3、subst、hardlink 文件 ID、rename/替换、ACL拒绝均执行。`filesystem-capabilities.json` 明确 UNC 与未知 generic reparse fixture **skipped**，不是 passed；unknown-tag 拒绝只有代码检查。旧 lab 描述中的 pending 由此报告 supersede。 |
+| scan | 实际普通目录、utility 排除、候选/重复；所有预算、取消正反回归。测试中的 unreadable/disappeared 和 symlink/junction loop 是受控 IScanFilesystem 故障/链接项注入；不冒充真实 OS 环路挂载试验。 |
+| UI import | 标准 picker 选 synthetic root、扫描、取消、再次扫描、核对并一次导入 2 条；重复选 1 条返回新增 0/跳过 1，readback 比较 games 完全不变。 |
+| UI installations | 第二安装、工作目录及含空格/引号参数写盘并重启；首选切换与参数编辑；临时移走仅自己创建的 synthetic folder 后显示“路径不可用，记录保留”，随后目录已恢复。移除关系/首选移除由事务测试验证，未另做桌面删除操作。 |
+| UI image | 有效 PNG 变为个人 JPEG；坏 JPG 被拒绝且原图保留；发布版重启/磁盘缓存读取、Grid/List 正常；legacy-valid 但 WIC 不可解码的封面仅占位、Errors=2、书架 normal。 |
+| close | 受控 scan-start gate 期间关闭，进程结束、library hash 不变；45 个图片请求在 source-read gate 挂起时关闭，发布进程 exit 0。此时 ActiveDecodes=0，证明请求取消/drain，不冒充 WIC 内部阻塞中断。accepted mutation 收尾继续由全量状态/事务测试覆盖。 |
+| authorized ordinary folder | 用户明确指定 `D:\entertainment\PC`，仅只读扫描得到 36 个候选；没有导入，隔离库仍为 2 个 synthetic entries，没有访问正式 profile/凭据、执行 exe 或改真实游戏文件。 |
+
+当前可信 UI 场景保存在 `.artifacts/native-phase3b/ui/`。每次先捕获新 runtime，Assert requested == actual，再写截图/UI tree，最后写 manifest；增加 import stage/root/candidate/duplicate/installation/draft/local cover/image metrics 和嵌套属性匹配，继续校验 build、timestamp、count、mode/theme/state/readOnly、viewport 与文件 SHA-256。实际曾请求 ActiveDecodes=2 而 runtime=0，采集正确拒绝；观察确认暂停位于 source-read 后，使用 Outstanding=45 / ActiveDecodes=0 精确记录，没有伪造 decode 活动。
+
+- `debug-import-review` / `debug-import-committed` / `debug-authorized-readonly-scan`：较早 Debug 构建上的范围限定 smoke。
+- `debug-multi-install`：**发现旧草稿区残留的诊断图，不能当作成功关闭草稿的证据**。由 `fixed-edit-draft-closed` / `fixed-multi-install-restart` supersede。修复使用 HasDraft bool 可见性，避免 XAML null 函数绑定短路。
+- `fixed-preferred-changed`、`fixed-missing-install`、`fixed-personal-cover`、`fixed-invalid-cover-preserves-personal`、`fixed-import-{scan-held,cancelled}`、`fixed-duplicate-{review,import}`、`fixed-close-scan-before`。
+- `release-personal-cover-{restart,list}`、`release-invalid-cover-placeholder`、`release-images-held-before-close`。
+- `images-{1000,5000,10000}-{grid,list}-{initial,scroll}`、`images-10000-grid-repeat-initial`、`images-10000-{grid,list}-{return,light}`。
+
+旧 Phase 3A 无效截图和 Phase 3A.1 有效证据的分类不变。新增 `artifact-index.json` / `artifact-sanity.json` 逐文件验证大小、hash、ui.txt/runtime 与场景，`image-baseline.json` 保存数值；生成产物仍被 Git 忽略。预提交 assembly informational version 指向 `55069ac...`，不是新 checkpoint SHA；必须结合实际 exe 路径、MVID、全部 TheOrder DLL hashes 和源码清单判定构建身份，不能只凭标题或 MVID。
+
+最终为 **38 screenshots / 38 manifests / 38 unique screenshot hashes**，其中 `debug-multi-install` 是上述已 supersede 的 bug 诊断，不计成功功能证据。索引 SHA-256：`BDE721B240F8FB492F6BBFB9A0E8A7EB1901750D8967541698C2981646B7A503`。最后只修正 SettingsPage 的 Phase 3B 名称，并加强超大图片 fixture 的 IHDR CRC/尺寸拒绝断言；最终两配置 build 仍各 0 warnings/errors、full tests 各440/0/0。`build-source-manifest-ui.json` / `build-source-manifest-final.json` 记录源码和发布 DLL/XBF/PRI hashes，`build-equivalence-final.json` 确认五个核心分层程序集字节一致；WinUI MVID 从 `317efdf4-fba3-49dc-8f0d-973d8e1d7aab` 变为 `c923ac56-5f7e-47f4-8970-c27611d5d95d`。最终 `publish-final` 实际重启显示持久化封面/安装、正确阶段名称，`final-published-{persistence,settings-phase3b}` 对应新路径和 MVID，PID2932 正常关闭 exit0。早期 Debug 图不作为最终 build 的逐字节证明。
+
+### Phase 3B image baseline（不是 SLA）
+
+发布版，固定实际 viewport **1042 × 455.5 DIP**。四张 40×60 的原创可解码 JPEG 重复分配给 1k/5k/10k 条目，library 约 1.91/9.59/19.19 MB；不是 10,000 张大原图的解码压力测试。另有实际 600×900 PNG 个人封面与目标尺寸/缓存淘汰/超尺寸单测。没有 FPS、峰值内存或长时间稳定性结论。
+
+| 条目数 | Grid 首容器 ms | List 切换首容器 ms | Grid 首屏→滚动 | List 首屏→滚动 | 首屏 working set Grid/List MiB |
+| --- | ---: | ---: | --- | --- | --- |
+| 1,000 | 848.4 | 12.2 | 45→51 | 28→30 | 295.4 / 342.7 |
+| 5,000 | 2359.1 | 11.2 | 45→46 | 28→30 | 373.9 / 427.1 |
+| 10,000 | 3090.0 | 11.5 | 45→46 | 28→30 | 451.7 / 485.1 |
+
+10k 首次首屏后用户手动关闭窗口，工具随后的滚动返回 foreground PID 错误；确认用户关闭后才重新启动。Grid 滚动、回滚、List 来自第二次进程（已有磁盘缓存），Grid 首容器 **3014.2 ms / 462.8 MiB**；没有将两进程说成同一次测量。1k/5k 均为同进程切换。所有快速滚动后的 offset 为 6825 DIP；10k 两视图回滚到 0 并再次检查对应条目颜色，没有可见 stale overwrite、几何跳动或永久加载，稳定后 Outstanding=0 / Errors=0。
+
+| 条目/视图（滚动后累计） | requests | 实际 decode loads | memory hits / misses | memory hit ratio | max concurrent decode |
+| --- | ---: | ---: | --- | ---: | ---: |
+| 1k Grid | 166 | 6 | 160 / 6 | 96.4% | 2 |
+| 1k List | 242 | 10 | 232 / 10 | 95.9% | 2 |
+| 5k Grid | 151 | 4 | 146 / 5 | 96.7% | 2 |
+| 5k List | 235 | 8 | 226 / 9 | 96.2% | 2 |
+| 10k Grid（复测） | 156 | 0 | 151 / 5 | 96.8% | 0 |
+| 10k List（复测） | 360 | 4 | 351 / 9 | 97.5% | 2 |
+
+miss 是 memory miss，可能命中 disk，所以不等于 decode loads；首次 10k Grid decode=4、最高并发2，复测命中 disk 无需 decode。重复图片本身使命中率很高，不外推真实库。容器数量没有随 1k→10k 线性增长，但整库 JSON/Base64 加载和缓存索引仍有规模成本。Phase 3A.1 无图片的 1k/5k/10k Grid 为 1038.6/1670.1/2283.0 ms，working set 281.9/314.7/329.7 MiB；本次 5k/10k 时间和内存上升，不能宣称整体性能优于无图基线。旧 viewport 高度466.5，亦非完全相同条件。
+
+### 复验入口与后续边界
+
+```powershell
+# 从仓库根目录；只向 ignored artifacts 写构建结果。
+& native/scripts/native.ps1 -Action Restore
+& native/scripts/native.ps1 -Action Build -Configuration Debug
+& native/scripts/native.ps1 -Action Build -Configuration Release
+& native/scripts/native.ps1 -Action Test -Configuration Debug
+& native/scripts/native.ps1 -Action Test -Configuration Release
+node --test native/scripts/capture-ui-evidence.test.mjs
+node native/scripts/generate-filesystem-oracle.mjs
+node native/scripts/generate-offline-library.mjs --out D:\Projects\The-Order\.artifacts\new-image-profile --count 1000 --cover-json D:\Projects\The-Order\.artifacts\native-phase3b\image-fixtures\cover-pool.json
+```
+
+最后一个命令要求输出目录尚不存在，cover-pool 是本轮测试生成的合成 JPEG，不是用户图片。`native.ps1` 的默认日志/Publish 仍沿用 native-phase1 路径，不能误称它会自动更新本轮发布目录。Phase 3B 实际发布通过 pinned dotnet `publish TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -o ../.artifacts/native-phase3b/publish-final/win-x64`；运行时必须设置 `THE_ORDER_NATIVE_DATA_DIR` 为标记目录，交互验收才开启 `THE_ORDER_NATIVE_DIAGNOSTICS=1`。`THE_ORDER_NATIVE_HOLD_IMAGES=1` 与“延迟扫描”仅诊断装配生效，退出/取消可解除等待。
+
+剩余边界：UNC/非 NTFS/ReFS/generic filter 真实环境、真实大图片与大型 session 库、长期内存、干净机安装/签名/升级、突然断电未验收；没有正式资料迁移、在线图片下载/NextMoe、完整识别、游戏启动/计时或高级材质。Phase 4 应先独立定义范围和风险 Gate，不能把本阶段 checkpoint 当成正式数据/API/启动授权。
+
+**本机 Phase 3B 验收完成，可提交独立 Gate Review。** 本地/可创建 alias、隔离事务与图片、必需 UI smoke、回归和发布已通过；UNC/generic reparse 的实际环境验证仍明确待补。建议先 review 本 checkpoint 再授权下一阶段，不把未测场景或未来功能写成 PASS。
+
 ## WinUI Phase 3A.1：状态整改与场景证据（验收完成）
 
 本轮只在 `codex/winui-phase3` 修复 Phase 3A Gate 问题。基线 `29e5577c0e82384b66ce9d12fd6b06b996dc8b9c`，完成全部验证后才建立新 checkpoint；不进入 Phase 3B。

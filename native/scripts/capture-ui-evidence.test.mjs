@@ -9,12 +9,19 @@ const fixture = (changes = {}) => {
     viewMode: 'grid', theme: 'Dark', readOnly: false, state: 'normal', page: 'Library', viewport: { realizedContainerCount: 51, viewportWidth: 1100, viewportHeight: 600, firstContainerMs: 900 }, ...changes }
   return { window: { id: 1, app: 'synthetic' }, accessibility: { tree: 'text THE_ORDER_RUNTIME ' + JSON.stringify(runtime) + ' ID: RuntimeEvidence' }, screenshots: [{ id: 'fresh', url: 'data:image/png;base64,aGVsbG8=' }] }
 }
-for (const [key, value] of Object.entries({ itemCount: 1000, totalCount: 5000, viewMode: 'list', theme: 'Light', readOnly: true, state: 'error', page: 'Details', build: 'another-build' })) {
+for (const [key, value] of Object.entries({ itemCount: 1000, totalCount: 5000, viewMode: 'list', theme: 'Light', readOnly: true, state: 'error', page: 'Details', build: 'another-build', importStage: 'Scanning', candidateCount: 20, installationCount: 2, missingInstallations: 1, localCoverCount: 10000, scanRoot: 'Z:\\different', duplicateCandidates: 2 })) {
   test(`reject mismatched ${key}`, () => assert.throws(() => runtimeFromState(fixture(), { [key]: value }), /Scenario mismatch/))
 }
 test('reject stale or unrealized capture', () => {
   assert.throws(() => runtimeFromState(fixture({ timestamp: '2000-01-01' }), {}), /stale/)
   assert.throws(() => runtimeFromState(fixture({ viewport: { realizedContainerCount: 0 } }), {}), /viewport/)
+})
+
+test('image workload assertions use actual nested metrics', () => {
+  const state = fixture({ imageMetrics: { Requests: 42, Errors: 1, Outstanding: 0, ActiveDecodes: 0, MaximumActiveDecodes: 2 } })
+  runtimeFromState(state, { 'imageMetrics.Errors': 1, 'imageMetrics.Outstanding': 0 })
+  assert.throws(() => runtimeFromState(state, { 'imageMetrics.Errors': 0 }), /mismatch/)
+  assert.throws(() => runtimeFromState(fixture({ imageMetrics: { ActiveDecodes: 5, MaximumActiveDecodes: 2, Outstanding: 1 } }), {}), /metrics/)
 })
 test('every scene obtains its own snapshot and mismatch writes no evidence', async () => {
   const outputDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'the-order-capture-test-'))

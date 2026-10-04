@@ -36,7 +36,7 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         }
         finally { lifetime.Release(); }
     }
-    private TransactionalLibrary Required() => library ?? throw new InvalidOperationException("书架尚未加载。");
+    internal TransactionalLibrary Required() => library ?? throw new InvalidOperationException("书架尚未加载。");
     public Task<LibraryQueryResult> QueryAsync(LibraryQuery query, CancellationToken cancellation)
     {
         var snapshot = Required().Snapshot;
@@ -85,11 +85,11 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         try { return Present(await Required().UpdateBatchAsync(ids, patch, cancellation).ConfigureAwait(false)); }
         catch (Exception e) when (Expected(e)) { return Failure(e); }
     }
-    private static ClientResult Present<T>(CommitResult<T> receipt) => receipt.Warning is not null
+    internal static ClientResult Present<T>(CommitResult<T> receipt) => receipt.Warning is not null
         ? new(ClientOutcome.CommittedWithWarning, "修改已经保存，但存在附加警告：" + receipt.Warning + " 请勿重复提交。")
         : new(ClientOutcome.Committed, receipt.CancellationAfterCommit ? "修改已经保存。取消发生在提交开始之后。" : "修改已经保存。");
-    private static bool Expected(Exception e) => e is InvalidDataException or LibraryWriteLimitException or LibraryReadOnlyException or StaleLibraryRequestException or OperationCanceledException or IOException or UnauthorizedAccessException or DataIsolationException;
-    private static ClientResult Failure(Exception e) => e switch
+    internal static bool Expected(Exception e) => e is InvalidDataException or LibraryWriteLimitException or LibraryReadOnlyException or StaleLibraryRequestException or OperationCanceledException or IOException or UnauthorizedAccessException or DataIsolationException;
+    internal static ClientResult Failure(Exception e) => e switch
     {
         LibraryReadOnlyException => new(ClientOutcome.ReadOnly, e.Message),
         StaleLibraryRequestException => new(ClientOutcome.Conflict, "资料已经变化，未保存此次修改。草稿已保留；请核对后取消草稿并重新打开。"),
@@ -123,7 +123,7 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
                 var fields = new[] { e.Name, e.Metadata?.Title ?? "", e.Metadata?.OriginalTitle ?? "" }.Concat(e.Metadata?.Aliases ?? []).Concat(e.Metadata?.Developers ?? [])
                     .Concat(e.Categories).Concat(combinedTags).Concat(e.Installations.Select(i => i.Folder));
                 var preferred = e.Installations.FirstOrDefault(i => i.Id == e.PreferredInstallationId) ?? (e.Installations.Length == 1 ? e.Installations[0] : null);
-                built.Add(new(new(e.Id, e.Name, e.Status, e.PersonalRating, e.Favorite, string.Join(" · ", e.Categories.Concat(e.CustomTags).Take(4)), e.Installations.Length, e.TotalPlaySeconds),
+                built.Add(new(new GameSummary(e.Id, e.Name, e.Status, e.PersonalRating, e.Favorite, string.Join(" · ", e.Categories.Concat(e.CustomTags).Take(4)), e.Installations.Length, e.TotalPlaySeconds) { CoverKey = e.LocalCover is null ? null : LocalCoverSources.Key(e.LocalCover) },
                     [.. fields.Select(text.NormalizeSearch)], e.Categories, combinedTags,
                     e.Installations.Length > 0 && string.IsNullOrEmpty(e.Metadata?.CoverUrl),
                     e.Installations.Length > 0 && (preferred?.Executable is null || !preferred.Executable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)), e.AddedAt, e.LastPlayedAt ?? ""));

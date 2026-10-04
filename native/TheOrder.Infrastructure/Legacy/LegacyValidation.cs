@@ -91,6 +91,8 @@ internal static class LegacyValidation
                     if (!LegacyPathIdentity.Contains(folder, exe) || !exe.EndsWith(".exe", StringComparison.Ordinal)) Fail("executablePath");
                 }
                 foreach (var a in Array(i, "arguments", 100)) Text(a, "arguments", 8192);
+                if (i.TryGetProperty("workingDirectory", out var working) && working.ValueKind != JsonValueKind.Null)
+                    if (!LegacyPathIdentity.Contains(folder, PathValue(i, "workingDirectory"))) Fail("workingDirectory");
             }
             if (Field(g, "preferredInstallationId").ValueKind != JsonValueKind.Null && !installs.Any(i => Id(i, "id") == Id(g, "preferredInstallationId"))) Fail("preferredInstallationId");
             var sessions = Array(g, "sessions", 100000).ToArray();

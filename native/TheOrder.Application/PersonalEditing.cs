@@ -12,7 +12,12 @@ public sealed record PersonalValues(string Name, string Status, double? Rating, 
 }
 public sealed record PersonalEditToken(Guid Epoch, string Id, Guid Generation, PersonalValues Original);
 public sealed record GameDetails(string Id, PersonalValues Personal, string MetadataTitle, string OriginalTitle, string Relationship,
-    string Installations, string Playtime, string CoverDescription, PersonalEditToken Token);
+    string Installations, string Playtime, string CoverDescription, PersonalEditToken Token)
+{
+    public string? CoverKey { get; init; }
+    public CoverEditToken? CoverToken { get; init; }
+}
+public sealed record CoverEditToken(Guid Epoch, string Id, Guid Generation, LocalCover? Original, CoverChoice? Choice);
 public sealed record BulkPersonalPatch
 {
     public Change<string> Status { get; init; }
@@ -32,9 +37,18 @@ public sealed partial class TransactionalLibrary
             e.Metadata is null ? "尚未关联目录作品" : $"目录作品 {e.Metadata.Id} · {string.Join(" / ", e.Metadata.Developers)}",
             e.Installations.IsEmpty ? "愿望条目 · 尚无安装" : string.Join("\n", e.Installations.Select(i => $"{(i.Id == e.PreferredInstallationId ? "首选 · " : "")}{i.Folder}\n{i.Executable ?? "尚未设置启动程序"}")),
             $"累计 {e.TotalPlaySeconds / 3600} 小时 {e.TotalPlaySeconds % 3600 / 60} 分钟 · {e.PlayCount} 次 · {e.Sessions.Length} 条历史记录",
-            e.LocalCover is not null ? "已保留本地封面 · 图片显示将在下一阶段接入" : e.CoverChoice is not null || e.Metadata?.CoverUrl is not null ? "已保留资料封面 · 离线占位" : "暂无封面",
-            new(epoch, id, lifecycles[id].Generation, personal)));
+            e.LocalCover is not null ? "个人本地封面 · 保存在书架资料中" : e.CoverChoice is not null || e.Metadata?.CoverUrl is not null ? "已保留资料封面 · 离线占位" : "暂无封面",
+            new(epoch, id, lifecycles[id].Generation, personal)) { CoverKey = e.LocalCover is null ? null : LocalCoverSources.Key(e.LocalCover), CoverToken = new(epoch, id, lifecycles[id].Generation, e.LocalCover, e.CoverChoice) });
     }, cancellation);
+
+    public Task<CommitResult<LibraryEntry>> SaveLocalCoverAsync(CoverEditToken token, LocalCover? cover, CancellationToken cancellation = default)
+        => Mutate(games =>
+        {
+            var entry = Find(games, token.Id);
+            if (token.Epoch != epoch || token.Generation != lifecycles[entry.Id].Generation || token.Original != entry.LocalCover || token.Choice != entry.CoverChoice) throw new StaleLibraryRequestException();
+            var changed = entry with { LocalCover = cover, CoverChoice = null };
+            return (games.Replace(entry, changed), changed);
+        }, cancellation);
 
     public Task<CommitResult<LibraryEntry>> SavePersonalAsync(PersonalEditToken token, PersonalPatch patch, CancellationToken cancellation = default)
         => Mutate(games =>

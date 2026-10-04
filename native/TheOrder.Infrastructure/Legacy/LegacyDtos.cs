@@ -8,7 +8,7 @@ public sealed record LegacyGameDto(
     double? PersonalRating, bool Favorite, string[] Categories, string[] CustomTags, string Notes,
     double TotalPlaySeconds, double PlayCount, LegacySessionDto[] Sessions, string AddedAt, string? LastPlayedAt,
     LegacyLocalCoverDto? LocalCover, LegacyCoverChoiceDto? CoverChoice, string? NonPortraitCoverDisplay);
-public sealed record LegacyInstallationDto(string Id, string FolderPath, string? ExecutablePath, string[] Arguments);
+public sealed record LegacyInstallationDto(string Id, string FolderPath, string? ExecutablePath, string[] Arguments, string? WorkingDirectory = null);
 public sealed record LegacySessionDto(string Id, string StartedAt, string EndedAt, double Seconds);
 public sealed record LegacyLocalCoverDto(string DataUrl, int Width, int Height);
 public sealed record LegacyCoverDto(string Id, string Url, int? Width, int? Height, long? Votes, string? Sexual);

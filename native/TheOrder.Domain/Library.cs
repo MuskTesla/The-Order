@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace TheOrder.Domain;
 
 // Domain objects deliberately have no JSON attributes or file/network dependencies.
-public sealed record Installation(string Id, string Folder, string? Executable, ImmutableArray<string> Arguments);
+public sealed record Installation(string Id, string Folder, string? Executable, ImmutableArray<string> Arguments, string? WorkingDirectory = null);
 public sealed record PlaySession(string Id, string StartedAt, string EndedAt, long Seconds);
 public sealed record LocalCover(string DataUrl, int Width, int Height);
 public sealed record CoverPreference(bool IsSpecified, string? Mode);

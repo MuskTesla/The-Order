@@ -129,7 +129,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             });
         }
     }
-    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null)
+    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null)
         => Enqueue(async () =>
         {
             if (current.Access != LibraryAccess.ValidWritable) throw new LibraryReadOnlyException(current.ReadOnlyReason!);
@@ -151,6 +151,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             var retiredRequests = lifecycles.Where(pair => !nextLifecycles.TryGetValue(pair.Key, out var next) || next.Generation != pair.Value.Generation)
                 .Select(pair => pair.Value.Request).ToArray();
             var nextSnapshot = new LibrarySnapshot(validated, LibraryRecovery.Main);
+            precommit?.Invoke();
             cancellation.ThrowIfCancellationRequested();
             // No cancellation inside the durable phase. A post-replace warning is a committed result.
             var receipt = await persistence.SaveAsync(lastGood, serialized).ConfigureAwait(false);

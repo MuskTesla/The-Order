@@ -12,7 +12,13 @@ export function runtimeFromState(state, expected, now = Date.now()) {
   if (runtime.schema !== 1 || !runtime.build || !runtime.checkpoint || !Number.isInteger(runtime.processId)
     || !Number.isFinite(Date.parse(runtime.timestamp)) || Math.abs(now - Date.parse(runtime.timestamp)) > 10000) throw Error('Invalid or stale runtime identity')
   for (const [key, value] of Object.entries(expected)) {
-    if (runtime[key] !== value) throw Error(`Scenario mismatch: ${key}; requested=${JSON.stringify(value)} actual=${JSON.stringify(runtime[key])}`)
+    const actual = key.split('.').reduce((parent, part) => parent?.[part], runtime)
+    if (actual !== value) throw Error(`Scenario mismatch: ${key}; requested=${JSON.stringify(value)} actual=${JSON.stringify(actual)}`)
+  }
+  if (runtime.imageMetrics) {
+    const m = runtime.imageMetrics
+    for (const value of Object.values(m)) if (!Number.isFinite(value) || value < 0) throw Error('Invalid image metrics')
+    if (m.ActiveDecodes > m.MaximumActiveDecodes || m.ActiveDecodes > m.Outstanding) throw Error('Inconsistent image metrics')
   }
   if (!Number.isInteger(runtime.itemCount) || runtime.itemCount < 0 || !Number.isInteger(runtime.totalCount) || runtime.totalCount < runtime.itemCount) throw Error('Invalid runtime counts')
   if (runtime.page === 'Library' && runtime.itemCount > 0 && !['error', 'loading', 'searching'].includes(runtime.state)) {

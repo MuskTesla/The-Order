@@ -1,14 +1,14 @@
-<Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application">
+<Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:views="using:TheOrder.WinUI.Views">
  <Page.Resources>
   <DataTemplate x:Key="CardTemplate" x:DataType="app:GameSummary">
    <Border Width="190" Height="268" Margin="4" Style="{StaticResource SurfaceStyle}"><Grid RowSpacing="10" Padding="12"><Grid.RowDefinitions><RowDefinition Height="136"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="40" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/></Border>
+    <Border CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><views:CoverPresenter SourceKey="{x:Bind CoverKey}"/></Border>
     <StackPanel Grid.Row="1" Spacing="4"><TextBlock Text="{x:Bind Name}" FontSize="16" FontWeight="SemiBold" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/><TextBlock Text="{x:Bind Subtitle}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="{x:Bind FavoriteText}" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/><TextBlock Text="{x:Bind Labels}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel>
    </Grid></Border>
   </DataTemplate>
   <DataTemplate x:Key="RowTemplate" x:DataType="app:GameSummary">
    <Grid Padding="8" ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
-    <Border Height="64" Width="48" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><FontIcon Glyph="&#xE8F1;"/></Border>
+    <Border Height="64" Width="48" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><views:CoverPresenter SourceKey="{x:Bind CoverKey}"/></Border>
     <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="16" TextTrimming="CharacterEllipsis"/><TextBlock Text="{x:Bind Subtitle}" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind Labels}" TextTrimming="CharacterEllipsis" FontSize="12"/></StackPanel><TextBlock Grid.Column="2" Text="{x:Bind FavoriteText}" VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
    </Grid>
   </DataTemplate>
@@ -17,7 +17,7 @@
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel><TextBlock Text="书架" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="{x:Bind ViewModel.CountText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="LibraryStatus"/></StackPanel>
-   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="网格" Click="OnGrid" AutomationProperties.AutomationId="GridMode"/><Button Content="列表" Click="OnList" AutomationProperties.AutomationId="ListMode"/><Button Content="重新读取" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary"/></StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="导入目录" Click="OnImport" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="OpenImport"/><Button Content="网格" Click="OnGrid" AutomationProperties.AutomationId="GridMode"/><Button Content="列表" Click="OnList" AutomationProperties.AutomationId="ListMode"/><Button Content="重新读取" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary"/></StackPanel>
   </Grid>
   <Grid Grid.Row="1" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="145"/><ColumnDefinition Width="145"/></Grid.ColumnDefinitions>
    <TextBox x:Name="SearchBox" PlaceholderText="搜索名称、原名、标签、开发商或安装目录" TextChanged="OnSearch" AutomationProperties.AutomationId="LibrarySearch"/>

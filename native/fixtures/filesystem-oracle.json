@@ -1,0 +1,653 @@
+{
+  "electron": "44.5.1",
+  "hashes": {
+    "electron/library.ts": "651d3c627f755e547e6d4c45f0c1e4a53b8ddf84d46aa25c936b97310ff7f447",
+    "src/cover-display.ts": "5210b27ab1c388b885064b2022e1a2ac702a778f603973087f569ff8e8a2ed49",
+    "native/scripts/generate-filesystem-oracle.mjs": "1645e2841ddddc7117c01a5247f9960fac9d6dee78e763ece18c3d558f9fdf10"
+  },
+  "scans": [
+    {
+      "name": "A",
+      "executables": [
+        "A.exe",
+        "launcher.exe"
+      ]
+    },
+    {
+      "name": "B",
+      "executables": [
+        "game.exe"
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "name": "import",
+      "result": {
+        "added": 2,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "duplicate",
+      "result": {
+        "added": 0,
+        "skipped": 2
+      }
+    },
+    {
+      "name": "attach-to-unconfigured",
+      "count": 2,
+      "preferredIndex": 1,
+      "executables": [
+        null,
+        "game.exe"
+      ]
+    },
+    {
+      "name": "prefer-and-args",
+      "preferredIndex": 0,
+      "arguments": [
+        "two words",
+        "",
+        "--flag=中"
+      ]
+    },
+    {
+      "name": "duplicate-attach",
+      "rejected": true
+    }
+  ],
+  "covers": [
+    {
+      "name": "local-first",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/default.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true,
+        "localCover": {
+          "dataUrl": "data:image/jpeg;base64,/9j/2Q==",
+          "width": 1,
+          "height": 1
+        },
+        "coverChoice": {
+          "workId": "same",
+          "cover": {
+            "id": "c",
+            "url": "https://example.invalid/chosen.jpg",
+            "width": 100,
+            "height": 150,
+            "votes": 0,
+            "sexual": "safe"
+          }
+        }
+      },
+      "includeExplicit": true,
+      "selected": "data:image/jpeg;base64,/9j/2Q=="
+    },
+    {
+      "name": "choice",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/default.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true,
+        "coverChoice": {
+          "workId": "same",
+          "cover": {
+            "id": "c",
+            "url": "https://example.invalid/chosen.jpg",
+            "width": 100,
+            "height": 150,
+            "votes": 0,
+            "sexual": "safe"
+          }
+        }
+      },
+      "includeExplicit": true,
+      "selected": "https://example.invalid/chosen.jpg"
+    },
+    {
+      "name": "stale-choice",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/default.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true,
+        "coverChoice": {
+          "workId": "other",
+          "cover": {
+            "id": "c",
+            "url": "https://example.invalid/chosen.jpg",
+            "width": 100,
+            "height": 150,
+            "votes": 0,
+            "sexual": "safe"
+          }
+        }
+      },
+      "includeExplicit": true,
+      "selected": "https://example.invalid/default.jpg"
+    },
+    {
+      "name": "explicit-choice-hidden",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/default.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true,
+        "coverChoice": {
+          "workId": "same",
+          "cover": {
+            "id": "c",
+            "url": "https://example.invalid/chosen.jpg",
+            "width": 100,
+            "height": 150,
+            "votes": 0,
+            "sexual": "explicit"
+          }
+        }
+      },
+      "includeExplicit": false,
+      "selected": "https://example.invalid/default.jpg"
+    },
+    {
+      "name": "explicit-default-hidden",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/chosen.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true,
+        "coverChoice": {
+          "workId": "same",
+          "cover": {
+            "id": "c",
+            "url": "https://example.invalid/chosen.jpg",
+            "width": 100,
+            "height": 150,
+            "votes": 0,
+            "sexual": "explicit"
+          }
+        }
+      },
+      "includeExplicit": false,
+      "selected": null
+    },
+    {
+      "name": "default",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": {
+          "id": "same",
+          "title": "虚构作品",
+          "originalTitle": "架空の物語",
+          "aliases": [
+            "Fictional Story"
+          ],
+          "coverUrl": "https://example.invalid/default.jpg",
+          "bannerUrl": null,
+          "description": "仅用于原生客户端验证。",
+          "releaseDate": null,
+          "releaseDatePrecision": null,
+          "developers": [
+            "合成开发组"
+          ],
+          "tags": [
+            "测试"
+          ],
+          "ratings": [],
+          "characters": [],
+          "references": [],
+          "webUrl": null,
+          "contentRating": null,
+          "fetchedAt": "2026-10-04T00:00:00.000Z",
+          "covers": []
+        },
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true
+      },
+      "includeExplicit": true,
+      "selected": "https://example.invalid/default.jpg"
+    },
+    {
+      "name": "no-metadata",
+      "game": {
+        "id": "synthetic-a",
+        "name": "我的自定义名称 · 星海",
+        "metadata": null,
+        "installations": [
+          {
+            "id": "install-a",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海",
+            "executablePath": "C:\\TheOrder-Synthetic\\星海\\game.exe",
+            "arguments": [
+              "--test",
+              "空 格"
+            ]
+          },
+          {
+            "id": "install-b",
+            "folderPath": "C:\\TheOrder-Synthetic\\星海另一安装",
+            "executablePath": null,
+            "arguments": []
+          }
+        ],
+        "preferredInstallationId": "install-a",
+        "status": "planned",
+        "personalRating": 0,
+        "favorite": true,
+        "categories": [
+          "合成资料"
+        ],
+        "customTags": [
+          "中文"
+        ],
+        "notes": "虚构笔记",
+        "totalPlaySeconds": 7200,
+        "playCount": 3,
+        "sessions": [
+          {
+            "id": "session-a",
+            "startedAt": "2026-10-04T00:00:00.000Z",
+            "endedAt": "2026-10-04T00:10:00.000Z",
+            "seconds": 600
+          }
+        ],
+        "addedAt": "2026-10-04T00:00:00.000Z",
+        "lastPlayedAt": null,
+        "nameIsCustom": true
+      },
+      "includeExplicit": true,
+      "selected": null
+    }
+  ],
+  "limits": [
+    {
+      "name": "depth",
+      "accepted": true,
+      "count": 0,
+      "calls": 7
+    },
+    {
+      "name": "directories",
+      "accepted": false,
+      "calls": 5000
+    },
+    {
+      "name": "entries",
+      "accepted": false,
+      "calls": 1
+    },
+    {
+      "name": "candidates",
+      "accepted": false,
+      "calls": 2001
+    }
+  ]
+}
