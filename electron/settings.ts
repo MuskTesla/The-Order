@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { NonPortraitCoverDisplay, PublicSettings, SettingsInput, Theme } from '../src/shared/types'
+import type { AppearanceStyle, NonPortraitCoverDisplay, PublicSettings, SettingsInput, Theme } from '../src/shared/types'
 import { normalizeBaseUrl } from './nextmoe'
 
 export interface SecretCodec {
@@ -8,14 +8,18 @@ export interface SecretCodec {
   encrypt(value: string): Buffer
   decrypt(value: Buffer): string
 }
-interface StoredSettings { version: 1; baseUrl: string; encryptedKey: string | null; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean; nonPortraitCoverDisplay: NonPortraitCoverDisplay }
+interface StoredSettings { version: 1; baseUrl: string; encryptedKey: string | null; includeNsfw: boolean; theme: Theme; appearanceStyle: AppearanceStyle; readExecutableMetadata: boolean; nonPortraitCoverDisplay: NonPortraitCoverDisplay }
+function appearanceStyle(value: unknown): AppearanceStyle {
+  if (value !== 'classic' && value !== 'windows' && value !== 'glass') throw new Error('界面风格不正确。')
+  return value
+}
 function coverDisplay(value: unknown): NonPortraitCoverDisplay {
   if (value !== 'blur' && value !== 'plain' && value !== 'crop') throw new Error('封面展示方式不正确。')
   return value
 }
 
 export class SettingsStore {
-  private value: StoredSettings = { version: 1, baseUrl: 'https://api.nextmoe.dev/v2/', encryptedKey: null, includeNsfw: true, theme: 'system', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }
+  private value: StoredSettings = { version: 1, baseUrl: 'https://api.nextmoe.dev/v2/', encryptedKey: null, includeNsfw: true, theme: 'system', appearanceStyle: 'windows', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }
   private readonly file: string
   private queue: Promise<void> = Promise.resolve()
   constructor(dataDir: string, private readonly codec: SecretCodec) { this.file = path.join(dataDir, 'settings.json') }
@@ -25,14 +29,14 @@ export class SettingsStore {
     try {
       const raw = JSON.parse(await fs.readFile(this.file, 'utf8')) as StoredSettings
       if (raw.version !== 1 || typeof raw.encryptedKey !== 'string' && raw.encryptedKey !== null) throw new Error('格式错误')
-      this.value = { version: 1, baseUrl: normalizeBaseUrl(raw.baseUrl), encryptedKey: raw.encryptedKey, includeNsfw: Boolean(raw.includeNsfw), theme: ['light', 'dark', 'system'].includes(raw.theme) ? raw.theme : 'light', readExecutableMetadata: raw.readExecutableMetadata === undefined || raw.readExecutableMetadata === true, nonPortraitCoverDisplay: raw.nonPortraitCoverDisplay === undefined ? 'blur' : coverDisplay(raw.nonPortraitCoverDisplay) }
+      this.value = { version: 1, baseUrl: normalizeBaseUrl(raw.baseUrl), encryptedKey: raw.encryptedKey, includeNsfw: Boolean(raw.includeNsfw), theme: ['light', 'dark', 'system'].includes(raw.theme) ? raw.theme : 'light', appearanceStyle: raw.appearanceStyle === undefined ? 'windows' : appearanceStyle(raw.appearanceStyle), readExecutableMetadata: raw.readExecutableMetadata === undefined || raw.readExecutableMetadata === true, nonPortraitCoverDisplay: raw.nonPortraitCoverDisplay === undefined ? 'blur' : coverDisplay(raw.nonPortraitCoverDisplay) }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new Error('设置文件无法读取，请在数据目录中检查 settings.json。')
     }
   }
 
   getPublic(): PublicSettings {
-    return { baseUrl: this.value.baseUrl, hasApiKey: Boolean(this.value.encryptedKey), includeNsfw: this.value.includeNsfw, theme: this.value.theme, readExecutableMetadata: this.value.readExecutableMetadata, nonPortraitCoverDisplay: this.value.nonPortraitCoverDisplay }
+    return { baseUrl: this.value.baseUrl, hasApiKey: Boolean(this.value.encryptedKey), includeNsfw: this.value.includeNsfw, theme: this.value.theme, appearanceStyle: this.value.appearanceStyle, readExecutableMetadata: this.value.readExecutableMetadata, nonPortraitCoverDisplay: this.value.nonPortraitCoverDisplay }
   }
 
   getApiOptions(): { baseUrl: string; apiKey: string; includeNsfw: boolean } {
@@ -52,6 +56,7 @@ export class SettingsStore {
     const run = this.queue.then(async () => {
       if (!input || typeof input !== 'object' || typeof input.includeNsfw !== 'boolean' || !['light', 'dark', 'system'].includes(input.theme) || input.readExecutableMetadata !== undefined && typeof input.readExecutableMetadata !== 'boolean') throw new Error('设置格式不正确。')
       const baseUrl = normalizeBaseUrl(input.baseUrl)
+      const style = input.appearanceStyle === undefined ? this.value.appearanceStyle : appearanceStyle(input.appearanceStyle)
       const nonPortraitCoverDisplay = input.nonPortraitCoverDisplay === undefined ? this.value.nonPortraitCoverDisplay : coverDisplay(input.nonPortraitCoverDisplay)
       let encryptedKey = this.value.encryptedKey
       if (input.clearApiKey) encryptedKey = null
@@ -64,7 +69,7 @@ export class SettingsStore {
       }
       // Changing the destination cannot silently forward the previous credential.
       if (new URL(baseUrl).origin !== new URL(this.value.baseUrl).origin && !input.apiKey?.trim()) encryptedKey = null
-      const next: StoredSettings = { version: 1, baseUrl, encryptedKey, includeNsfw: input.includeNsfw, theme: input.theme, readExecutableMetadata: input.readExecutableMetadata ?? this.value.readExecutableMetadata, nonPortraitCoverDisplay }
+      const next: StoredSettings = { version: 1, baseUrl, encryptedKey, includeNsfw: input.includeNsfw, theme: input.theme, appearanceStyle: style, readExecutableMetadata: input.readExecutableMetadata ?? this.value.readExecutableMetadata, nonPortraitCoverDisplay }
       // Compare normalized values inside this transaction. A submitted credential
       // replacement counts even if hasApiKey stays true; never decrypt to compare.
       const matchingChanged = next.baseUrl !== this.value.baseUrl || next.includeNsfw !== this.value.includeNsfw ||

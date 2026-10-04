@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { KunButton, KunChip, KunSwitch, KunModal, KunMessageProvider, KunAlertProvider, useKunMessage, useKunAlert } from '@kungal/ui-vue'
 import { Library, Compass, LayoutGrid, BarChart3, Settings, Search, Plus, FolderPlus, ArrowUpRight, ChevronRight, Heart, Star, SlidersHorizontal, X, Play, Clock3, BookOpen, Download, Upload, FolderOpen, Link2, RefreshCw, Check, CheckCircle2, ShieldCheck, Monitor, Tags, Sparkles, Square, CircleHelp, HardDrive, ArrowLeft, LoaderCircle } from 'lucide-vue-next'
 import { api, isPreview } from './bridge'
-import type { AppSnapshot, BulkGamePatch, LibraryGame, PlayStatus, WorkMetadata, ScanCandidate, Theme, MatchReview, InstallationAttachmentScan, NonPortraitCoverDisplay, PublicSettings, ConnectionResult } from './shared/types'
+import type { AppSnapshot, BulkGamePatch, LibraryGame, PlayStatus, WorkMetadata, ScanCandidate, Theme, AppearanceStyle, MatchReview, InstallationAttachmentScan, NonPortraitCoverDisplay, PublicSettings, ConnectionResult } from './shared/types'
 import GameCard from './components/GameCard.vue'
 import CoverPicker from './components/CoverPicker.vue'
 import DetailCover from './components/DetailCover.vue'
@@ -11,6 +11,7 @@ import { gameCoverDisplay, gameCoverUrl, workCoverUrl } from './cover-display'
 import SectionSignature from './components/SectionSignature.vue'
 import OrderMark from './components/OrderMark.vue'
 import DesktopTitlebar from './components/DesktopTitlebar.vue'
+import LiquidGlassMaterial from './components/LiquidGlassMaterial.vue'
 import LibraryOverview from './components/LibraryOverview.vue'
 import LibraryCollections from './components/LibraryCollections.vue'
 import LibrarySavedViews from './components/LibrarySavedViews.vue'
@@ -827,11 +828,11 @@ async function importSelected() {
   })
 }
 
-const settingsForm = reactive({ baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: '', includeNsfw: false, theme: 'light' as Theme, readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' as NonPortraitCoverDisplay })
-const settingsFields = ['baseUrl', 'includeNsfw', 'theme', 'readExecutableMetadata', 'nonPortraitCoverDisplay'] as const
+const settingsForm = reactive({ baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: '', includeNsfw: false, theme: 'light' as Theme, appearanceStyle: 'windows' as AppearanceStyle, readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' as NonPortraitCoverDisplay })
+const settingsFields = ['baseUrl', 'includeNsfw', 'theme', 'appearanceStyle', 'readExecutableMetadata', 'nonPortraitCoverDisplay'] as const
 type SettingsField = typeof settingsFields[number]
 const settingsBaseline = reactive({ ...settingsForm })
-const settingsEdits = { baseUrl: 0, includeNsfw: 0, theme: 0, readExecutableMetadata: 0, nonPortraitCoverDisplay: 0, apiKey: 0 }
+const settingsEdits = { baseUrl: 0, includeNsfw: 0, theme: 0, appearanceStyle: 0, readExecutableMetadata: 0, nonPortraitCoverDisplay: 0, apiKey: 0 }
 let adoptingSettings = false
 let settingsSubmission: typeof settingsEdits | null = null
 let connectionEpoch = 0
@@ -841,7 +842,7 @@ const connectionFeedback = ref<(ConnectionResult & { baseUrl: string }) | null>(
 const settingsDirty = computed(() => settingsFields.some(field => settingsForm[field] !== settingsBaseline[field]) || !!settingsForm.apiKey.trim())
 const connectionDraftDirty = computed(() => settingsForm.baseUrl !== settingsBaseline.baseUrl || settingsForm.includeNsfw !== settingsBaseline.includeNsfw || !!settingsForm.apiKey.trim())
 const recognitionSettingsDirty = computed(() => settingsForm.baseUrl.trim() !== settingsBaseline.baseUrl || settingsForm.includeNsfw !== settingsBaseline.includeNsfw || settingsForm.readExecutableMetadata !== settingsBaseline.readExecutableMetadata || !!settingsForm.apiKey.trim())
-function settingsValues(settings: PublicSettings) { return { baseUrl: settings.baseUrl, includeNsfw: settings.includeNsfw, theme: settings.theme, readExecutableMetadata: settings.readExecutableMetadata ?? true, nonPortraitCoverDisplay: settings.nonPortraitCoverDisplay ?? 'blur' } }
+function settingsValues(settings: PublicSettings) { return { baseUrl: settings.baseUrl, includeNsfw: settings.includeNsfw, theme: settings.theme, appearanceStyle: settings.appearanceStyle ?? 'windows', readExecutableMetadata: settings.readExecutableMetadata ?? true, nonPortraitCoverDisplay: settings.nonPortraitCoverDisplay ?? 'blur' } }
 function setSettingsField(field: SettingsField, value: typeof settingsForm[SettingsField]) { Object.assign(settingsForm, { [field]: value }) }
 function adoptSettings(action: () => void) { adoptingSettings = true; try { action() } finally { adoptingSettings = false } }
 function invalidateConnection() { connectionEpoch++; connectionFeedback.value = null }
@@ -859,6 +860,7 @@ watch(() => JSON.stringify(snapshot.value?.settings), (_current, previous) => {
     Object.assign(settingsBaseline, values)
   })
   if (previous !== undefined && _current !== previous) invalidateConnection()
+  document.documentElement.dataset.appearance = settings.appearanceStyle ?? 'windows'
   applyTheme(settings.theme)
 }, { flush: 'sync' })
 watch(() => JSON.stringify([snapshot.value?.settings.baseUrl, snapshot.value?.settings.includeNsfw, snapshot.value?.settings.hasApiKey]), (_current, previous) => { if (previous !== undefined) { searchGeneration++; searchResults.value = []; searchCursor.value = null; submittedQuery.value = ''; hasSearched.value = false; searchError.value = ''; busy.delete('search') } })
@@ -950,6 +952,7 @@ onUnmounted(() => { document.removeEventListener('keydown', closeDetailWithEscap
 
 <template>
   <DesktopTitlebar @home="navigate('library')" />
+  <LiquidGlassMaterial v-if="snapshot?.settings.appearanceStyle === 'glass'" />
   <div class="app-shell" :class="{ 'library-page': page === 'library' }">
     <aside class="sidebar compact-sidebar" aria-label="应用导航">
       <button class="brand" aria-label="The Order，返回我的书架" title="The Order" @click="navigate('library')"><span class="brand-mark"><OrderMark /></span></button>

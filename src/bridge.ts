@@ -1,9 +1,9 @@
-import type { AppSnapshot, KunManagerAPI, LibraryGame, NonPortraitCoverDisplay, WorkMetadata } from './shared/types'
+import type { AppearanceStyle, AppSnapshot, KunManagerAPI, LibraryGame, NonPortraitCoverDisplay, WorkMetadata } from './shared/types'
 import { createDesktopBridge } from './desktop-bridge'
 
 export const isPreview = !window.kunManager
 const listeners = new Set<() => void>()
-const state: AppSnapshot = { games: [], settings: { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: false, includeNsfw: false, theme: 'light', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }, activeSession: null, dataPath: '浏览器预览 · 仅保存在内存', version: '0.7.1' }
+const state: AppSnapshot = { games: [], settings: { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: false, includeNsfw: false, theme: 'light', appearanceStyle: 'windows', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }, activeSession: null, dataPath: '浏览器预览 · 仅保存在内存', version: '0.7.1' }
 let works: WorkMetadata[] = []
 let loaded: Promise<void> | undefined
 const clone = <T>(value: T): T => structuredClone(value)
@@ -12,6 +12,7 @@ const desktopOnly = async (): Promise<never> => { throw new Error('请打开桌�
 const findGame = (id: string) => { const game = state.games.find(g => g.id === id); if (!game) throw new Error('游戏不在书架中。'); return game }
 const findWork = (id: string) => { const work = works.find(w => w.id === id); if (!work) throw new Error('预览资料中没有这部作品。'); return work }
 const validDisplay = (value: unknown): NonPortraitCoverDisplay => { if (value !== 'blur' && value !== 'plain' && value !== 'crop') throw new Error('封面展示方式不正确。'); return value }
+const validAppearance = (value: unknown): AppearanceStyle => { if (value !== 'classic' && value !== 'windows' && value !== 'glass') throw new Error('界面风格不正确。'); return value }
 const addWork = (work: WorkMetadata): LibraryGame => ({ id: `preview-${work.id}`, name: work.title, metadata: clone(work), installations: [], preferredInstallationId: null, status: 'planned', personalRating: null, favorite: false, categories: [], customTags: [], notes: '', totalPlaySeconds: 0, playCount: 0, sessions: [], addedAt: new Date().toISOString(), lastPlayedAt: null })
 async function loadPreview() {
   loaded ??= (async () => {
@@ -27,7 +28,7 @@ async function loadPreview() {
 }
 const preview: KunManagerAPI = {
   async getState() { await loadPreview(); return clone(state) },
-  async saveSettings(input) { const display = input.nonPortraitCoverDisplay === undefined ? state.settings.nonPortraitCoverDisplay ?? 'blur' : validDisplay(input.nonPortraitCoverDisplay); state.settings = { baseUrl: input.baseUrl, hasApiKey: false, includeNsfw: input.includeNsfw, theme: input.theme, readExecutableMetadata: input.readExecutableMetadata ?? state.settings.readExecutableMetadata, nonPortraitCoverDisplay: display }; changed(); return clone(state.settings) },
+  async saveSettings(input) { const display = input.nonPortraitCoverDisplay === undefined ? state.settings.nonPortraitCoverDisplay ?? 'blur' : validDisplay(input.nonPortraitCoverDisplay); const style = input.appearanceStyle === undefined ? state.settings.appearanceStyle ?? 'windows' : validAppearance(input.appearanceStyle); state.settings = { baseUrl: input.baseUrl, hasApiKey: false, includeNsfw: input.includeNsfw, theme: input.theme, appearanceStyle: style, readExecutableMetadata: input.readExecutableMetadata ?? state.settings.readExecutableMetadata, nonPortraitCoverDisplay: display }; changed(); return clone(state.settings) },
   async testConnection() { return { ok: false, message: '界面预览不连接 API，也不保存密钥。请在桌面版测试。' } },
   async searchWorks(query) { await loadPreview(); const q = query.toLocaleLowerCase(); return { items: clone(works.filter(w => [w.title, w.originalTitle, ...w.aliases].some(s => s.toLocaleLowerCase().includes(q)))), nextCursor: null } },
   async getWork(id) { await loadPreview(); return clone(findWork(id)) },

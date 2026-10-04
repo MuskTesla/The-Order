@@ -24,6 +24,20 @@ test('forced colors preserve the Windows palette instead of the app theme', () =
   }
 })
 
+test('each style keeps native captions opaque and matched to its canvas, with system contrast taking priority', () => {
+  for (const [appearanceStyle, light, dark] of [['classic', '#f6f7fb', '#151c2a'], ['windows', '#f3f3f3', '#202020'], ['glass', '#e9eef5', '#111923']] as const) {
+    for (const isDark of [false, true]) {
+      const appearance = getWindowAppearance({ appearanceStyle, dark: isDark, forcedColors: false })
+      assert.equal(appearance.backgroundColor, isDark ? dark : light)
+      assert.equal(appearance.titleBarOverlay.color, appearance.backgroundColor)
+      assert.equal(appearance.titleBarOverlay.height, 40)
+      const accessible = getWindowAppearance({ appearanceStyle, dark: isDark, forcedColors: true, systemBackground: '#102030ff', systemForeground: '#eeeeeeff' })
+      assert.equal(accessible.backgroundColor, '#102030')
+      assert.equal(accessible.titleBarOverlay.symbolColor, '#eeeeee')
+    }
+  }
+})
+
 test('forced colors remain opaque and contrasting when a system color is unavailable', () => {
   assert.deepEqual(getWindowAppearance({ dark: true, forcedColors: true, systemBackground: 'transparent', systemForeground: '#00' }), {
     backgroundColor: '#000000', titleBarOverlay: { color: '#000000', symbolColor: '#ffffff', height: 40 }

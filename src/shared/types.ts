@@ -1,5 +1,6 @@
 export type PlayStatus = 'planned' | 'playing' | 'completed' | 'paused' | 'dropped'
 export type Theme = 'light' | 'dark' | 'system'
+export type AppearanceStyle = 'classic' | 'windows' | 'glass'
 export type NonPortraitCoverDisplay = 'blur' | 'plain' | 'crop'
 export interface LocalCover { dataUrl: string; width: number; height: number }
 export interface WorkCover { id: string; url: string; width: number | null; height: number | null; votes: number | null; sexual: 'safe' | 'suggestive' | 'explicit' | null }
@@ -59,9 +60,9 @@ export interface LibraryGame {
   lastPlayedAt: string | null
 }
 export interface ActiveSession { gameId: string; installationId: string; startedAt: string; elapsedSeconds: number }
-export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
+export interface PublicSettings { baseUrl: string; hasApiKey: boolean; includeNsfw: boolean; theme: Theme; appearanceStyle?: AppearanceStyle; readExecutableMetadata: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
 export interface SettingsSaveResult extends PublicSettings { warning?: string }
-export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; readExecutableMetadata?: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
+export interface SettingsInput { baseUrl: string; apiKey?: string; clearApiKey?: boolean; includeNsfw: boolean; theme: Theme; appearanceStyle?: AppearanceStyle; readExecutableMetadata?: boolean; nonPortraitCoverDisplay?: NonPortraitCoverDisplay }
 export interface MatchOption { work: WorkMetadata; confidence: number; reason: string }
 export interface MatchReviewSource {
   installationId: string; folderPath: string; executablePath: string | null; fingerprint: string

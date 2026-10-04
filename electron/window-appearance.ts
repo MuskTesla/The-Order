@@ -1,7 +1,10 @@
+import type { AppearanceStyle } from '../src/shared/types'
+
 export const WINDOW_TITLEBAR_HEIGHT = 40
 
 export interface WindowAppearanceInput {
   dark: boolean
+  appearanceStyle?: AppearanceStyle
   forcedColors: boolean
   systemBackground?: string
   systemForeground?: string
@@ -14,9 +17,11 @@ function opaqueSystemColor(value: string | undefined, fallback: string): string 
 }
 
 export function getWindowAppearance(input: WindowAppearanceInput) {
+  const palette = input.appearanceStyle === 'classic' ? ['#f6f7fb', '#151c2a']
+    : input.appearanceStyle === 'glass' ? ['#e9eef5', '#111923'] : ['#f3f3f3', '#202020']
   const backgroundColor = input.forcedColors
     ? opaqueSystemColor(input.systemBackground, input.dark ? '#000000' : '#ffffff')
-    : input.dark ? '#202020' : '#f3f3f3'
+    : palette[input.dark ? 1 : 0]
   const symbolColor = input.forcedColors
     ? opaqueSystemColor(input.systemForeground, input.dark ? '#ffffff' : '#000000')
     : input.dark ? '#ffffff' : '#1b1b1b'

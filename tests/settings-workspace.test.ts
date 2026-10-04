@@ -20,7 +20,8 @@ const compiled = (async () => {
 })()
 async function harness(t: { after(callback: () => void): void }) {
   const { script, code } = await compiled, messages: string[] = [], api: any = {}
-  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, Error, api, isPreview: false, onMounted() {}, onUnmounted() {}, useKunMessage: (message: string) => messages.push(message), useKunAlert: async () => true, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  const documentElement = { dataset: {} as Record<string, string>, classList: { toggle() {} } }
+  const sandbox: any = { ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, ...coverDisplay, Error, api, isPreview: false, onMounted() {}, onUnmounted() {}, useKunMessage: (message: string) => messages.push(message), useKunAlert: async () => true, document: { documentElement }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
   const scope = vue.effectScope(); t.after(() => scope.stop()); vm.createContext(sandbox); scope.run(() => vm.runInContext(code, sandbox))
   const a = sandbox.audit, initial: PublicSettings = { baseUrl: 'https://fixture.invalid/v2/', hasApiKey: true, includeNsfw: false, theme: 'light', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur' }
@@ -30,7 +31,7 @@ async function harness(t: { after(callback: () => void): void }) {
   api.saveSettings = async (input: any) => { calls.push(structuredClone(input)); saved = { ...input, baseUrl: input.baseUrl.trim(), hasApiKey: input.clearApiKey ? false : !!input.apiKey || saved.hasApiKey }; delete (saved as any).apiKey; delete (saved as any).clearApiKey; return { ...saved } }
   api.testConnection = async () => ({ ok: true, message: 'Synthetic catalog reachable' })
   a.snapshot.value = state(); await vue.nextTick()
-  return { a, api, calls, messages, initial, state, setSaved: (value: PublicSettings) => { saved = { ...value } } }
+  return { a, api, calls, messages, initial, state, documentElement, setSaved: (value: PublicSettings) => { saved = { ...value } } }
 }
 
 test('saved snapshots merge untouched fields without discarding unsaved connection or appearance input', async t => {
@@ -62,10 +63,11 @@ test('successful acknowledgement normalizes submitted fields and clears only the
 
 test('removing the saved credential submits saved preferences only and preserves every unsaved draft', async t => {
   const { a, initial, calls } = await harness(t)
-  a.settingsForm.theme = 'dark'; a.settingsForm.apiKey = 'synthetic-do-not-submit'; a.settingsForm.baseUrl = 'https://draft.invalid/'; a.settingsForm.includeNsfw = true
+  a.settingsForm.theme = 'dark'; a.settingsForm.appearanceStyle = 'glass'; a.settingsForm.apiKey = 'synthetic-do-not-submit'; a.settingsForm.baseUrl = 'https://draft.invalid/'; a.settingsForm.includeNsfw = true
   await a.saveSettings(true)
-  assert.deepEqual(plain(calls[0]), { baseUrl: initial.baseUrl, includeNsfw: initial.includeNsfw, theme: initial.theme, readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur', clearApiKey: true })
+  assert.deepEqual(plain(calls[0]), { baseUrl: initial.baseUrl, includeNsfw: initial.includeNsfw, theme: initial.theme, appearanceStyle: 'windows', readExecutableMetadata: true, nonPortraitCoverDisplay: 'blur', clearApiKey: true })
   assert.equal(a.snapshot.value.settings.hasApiKey, false); assert.equal(a.settingsForm.apiKey, 'synthetic-do-not-submit'); assert.equal(a.settingsForm.theme, 'dark'); assert.equal(a.settingsForm.baseUrl, 'https://draft.invalid/'); assert.equal(a.settingsForm.includeNsfw, true)
+  assert.equal(a.settingsForm.appearanceStyle, 'glass')
 })
 
 test('saved-with-warning confirms persistence and preserves later drafts', async t => {
@@ -129,4 +131,47 @@ test('a notification matching the submission is not an acknowledgement when the 
   response.reject(new Error('Synthetic transport acknowledgement unavailable')); assert.equal(await pending, false)
   assert.match(a.settingsError.value, /设置保存未确认/)
   api.saveSettings = original; assert.equal(await a.saveSettings(), true); assert.equal(calls.length, 1); assert.equal(a.settingsError.value, '')
+})
+
+test('legacy snapshots keep Windows style and editing or discarding style does not change the saved appearance', async t => {
+  const { a, initial, documentElement } = await harness(t)
+  assert.equal(a.settingsForm.appearanceStyle, 'windows')
+  assert.equal(documentElement.dataset.appearance, 'windows')
+  a.settingsForm.appearanceStyle = 'glass'
+  a.snapshot.value = { ...a.snapshot.value, settings: { ...initial, includeNsfw: true } }
+  assert.equal(a.settingsForm.appearanceStyle, 'glass', 'unrelated notifications preserve the unsaved style')
+  assert.equal(documentElement.dataset.appearance, 'windows', 'style changes apply only after saving')
+  assert.equal(a.settingsDirty.value, true)
+  a.resetSettingsDraft()
+  assert.equal(a.settingsForm.appearanceStyle, 'windows')
+  assert.equal(a.settingsDirty.value, false)
+})
+
+for (const later of ['classic', 'windows'] as const) test(`saving style applies the acknowledged style but preserves a later ${later} draft`, async t => {
+  const { a, api, initial, setSaved, calls, documentElement } = await harness(t), response = deferred<PublicSettings>()
+  api.saveSettings = (input: any) => { calls.push(structuredClone(input)); return response.promise }
+  a.settingsForm.appearanceStyle = 'glass'
+  const pending = a.saveSettings()
+  a.settingsForm.appearanceStyle = later
+  a.snapshot.value = { ...a.snapshot.value, settings: { ...initial } }
+  assert.equal(documentElement.dataset.appearance, 'windows')
+  assert.equal(a.settingsForm.appearanceStyle, later)
+  const saved = { ...initial, appearanceStyle: 'glass' as const }; setSaved(saved); response.resolve(saved)
+  assert.equal(await pending, true)
+  assert.equal(calls[0].appearanceStyle, 'glass')
+  assert.equal(calls[0].theme, initial.theme, 'style selection does not change the light/dark preference')
+  assert.equal(documentElement.dataset.appearance, 'glass')
+  assert.equal(a.settingsForm.appearanceStyle, later)
+  assert.equal(a.settingsDirty.value, true)
+})
+
+test('failed style persistence keeps the active style unchanged and retains the selection for retry', async t => {
+  const { a, api, documentElement } = await harness(t)
+  api.saveSettings = async () => { throw new Error('Synthetic style write unavailable') }
+  a.settingsForm.appearanceStyle = 'classic'
+  assert.equal(await a.saveSettings(), false)
+  assert.equal(documentElement.dataset.appearance, 'windows')
+  assert.equal(a.settingsForm.appearanceStyle, 'classic')
+  assert.equal(a.settingsDirty.value, true)
+  assert.match(a.settingsError.value, /设置保存未确认/)
 })

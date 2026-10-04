@@ -26,7 +26,7 @@ const compiledHarness = (async () => {
 async function harness(t: { after(callback: () => void): void }) {
   const { script, compiled } = await compiledHarness
   const messages: any[] = []
-  const sandbox: any = { Error, ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: (...args: any[]) => messages.push(args), useKunAlert: async () => true, api: {}, document: { documentElement: { classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
+  const sandbox: any = { Error, ...vue, ...libraryWorkspace, ...importWorkspace, ...libraryInsights, ...savedLibraryViews, onMounted: () => {}, onUnmounted: () => {}, isPreview: false, useKunMessage: (...args: any[]) => messages.push(args), useKunAlert: async () => true, api: {}, document: { documentElement: { dataset: {}, classList: { toggle() {} } } }, matchMedia: () => ({ matches: false }) }
   for (const line of script.split('\n').filter(line => /^import \{/.test(line))) for (const name of line.match(/^import \{([^}]+)\}/)![1]!.split(',').map(name => name.trim())) if (!(name in sandbox)) sandbox[name] = name
   const scope = vue.effectScope(); t.after(() => scope.stop())
   vm.createContext(sandbox); scope.run(() => vm.runInContext(compiled.code, sandbox))

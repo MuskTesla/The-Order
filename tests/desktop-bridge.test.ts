@@ -43,28 +43,31 @@ test('selected IDs from a real Vue ref cross the desktop boundary as a detached 
 
 test('reactive settings become a plain snapshot without mutating the source form', async () => {
   const input = reactive<SettingsInput>({
-    baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: 'dummy-key-for-this-test', includeNsfw: true, theme: 'dark'
+    baseUrl: 'https://api.nextmoe.dev/v2/', apiKey: 'dummy-key-for-this-test', includeNsfw: true, theme: 'dark', appearanceStyle: 'glass'
   })
   let received: SettingsInput | undefined
   const api = createDesktopBridge(desktop({
     async saveSettings(value) {
       received = value
       const clone = structuredClone(value)
-      return { baseUrl: clone.baseUrl, hasApiKey: Boolean(clone.apiKey), includeNsfw: clone.includeNsfw, theme: clone.theme, readExecutableMetadata: clone.readExecutableMetadata ?? false }
+      return { baseUrl: clone.baseUrl, hasApiKey: Boolean(clone.apiKey), includeNsfw: clone.includeNsfw, theme: clone.theme, appearanceStyle: clone.appearanceStyle, readExecutableMetadata: clone.readExecutableMetadata ?? false }
     }
   }))
 
   const pending = api.saveSettings(input)
   input.apiKey = ''
   input.theme = 'light'
+  input.appearanceStyle = 'classic'
 
-  assert.deepEqual(await pending, { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: true, includeNsfw: true, theme: 'dark', readExecutableMetadata: false })
+  assert.deepEqual(await pending, { baseUrl: 'https://api.nextmoe.dev/v2/', hasApiKey: true, includeNsfw: true, theme: 'dark', appearanceStyle: 'glass', readExecutableMetadata: false })
   assert.equal(received?.apiKey, 'dummy-key-for-this-test')
   assert.equal(received?.theme, 'dark')
+  assert.equal(received?.appearanceStyle, 'glass')
   assert.equal(isReactive(received), false)
   assert.equal(isReactive(input), true)
   assert.equal(input.apiKey, '')
   assert.equal(input.theme, 'light')
+  assert.equal(input.appearanceStyle, 'classic')
 })
 
 test('updateGame copies nested reactive categories and tags even inside a plain outer object', async () => {

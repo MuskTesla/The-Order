@@ -11,7 +11,8 @@ test('matching effects use normalized transaction values and ignore appearance',
   const { dir, store } = await fixture()
   try {
     assert.equal((await store.saveWithEffects({ ...store.getPublic(), apiKey: 'synthetic-effects-key' })).matchingChanged, true)
-    assert.equal((await store.saveWithEffects({ ...store.getPublic(), theme: 'dark', nonPortraitCoverDisplay: 'crop', baseUrl: 'https://api.nextmoe.dev/v2' })).matchingChanged, false)
+    assert.equal((await store.saveWithEffects({ ...store.getPublic(), theme: 'dark', appearanceStyle: 'glass', nonPortraitCoverDisplay: 'crop', baseUrl: 'https://api.nextmoe.dev/v2' })).matchingChanged, false)
+    assert.equal((await store.saveWithEffects({ ...store.getPublic(), appearanceStyle: 'classic' })).matchingChanged, false, 'style-only changes must not cancel matching')
     for (const patch of [{ includeNsfw: false }, { readExecutableMetadata: false }, { baseUrl: 'https://api.nextmoe.dev/v3/' }, { apiKey: 'synthetic-effects-key' }, { clearApiKey: true }]) {
       const result = await store.saveWithEffects({ ...store.getPublic(), ...patch })
       assert.equal(result.matchingChanged, true)
@@ -30,6 +31,7 @@ test('a new profile follows the system while existing explicit themes remain unc
   const { dir, store } = await fixture()
   try {
     assert.equal(store.getPublic().theme, 'system')
+    assert.equal(store.getPublic().appearanceStyle, 'windows')
     for (const theme of ['light', 'dark', 'system'] as const) {
       await store.save({ ...store.getPublic(), theme })
       const before = await fs.readFile(path.join(dir, 'settings.json'), 'utf8')
@@ -105,6 +107,7 @@ test('legacy settings without the option load with executable metadata reading e
     const reloaded = new SettingsStore(dir, codec); await reloaded.initialize()
     assert.equal(reloaded.getPublic().readExecutableMetadata, true)
     assert.equal(reloaded.getPublic().theme, 'dark')
+    assert.equal(reloaded.getPublic().appearanceStyle, 'windows')
     assert.equal(reloaded.getPublic().includeNsfw, false)
     assert.equal(reloaded.getApiOptions().apiKey, 'legacy_test_key')
     assert.equal(await fs.readFile(filename, 'utf8'), legacy, 'loading an older config must not rewrite its contents')
@@ -173,5 +176,49 @@ test('global non-portrait mode defaults to blur, persists, and omitted saves ret
     const previous = store.getPublic(), disk = await fs.readFile(path.join(dir, 'settings.json'), 'utf8')
     for (const invalid of [null, 'fill', false, 0, {}, []]) await assert.rejects(store.save({ ...store.getPublic(), clearApiKey: true, nonPortraitCoverDisplay: invalid } as any))
     assert.deepEqual(store.getPublic(), previous); assert.equal(await fs.readFile(path.join(dir, 'settings.json'), 'utf8'), disk)
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})
+
+test('each interface style persists independently of theme and survives legacy omitted-field saves', async () => {
+  const { dir, store } = await fixture()
+  try {
+    for (const appearanceStyle of ['classic', 'windows', 'glass'] as const) {
+      await store.save({ ...store.getPublic(), appearanceStyle, theme: 'dark', apiKey: 'synthetic-preserved-style-key' })
+      await store.save({ baseUrl: store.getPublic().baseUrl, includeNsfw: false, theme: 'system' })
+      const filename = path.join(dir, 'settings.json'), contents = await fs.readFile(filename, 'utf8')
+      const reopened = new SettingsStore(dir, codec); await reopened.initialize()
+      assert.equal(reopened.getPublic().appearanceStyle, appearanceStyle)
+      assert.equal(reopened.getPublic().theme, 'system')
+      assert.equal(reopened.getApiOptions().apiKey, 'synthetic-preserved-style-key')
+      assert.equal(await fs.readFile(filename, 'utf8'), contents, 'opening saved settings does not rewrite them')
+    }
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})
+
+test('invalid interface styles are rejected atomically without clearing credentials or changing the disk', async () => {
+  const { dir, store } = await fixture()
+  try {
+    await store.save({ ...store.getPublic(), appearanceStyle: 'glass', apiKey: 'synthetic-style-key' })
+    const previous = store.getPublic(), filename = path.join(dir, 'settings.json'), contents = await fs.readFile(filename, 'utf8')
+    for (const appearanceStyle of [null, 'Glass', '', true, 0, {}, []]) {
+      await assert.rejects(store.save({ ...store.getPublic(), theme: 'dark', clearApiKey: true, appearanceStyle } as unknown as SettingsInput), /界面风格/)
+      assert.deepEqual(store.getPublic(), previous)
+      assert.equal(store.getApiOptions().apiKey, 'synthetic-style-key')
+      assert.equal(await fs.readFile(filename, 'utf8'), contents)
+    }
+    await store.save({ ...store.getPublic(), appearanceStyle: 'classic' })
+    assert.equal(store.getPublic().appearanceStyle, 'classic', 'invalid requests do not poison the save queue')
+  } finally { await fs.rm(dir, { recursive: true, force: true }) }
+})
+
+test('queued omitted-style saves preserve the style committed ahead of them', async () => {
+  const { dir, store } = await fixture()
+  try {
+    const before = store.getPublic()
+    const styleChange = store.save({ ...before, appearanceStyle: 'glass' })
+    const legacySave = store.save({ baseUrl: before.baseUrl, includeNsfw: before.includeNsfw, theme: 'dark' })
+    await Promise.all([styleChange, legacySave])
+    assert.equal(store.getPublic().appearanceStyle, 'glass')
+    assert.equal(store.getPublic().theme, 'dark')
   } finally { await fs.rm(dir, { recursive: true, force: true }) }
 })

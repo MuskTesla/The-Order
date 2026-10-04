@@ -340,6 +340,7 @@ function currentWindowAppearance() {
   const forcedColors = nativeTheme.inForcedColorsMode || nativeTheme.shouldUseHighContrastColors
   return getWindowAppearance({
     dark: nativeTheme.shouldUseDarkColors,
+    appearanceStyle: settings.getPublic().appearanceStyle,
     forcedColors,
     ...(process.platform === 'win32' && forcedColors ? {
       systemBackground: systemPreferences.getColor('window'),

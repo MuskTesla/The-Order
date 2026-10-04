@@ -1,8 +1,11 @@
+/* Visual appearance is independent of light/dark. Missing preference uses
+   Windows; Classic exposes the preceding compact paper/indigo stylesheets.
+   All three keep the effective Windows font for native text rendering. */
+:root { --windows-font:"Segoe UI Variable","Segoe UI","Microsoft YaHei UI","Yu Gothic UI",sans-serif; }
 /* Windows surface and control language. Keep this after the page-specific sheets.
    The native caption area is owned by DesktopTitlebar and the main process. */
-:root {
+:root:where(:not([data-appearance="classic"])) {
   color-scheme:light;
-  --windows-font:"Segoe UI Variable","Segoe UI","Microsoft YaHei UI","Yu Gothic UI",sans-serif;
   font-family:var(--windows-font);
   font-size:14px;
   font-weight:400;
@@ -59,7 +62,7 @@
 @layer utilities {
   html body { font-family:var(--windows-font) !important; }
 }
-:root.kun-dark-mode {
+:root:where(:not([data-appearance="classic"])).kun-dark-mode {
   color-scheme:dark;
   --app-bg:#202020;
   --surface:#272727;
@@ -100,60 +103,57 @@
   --default-950:0.985 0 0;
 }
 /* Older page styles set local blue and muted values in both themes. */
-:root .app-shell .library-workspace,
-:root.kun-dark-mode .app-shell .library-workspace,
-:root .kun-modal-panel {
+:root:where(:not([data-appearance="classic"])) .app-shell .library-workspace,
+:root:where(:not([data-appearance="classic"])).kun-dark-mode .app-shell .library-workspace,
+:root:where(:not([data-appearance="classic"])) .kun-modal-panel {
   --muted:#606060;
   --blue:#0067c0;
 }
-:root.kun-dark-mode .app-shell .library-workspace,
-:root.kun-dark-mode .kun-modal-panel {
+:root:where(:not([data-appearance="classic"])).kun-dark-mode .app-shell .library-workspace,
+:root:where(:not([data-appearance="classic"])).kun-dark-mode .kun-modal-panel {
   --muted:#c0c0c0;
   --blue:#60cdff;
 }
-body { line-height:20px; }
-.app-shell { color:var(--ink); background:var(--app-bg); }
-.app-shell :is(button,input,select,textarea),.kun-modal-panel :is(button,input,select,textarea) { font-family:inherit; }
-.app-shell :is(button,a,input,select,textarea,summary):focus-visible,
-.kun-modal-panel :is(button,a,input,select,textarea,summary):focus-visible {
+:where(:root:not([data-appearance="classic"])) body { line-height:20px; }
+:where(:root:not([data-appearance="classic"])) .app-shell { color:var(--ink); background:var(--app-bg); }
+:where(:root:not([data-appearance="classic"])) .app-shell :is(button,input,select,textarea),:where(:root:not([data-appearance="classic"])) .kun-modal-panel :is(button,input,select,textarea) { font-family:inherit; }
+:where(:root:not([data-appearance="classic"])) .app-shell :is(button,a,input,select,textarea,summary):focus-visible,:where(:root:not([data-appearance="classic"])) .kun-modal-panel :is(button,a,input,select,textarea,summary):focus-visible {
   outline:2px solid var(--blue);
   outline-offset:2px;
 }
-.app-shell input::placeholder,.app-shell textarea::placeholder,
-.kun-modal-panel input::placeholder,.kun-modal-panel textarea::placeholder { color:var(--muted); opacity:1; }
-.app-shell :is(input,select,textarea):focus,
-.kun-modal-panel :is(input,select,textarea):focus {
+:where(:root:not([data-appearance="classic"])) .app-shell input::placeholder,:where(:root:not([data-appearance="classic"])) .app-shell textarea::placeholder,:where(:root:not([data-appearance="classic"])) .kun-modal-panel input::placeholder,:where(:root:not([data-appearance="classic"])) .kun-modal-panel textarea::placeholder { color:var(--muted); opacity:1; }
+:where(:root:not([data-appearance="classic"])) .app-shell :is(input,select,textarea):focus,:where(:root:not([data-appearance="classic"])) .kun-modal-panel :is(input,select,textarea):focus {
   border-color:var(--blue);
   box-shadow:none;
 }
-.app-shell input[type=checkbox],.kun-modal-panel input[type=checkbox] { accent-color:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .app-shell input[type=checkbox],:where(:root:not([data-appearance="classic"])) .kun-modal-panel input[type=checkbox] { accent-color:var(--blue); }
 
 /* Keep the labelled rail narrow; selection is a small indicator, not a blue tile. */
-.app-shell .sidebar.compact-sidebar {
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar {
   background:var(--app-bg);
   border-right-color:transparent;
   padding-inline:8px;
 }
-.app-shell .sidebar.compact-sidebar .brand-mark {
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .brand-mark {
   border-radius:8px;
   background:transparent;
   border-color:transparent;
 }
-.app-shell .sidebar.compact-sidebar .nav-item {
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .nav-item {
   color:var(--muted);
   border-radius:4px;
   font-weight:400;
   box-shadow:none;
   background:transparent;
 }
-.app-shell .sidebar.compact-sidebar .nav-item:hover { color:var(--ink); background:var(--hover); }
-.app-shell .sidebar.compact-sidebar .nav-item.active {
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .nav-item:hover { color:var(--ink); background:var(--hover); }
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .nav-item.active {
   color:var(--ink);
   background:var(--windows-selected);
   font-weight:400;
   box-shadow:none;
 }
-.app-shell .sidebar.compact-sidebar .nav-item.active::before {
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .nav-item.active::before {
   content:"";
   position:absolute;
   left:2px;
@@ -163,34 +163,34 @@ body { line-height:20px; }
   border-radius:2px;
   background:var(--blue);
 }
-.app-shell .sidebar.compact-sidebar .sidebar-bottom { border-top-color:transparent; }
+:where(:root:not([data-appearance="classic"])) .app-shell .sidebar.compact-sidebar .sidebar-bottom { border-top-color:transparent; }
 
 /* Typography and command surfaces share the Windows type ramp. */
-.app-shell .page-heading h1,
-.app-shell .library-workspace .library-heading h1 {
+:where(:root:not([data-appearance="classic"])) .app-shell .page-heading h1,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-heading h1 {
   font-size:28px;
   line-height:36px;
   letter-spacing:0;
   font-weight:600;
   color:var(--ink);
 }
-.app-shell .section-signature {
+:where(:root:not([data-appearance="classic"])) .app-shell .section-signature {
   font-family:inherit;
   font-size:12px;
   line-height:16px;
   letter-spacing:.3px;
   color:var(--muted);
 }
-.app-shell .topbar,
-.app-shell .library-workspace .compact-library-topbar {
+:where(:root:not([data-appearance="classic"])) .app-shell .topbar,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .compact-library-topbar {
   background:var(--app-bg);
   border-bottom-color:transparent;
   min-height:88px;
   padding:20px 32px 16px;
   gap:20px;
 }
-.app-shell .library-workspace .library-heading { gap:0; }
-.app-shell .heading-count {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-heading { gap:0; }
+:where(:root:not([data-appearance="classic"])) .app-shell .heading-count {
   color:var(--muted);
   background:var(--windows-selected);
   border-color:transparent;
@@ -198,9 +198,9 @@ body { line-height:20px; }
   font-size:12px;
   font-weight:400;
 }
-.app-shell .breadcrumb,.app-shell .local-badge { color:var(--muted); }
-.app-shell .library-workspace .library-tools { min-width:280px; gap:8px; }
-.app-shell .library-workspace .library-tools .search-field {
+:where(:root:not([data-appearance="classic"])) .app-shell .breadcrumb,:where(:root:not([data-appearance="classic"])) .app-shell .local-badge { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-tools { min-width:280px; gap:8px; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-tools .search-field {
   height:34px;
   padding-inline:10px;
   border:1px solid var(--line);
@@ -209,19 +209,19 @@ body { line-height:20px; }
   background:var(--windows-control);
   color:var(--muted);
 }
-.app-shell .library-workspace .library-tools .search-field:focus-within {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-tools .search-field:focus-within {
   border-color:var(--line);
   border-bottom:2px solid var(--blue);
 }
-.app-shell .library-workspace .search-field input,
-.app-shell .library-workspace .search-field input::placeholder {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .search-field input,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .search-field input::placeholder {
   font-size:14px;
   line-height:20px;
   color:var(--muted);
 }
-.app-shell .library-workspace .search-field input { color:var(--ink); }
-:root .app-shell .library-workspace .search-field input::placeholder { color:var(--muted); }
-.app-shell .library-workspace .library-tools .sort-select {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .search-field input { color:var(--ink); }
+:root:where(:not([data-appearance="classic"])) .app-shell .library-workspace .search-field input::placeholder { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-tools .sort-select {
   width:112px;
   height:34px;
   color:var(--ink);
@@ -230,19 +230,19 @@ body { line-height:20px; }
   border:1px solid var(--line);
   border-radius:4px;
 }
-.app-shell .library-workspace .library-view-actions > button {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-view-actions > button {
   border-color:transparent;
   border-radius:4px;
   background:transparent;
   color:var(--muted);
 }
-.app-shell .library-workspace .library-view-actions > button:hover { background:var(--hover); color:var(--ink); }
-.app-shell .library-workspace .library-view-actions > button:is(.active,[aria-pressed=true]) {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-view-actions > button:hover { background:var(--hover); color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-view-actions > button:is(.active,[aria-pressed=true]) {
   background:var(--windows-selected);
   border-color:var(--line);
   color:var(--ink);
 }
-.app-shell .library-workspace .filter-button {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .filter-button {
   height:34px;
   min-height:34px;
   background:transparent;
@@ -252,18 +252,18 @@ body { line-height:20px; }
   font-size:12px;
   font-weight:400;
 }
-.app-shell .library-workspace .filter-button:hover { background:var(--hover); }
-.app-shell .library-workspace .filter-button.selected { background:var(--windows-selected); border-color:var(--line); }
-.app-shell .library-workspace .library-main { padding:12px 32px 32px; }
-.app-shell .library-workspace .library-controls { margin-bottom:20px; }
-.app-shell .library-workspace .library-smart-views {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .filter-button:hover { background:var(--hover); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .filter-button.selected { background:var(--windows-selected); border-color:var(--line); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-main { padding:12px 32px 32px; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-controls { margin-bottom:20px; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-smart-views {
   border:0;
   border-radius:4px;
   padding:0;
   gap:2px;
   background:transparent;
 }
-.app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button) {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button) {
   color:var(--muted);
   border-radius:4px;
   min-height:32px;
@@ -274,128 +274,128 @@ body { line-height:20px; }
   background:transparent;
   box-shadow:none;
 }
-.app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button):hover { color:var(--ink); background:var(--hover); }
-:root .app-shell .library-workspace .status-tabs > button:not(.active) { color:var(--muted); }
-.app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button).active {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button):hover { color:var(--ink); background:var(--hover); }
+:root:where(:not([data-appearance="classic"])) .app-shell .library-workspace .status-tabs > button:not(.active) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button).active {
   color:var(--ink);
   background:var(--windows-selected);
   box-shadow:inset 0 -2px var(--blue);
   font-weight:400;
 }
-.app-shell .library-workspace .expanded-filters {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .expanded-filters {
   padding:16px;
   border-radius:8px;
   background:var(--surface);
   border-color:var(--line);
 }
-.app-shell .library-workspace .expanded-filters select {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .expanded-filters select {
   color:var(--ink);
   background:var(--windows-control);
   border-color:var(--line);
   border-radius:4px;
 }
-.app-shell .library-workspace .expanded-filters label { color:var(--muted); }
-.app-shell .library-workspace .active-filter-chips > button {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .expanded-filters label { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .active-filter-chips > button {
   color:var(--ink);
   border-color:var(--line);
   background:var(--windows-selected);
   border-radius:4px;
 }
-.app-shell .library-workspace :is(.library-result-bar,.library-result-bar strong,.content-footer) { color:var(--muted); }
-.app-shell .library-workspace .content-footer { border-color:var(--line); letter-spacing:0; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace :is(.library-result-bar,.library-result-bar strong,.content-footer) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .content-footer { border-color:var(--line); letter-spacing:0; }
 
 /* Cover art is the focal point. Preserve the existing aspect and fit policies. */
-.app-shell .library-workspace .library-grid:not(.game-list) {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-grid:not(.game-list) {
   grid-template-columns:repeat(auto-fill,minmax(min(184px,100%),1fr));
   gap:32px 24px;
 }
-.app-shell .library-workspace .game-card.library-card.compact-card { background:transparent; border:0; }
-.app-shell .library-workspace .game-card.library-card.compact-card .card-image {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card { background:transparent; border:0; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .card-image {
   border-radius:8px;
   background:var(--windows-placeholder);
 }
-.app-shell .library-workspace .game-card.library-card.compact-card .card-copy { padding:8px 2px 0; }
-.app-shell .library-workspace .game-card.library-card.compact-card .card-title {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .card-copy { padding:8px 2px 0; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .card-title {
   font-size:14px;
   line-height:20px;
   height:40px;
   font-weight:400;
   color:var(--ink);
 }
-.app-shell .library-workspace .game-card.library-card.compact-card .card-title:hover { color:var(--blue); }
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .card-title:hover { color:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder {
   background:transparent;
   color:var(--muted);
 }
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder::before,
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder::after { border-color:var(--line); }
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder-mark {
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder::before,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder::after { border-color:var(--line); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder-mark {
   color:var(--muted);
   background:transparent;
   border-color:var(--line);
   border-radius:8px;
 }
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder strong,
-.app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder > span:last-of-type { color:var(--muted); }
-.app-shell .library-workspace .game-card.library-card.compact-card.is-selected .card-image { outline:3px solid var(--blue); outline-offset:2px; }
-.app-shell .library-workspace .game-card.library-card :is(.card-title,.card-rating-summary,.card-progress,.card-bottom>.card-availability) { color:var(--ink); }
-.app-shell .library-workspace .game-card.library-card :is(.card-copy>p,.card-progress,.card-bottom>.card-availability) { color:var(--muted); }
-.app-shell .library-workspace .game-card.library-card .card-select { border-radius:4px; border-color:var(--muted); background:var(--windows-control); color:var(--ink); }
-.app-shell .library-workspace .game-card.library-card .card-select[aria-checked=true] { background:var(--blue); color:var(--windows-accent-on); border-color:var(--blue); }
-.app-shell .library-workspace .library-overview,
-.app-shell .library-workspace .library-session { background:var(--surface); border-color:var(--line); border-radius:8px; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder strong,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card .cover-placeholder > span:last-of-type { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card.compact-card.is-selected .card-image { outline:3px solid var(--blue); outline-offset:2px; }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card :is(.card-title,.card-rating-summary,.card-progress,.card-bottom>.card-availability) { color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card :is(.card-copy>p,.card-progress,.card-bottom>.card-availability) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card .card-select { border-radius:4px; border-color:var(--muted); background:var(--windows-control); color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .game-card.library-card .card-select[aria-checked=true] { background:var(--blue); color:var(--windows-accent-on); border-color:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-overview,
+:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-session { background:var(--surface); border-color:var(--line); border-radius:8px; }
 
 /* Kun controls have role=button; do not restyle card buttons or SVG children. */
-.app-shell button[role=button],.kun-modal-panel button[role=button] {
+:where(:root:not([data-appearance="classic"])) .app-shell button[role=button],:where(:root:not([data-appearance="classic"])) .kun-modal-panel button[role=button] {
   min-height:32px;
   border-radius:4px;
   font-size:14px;
   line-height:20px;
   font-weight:400;
 }
-.app-shell .topbar-actions > button[role=button] {
+:where(:root:not([data-appearance="classic"])) .app-shell .topbar-actions > button[role=button] {
   padding:6px 12px;
   background:var(--blue);
   color:var(--windows-accent-on);
   border-color:transparent;
 }
-.app-shell .topbar-actions > button[role=button]:hover:not(:disabled) { background:var(--blue); opacity:.9; }
-.kun-modal-panel { border-radius:8px; background:var(--surface); color:var(--ink); border:1px solid var(--line); }
-.kun-modal-panel > div > h2 { font-size:20px; line-height:28px; font-weight:600; color:var(--ink); }
-.kun-modal-panel .modal-footer { gap:8px; }
-.kun-modal-panel .quick-collections-footer { color:var(--muted); border-color:var(--line); }
-.kun-modal-panel .collection-link { color:var(--ink); border-radius:4px; }
-.kun-modal-panel .collection-link small { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .topbar-actions > button[role=button]:hover:not(:disabled) { background:var(--blue); opacity:.9; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel { border-radius:8px; background:var(--surface); color:var(--ink); border:1px solid var(--line); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel > div > h2 { font-size:20px; line-height:28px; font-weight:600; color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel .modal-footer { gap:8px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel .quick-collections-footer { color:var(--muted); border-color:var(--line); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel .collection-link { color:var(--ink); border-radius:4px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel .collection-link small { color:var(--muted); }
 
 /* The inspected detail view shares the same neutral text and control scale.
    Keep rating stars, favourite hearts and destructive actions distinct. */
-.kun-modal-panel.game-detail-modal .original-title,
-.kun-modal-panel.game-detail-modal .detail-time,
-.kun-modal-panel.game-detail-modal .detail-time small,
-.kun-modal-panel.game-detail-modal .detail-facts > span,
-.kun-modal-panel.game-detail-modal .detail-tabs small,
-.kun-modal-panel.game-detail-modal .field-label small,
-.kun-modal-panel.game-detail-modal .modal-help,
-.kun-modal-panel.game-detail-modal .advanced-options { color:var(--muted); }
-.kun-modal-panel.game-detail-modal .detail-facts > strong,
-.kun-modal-panel.game-detail-modal .description-text,
-.kun-modal-panel.game-detail-modal .field-label,
-.kun-modal-panel.game-detail-modal .detail-section-title,
-.kun-modal-panel.game-detail-modal .manage-form h3,
-.kun-modal-panel.game-detail-modal .character-grid strong,
-.kun-modal-panel.game-detail-modal .installation-row strong { color:var(--ink); }
-.kun-modal-panel.game-detail-modal .description-text { font-size:14px; line-height:22px; }
-.kun-modal-panel.game-detail-modal .detail-section-title,
-.kun-modal-panel.game-detail-modal .manage-form h3 { font-size:14px; line-height:20px; font-weight:600; }
-.kun-modal-panel.game-detail-modal .detail-facts > strong { font-weight:400; overflow-wrap:anywhere; }
-.kun-modal-panel.game-detail-modal .character-grid small,
-.kun-modal-panel.game-detail-modal .installation-row small { color:var(--muted); }
-.kun-modal-panel.game-detail-modal .detail-tabs { border-color:var(--line); }
-.kun-modal-panel.game-detail-modal .detail-tabs button { color:var(--muted); font-size:14px; line-height:20px; font-weight:400; }
-.kun-modal-panel.game-detail-modal .detail-tabs button.active { color:var(--ink); font-weight:600; }
-.kun-modal-panel.game-detail-modal .detail-tabs button.active::after { background:var(--blue); }
-.kun-modal-panel.game-detail-modal .detail-artwork { border-radius:8px; border-color:var(--line); background:var(--windows-placeholder); }
-.kun-modal-panel.game-detail-modal .detail-cover-settings {
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .original-title,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-time,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-time small,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-facts > span,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tabs small,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .field-label small,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .modal-help,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .advanced-options { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-facts > strong,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .description-text,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .field-label,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-section-title,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .manage-form h3,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .character-grid strong,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .installation-row strong { color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .description-text { font-size:14px; line-height:22px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-section-title,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .manage-form h3 { font-size:14px; line-height:20px; font-weight:600; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-facts > strong { font-weight:400; overflow-wrap:anywhere; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .character-grid small,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .installation-row small { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tabs { border-color:var(--line); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tabs button { color:var(--muted); font-size:14px; line-height:20px; font-weight:400; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tabs button.active { color:var(--ink); font-weight:600; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tabs button.active::after { background:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-artwork { border-radius:8px; border-color:var(--line); background:var(--windows-placeholder); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-cover-settings {
   min-height:34px;
   padding:6px 10px;
   font-size:14px;
@@ -405,8 +405,8 @@ body { line-height:20px; }
   background:var(--windows-control);
   color:var(--ink);
 }
-.kun-modal-panel.game-detail-modal .detail-cover-settings:hover { background:var(--windows-control-hover); }
-.kun-modal-panel.game-detail-modal .detail-aside-controls > button[role=button] {
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-cover-settings:hover { background:var(--windows-control-hover); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-aside-controls > button[role=button] {
   height:auto;
   min-height:34px;
   padding:6px 10px;
@@ -415,22 +415,21 @@ body { line-height:20px; }
   border:1px solid transparent;
   border-radius:4px;
 }
-.kun-modal-panel.game-detail-modal .detail-favorite { color:var(--muted); border-radius:4px; }
-.kun-modal-panel.game-detail-modal .detail-favorite.active { color:var(--windows-favorite); }
-.kun-modal-panel.game-detail-modal .detail-favorite:hover { background:var(--hover); }
-.kun-modal-panel.game-detail-modal .ratings-row { background:var(--app-bg); border-color:var(--line); border-radius:8px; }
-.kun-modal-panel.game-detail-modal .ratings-row strong { color:var(--ink); }
-.kun-modal-panel.game-detail-modal .ratings-row :is(small,em,div>span) { color:var(--muted); }
-.kun-modal-panel.game-detail-modal .source-links > button { color:var(--blue); }
-.kun-modal-panel.game-detail-modal .detail-tags button {
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-favorite { color:var(--muted); border-radius:4px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-favorite.active { color:var(--windows-favorite); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-favorite:hover { background:var(--hover); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .ratings-row { background:var(--app-bg); border-color:var(--line); border-radius:8px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .ratings-row strong { color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .ratings-row :is(small,em,div>span) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .source-links > button { color:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-tags button {
   background:var(--windows-control);
   color:var(--ink);
   border-color:var(--line);
   border-radius:4px;
 }
-.kun-modal-panel.game-detail-modal .field-label { font-size:14px; line-height:20px; }
-.kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea),
-.kun-modal-panel.game-detail-modal .cover-picker .picker-display select {
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .field-label { font-size:14px; line-height:20px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea),:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-display select {
   font-size:14px;
   line-height:20px;
   min-height:34px;
@@ -441,11 +440,10 @@ body { line-height:20px; }
   border-bottom-color:var(--muted);
   border-radius:4px;
 }
-.kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea):focus,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-display select:focus { border-bottom:2px solid var(--blue); }
-.kun-modal-panel.game-detail-modal .personal-record,
-.kun-modal-panel.game-detail-modal .cover-picker { border-radius:8px; border-color:var(--line); background:var(--surface); }
-.kun-modal-panel.game-detail-modal .personal-record .record-save {
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea):focus,:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-display select:focus { border-bottom:2px solid var(--blue); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .personal-record,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker { border-radius:8px; border-color:var(--line); background:var(--surface); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .personal-record .record-save {
   padding:6px 10px;
   min-height:34px;
   font-size:14px;
@@ -455,42 +453,42 @@ body { line-height:20px; }
   color:var(--ink);
   background:var(--windows-control);
 }
-.kun-modal-panel.game-detail-modal .personal-record .record-save:hover:not(:disabled) { background:var(--windows-control-hover); }
-.kun-modal-panel.game-detail-modal .personal-record .record-rating > button { color:var(--blue); }
-.kun-modal-panel.game-detail-modal .personal-record .record-error,
-.kun-modal-panel.game-detail-modal .detail-save-error,
-.kun-modal-panel.game-detail-modal .arguments-save-error,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-error { color:var(--windows-error); }
-.kun-modal-panel.game-detail-modal .remove-button { color:var(--windows-error); }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-close { border-radius:4px; }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-option { border-radius:4px; }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-option.selected { border-color:var(--blue); background:var(--blue-soft); }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-option > strong { font-size:12px; line-height:16px; font-weight:400; }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-option > small,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-saved,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-local-row > span,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-preview-note,
-.kun-modal-panel.game-detail-modal .cover-picker .picker-footer > span { font-size:12px; line-height:18px; }
-.kun-modal-panel.game-detail-modal .cover-picker .picker-check { color:var(--windows-accent-on); background:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .personal-record .record-save:hover:not(:disabled) { background:var(--windows-control-hover); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .personal-record .record-rating > button { color:var(--blue); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .personal-record .record-error,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .detail-save-error,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .arguments-save-error,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-error { color:var(--windows-error); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .remove-button { color:var(--windows-error); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-close { border-radius:4px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-option { border-radius:4px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-option.selected { border-color:var(--blue); background:var(--blue-soft); }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-option > strong { font-size:12px; line-height:16px; font-weight:400; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-option > small,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-saved,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-local-row > span,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-preview-note,
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-footer > span { font-size:12px; line-height:18px; }
+:where(:root:not([data-appearance="classic"])) .kun-modal-panel.game-detail-modal .cover-picker .picker-check { color:var(--windows-accent-on); background:var(--blue); }
 
 /* Settings are the second representative surface: quiet groups and explicit save. */
-.app-shell .preferences-settings .settings-panel {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .settings-panel {
   background:var(--surface);
   border:1px solid var(--line);
   border-radius:8px;
   padding:24px;
   box-shadow:none;
 }
-.app-shell .preferences-settings .preferences-heading { color:var(--muted); }
-.app-shell .preferences-settings .preferences-heading h2 {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-heading { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-heading h2 {
   color:var(--ink);
   font-size:20px;
   line-height:28px;
   font-weight:600;
 }
-.app-shell .preferences-settings :is(.preferences-help,.preferences-heading p,.preferences-option p,.saved-key-state,.preferences-help-details,.field-label) { color:var(--muted); }
-.app-shell .preferences-settings .preferences-option strong { color:var(--ink); font-weight:600; }
-.app-shell .preferences-settings .field-label :is(input,select) {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings :is(.preferences-help,.preferences-heading p,.preferences-option p,.saved-key-state,.preferences-help-details,.field-label) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-option strong { color:var(--ink); font-weight:600; }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .field-label :is(input,select) {
   min-height:34px;
   padding:6px 10px;
   font-size:14px;
@@ -501,8 +499,8 @@ body { line-height:20px; }
   border:1px solid var(--line);
   border-bottom-color:var(--muted);
 }
-.app-shell .preferences-settings .field-label :is(input,select):focus { border-bottom:2px solid var(--blue); }
-.app-shell .preferences-settings .preferences-actions button {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .field-label :is(input,select):focus { border-bottom:2px solid var(--blue); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-actions button {
   min-height:34px;
   padding:6px 12px;
   font-size:14px;
@@ -513,42 +511,41 @@ body { line-height:20px; }
   color:var(--ink);
   background:var(--windows-control);
 }
-.app-shell .preferences-settings .preferences-actions button:hover:not(:disabled) { background:var(--windows-control-hover); }
-.app-shell .preferences-settings .preferences-actions .preferences-save,
-.app-shell .preferences-settings .preferences-actions .preferences-save:hover:not(:disabled) {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-actions button:hover:not(:disabled) { background:var(--windows-control-hover); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-actions .preferences-save,
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-actions .preferences-save:hover:not(:disabled) {
   color:var(--windows-accent-on);
   background:var(--blue);
   border-color:transparent;
 }
-.app-shell .preferences-settings .preferences-actions .remove-key { border-color:transparent; background:transparent; color:var(--muted); }
-.app-shell .preferences-settings .settings-save-bar {
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-actions .remove-key { border-color:transparent; background:transparent; color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .settings-save-bar {
   background:var(--surface);
   border-color:var(--line);
   border-radius:8px;
   box-shadow:0 2px 8px #0000000a;
 }
-.app-shell .preferences-settings .settings-save-bar strong { color:var(--ink); font-weight:600; }
-.app-shell .preferences-settings .settings-save-bar :is(span,p) { color:var(--muted); }
-.app-shell .preferences-settings :is(.connection-feedback,.preferences-option) { border-color:var(--line); }
-.app-shell .preferences-settings .connection-feedback { border-radius:4px; background:var(--app-bg); color:var(--ink); }
-.app-shell .preferences-settings .preferences-error { color:var(--windows-error); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .settings-save-bar strong { color:var(--ink); font-weight:600; }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .settings-save-bar :is(span,p) { color:var(--muted); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings :is(.connection-feedback,.preferences-option) { border-color:var(--line); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .connection-feedback { border-radius:4px; background:var(--app-bg); color:var(--ink); }
+:where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .preferences-error { color:var(--windows-error); }
 
 @media(max-width:1200px) {
-  .app-shell .topbar,.app-shell .library-workspace .compact-library-topbar { padding-inline:24px; gap:12px; }
-  .app-shell .library-workspace .library-main { padding-inline:24px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .topbar,:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .compact-library-topbar { padding-inline:24px; gap:12px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-main { padding-inline:24px; }
 }
 @media(max-width:700px) {
-  .app-shell .topbar,.app-shell .library-workspace .compact-library-topbar { padding:16px; gap:12px; }
-  .app-shell .library-workspace .library-tools { min-width:0; gap:6px; }
-  .app-shell .library-workspace .library-main { padding:12px 16px 24px; }
-  .app-shell .library-workspace .library-grid:not(.game-list) { grid-template-columns:repeat(auto-fill,minmax(min(148px,100%),1fr)); gap:24px 16px; }
-  .app-shell .library-workspace .library-filter-line { gap:8px; }
-  .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button) { padding-inline:8px; }
-  .app-shell .preferences-settings .settings-panel { padding:16px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .topbar,:where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .compact-library-topbar { padding:16px; gap:12px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-tools { min-width:0; gap:6px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-main { padding:12px 16px 24px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-grid:not(.game-list) { grid-template-columns:repeat(auto-fill,minmax(min(148px,100%),1fr)); gap:24px 16px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace .library-filter-line { gap:8px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button) { padding-inline:8px; }
+  :where(:root:not([data-appearance="classic"])) .app-shell .preferences-settings .settings-panel { padding:16px; }
 }
 @media(prefers-reduced-motion:reduce) {
-  .app-shell *,.app-shell *::before,.app-shell *::after,
-  .kun-modal-panel *,.kun-modal-panel *::before,.kun-modal-panel *::after {
+  .app-shell *,.app-shell *::before,.app-shell *::after,.kun-modal-panel *,.kun-modal-panel *::before,.kun-modal-panel *::after {
     animation-duration:.01ms;
     animation-iteration-count:1;
     transition-duration:.01ms;
@@ -573,8 +570,7 @@ body { line-height:20px; }
     --windows-error:CanvasText;
     --windows-favorite:LinkText;
   }
-  :root .app-shell .library-workspace,:root.kun-dark-mode .app-shell .library-workspace,
-  :root .kun-modal-panel,:root.kun-dark-mode .kun-modal-panel { --muted:CanvasText; --blue:Highlight; }
+  :root .app-shell .library-workspace,:root.kun-dark-mode .app-shell .library-workspace,:root .kun-modal-panel,:root.kun-dark-mode .kun-modal-panel { --muted:CanvasText; --blue:Highlight; }
   .app-shell .sidebar.compact-sidebar .nav-item.active { outline:1px solid Highlight; outline-offset:-1px; }
   .app-shell .sidebar.compact-sidebar .nav-item.active::before { forced-color-adjust:none; background:Highlight; }
   .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button).active { outline:1px solid Highlight; outline-offset:-1px; }
@@ -585,7 +581,8 @@ body { line-height:20px; }
   .kun-modal-panel.game-detail-modal .detail-tabs button.active { outline:1px solid Highlight; outline-offset:2px; }
   .kun-modal-panel.game-detail-modal .cover-picker .picker-option.selected { outline:2px solid Highlight; outline-offset:1px; }
   .app-shell .preferences-settings .preferences-actions button,
-  .app-shell button[role=button],.kun-modal-panel button[role=button] { border:1px solid ButtonBorder; }
+  .app-shell button[role=button],
+  .kun-modal-panel button[role=button] { border:1px solid ButtonBorder; }
   /* Native button text backplates use ButtonFace. Keep these explicit accent
      fills paired with ButtonText instead of HighlightText in this mode. */
   .app-shell .topbar-actions > button[role=button],
