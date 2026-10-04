@@ -1,4 +1,8 @@
 {
+  "format": "the-order-fingerprint-reference",
+  "version": 1,
+  "vectorCount": 6,
+  "referenceFileSha256": "eeea4d33513df04c45bc32eb72199157f67509feb41d34344c5aa952f58078a6",
   "sourceSha256": "6c92285a6c0dd5dc845f1faa0dd2fdbd62ee6e87f3b31157f1a28732603e9861",
   "vectors": [
     {

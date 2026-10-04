@@ -12,7 +12,7 @@ $taskRepository = Split-Path $taskNative -Parent
 $taskArtifacts = Join-Path $taskRepository '.artifacts/native-phase1'
 $taskSdkDirectory = Join-Path $taskArtifacts 'tools/dotnet'
 $taskSdkVersion = '10.0.401'
-if ($InstallSdk) {
+if ($InstallSdk -and $Action -ne 'Run') {
   # Official archive, exact version and SHA-512 from Microsoft's release manifest.
   # No registry, global PATH, workload, administrator or system installer changes.
   $taskMetadata = Invoke-RestMethod 'https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json'
@@ -25,12 +25,12 @@ if ($InstallSdk) {
   if ((Get-FileHash -LiteralPath $taskArchive -Algorithm SHA512).Hash -ne $taskFile.hash) { throw 'SDK checksum mismatch.' }
   Expand-Archive -LiteralPath $taskArchive -DestinationPath $taskSdkDirectory -Force
 }
-if (-not $DotnetPath) {
+if ($Action -ne 'Run' -and -not $DotnetPath) {
   $taskLocal = Join-Path $taskSdkDirectory 'dotnet.exe'
   if (Test-Path -LiteralPath $taskLocal) { $DotnetPath = $taskLocal }
   else { $DotnetPath = (Get-Command dotnet -ErrorAction SilentlyContinue).Source }
 }
-if (-not $DotnetPath) { throw 'Missing .NET 10.0.401 SDK. Install the official SDK, or use -InstallSdk for an isolated archive.' }
+if ($Action -ne 'Run' -and -not $DotnetPath) { throw 'Missing .NET 10.0.401 SDK. Install the official SDK, or use -InstallSdk for an isolated archive.' }
 $taskPreviousTelemetry = $env:DOTNET_CLI_TELEMETRY_OPTOUT
 $taskPreviousData = $env:THE_ORDER_NATIVE_DATA_DIR
 function Invoke-NativeDotnet([string[]]$Arguments) {

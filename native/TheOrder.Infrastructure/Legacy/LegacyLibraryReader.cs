@@ -8,7 +8,6 @@ namespace TheOrder.Infrastructure.Legacy;
 public sealed class LegacyLibraryReader(IIsolatedLibrarySource source, NativeConfiguration configuration) : IReadOnlyLibrary
 {
     public const int MaximumBytes = 32 * 1024 * 1024;
-    private static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     public async Task<LibraryReadResult> LoadAsync(CancellationToken cancellationToken)
     {
@@ -44,7 +43,7 @@ public sealed class LegacyLibraryReader(IIsolatedLibrarySource source, NativeCon
         if (utf8.Length > MaximumBytes) throw new InvalidDataException("书架文件超过 32 MiB。");
         using var document = JsonDocument.Parse(utf8, new() { MaxDepth = 64 });
         LegacyValidation.Validate(document.RootElement, cancellationToken);
-        var dto = document.RootElement.Deserialize<LegacyLibraryDto>(Options) ?? throw new InvalidDataException("缺少书架对象。");
+        var dto = document.RootElement.Deserialize<LegacyLibraryDto>(LegacyJson.Options) ?? throw new InvalidDataException("缺少书架对象。");
         var elements = document.RootElement.GetProperty("games").EnumerateArray().ToArray();
         return dto.Games.Select((g, index) => LegacyMapping.Map(g, elements[index].TryGetProperty("nonPortraitCoverDisplay", out _))).ToImmutableArray();
     }

@@ -1,5 +1,15 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 1.1 Gate Remediation（2026-10-04）
+
+- 在 `codex/winui-phase1` / `775450e` 上完成限定整改；Gate 为 **PASS FOR PHASE 2**，但尚未开始 Phase 2。无可写 repository、事务、数据库、联网或正式资料迁移；Electron 产品源码与 npm 依赖未改动。
+- `LegacyJson` 在真实 reader → validation → DTO → mapping 边界保留 UTF-16 code units，包括孤立 high/low surrogate；不替换 U+FFFD、不丢字段/条目。整数 DTO 也按旧 JavaScript 的数字解析语义读取 `1` / `1.0` / `1e0`，仍拒绝字符串、非整数和越界值。Domain/WinUI 字符串处理未改。
+- `LegacyPathIdentity` 单独构造目录身份，原始保存路径不改写；参考 `electron/library.ts` 的 trim/isAbsolute/normalize/resolve/lowercase，覆盖尾斜杠、`.` / `..`、大小写、重复/混合分隔符、根、UNC、drive root。JavaScript 全量小写与 .NET invariant 不等价，因此 Legacy 内嵌从 Electron 44.5.1 内置 Node 24.21.0 / Unicode 17.0 生成的 27 KiB 大小写快照，并处理词尾 sigma；运行时不调用 JavaScript，不依赖本机 NLS。此身份函数不是文件访问授权；正式资料隔离适配器未修改。
+- 新增 **45** 项 C# 用例：7 个生产链字符串、29 个路径正反差分、7 个数字词法、1 个参考完整性/新鲜度、1 个指纹陈旧源码拒绝。现有指纹实验也增加源码 SHA-256、元数据和六向量完整性校验。差分参考由真实 Electron `validateLibraryBackup` / `pathKey` 生成；测试使用固定向量，正常测试不执行 JavaScript 自证。所有生产链用例通过临时合成 `library.json` 加载并核对字节未变。
+- 锁定 restore、Debug/Release solution build 通过（0 warnings/errors）；Debug、Release 完整 C# 测试各 **84 passed / 0 failed / 0 skipped**。Electron build 与修复后的 `tests/desktop-import.mjs` 完整通过：37 条导入，重复 0 新增/37 跳过，个人字段与重启一致、游戏文件保留、renderer errors 0。旧失败点是原第76行等待 compact grid 不存在的启动按钮；现在从作品详情验证启动可用及收藏，不实际运行合成 EXE。
+- 发布目录正常运行与 SDK 查找禁止探针均通过真实 WinUI 窗口核对（3 条合成资料）并正常退出。探针收窄当前进程 PATH，并令 SDK 查找立即失败；没有移动或卸载 SDK，也不等同于干净机器验证。证据在 `.artifacts/native-phase1.1/`。VC++ 系统前置、干净 Windows 11、完整 JPEG/EXIF、真实资料/凭据、大库性能与全功能迁移仍是后续 gate。
+- 完成独立 checkpoint 后暂停。以下 Phase 1 记录是整改前历史证据。
+
 ## WinUI 并行候选：Phase 1（2026-10-04）
 
 - 用户在审计通过后授权 Phase 1；新源码位于 `native/`，从 Electron 基线 `387336801981ae30e9de317916024b016dee3605` 建立 `codex/winui-phase1`。这不是正式程序替换，也不是 Phase 2 授权。下文既有 Electron 基线、功能和发布入口仍有效。

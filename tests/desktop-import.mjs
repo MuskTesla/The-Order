@@ -73,11 +73,24 @@ try {
 
   const firstGame = afterImport.games[0]
   const firstCard = page.locator('.game-card').filter({ has: page.getByRole('button', { name: firstGame.name, exact: true }) })
-  assert.equal(await firstCard.getByRole('button', { name: `启动 ${firstGame.name}`, exact: true }).isEnabled(), true)
-  await firstCard.getByRole('button', { name: `收藏游戏 ${firstGame.name}`, exact: true }).click()
-  await firstCard.getByRole('button', { name: `取消收藏 ${firstGame.name}`, exact: true }).waitFor()
+  // Actions belong to the detail view in every bookshelf layout. Never launch the synthetic EXE.
+  await firstCard.getByRole('button', { name: firstGame.name, exact: true }).click()
+  const detail = page.getByRole('dialog', { name: firstGame.name, exact: true })
+  await detail.getByRole('button', { name: '开始游戏', exact: true }).waitFor()
+  assert.equal(await detail.getByRole('button', { name: '开始游戏', exact: true }).isEnabled(), true)
+  await detail.getByRole('button', { name: '标记为特别喜欢', exact: true }).click()
+  await detail.getByRole('button', { name: '特别喜欢', exact: true }).waitFor()
+  await page.keyboard.press('Escape')
+  await detail.waitFor({ state: 'hidden' })
   await page.evaluate(id => window.kunManager.updateGame(id, { notes: 'Keep synthetic personal notes', personalRating: 8.5, categories: ['Preserved category'], customTags: ['Preserved tag'] }), firstGame.id)
   const beforeDuplicate = await page.evaluate(() => window.kunManager.getState())
+  const personal = beforeDuplicate.games.find(game => game.id === firstGame.id)
+  assert.ok(personal)
+  assert.equal(personal.favorite, true)
+  assert.equal(personal.notes, 'Keep synthetic personal notes')
+  assert.equal(personal.personalRating, 8.5)
+  assert.deepEqual(personal.categories, ['Preserved category'])
+  assert.deepEqual(personal.customTags, ['Preserved tag'])
 
   // Existing rows are visible but never selectable; the real backend also
   // rejects duplicate additions if a caller sends their scanner-issued IDs.
@@ -117,7 +130,7 @@ try {
   assert.equal(restarted.games.length, 37)
   assert.deepEqual(restarted.games, beforeDuplicate.games)
   assert.equal(restarted.settings.readExecutableMetadata, false)
-  console.log(JSON.stringify({ packaged, executableMetadataDefaultOn: true, explicitOptOutPreserved: true, realUiImport: true, selectedAndSaved: 37, accessibleCardActions: true, knownScanRowsDisabled: 37, duplicateBackendResult: duplicateResult, personalDataPreserved: true, reloadPreserved: true, gameFilesRetained: true, rendererErrors: errors.length }))
+  console.log(JSON.stringify({ packaged, executableMetadataDefaultOn: true, explicitOptOutPreserved: true, realUiImport: true, selectedAndSaved: 37, accessibleDetailActions: true, knownScanRowsDisabled: 37, duplicateBackendResult: duplicateResult, personalDataPreserved: true, reloadPreserved: true, gameFilesRetained: true, rendererErrors: errors.length }))
 } finally {
   if (application) await application.close()
   // Delete only the exact directory created by this test in the system temporary folder.

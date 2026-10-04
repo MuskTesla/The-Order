@@ -13,6 +13,7 @@ public sealed class FingerprintExperimentTests
     public void MatchesCurrentJavaScriptSourceVectors()
     {
         using var doc = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/fingerprints.json")));
+        ValidateReference(doc.RootElement, File.ReadAllText(Path.Combine(ReferenceSources.Repository(), "electron/metadata-matching.ts")));
         foreach (var vector in doc.RootElement.GetProperty("vectors").EnumerateArray())
         {
             var game = vector.GetProperty("game");
@@ -31,6 +32,37 @@ public sealed class FingerprintExperimentTests
             Assert.Equal(vector.GetProperty("decisionSerialized").GetString(), decision);
             Assert.Equal(vector.GetProperty("decisionFingerprint").GetString(), Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(decision))));
         }
+    }
+    private static void ValidateReference(JsonElement fixture, string source)
+    {
+        Assert.Equal("the-order-fingerprint-reference", fixture.GetProperty("format").GetString());
+        Assert.Equal(1, fixture.GetProperty("version").GetInt32());
+        Assert.Equal(6, fixture.GetProperty("vectorCount").GetInt32());
+        Assert.Equal(Enumerable.Range(0, 6).Select(i => $"vector-{i}"), fixture.GetProperty("vectors").EnumerateArray().Select(v => v.GetProperty("label").GetString()));
+        source = source.Replace("\r\n", "\n");
+        // The whole-file guard also catches new preprocessing before the extracted return.
+        Assert.True(fixture.GetProperty("referenceFileSha256").GetString() == ReferenceSources.Hash(source),
+            "Electron reference source changed. Inspect and regenerate native/scripts/generate-fixtures.mjs.");
+        var start = source.IndexOf("const reviewIdentity =", StringComparison.Ordinal);
+        Assert.True(start >= 0, "Inspect moved reviewIdentity before regenerating reference vectors.");
+        var end = source.IndexOf("const boundedText", start, StringComparison.Ordinal);
+        var method = source.IndexOf("private decisionFingerprint(", StringComparison.Ordinal);
+        Assert.True(end > start && method >= 0, "Inspect moved fingerprint functions before regenerating reference vectors.");
+        var decisionStart = source.IndexOf("return createHash", method, StringComparison.Ordinal);
+        Assert.True(decisionStart >= 0, "Missing decisionFingerprint hash expression.");
+        var decisionEnd = source.IndexOf('\n', decisionStart);
+        Assert.True(decisionEnd > decisionStart, "Missing decisionFingerprint expression end.");
+        Assert.True(fixture.GetProperty("sourceSha256").GetString() == ReferenceSources.Hash(source[start..end] + source[decisionStart..decisionEnd]),
+            "Electron fingerprint reference changed. Inspect and regenerate native/scripts/generate-fixtures.mjs; stale vectors are not compatibility proof.");
+    }
+    [Fact] public void ChangedReferenceCannotPassWithStaleVectors()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/fingerprints.json")));
+        var source = File.ReadAllText(Path.Combine(ReferenceSources.Repository(), "electron/metadata-matching.ts"));
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => ValidateReference(doc.RootElement, source.Replace("const reviewIdentity =", "const reviewIdentity = /* changed reference */")));
+        var method = source.IndexOf("private decisionFingerprint(", StringComparison.Ordinal);
+        var returned = source.IndexOf("return createHash", method, StringComparison.Ordinal);
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => ValidateReference(doc.RootElement, source.Insert(returned, "/* changed method body before unchanged hash expression */\n")));
     }
     private static string NullableToken(JsonElement e) => e.ValueKind == JsonValueKind.Null ? "null" : StringToken(e);
     private static string StringToken(JsonElement e)

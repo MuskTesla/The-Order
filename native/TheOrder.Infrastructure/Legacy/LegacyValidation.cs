@@ -16,7 +16,7 @@ internal static class LegacyValidation
     private static string Text(JsonElement e, string name, int max = 1000, bool empty = true)
     {
         if (e.ValueKind != JsonValueKind.String) { Fail(name); return ""; }
-        var s = e.GetString()!;
+        var s = LegacyJson.String(e);
         if (s.Length > max || s.Contains('\0') || !empty && string.IsNullOrWhiteSpace(s)) Fail(name);
         return s;
     }
@@ -59,8 +59,7 @@ internal static class LegacyValidation
     private static string PathValue(JsonElement p, string n)
     {
         var s = S(p, n, 32768, false);
-        if (!Path.IsPathFullyQualified(s)) Fail(n);
-        try { return Path.GetFullPath(s); } catch (ArgumentException) { Fail(n); return ""; }
+        return LegacyPathIdentity.Create(s);
     }
 
     public static void Validate(JsonElement root, CancellationToken cancellationToken)
@@ -89,7 +88,7 @@ internal static class LegacyValidation
                 if (Field(i, "executablePath").ValueKind != JsonValueKind.Null)
                 {
                     var exe = PathValue(i, "executablePath");
-                    if (!exe.StartsWith(folder.TrimEnd('\\', '/') + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) Fail("executablePath");
+                    if (!LegacyPathIdentity.Contains(folder, exe) || !exe.EndsWith(".exe", StringComparison.Ordinal)) Fail("executablePath");
                 }
                 foreach (var a in Array(i, "arguments", 100)) Text(a, "arguments", 8192);
             }
@@ -115,7 +114,7 @@ internal static class LegacyValidation
             if (g.TryGetProperty("localCover", out var local)) ValidateLocalCover(local);
             if (g.TryGetProperty("nonPortraitCoverDisplay", out var mode) && mode.ValueKind != JsonValueKind.Null && Text(mode, "nonPortraitCoverDisplay") is not ("blur" or "plain" or "crop")) Fail("nonPortraitCoverDisplay");
         }
-        Unique(paths, "installations.folderPath", StringComparer.OrdinalIgnoreCase);
+        Unique(paths, "installations.folderPath", StringComparer.Ordinal);
     }
 
     private static void Metadata(JsonElement m)

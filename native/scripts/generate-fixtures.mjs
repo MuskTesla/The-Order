@@ -31,7 +31,7 @@ for (const [name, content] of [['normal', JSON.stringify(envelope([first, second
   await fs.writeFile(path.join(directory, 'library.json'), content + '\n')
 }
 // Extract the actual current legacy function so the oracle is not a hand-copied implementation.
-const source = await fs.readFile(path.join(root, '../electron/metadata-matching.ts'), 'utf8')
+const source = (await fs.readFile(path.join(root, '../electron/metadata-matching.ts'), 'utf8')).replace(/\r\n/g, '\n')
 const start = source.indexOf('const reviewIdentity ='), end = source.indexOf('const boundedText', start)
 if (start < 0 || end < 0) throw Error('Legacy fingerprint source moved; inspect before regenerating')
 const fn = source.slice(start, end)
@@ -51,5 +51,5 @@ const vectors = inputs.map((game, i) => {
   return { label: `vector-${i}`, game, token, serialized: JSON.stringify([game.name, game.nameIsCustom, game.metadata?.id ?? null, game.preferredInstallationId, game.installations.map(({ id, folderPath, executablePath }) => [id, folderPath, executablePath])]), identity,
     decisionSerialized: JSON.stringify([identity, token?.epoch, token?.generation, token?.requestId]), decisionFingerprint: context.decision(game, token) }
 })
-await fs.writeFile(path.join(fixtures, 'fingerprints.json'), JSON.stringify({ sourceSha256: createHash('sha256').update(fn + decision).digest('hex'), vectors }, null, 2) + '\n')
+await fs.writeFile(path.join(fixtures, 'fingerprints.json'), JSON.stringify({ format: 'the-order-fingerprint-reference', version: 1, vectorCount: 6, referenceFileSha256: createHash('sha256').update(source).digest('hex'), sourceSha256: createHash('sha256').update(fn + decision).digest('hex'), vectors }, null, 2) + '\n')
 console.log('Generated synthetic fixtures and 6 source-derived fingerprint vectors.')
