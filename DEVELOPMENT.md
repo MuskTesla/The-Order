@@ -52,7 +52,17 @@ Remove-Item Env:KGM_DATA_DIR
 
 不要把真实 API 密钥写入源码、命令参数或提交。需要连接服务时，在应用设置中填写。`.env`、加密凭据、个人 profile 和本地备份已由 `.gitignore` 排除。
 
-当前第三轮候选使用独立打包目录及虚构书架，启动命令为：
+夜间最终候选使用独立打包目录及六条虚构书架，启动命令为：
+
+```powershell
+& 'D:\Projects\The-Order\scripts\start-overnight-candidate.ps1'
+```
+
+程序位于`.artifacts/overnight-2026-10-04/candidate/win-unpacked/The Order.exe`，资料固定为`.artifacts/overnight-2026-10-04/trial-profile`。入口保持试用修改，未知或不完整目录拒绝写入；首次生成依赖本仓库已有Node/Electron，使用真实codec编码原创PNG/JPEG。未预置密钥，游玩记录明确为模拟，没有游戏EXE。不要直接双击候选EXE来做隔离试用。候选提交、正常入口检查及全部夜间交付见[OVERNIGHT](docs/ai/OVERNIGHT.md#晨间交付)。
+
+显式隔离打包命令为`node node_modules/electron-builder/cli.js --win dir --config.directories.output=.artifacts/overnight-2026-10-04/candidate`，应先构建；默认`npm run package`仍会写原`release/`。夜间候选已打包，无需试用前再执行。生产包烟测为`node tests/packaged-overnight.mjs`，需先取得上述夜间writer guard并将其token设入`KGM_OVERNIGHT_GUARD_TOKEN`；它只用临时合成profile，不应在用户试用实例运行时同时执行。
+
+睡前第三轮候选继续保留原程序和独立虚构书架，启动命令为：
 
 ```powershell
 & 'D:\Projects\The-Order\scripts\start-iteration-candidate.ps1' -Iteration 03
