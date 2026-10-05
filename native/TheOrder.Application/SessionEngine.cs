@@ -186,10 +186,15 @@ public sealed class SessionEngine : IAsyncDisposable
         await DrainAsync().ConfigureAwait(false);
         await Submit(async () =>
         {
-            if (active is not { Native.IsTerminal: false } r) return;
-            Freeze(r); r.Tracking = SessionTracking.Detached;
-            Set(r, r.Native with { Lifecycle = r.Native.RecoveryToken is null ? SessionLifecycle.Incomplete : SessionLifecycle.RecoveryPending,
-                Reason = r.Native.RecoveryToken is null ? SessionReason.RecoveryUnavailable : reason });
+            if (active is not { } r) return;
+            if (!r.Native.IsTerminal)
+            {
+                Freeze(r); SyncDuration(r); r.Tracking = SessionTracking.Detached;
+                Set(r, r.Native with { Lifecycle = r.Native.RecoveryToken is null ? SessionLifecycle.Incomplete : SessionLifecycle.RecoveryPending,
+                    Reason = r.Native.RecoveryToken is null ? SessionReason.RecoveryUnavailable : reason });
+            }
+            // Terminal in memory may still be pending. Save compares against the last
+            // acknowledged candidate; retry persistence without repeating the transition.
             await SaveAsync(r).ConfigureAwait(false);
         }).ConfigureAwait(false);
         var success = Snapshot.Error is null;
@@ -397,7 +402,7 @@ public sealed class SessionEngine : IAsyncDisposable
     private void Freeze(Runtime r)
     {
         r.Time.Freeze(); r.Bridge = null; r.Timing = SessionTiming.Unverified;
-        Set(r, r.Native with { AccountingCutoffAtUtc = Utc() });
+        if (!r.Native.IsTerminal) Set(r, r.Native with { AccountingCutoffAtUtc = Utc() });
     }
     private void SyncDuration(Runtime r) => Set(r, r.Native with { Accumulated100ns = r.Time.Accumulated, AccountingCutoffAtUtc = Utc() });
     private void Finish(Runtime r, SessionReason reason)
@@ -407,8 +412,10 @@ public sealed class SessionEngine : IAsyncDisposable
     }
     private async Task<bool> SaveAsync(Runtime r)
     {
-        if (r.Durable?.Native is { IsTerminal: true }) { r.Error = null; return true; }
-        SyncDuration(r);
+        if (r.Native.IsTerminal && r.Record == r.Durable) { r.Error = null; return true; }
+        // A terminal candidate's cutoff, final delta and real exit time are fixed.
+        // Its revision is derived from Durable until the transaction acknowledges it.
+        if (!r.Native.IsTerminal) SyncDuration(r);
         // No elapsed interval is extrapolated across disk/queue latency, including a hung writer.
         r.Time.Freeze();
         var target = r.Native with { Revision = r.Durable is null ? 0 : checked(r.Durable.Native!.Revision + 1),
@@ -417,7 +424,8 @@ public sealed class SessionEngine : IAsyncDisposable
         {
             var committed = await library.CommitSessionAsync(r.Launch.Game, target.Project(r.Record.Id), create: r.Durable is null).ConfigureAwait(false);
             r.Record = r.Durable = committed.Value; r.Time.Acknowledge(committed.Value.Native!.Accumulated100ns); r.Error = null;
-            if (!r.Native.IsTerminal && !r.Suspended) r.Timing = r.Native.UserPaused ? SessionTiming.Stopped : SessionTiming.Unverified;
+            if (r.Native.IsTerminal) r.Timing = SessionTiming.Stopped;
+            else if (!r.Suspended) r.Timing = r.Native.UserPaused ? SessionTiming.Stopped : SessionTiming.Unverified;
             return true;
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or OverflowException)

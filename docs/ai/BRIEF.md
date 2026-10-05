@@ -1,5 +1,14 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
+
+- 本轮从 `codex/winui-phase5` / `9f1aef2e944f8ad07c31a5b43f6f7c84b97d678d` 干净基线开始，独立 Final Gate 的 **REMEDIATION REQUIRED / MAJOR 2** 取代下方历史自检结论。只修两项 persistence retry，不进入 Phase 6。
+- `AppSessionHost` 分离一次 engine/writer 创建与可重试 recovery attempt；失败/取消后复用同一 engine，Initialize/Explicit Exit 并发共享 attempt，成功幂等。清理先封闭 retry、等待在途工作，不让旧完成回调复活 host。
+- `SessionEngine` Exit 不再跳过未 durable 的 terminal；复用现有 Record/Durable 与 transaction receipt，固定终态候选的 cutoff/EndedAt/final delta，补写成功后重复 Exit/checkpoint no-op。没有重新打开 terminal、补离线时间、增加 count 或新增 durable schema。
+- 新增 22 项，新增测试 **22/0/0**、相关 targeted **192/0/0**；Debug/Release 最终完整 suite 各 **1278/0/0**，原 1256 项逐名称保留；两配置 build 0 warnings/errors、locked restore 通过。首次 Release 有 1 项既有 handoff 资源阈值失败，保留日志，不改阈值，单项及随后完整复验通过，纳入资源观察项。未修改原 Gate probe 源码，引用本次 DLL 复验后原三条失败路径均已修复。证据与源码/二进制身份详见 [DEVELOPMENT](../../DEVELOPMENT.md) 和 `.artifacts/native-phase5b2-remediation/`。
+- 未改 Phase 5A/Phase 2 contract、共享 codec/Electron、recovery identity、occupancy、Tray/Single Instance/Presentation；没有重新启动真实游戏、访问正式资料、重新发布或推送。旧 publish-final 仍对应 a11704b，不能混作本次修复候选。原 3 项 OBSERVATION 保留，独立 targeted re-Gate 尚未通过，不能宣称 Phase 5B 完成。
+- **READY FOR PHASE 5B.2 TARGETED RE-GATE**。整改自检 BLOCKER 0 / MAJOR 0 / MINOR 0；提交后暂停，等待独立复审。
+
 ## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（自检完成，等待独立 Gate）
 
 - 开始于 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792`，核对干净工作区。该基线已通过 5B.1 targeted re-Gate；本轮授权正式接入 5B.2，尚不代表 5B.2 独立 Gate 通过。

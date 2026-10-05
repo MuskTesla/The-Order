@@ -1,5 +1,34 @@
 # 开发与维护
 
+## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
+
+本轮从 `codex/winui-phase5` / `9f1aef2e944f8ad07c31a5b43f6f7c84b97d678d` 的干净工作区开始。已核对它相对受测生产 checkpoint `a11704b902d0c643385efa2209713f3f7fff8c01` 只有两份文档变化。独立 Final Gate 的 **REMEDIATION REQUIRED / MAJOR 2** 优先于下方历史自检结论；本次仅整改初始化与终态持久化重试，尚未通过独立 re-Gate，不代表 Phase 5B 完成。
+
+### 两项修复及所有权
+
+- MAJOR 1：`AppSessionHost` 原来永久缓存 faulted initialization task，recovery commit 的瞬时失败同时阻断后续初始化和正常退出。现在将 host lifetime 的 `creation` 与可替换的 initialization attempt 分开；engine 创建回调只调用一次，复用同一 writer/engine。原 `gate` 只允许一个 attempt，并发 Initialize/Explicit Exit 等待同一任务；成功后逻辑初始化保持幂等，失败或取消后可重试。Explicit Exit 在存储恢复后先重试 recovery，再走原退出保存；持续失败仍取消退出并保持游戏运行。
+- Host 拥有一个创建任务和当前初始化任务，不保留失败任务链，不新增 semaphore、timer、OS handle 或 cancellation source。Dispose 先封闭新初始化/退出请求，等待在途初始化及退出，再释放唯一 engine；在途完成不能把已开始清理的 host 重新置 Ready，清理后不允许 retry。
+- MAJOR 2：`CheckpointForExitAsync` 原来把内存 terminal 等同于 durable terminal，跳过未保存的 Incomplete/Completed。现在仅对 nonterminal 执行退出状态转换，但两类状态都进入原 Save 路径；通过既有 `Runtime.Record` 与 `Runtime.Durable`（成功 transaction receipt 才更新）判断同一 terminal candidate 是否已经提交。终态且两者相同则 no-op，不引入独立 SaveFailed 布尔或 durable schema。
+- 终态候选的 final delta、AccountingCutoff、EndedAt 和 SessionId 固定；失败、重试不再刷新其时间边界，不重新打开 Session、不重新计时。pending revision 继续由最后确认的 Durable 推导；成功回执才 acknowledge。普通 checkpoint 已保存同一终态时，后续 Exit 无额外写入；较旧 checkpoint 先完成时不能吞掉排队的终态提交。Phase 2 原子事务及 revision replay 规则保持不变。
+
+### 验证与证据边界
+
+新增 `LifecyclePersistenceRetryTests.cs`，共 **22** 项：IOException/UnauthorizedAccessException/取消、持续失败后恢复、Explicit Exit 触发 retry、并发 Initialize/Exit、成功幂等、Dispose 与在途 retry、Incomplete/Completed 最后 delta、普通 checkpoint 前后交错、两项故障组合、真实隔离原子文件替换前/后故障及替换后丢回执重试。旧测试与阈值未改。新测试首次编译有一处错误 namespace；首次运行 3 项把 Explicit Exit 完成后的 tracking 误期望为 CurrentProcessOnly，按既有退出契约区分 Detached 后通过；未将生产退出行为改为继续观察。
+
+本机证据位于 `.artifacts/native-phase5b2-remediation/`。新增测试 **22/0/0**，lifecycle/Session/recovery/occupancy/fault injection targeted **192/0/0**；locked restore、Debug/Release solution build 均通过，两配置 **0 warnings / 0 errors**。最终完整 native suite：Debug/Release 各 **1278 passed / 0 failed / 0 skipped**，逐名称确认原 **1256** 项全部保留。
+
+首次 Release 完整运行 **1277 passed / 1 failed**：未修改的 `RepeatedRealHandoffReleasesProcessJobSnapshotAndObserverHandles` 测得 `[644,644,644,644,644,642,645,652,652,652]`，超过原第 3 轮 +6 的阈值。保留初次 TRX/log；不改代码、测试或阈值，单项复验通过（`[458,460,462,462,462,462,462,462,462,463]`），随后重新运行完整 Release 1278 项全部通过。Debug 完整运行此项为 `[653,653,653,653,653,651,651,651,651,651]`。这是一次未稳定复现的资源阈值波动，归入本机短轮次资源观察项，不把重跑绿灯写成长期无泄漏保证。
+
+未改原 Gate probe 的 `Program.cs`，通过单独忽略目录中的项目引用当前 Debug DLL 复跑，探针加载 DLL 与受测 Application DLL hash 相同：原三条路径现在退出重试全部 true；Incomplete/Completed 各仅补一次写（2→3），后续退出 no-op；同一 Session/count，游戏仍运行。独立探针的 CS0649 未赋值替身字段警告与 solution build 分开记录。
+
+资源短轮次：80 次 recovery commit 失败及 40 次终态 Exit retry，临时 observer handles 每轮均为 0，最终成功并释放 engine lease；没有创建第二 engine/writer。真实 Windows 相关 fixture 通过：manager host 释放后合成进程存活、同 Session 恢复；30 轮 tray/subclass handles **556→557**、USER **13→13**、GDI **0→0**；recovered occupancy 23 次拒绝 B 的 handles **544→544**；暂停/非暂停各 50 轮窗口策略通过。
+
+仅生产 `AppSessionHost.cs` / `SessionEngine.cs` 改动；无 durable schema、共享 codec、Electron、Phase 5A Process Fact、Phase 2 atomic storage、recovery identity、occupancy、Single Instance、Tray、Presentation 或 PublishedPath 修改。已有 Electron/import 兼容实现不受共享代码变更影响；本轮不重复 Electron 测试，native 完整 suite 仍包含既有 import/codec 回归。未重新发布：旧 publish-final 仍只对应 a11704b，不能作为本次修复二进制。整改 build 内嵌父 checkpoint 9f1aef2，源码与程序集 hash 由本机 audit/提交后 receipt 绑定，不冒称内嵌后生成的提交。
+
+未启动真实游戏、未访问正式 profile、未替换程序、未推送。保留原 3 项 OBSERVATION：真实 host sleep/hibernate/logoff/reboot 未执行；Stop Observing 后 terminal occupancy 仅覆盖 engine 生命周期；资源为本机短轮次证据。后续只做两项 MAJOR 的 targeted re-Gate，不进入 Phase 6。
+
+**READY FOR PHASE 5B.2 TARGETED RE-GATE**。整改自检未发现新的 BLOCKER/MAJOR/MINOR；上述资源波动已记入观察项。本机 `validation-audit.json` 绑定最终源码、程序集和测试证据，`checkpoint-receipt.json` 在提交后绑定整改 SHA；独立复审结论仍待取得。
+
 ## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（自检完成，等待独立 Gate）
 
 本轮从 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792` 的干净工作区开始。该基线已通过 5B.1 targeted re-Gate；下方 5B.1 的“等待 re-Gate”属于历史时点。本阶段接入应用生命周期，不进入 Phase 6，不使用正式资料。**READY FOR PHASE 5B.2 INDEPENDENT GATE**：实现与本轮自检已完成，不代替独立 Gate。生产源码 checkpoint 为 `a11704b902d0c643385efa2209713f3f7fff8c01`；后续最终验收文档 checkpoint 由本机 `checkpoint-receipt.json` 绑定，二进制仍明确对应 a11704b，没有冒称内嵌文档提交。

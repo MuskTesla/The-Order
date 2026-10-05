@@ -23,23 +23,36 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
 {
     private readonly object gate = new();
     private Task? initialization, disposal;
+    private Task<SessionEngine?>? creation;
     private Task<bool>? exit;
     private SessionEngine? engine;
-    private volatile bool ready, closing;
+    private volatile bool ready, closing, disposing;
     private string? error;
     public bool Ready => ready;
     public bool Closing => closing;
-    public bool CanMutate => ready && !closing && engine is not null;
+    public bool CanMutate => ready && !closing && !disposing && engine is not null;
     public string? Error => error ?? engine?.Snapshot.Error;
     public SessionEngineSnapshot? Session => engine?.Snapshot;
     public LibrarySnapshot? Library => ready ? readLibrary() : null;
     public LaunchStatus Status => engine?.LaunchStatus ?? new(LaunchOutcome.Ready, ProcessTrackingState.None, null, null, null, ready ? "当前资料不可启动游戏。" : "正在恢复上次会话…");
-    public Task InitializeAsync() { lock (gate) return initialization ??= InitializeCoreAsync(); }
+    public Task InitializeAsync()
+    {
+        lock (gate)
+        {
+            if (disposing) return Task.FromException(new ObjectDisposedException(nameof(AppSessionHost)));
+            // Creation belongs to the host lifetime; only recovery attempts may be replaced.
+            // Concurrent initialization/exit callers share the same in-flight attempt.
+            if (initialization is null || initialization.IsFaulted || initialization.IsCanceled)
+                initialization = InitializeCoreAsync();
+            return initialization;
+        }
+    }
+    private async Task<SessionEngine?> CreateOnceAsync() => await create().ConfigureAwait(false);
     private async Task InitializeCoreAsync()
     {
-        engine = await create().ConfigureAwait(false);
+        engine = await (creation ??= CreateOnceAsync()).ConfigureAwait(false);
         if (engine is not null) await engine.InitializeAsync().ConfigureAwait(false);
-        ready = true;
+        lock (gate) { if (!disposing) { ready = true; error = null; } }
     }
     public async Task<LaunchPreparation> PrepareAsync(string id, string? installation = null, CancellationToken cancellation = default)
     {
@@ -72,6 +85,7 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
     {
         lock (gate)
         {
+            if (disposing) return Task.FromResult(false);
             if (exit is { IsCompleted: false } || closing && exit is { IsCompletedSuccessfully: true, Result: true }) return exit;
             closing = true; error = null;
             return exit = ExitCoreAsync(reason);
@@ -102,7 +116,7 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
         if (engine is not null) await engine.CancelExitPreparationAsync().ConfigureAwait(false);
         lock (gate) { closing = false; exit = null; error = null; }
     }
-    public ValueTask DisposeAsync() { lock (gate) return new(disposal ??= DisposeCoreAsync()); }
+    public ValueTask DisposeAsync() { lock (gate) { disposing = true; return new(disposal ??= DisposeCoreAsync()); } }
     private async Task DisposeCoreAsync()
     {
         closing = true;
