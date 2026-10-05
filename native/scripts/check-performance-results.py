@@ -49,6 +49,12 @@ def main():
         check(f"checkpoint-{dataset['history']}/accounting", int(not(dataset["countUnchanged"] and dataset["exactlyOnce"])), 0)
 
     media_summary = []
+    edges = load(args.media / "edge-results.json")
+    rejected_edges = {"corrupt.png", "truncated.png", "invalid.webp"}
+    check("media/edge-fixture-count", int(len(edges) != 9), 0)
+    for edge in edges:
+        name = edge["file"].replace("\\", "/").rsplit("/", 1)[-1]
+        check(f"media/edge/{name}", int(edge["accepted"] != (name not in rejected_edges)), 0)
     for dataset in load(args.media / "media-results.json"):
         times = [p["elapsedMs"] for p in dataset["passes"] if not p["warmup"]]
         n = dataset["identity"]["count"]
@@ -67,6 +73,9 @@ def main():
     for n in [1000, 5000, 10000]:
         runs = [r for r in ui_runs if r["count"] == n]
         warm = [r for r in runs if not r["warmup"]]
+        for index, run in enumerate(runs):
+            startup = run["startup"]
+            check(f"ui-{n}/{index}/usable", int(startup["status"] != "USABLE" or startup["firstViewport"]["realizedContainerCount"] <= 0 or startup["firstCoverMs"] is None), 0)
         item = dict(count=n, coldish=runs[0]["startup"], warm={})
         for name in ["profileOpenMs", "viewModelReadyMs", "firstUsableMs", "firstCoverMs"]:
             values = [r["startup"][name] for r in warm]
@@ -77,6 +86,9 @@ def main():
         check(f"ui-{n}/completed", int(workload["status"] != "UI_WORKLOAD_COMPLETED"), 0)
         check(f"ui-{n}/realized", max(s["viewport"]["realizedContainerCount"] for s in samples), 256)
         check(f"ui-{n}/imageSurfaces", max(s["imageSurfaces"] for s in samples), 256)
+        check(f"ui-{n}/staleCoverSources", max(s["staleCoverSources"] for s in samples), 0)
+        for field in ["Outstanding", "ActiveDecodes", "PendingOperations", "PendingWaiters", "Errors"]:
+            check(f"ui-{n}/final-{field}", workload["images"][field], 0)
         window = max(1, len(samples) // 4)
         # Exclude initial XAML/font materialization; compare two mature workload windows.
         first, last = samples[window:window*2], samples[-window:]
@@ -125,6 +137,9 @@ def main():
                 check(f"ui-soak/{s['round']}/{field}", s["images"][field], limit)
             check(f"ui-soak/{s['round']}/surfaces", s["imageSurfaces"], 256)
             check(f"ui-soak/{s['round']}/realized", s["viewport"]["realizedContainerCount"], 256)
+            check(f"ui-soak/{s['round']}/staleCoverSources", s["staleCoverSources"], 0)
+        for field in ["Outstanding", "ActiveDecodes", "PendingOperations", "PendingWaiters", "Errors"]:
+            check(f"ui-soak/final-{field}", run["images"][field], 0)
         gaps = sorted(run["uiTickGapsMs"])
         sustained_ui = dict(durationSeconds=run["durationSeconds"], rounds=run["rounds"], peakWorkingSet=max(s["workingSet"] for s in ui_samples), peakPrivate=max(s["privateBytes"] for s in ui_samples), maturePrivateMedian=median(s["privateBytes"] for s in mature_ui), firstMatureHandles=median(s["handles"] for s in first), lastMatureHandles=median(s["handles"] for s in last), peakSurfaces=max(s["imageSurfaces"] for s in ui_samples), uiTickGapMedian=median(gaps), uiTickGapP95=gaps[max(0,int(len(gaps)*.95)-1)], uiTickGapMaximum=max(gaps))
         if max(gaps) > 1000:

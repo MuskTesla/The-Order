@@ -36,6 +36,51 @@ public sealed class PerformanceHardeningTests
         Assert.Equal("cancelled", (await first).Status); await Task.WhenAll(pipe.DisposeAsync().AsTask(), pipe.DisposeAsync().AsTask()).WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal(0, pipe.Metrics.ActiveDecodes); Assert.Equal(0, pipe.Metrics.Outstanding); Assert.Equal(0, pipe.Metrics.CachedBytes);
     }
+    [Theory][InlineData(1)][InlineData(30)]
+    public async Task NewConsumersRenewAbandonedWorkWithoutReceivingTheOldCancellation(int rounds)
+    {
+        for (int i = 0; i < rounds; i++) await RenewAbandonedWorkOnceAsync();
+    }
+    private static async Task RenewAbandonedWorkOnceAsync()
+    {
+        var codec = new RenewalCodec(); await using var pipe = new ImagePipeline(new Source(), codec, new NoDisk(), new(MemoryBytes: 0));
+        using var firstCancellation = new CancellationTokenSource();
+        var first = pipe.LoadAsync("renew", 64, firstCancellation.Token);
+        try
+        {
+            await codec.FirstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5)); firstCancellation.Cancel();
+            Assert.Equal("cancelled", (await first).Status);
+            // The abandoned decoder has not drained yet, as can happen during view recycling.
+            var fresh = Enumerable.Range(0, 20).Select(_ => pipe.LoadAsync("renew", 64, default)).ToArray();
+            Assert.InRange(pipe.Metrics.PendingWaiters, 1, 256); codec.FirstRelease.TrySetResult();
+            await codec.SecondEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            // Keep the renewed decoder gated until all twenty overlapping consumers joined it.
+            var joined = Stopwatch.StartNew();
+            while (pipe.Metrics.Coalesced < 39 && joined.Elapsed < TimeSpan.FromSeconds(5)) await Task.Delay(1);
+            Assert.Equal(39, pipe.Metrics.Coalesced); codec.SecondRelease.TrySetResult();
+            Assert.All(await Task.WhenAll(fresh).WaitAsync(TimeSpan.FromSeconds(5)), r => Assert.NotNull(r.Pixels));
+            Assert.Equal(2, codec.Calls); Assert.Equal(21, pipe.Metrics.Requests);
+            Assert.Equal(0, pipe.Metrics.PendingWaiters); Assert.Equal(0, pipe.Metrics.Outstanding);
+        }
+        finally { codec.FirstRelease.TrySetResult(); codec.SecondRelease.TrySetResult(); }
+    }
+    [Fact]
+    public async Task RenewingConsumerCanCancelWhileAbandonedDecoderDrains()
+    {
+        var codec = new RenewalCodec(); var pipe = new ImagePipeline(new Source(), codec, new NoDisk(), new());
+        using var firstCancellation = new CancellationTokenSource(); using var freshCancellation = new CancellationTokenSource();
+        try
+        {
+            var first = pipe.LoadAsync("renew-cancel", 64, firstCancellation.Token);
+            await codec.FirstEntered.Task.WaitAsync(TimeSpan.FromSeconds(5)); firstCancellation.Cancel(); await first;
+            var fresh = pipe.LoadAsync("renew-cancel", 64, freshCancellation.Token); freshCancellation.Cancel();
+            Assert.Equal("cancelled", (await fresh.WaitAsync(TimeSpan.FromSeconds(5))).Status);
+            Assert.Equal(0, pipe.Metrics.PendingWaiters); codec.FirstRelease.TrySetResult();
+            await pipe.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(1, codec.Calls); Assert.Equal(0, pipe.Metrics.Outstanding); Assert.Equal(0, pipe.Metrics.ActiveDecodes);
+        }
+        finally { codec.FirstRelease.TrySetResult(); codec.SecondRelease.TrySetResult(); await pipe.DisposeAsync(); }
+    }
     [Theory][InlineData(false)][InlineData(true)]
     public async Task FloodHasBoundedPendingOperationsAndNoUnobservedDecoderBacklog(bool duplicate)
     {
@@ -116,6 +161,19 @@ public sealed class PerformanceHardeningTests
     {
         public int Calls; public readonly TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously), Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async Task<RasterPixels> DecodeAsync(ReadOnlyMemory<byte> encoded, int edge, CancellationToken cancellation) { Interlocked.Increment(ref Calls); Entered.TrySetResult(); await Release.Task.WaitAsync(cancellation); return new(16, 16, new byte[1024]); }
+        public Task<LocalCover> NormalizePhotoAsync(string path, CancellationToken cancellation) => throw new NotSupportedException();
+    }
+    private sealed class RenewalCodec : IRasterCodec
+    {
+        public int Calls;
+        public readonly TaskCompletionSource FirstEntered = new(TaskCreationOptions.RunContinuationsAsynchronously), FirstRelease = new(TaskCreationOptions.RunContinuationsAsynchronously),
+            SecondEntered = new(TaskCreationOptions.RunContinuationsAsynchronously), SecondRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task<RasterPixels> DecodeAsync(ReadOnlyMemory<byte> encoded, int edge, CancellationToken cancellation)
+        {
+            if (Interlocked.Increment(ref Calls) == 1) { FirstEntered.TrySetResult(); await FirstRelease.Task; }
+            else { SecondEntered.TrySetResult(); await SecondRelease.Task.WaitAsync(cancellation); }
+            return new(16, 16, new byte[1024]);
+        }
         public Task<LocalCover> NormalizePhotoAsync(string path, CancellationToken cancellation) => throw new NotSupportedException();
     }
 }

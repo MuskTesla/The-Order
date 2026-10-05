@@ -37,6 +37,7 @@ try {
             $env:THE_ORDER_NATIVE_PERFORMANCE_ROUNDS = if ($sample -eq $Samples) { [string]$Rounds } else { '0' }
             $taskClock = [Diagnostics.Stopwatch]::StartNew()
             $taskProcess = Start-Process -FilePath $Candidate -WorkingDirectory (Split-Path $Candidate) -PassThru -WindowStyle Hidden
+            try {
             # This script is the independent watchdog; interactive tool waits remain short.
             if (-not $taskProcess.WaitForExit([Math]::Max(600000,($Minutes+10)*60000))) { throw "UI timeout pid=$($taskProcess.Id); process retained for diagnosis" }
             if ($taskProcess.ExitCode -ne 0) { throw "UI exit code=$($taskProcess.ExitCode)" }
@@ -46,6 +47,7 @@ try {
             $taskRuns += [pscustomobject]@{count=$count;sample=$sample;cacheDefinition=if($sample -eq 0){'cold-ish (first process, OS caches uncontrolled)'}else{'warm (repeat process)'};warmup=($sample -eq 0);pid=$taskProcess.Id;exitCode=$taskProcess.ExitCode;processLifetimeMs=$taskClock.Elapsed.TotalMilliseconds;startup=$startup;directory=$taskRun}
             $taskRuns | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $Output 'ui-runs.json') -Encoding UTF8
             Write-Output "UI count=$count sample=$sample firstUsableMs=$($startup.firstUsableMs)"
+            } finally { $taskProcess.Dispose() }
         }
     }
 } finally {

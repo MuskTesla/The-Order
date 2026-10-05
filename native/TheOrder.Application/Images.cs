@@ -48,18 +48,24 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
     private long coalesced, rejected;
     public ImageMetrics Metrics { get { lock (gate) return new(requests, loads, hits, misses, errors, outstanding, active, maximum, bytes, cache.Count, operations.Count, coalesced, rejected, waiters); } }
     public Task<ImageResult> LoadAsync(string? key, int edge, CancellationToken cancellation)
+        => LoadRequestAsync(key, edge, cancellation, countRequest: true);
+    private Task<ImageResult> LoadRequestAsync(string? key, int edge, CancellationToken cancellation, bool countRequest)
     {
         lock (gate)
         {
             if (disposed) return Task.FromResult(new ImageResult(null, "cancelled"));
-            requests++;
+            if (countRequest) requests++;
             if (cancellation.IsCancellationRequested) return Task.FromResult(new ImageResult(null, "cancelled"));
             if (string.IsNullOrEmpty(key)) return Task.FromResult(new ImageResult(null, "placeholder"));
             edge = Math.Clamp(edge, 16, Math.Clamp(options.MaximumEdge, 16, 1600));
             var cacheKey = key + "-" + edge;
             if (TryCached(cacheKey) is { } cached) { hits++; return Task.FromResult(new ImageResult(cached, "memory")); }
             if (waiters >= Math.Clamp(options.PendingRequests, 1, 1024)) { rejected++; return Task.FromResult(new ImageResult(null, "busy")); }
-            if (!operations.TryGetValue(cacheKey, out var shared))
+            operations.TryGetValue(cacheKey, out var shared);
+            // A completed abandoned request may still be waiting for its cleanup continuation.
+            if (shared is not null && shared.Work.IsCompleted && shared.Cancellation.IsCancellationRequested)
+            { operations.Remove(cacheKey); shared = null; }
+            if (shared is null)
             {
                 if (operations.Count >= Math.Clamp(options.PendingRequests, 1, 1024)) { rejected++; return Task.FromResult(new ImageResult(null, "busy")); }
                 shared = new(stopping.Token); operations.Add(cacheKey, shared);
@@ -69,19 +75,29 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
                 {
                     // A recycled/cancelled view may no longer await an unexpected decoder fault.
                     if (completed.IsFaulted) _ = completed.Exception;
-                    lock (gate) { operations.Remove(cacheKey); request.Cancellation.Dispose(); }
+                    lock (gate)
+                    {
+                        if (operations.TryGetValue(cacheKey, out var current) && ReferenceEquals(current, request)) operations.Remove(cacheKey);
+                        request.Cancellation.Dispose();
+                    }
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
             else coalesced++;
             shared.Waiters++; waiters++;
-            return WaitAsync(shared, cancellation);
+            return WaitAsync(shared, key, edge, shared.Cancellation.IsCancellationRequested, cancellation);
         }
     }
-    private async Task<ImageResult> WaitAsync(SharedRequest request, CancellationToken cancellation)
+    private async Task<ImageResult> WaitAsync(SharedRequest request, string key, int edge, bool abandoned, CancellationToken cancellation)
     {
-        try { return await request.Work.WaitAsync(cancellation).ConfigureAwait(false); }
+        ImageResult result;
+        try { result = await request.Work.WaitAsync(cancellation).ConfigureAwait(false); }
         catch (OperationCanceledException) { return new(null, "cancelled"); }
         finally { lock (gate) { request.Waiters--; waiters--; if (request.Waiters == 0 && !request.Work.IsCompleted) request.Cancellation.Cancel(); } }
+        // New consumers wait within the same waiter budget until abandoned IO/decode drains,
+        // then enter ordinary admission again. Never inherit another view's cancellation.
+        if (abandoned && result.Status == "cancelled" && !cancellation.IsCancellationRequested)
+            return await LoadRequestAsync(key, edge, cancellation, countRequest: false).ConfigureAwait(false);
+        return result;
     }
     private async Task<ImageResult> LoadCoreAsync(string key, int edge, CancellationToken cancellation)
     {
