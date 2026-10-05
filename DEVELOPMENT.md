@@ -1,5 +1,42 @@
 # 开发与维护
 
+## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（实施与验收中）
+
+本轮从 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792` 的干净工作区开始。该基线已通过 5B.1 targeted re-Gate；下方 5B.1 的“等待 re-Gate”属于历史时点。本阶段接入应用生命周期，不进入 Phase 6，不使用正式资料。当前本节记录已实现代码和分层验证，**尚未宣称 5B.2 验收完成或独立 Gate 通过**。
+
+### 生命周期装配
+
+- `TheOrder.WinUI/Program.cs` 使用官方 Windows App SDK `AppInstance`，在 `Application.Start` / DI / writer 之前按 AppID、用户 SID、隔离 profile 物理身份注册；先订阅再注册，覆盖同时启动的 activation 窗口。secondary 只转交当前启动参数、请求 primary 唤回并退出，失败也不能创建第二 writer。当前参数没有自动启动游戏语义。Phase 2 writer lease 仍是独立防线。
+- `AppSessionHost` 是应用生命周期 owner：只初始化一次 writer/engine/recovery；完成前不接受 launch，UI mutation 禁用。`MainWindow` 只持有查询和命令接口。`OfflineLibraryClient.LoadAsync` 在 engine lease 存在时刷新同一 writer 的快照，不能因普通 UI reload 重开 writer。没有新增 durable schema。
+- `WindowsTrayLifecycle` 持有一个 shell icon、一个窗口 subclass；图标使用共享系统资源，popup menu 每次销毁。`TaskbarCreated` 重新注册；不可用时显示警告并保留可访问窗口。Close Window 隐藏同一窗口并请求 checkpoint，engine、观察、计时与导航保留。Show/secondary activation 恢复窗口；托盘包含标题、计时能力、暂停/恢复和明确退出。
+- Explicit Exit 禁用命令、处理草稿、等待进行中的启动事实、freeze/checkpoint 到 RecoveryPending、确认保存、排空页面任务和 writer 后释放 engine/tray。保存失败保留应用并允许重试；不 kill game。页面的启动取消按钮只在启动进行中可用；不把旧取消 token 当作普通“停止观察”入口。核心 StopObserving API 与 recovered occupancy 保持原契约。
+- `WM_QUERYENDSESSION` 的 shutdown/logoff 共用 4 秒保存预算、最多 4.2 秒等待，不否决 OS shutdown；已经开始的原子保存不取消。`WM_ENDSESSION(false)` 取消退出准备：仅把本次 RecoveryPending 恢复为同一 Open invocation，保留 paused/count/累计并建立新 baseline；terminal 不重开。`WM_ENDSESSION(true)` 移除托盘，OS 可以立即终止进程，不能声称所有异步清理保证完成。没有 crash cleanup 的虚假保证。
+- Session 顶部区域和 tray 从 `SessionEngineSnapshot` 派生标题、能力、已确认 duration、历史 total 和 count；无 UI stopwatch 或 UTC 差值。Paused 明示游戏可能仍在运行，恢复后的 CurrentProcessOnly 明示受限，Unknown 不声称进程活跃，Incomplete 不显示正常退出。错误提示与 Session 状态分开。
+
+主要新增源码：`TheOrder.Application/AppSessionHost.cs`、`TheOrder.Platform.Windows/{NativeInstanceIdentity,WindowsTrayLifecycle}.cs`、`TheOrder.Presentation/SessionPresentation.cs`；接入 `App`、`MainWindow`、`Composition`、`LaunchViewModel`。SessionEngine 只增加取消系统退出准备的局部调用，不改 5A Process Fact、Phase 2 原子 transaction、accounting、recovery identity 或 terminal occupancy 持久化边界。
+
+### 验证和明确候选入口
+
+`AppLifecycleTests` 覆盖 startup 等待、唯一初始化、普通/paused/recovered Exit、保存失败、进行中 write drain、系统预算/重复/取消/失败、Close 策略、同 writer reload、presentation 和 pause gap。`AppLifecycleWindowsTests` 在真实 Windows fixture 上验证 host 退出后进程仍活着、同 Session 恢复、次数与离线 gap、物理实例键，以及自有隐藏测试窗口上的 shell icon/subclass/shutdown 协议。后者仅向测试窗口发消息，不广播或请求真实系统退出；不能替代真实 WinUI 桌面交互验收。
+
+证据统一位于 `.artifacts/native-phase5b2/`。首次 147 项相关回归有 4 项新测试准备失败（无效 terminal 样本、resume 后尚未建立新采样基线）；修正测试前置条件后 147/147，通过的生产契约没有放宽。最终新增 **28** 项，完整 Debug/Release 各 **1256 passed / 0 failed / 0 skipped**，原 **1228** 项逐名称保留。locked restore、两配置 solution build **0 warnings / 0 errors**、Electron **665/0/0**、artifact tests **32/0/0** 均通过，缺少 PublishedPath 的实际启动调用已确认拒绝。
+
+真实 WinUI 合成链路：首次双进程同时启动只留下 PID 3352，secondary exit 0，activation=1，library hash 未变。启动 fixture PID 26472 只增加一次 count（3→4）；暂停固定 82 秒，Close 后两进程仍活着、窗口隐藏，secondary 唤回同 Session。Explicit Exit 保存 RecoveryPending，游戏存活；双进程重启只恢复一次，原 ID/installation/count/82 秒和暂停意图不变。托盘菜单“恢复计时”由用户操作并确认，随后 UI/JSON 复核为同一 Session 的 unpaused / CurrentProcessOnly。受限状态下隐藏继续从 157 秒累计到 178 秒，未增加次数。未暂停退出为 195 秒 / 1958732436 ticks，离线约 55 秒再启动仍为完全相同 ticks，recovery count 只 +1。模拟托盘初始化失败时点击关闭仍保留窗口、警告与继续计时；fixture 通过正常 stop-file 退出后为 Incomplete / RecoveredProcessEnded / null real exit，累计 243 秒、total=720+243、count=4；用户明确退出入口仍可用。没有伪造 Completed。
+
+资源：真实 WinUI 连续 23 次 secondary exit 0；预热后再 20 次，primary handles **1077→1077**，只有一个窗口/engine。平台测试 30 轮 shell icon/subclass 加入/删除，回调次数精确、移除后不再收到事件，USER/GDI 保持稳定；核心/Windows host 每会话 50 轮 Close/Show 策略，完整数值见 TRX。桌面连接一度超时，恢复后重做了上述链路；早期 PID 16284 的终止没有可归因的退出证据，不纳入成功结论。Windows UI 证据保存在 `windows-ui/` 与 `synthetic-final/`，这些是明确 MVID 的 Debug 自检；最终发布 receipt 与真实游戏 acceptance 仍待完成，不混称最终包证据。
+
+`native.ps1 -Action Run -Published` **现在必须指定绝对 `-PublishedPath` EXE**，省略即失败，不再暗选旧 Phase 1 包。`check-published-runner.ps1` 同样显式传路径。历史下面的旧调用只描述旧时点，复用时必须补此参数：
+
+```powershell
+& ./native/scripts/native.ps1 -Action Run -Published -PublishedPath (Join-Path $PWD '.artifacts/native-phase5b2/publish-final/win-x64/TheOrder.WinUI.exe') -DataDirectory (Join-Path $PWD '.artifacts/native-phase5b2/acceptance-profile')
+```
+
+目录必须事先按隔离 fixture 规则准备；以上不是读取正式资料的授权。最终验收前需以 checkpoint receipt 绑定源码 hash、EXE/DLL hash、MVID、profile、配置和实际证据，不能混用 Debug 中间窗口与最终包截图。
+
+后续真实 host 人工验收（本轮不执行 sleep/hibernate/reboot）：用同一候选和隔离 profile 启动一个合成 fixture，记录 SessionId/count/累计；分别由用户触发一次 sleep/resume、hibernate/resume、logoff 或 reboot。恢复后核对没有睡眠/离线补时、无新增 count，跨 boot 按原恢复规则失效而不接管。对比 main JSON 的真实 lifecycle/reason 与 UI，保留 OS 时间和候选身份。异常关机只以实际落盘 checkpoint 为准。
+
+官方机制参考：[AppInstance single-instancing](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/applifecycle/applifecycle-single-instance)、[notification area](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area)、[WM_QUERYENDSESSION](https://learn.microsoft.com/en-us/windows/win32/shutdown/wm-queryendsession)、[WM_ENDSESSION](https://learn.microsoft.com/en-us/windows/win32/shutdown/wm-endsession)。
+
 ## WinUI Phase 5B.1：Recovery Occupancy Remediation（2026-10-05）
 
 独立 Gate 在 `3cb1984d2bf2e4186b6fc95aca36f436d72f2b80` 实际复现：recovery 后 Stop Observing 终结 Session/释放 observer，launch admission 因没有 nonterminal Session 而允许第二次 owned launch，但原游戏仍活着。普通未 recovery 路径已有 5A reservation，行为正确。本节取代下方历史实现自检的当前状态；整改不重新实施 5B.1，也不进入 5B.2。

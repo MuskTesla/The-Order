@@ -9,6 +9,7 @@ public sealed partial class TransactionalLibrary
 {
     private readonly Dictionary<string, string> pendingOwnedSessions = [];
     private bool sessionEngineOwned;
+    internal bool HasSessionEngine { get { lock (admission) return sessionEngineOwned; } }
     public Guid SessionWriterOwner => epoch;
     internal IDisposable AcquireSessionEngine()
     {

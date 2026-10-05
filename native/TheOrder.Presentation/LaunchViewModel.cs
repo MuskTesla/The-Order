@@ -7,8 +7,10 @@ public sealed record LaunchInstallationItem(string Id, string Label);
 
 // All members except service notifications are driven on the presentation thread.
 // Background tracking is owned by Application and survives page navigation.
-public sealed class LaunchViewModel(ILaunchLibrary library, GameLaunchService service) : ObservableState, IAsyncDisposable
+public sealed class LaunchViewModel(ILaunchLibrary library, ILaunchCommands service) : ObservableState, IAsyncDisposable
 {
+    private IAsyncDisposable? ownedService;
+    public LaunchViewModel(ILaunchLibrary library, GameLaunchService service) : this(library, new DirectLaunchCommands(service)) { ownedService = service; }
     private readonly HashSet<Task> pending = [];
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource? preparation, launch;
@@ -29,7 +31,7 @@ public sealed class LaunchViewModel(ILaunchLibrary library, GameLaunchService se
     public bool Busy => busy;
     public bool CanLaunch => !disposed && !busy && prepared?.Outcome == LaunchOutcome.Ready;
     public bool CanConfirm => !disposed && !busy && prepared?.Snapshot is not null && prepared.Outcome is LaunchOutcome.PositionReviewRequired or LaunchOutcome.StaleInstallation;
-    public bool CanCancel => launch is not null;
+    public bool CanCancel => busy && launch is not null;
     public Task OpenAsync(string gameId) => Track(async () =>
     {
         Leave(); var intent = generation; var token = NewPreparation();
@@ -127,7 +129,7 @@ public sealed class LaunchViewModel(ILaunchLibrary library, GameLaunchService se
     public async ValueTask DisposeAsync()
     {
         if (disposed) return; disposed = true; generation++; lifetime.Cancel(); preparation?.Cancel(); launch?.Cancel();
-        await Task.WhenAll(pending.ToArray()); await service.DisposeAsync();
+        await Task.WhenAll(pending.ToArray()); if (ownedService is not null) await ownedService.DisposeAsync();
         preparation?.Dispose(); launch?.Dispose(); lifetime.Dispose();
     }
 }

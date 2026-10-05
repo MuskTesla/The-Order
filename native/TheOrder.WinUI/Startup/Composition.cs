@@ -26,8 +26,17 @@ internal static class Composition
         services.AddSingleton<ILaunchLibrary, OfflineLaunchLibrary>();
         services.AddSingleton<ILaunchPositionStore, IsolatedLaunchPositionStore>();
         services.AddSingleton<IGameProcessPlatform, WindowsGameProcesses>();
-        services.AddSingleton<GameLaunchService>();
-        services.AddSingleton<LaunchViewModel>();
+        services.AddSingleton<WindowsSessionPowerEvents>();
+        services.AddSingleton(p => new AppSessionHost(async () =>
+        {
+            var client = p.GetRequiredService<OfflineLibraryClient>();
+            await client.LoadAsync(CancellationToken.None).ConfigureAwait(false);
+            if (!client.Capability.Loaded) throw new IOException(client.Capability.Message);
+            if (!client.Capability.CanEdit) return null;
+            return client.CreateSessionEngine(p.GetRequiredService<IFilesystemIdentity>(), p.GetRequiredService<IGameProcessPlatform>(),
+                p.GetRequiredService<ILaunchPositionStore>(), new WindowsSessionClock(), new WindowsSessionRecoveryTokens(nativeConfiguration.DataDirectory!), p.GetRequiredService<WindowsSessionPowerEvents>());
+        }, () => p.GetRequiredService<OfflineLibraryClient>().CurrentSnapshot));
+        services.AddSingleton(p => new LaunchViewModel(p.GetRequiredService<ILaunchLibrary>(), p.GetRequiredService<AppSessionHost>()));
         services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();
         services.AddSingleton<BoundedScanner>();
         services.AddSingleton<IRasterCodec, WindowsRasterCodec>();
@@ -96,13 +105,14 @@ internal static class Composition
         services.AddSingleton<MainWindow>();
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         // Resolution is confined to this composition root. Views and view models receive constructors.
-        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<ILogger<NativeHost>>());
+        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<AppSessionHost>(), provider.GetRequiredService<ILogger<NativeHost>>());
     }
 }
 
-internal sealed class NativeHost(ServiceProvider provider, MainWindow window, ILogger<NativeHost> logger) : IAsyncDisposable
+internal sealed class NativeHost(ServiceProvider provider, MainWindow window, AppSessionHost sessions, ILogger<NativeHost> logger) : IAsyncDisposable
 {
     public MainWindow Window { get; } = window;
+    public AppSessionHost Sessions { get; } = sessions;
     public void LogFatal(Exception exception) => logger.LogCritical("Native client terminated: {ExceptionType}", exception.GetType().Name);
-    public async ValueTask DisposeAsync() { await Window.StopAsync(); await provider.DisposeAsync(); }
+    public async ValueTask DisposeAsync() { await Window.StopAsync(); await Sessions.DisposeAsync(); await provider.DisposeAsync(); }
 }

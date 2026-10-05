@@ -4,7 +4,8 @@ param(
   [string]$DotnetPath,
   [string]$DataDirectory,
   [switch]$InstallSdk,
-  [switch]$Published
+  [switch]$Published,
+  [string]$PublishedPath
 )
 $ErrorActionPreference = 'Stop'
 $taskNative = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -49,7 +50,9 @@ try {
       if (-not $DataDirectory) { $DataDirectory = Join-Path $taskNative 'fixtures/normal' }
       if (-not [IO.Path]::IsPathFullyQualified($DataDirectory)) { throw 'DataDirectory must be absolute.' }
       $env:THE_ORDER_NATIVE_DATA_DIR = $DataDirectory
-      $taskExe = if ($Published) { Join-Path $taskArtifacts 'publish/win-x64/TheOrder.WinUI.exe' } else { Join-Path $taskNative "TheOrder.WinUI/bin/$Configuration/net10.0-windows10.0.26100.0/win-x64/TheOrder.WinUI.exe" }
+      if ($Published -and (-not $PublishedPath -or -not [IO.Path]::IsPathFullyQualified($PublishedPath))) { throw '-Published requires an explicit absolute -PublishedPath to the checkpoint-bound EXE.' }
+      if ($PublishedPath -and -not $Published) { throw '-PublishedPath requires -Published.' }
+      $taskExe = if ($Published) { $PublishedPath } else { Join-Path $taskNative "TheOrder.WinUI/bin/$Configuration/net10.0-windows10.0.26100.0/win-x64/TheOrder.WinUI.exe" }
       if (-not (Test-Path -LiteralPath $taskExe)) { throw 'Build or publish the candidate first.' }
       # This is the explicitly requested interactive candidate window.
       $taskProcess = Start-Process -FilePath $taskExe -WorkingDirectory (Split-Path $taskExe) -WindowStyle Normal -PassThru

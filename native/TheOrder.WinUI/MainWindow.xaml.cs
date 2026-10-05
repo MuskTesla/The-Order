@@ -25,6 +25,9 @@ public sealed partial class MainWindow : Window
     private readonly InstallationsPage installationsPage;
     private readonly FilesViewModel files;
     public LaunchViewModel Launch { get; }
+    public AppSessionHost Sessions { get; }
+    private bool commandsBlocked;
+    private string? lifecycleMessage;
     private readonly DispatcherTimer launchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly InstallationNavigation installationNavigation;
     private readonly IImagePipeline images;
@@ -33,13 +36,15 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
+        Sessions = sessions;
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
         this.recognition = recognition;
         this.files = files; this.images = images;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
+        Navigation.IsEnabled = false;
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import) };
         detailsPage = new(workspace, images, launch) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
@@ -73,7 +78,28 @@ public sealed partial class MainWindow : Window
             initialization = Initialize();
         };
     }
-    private async Task Initialize() { try { await ViewModel.InitializeAsync(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
+    private async Task Initialize()
+    {
+        try { await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); }
+        catch (Exception) { lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
+        RefreshSession();
+    }
+    public void SetCommandsBlocked(bool value) { commandsBlocked = value; RefreshSession(); }
+    public void ShowLifecycleError(string message) { lifecycleMessage = message; RefreshSession(); }
+    public void CancelBackgroundRequests() { online.Leave(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); }
+    private async void OnPauseTiming(object sender, RoutedEventArgs e) { try { await Sessions.PauseAsync(); } catch { ShowLifecycleError("暂停计时未完成，请重试。"); } RefreshSession(); }
+    private async void OnResumeTiming(object sender, RoutedEventArgs e) { try { await Sessions.ResumeAsync(); } catch { ShowLifecycleError("恢复计时未完成，请重试。"); } RefreshSession(); }
+    private async void OnExitApp(object sender, RoutedEventArgs e) { if (App.Instance is { } app) await app.RequestExitAsync(); }
+    private void RefreshSession()
+    {
+        Navigation.IsEnabled = Sessions.Ready && !Sessions.Closing && !commandsBlocked;
+        var value = SessionPresentation.From(Sessions.Session, Sessions.Library, Sessions.CanMutate && !commandsBlocked);
+        LifecycleNotice.IsOpen = lifecycleMessage is not null; LifecycleNotice.Message = lifecycleMessage ?? "";
+        SessionTitle.Text = value.Title; SessionState.Text = Sessions.Error ?? (Sessions.Ready ? value.State : "正在恢复上次会话…");
+        SessionDuration.Text = value.Duration + "  " + value.History;
+        PauseTiming.IsEnabled = value.CanPause; ResumeTiming.IsEnabled = value.CanResume;
+        App.Instance?.RefreshTray(value);
+    }
     private void OnState(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(WorkspaceViewModel.Page)) ShowPage();
@@ -131,7 +157,7 @@ public sealed partial class MainWindow : Window
     }
     private void ApplyTheme() => Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
     public void CancelOnlineRequests() => online.Leave();
-    private void OnLaunchRefresh(object? sender, object e) => Launch.Refresh();
+    private void OnLaunchRefresh(object? sender, object e) { Launch.Refresh(); RefreshSession(); }
     public async ValueTask StopAsync()
     {
         onlineFixture?.ReleaseCandidate();
@@ -175,6 +201,14 @@ public sealed partial class MainWindow : Window
                 exitOccurredAtUtc = Launch.Runtime.ExitOccurredAtUtc,
                 lastRequest = Launch.LastRequestOutcome?.ToString(), selected = Launch.SelectedInstallationId, availability = Launch.Availability.ToString() },
             build = typeof(App).Assembly.ManifestModule.ModuleVersionId.ToString(),
+            session = new { id = Sessions.Session?.Session?.Id, lifecycle = Sessions.Session?.Session?.Native?.Lifecycle.ToString(), paused = Sessions.Session?.Session?.Native?.UserPaused,
+                installation = Sessions.Session?.Session?.Native?.InstallationId, recoveryCount = Sessions.Session?.Session?.Native?.Recovery.Count, seconds = Sessions.Session?.Session?.Seconds,
+                tracking = Sessions.Session?.Tracking.ToString(), timing = Sessions.Session?.Timing.ToString(), error = Sessions.Error,
+                pid = Sessions.Session?.Current?.Pid, creationTime = Sessions.Session?.Current?.CreationFileTime.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                accumulated100ns = Sessions.Session?.Session?.Native?.Accumulated100ns.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                count = Sessions.Library?.Entries.FirstOrDefault(e => e.Id == Sessions.Session?.Session?.Native?.GameId)?.PlayCount,
+                totalSeconds = Sessions.Library?.Entries.FirstOrDefault(e => e.Id == Sessions.Session?.Session?.Native?.GameId)?.TotalPlaySeconds },
+            lifecycle = new { ready = Sessions.Ready, closing = Sessions.Closing, activations = Program.Activations, tray = App.Instance?.TrayAvailable, hidden = App.Instance?.WindowHidden },
             checkpoint = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion,
             itemCount = ViewModel.Items.Count, totalCount = ViewModel.TotalCount, viewMode = ViewModel.Layout,
             theme = Root.ActualTheme.ToString(), readOnly = ViewModel.IsReadOnly, state, page = ViewModel.Page.ToString(),

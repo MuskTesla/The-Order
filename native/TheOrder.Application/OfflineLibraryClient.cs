@@ -20,6 +20,8 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         try
         {
             ObjectDisposedException.ThrowIf(disposed, this);
+            // UI refresh cannot replace the writer underneath the application-owned engine.
+            if (library?.HasSessionEngine == true) return new(ClientOutcome.Success, "已从当前会话书架刷新。");
             if (library is not null) { await library.ShutdownAsync().ConfigureAwait(false); library = null; }
             Volatile.Write(ref capability, new(false, false, "正在加载…"));
             library = await factory.OpenAsync(cancellation).ConfigureAwait(false);
@@ -37,6 +39,10 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         finally { lifetime.Release(); }
     }
     internal TransactionalLibrary Required() => library ?? throw new InvalidOperationException("书架尚未加载。");
+    public LibrarySnapshot? CurrentSnapshot => library?.Snapshot;
+    public SessionEngine CreateSessionEngine(IFilesystemIdentity filesystem, IGameProcessPlatform platform, ILaunchPositionStore positions,
+        ISessionClock clock, ISessionRecoveryTokens tokens, ISessionPowerEvents? power = null)
+        => new(Required(), filesystem, platform, positions, clock, tokens, power);
     public Task<RecognitionEntrySnapshot> CaptureRecognitionAsync(string id, CancellationToken cancellation) => Required().CaptureRecognitionAsync(id, cancellation);
     public Task<bool> IsRecognitionCurrentAsync(RecognitionEntrySnapshot snapshot, CancellationToken cancellation) => Required().IsRecognitionCurrentAsync(snapshot, cancellation);
     public Task<ImmutableArray<string>> RecognitionTargetsAsync(ImmutableArray<string> selected, RecognitionMode mode, CancellationToken cancellation)

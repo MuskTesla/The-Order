@@ -135,6 +135,21 @@ public sealed class SessionEngine : IAsyncDisposable
         { return ProcessPresence.Unknown; }
     }
     public Task DrainAsync() => Submit(() => Task.CompletedTask);
+    // Windows may cancel shutdown after QUERYENDSESSION. Reopen the same invocation only
+    // from exit preparation, preserving pause/count/duration and establishing a fresh baseline.
+    public async Task CancelExitPreparationAsync()
+    {
+        await Submit(async () =>
+        {
+            if (active is { Native.Lifecycle: SessionLifecycle.RecoveryPending } r)
+            {
+                Freeze(r); Set(r, r.Native with { Lifecycle = SessionLifecycle.Open, Reason = null });
+                r.Tracking = r.FullMonitor ? SessionTracking.LaunchScope : SessionTracking.CurrentProcessOnly;
+                await SaveAsync(r).ConfigureAwait(false);
+            }
+        }).ConfigureAwait(false);
+        lock (gate) { if (!disposed && disposal is null) closing = false; }
+    }
     internal Task ObserveFactAsync(ProcessEvent fact) => Submit(() => HandleFactAsync(fact));
     internal Task ObserveLaunchStatusAsync(LaunchStatus value) => Submit(() => HandleStatusAsync(value));
     public Task SampleAsync() => Submit(SampleCoreAsync);
