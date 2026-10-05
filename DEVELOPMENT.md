@@ -1,12 +1,12 @@
 # 开发与维护
 
-## WinUI Phase 6.0：Migration / Authoritative Store Design Gate
+## WinUI Phase 6：Production Store Bootstrap（范围已重设，实施中）
 
-Phase 5B 在 `codex/winui-phase5` / `3d9a71ad920b5c20fe38772ef3e5c1698dd5010d` 已取得 **PASS FOR PHASE 6**；以下旧章节的等待复审状态属于历史记录。Phase 6.0 仅完成设计，结论 **READY FOR PHASE 6 IMPLEMENTATION**。规范、源码 inventory、16项架构决策、状态机、对账/故障矩阵、benchmark 和6.1/6.2拆分统一维护在 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md)，此处不复制全文。
+当前规范见 [PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md](docs/ai/PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。旧 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md) 已 **SUPERSEDED**：其“重要 Electron 正式资料必须无损迁移”的前提失效。历史 benchmark/设计仍保留，不作为当前迁移义务。
 
-本轮在 `.artifacts/native-phase6-design/` 用现有 Release DLL、fake clock/process 与真实隔离磁盘 persistence 测量1k/5k/10k及历史/notes/cover压力。JSON继续保留；全部checkpoint样本最大1033.2ms，cover样本进程峰值932.4MiB，真实库切换前需按规范再验证。既有 `LegacyCompatibilityTests|SessionPersistenceTests|TransactionSafetyTests` **109/0/0**；未声称重新运行完整native suite。harness/输出是ignored产物，不是新增生产实现或维护测试。
+Phase 6.1 仅在临时、显式隔离 profile 中实现 Production Store Bootstrap。继续 JSON、Phase 2 transaction/atomic persistence、Phase 5B Session 与当前 native cover schema；不做 Electron discovery/import、snapshot/migration state machine、credential/localStorage 迁移、activation、mutation latch、Electron rollback/协调或 SQLite。
 
-设计新增的正式profile、version gate、snapshot/migration、activation、mutation latch、preference helper/legacy source guard、credential envelope均待6.1实施。当前应用仍保持synthetic-only；不改环境变量就运行应用仍不是本阶段允许的正式资料操作。6.2需额外授权后才可盘点/复制正式源；运行原-context source guard、处理credential与最终cutover必须在各自明确权限范围。只取得read-only/copy权限不得激活。没有复制正式资料、迁移或替换正式程序；本轮文档checkpoint之后停止。
+Phase 6.2 改为 **Production Readiness / First Real Profile**；必须以后另获用户明确授权才创建并验收第一份真实 production profile。本阶段禁止访问旧正式 `%APPDATA%\KunGalManager`、真实 native production profile 与正式凭据。现有 reader/import 仅属 optional explicit import。旧章节的 migrated-store/cutover 前提由本节物理隔离与全新 store 方案取代。
 
 ## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
 
