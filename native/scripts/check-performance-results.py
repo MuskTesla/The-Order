@@ -20,6 +20,8 @@ def main():
     parser.add_argument("--media", type=Path, required=True)
     parser.add_argument("--ui", type=Path, required=True)
     parser.add_argument("--soak", type=Path, required=True)
+    parser.add_argument("--ui-soak", type=Path)
+    parser.add_argument("--ui-resources", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--thresholds", type=Path)
     args = parser.parse_args()
@@ -108,7 +110,36 @@ def main():
     if any(r["workload"]["uiTickGapMaximum"] > 1000 for r in ui_summary):
         observations.append("Actual diagnostics UI timer saw a gap over 1 second; retain raw samples and correlate GC/loading.")
 
-    report = dict(status="PASS" if all(c["passed"] for c in checks) else "FAILED", checks=checks, failures=[c for c in checks if not c["passed"]], ui=ui_summary, media=media_summary, soak=dict(durationSeconds=soak["durationSeconds"], rounds=soak["rounds"], operations=soak["operations"], batches=batches), observations=observations)
+    sustained_ui = None
+    if args.ui_soak:
+        run = load(args.ui_soak / "ui-result.json")
+        check("ui-soak/duration-minimum", 7200, run["durationSeconds"])
+        check("ui-soak/completed", int(run["status"] != "UI_WORKLOAD_COMPLETED"), 0)
+        ui_samples = run["samples"]
+        mature_ui = [s for s in ui_samples if s["elapsedMs"] >= 900000]
+        first, last = mature_ui[:len(mature_ui)//4], mature_ui[-len(mature_ui)//4:]
+        for field, allowance in [("handles", 64), ("privateBytes", 256*1024**2)]:
+            check("ui-soak/mature-growth/" + field, median([s[field] for s in last]) - median([s[field] for s in first]), allowance)
+        for s in ui_samples:
+            for field, limit in [("CachedBytes",64*1024**2),("CachedItems",512),("MaximumActiveDecodes",2),("PendingOperations",256),("PendingWaiters",256),("Errors",0)]:
+                check(f"ui-soak/{s['round']}/{field}", s["images"][field], limit)
+            check(f"ui-soak/{s['round']}/surfaces", s["imageSurfaces"], 256)
+            check(f"ui-soak/{s['round']}/realized", s["viewport"]["realizedContainerCount"], 256)
+        gaps = sorted(run["uiTickGapsMs"])
+        sustained_ui = dict(durationSeconds=run["durationSeconds"], rounds=run["rounds"], peakWorkingSet=max(s["workingSet"] for s in ui_samples), peakPrivate=max(s["privateBytes"] for s in ui_samples), maturePrivateMedian=median(s["privateBytes"] for s in mature_ui), firstMatureHandles=median(s["handles"] for s in first), lastMatureHandles=median(s["handles"] for s in last), peakSurfaces=max(s["imageSurfaces"] for s in ui_samples), uiTickGapMedian=median(gaps), uiTickGapP95=gaps[max(0,int(len(gaps)*.95)-1)], uiTickGapMaximum=max(gaps))
+        if max(gaps) > 1000:
+            observations.append("Sustained XAML diagnostics timer saw a gap over 1 second; retain raw timing and correlate workload/GC.")
+    os_ui = None
+    if args.ui_resources:
+        run = load(args.ui_resources / "result.json")
+        check("ui-os/process-exited", int(run["status"] != "PROCESS_EXITED"), 0)
+        os_samples = run["samples"]
+        # The watcher starts after initial XAML materialization.
+        first, last = os_samples[:len(os_samples)//4], os_samples[-len(os_samples)//4:]
+        for field, allowance in [("user",4),("gdi",4)]:
+            check("ui-os/mature-growth/" + field, median(s[field] for s in last) - median(s[field] for s in first), allowance)
+        os_ui = {field:dict(min=min(s[field] for s in os_samples),median=median(s[field] for s in os_samples),max=max(s[field] for s in os_samples)) for field in ["handles","threads","user","gdi","privateBytes","workingSet"]}
+    report = dict(status="PASS" if all(c["passed"] for c in checks) else "FAILED", checks=checks, failures=[c for c in checks if not c["passed"]], ui=ui_summary, media=media_summary, soak=dict(durationSeconds=soak["durationSeconds"], rounds=soak["rounds"], operations=soak["operations"], batches=batches), sustainedUi=sustained_ui, uiOsResources=os_ui, observations=observations)
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "performance-summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     if not args.thresholds:

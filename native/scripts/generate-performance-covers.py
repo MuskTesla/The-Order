@@ -1,5 +1,6 @@
 """Deterministic, original synthetic media. Outputs only to the explicit artifact directory."""
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -37,7 +38,8 @@ for i in range(a.count):
 edge = root / 'edge'
 edge.mkdir(exist_ok=True)
 (edge / 'corrupt.png').write_bytes(b'invalid synthetic image')
-(edge / 'truncated.png').write_bytes((root / items[0]['file']).read_bytes()[:64])
+# Stable repro from our original PNG fixture; WIC tolerates its incomplete IDAT.
+(edge / 'truncated.png').write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAWAAAAH4CAIAAAD7NqA1AAATFUlEQVR4nO3de5CdZX3A8feEk6BACNdQDdGiRA=='))
 (edge / 'invalid.webp').write_bytes(b'RIFF\x04\x00\x00\x00WEBP')
 for name, size in [('small.png', (2, 3)), ('aspect.png', (1500, 40)), ('moderate.png', (2400, 3600)), ('封面-日本語.png', (320, 480))]:
     Image.new('RGB', size, (33, 66, 99)).save(edge / name)
@@ -48,5 +50,6 @@ long_dir = edge / ('long-' + 'a' * 90) / ('b' * 90)
 long_dir.mkdir(parents=True, exist_ok=True)
 Image.new('RGB', (32, 48), (2, 3, 4)).save(long_dir / 'long-cover.png')
 assert len({v['sha256'] for v in items}) == a.count
-(root / 'dataset.json').write_text(json.dumps(dict(seed=a.seed, count=a.count, generator='Pillow 12.3.0 original synthetic bands/shapes', formats=['jpeg', 'png', 'webp'], items=items), indent=2), encoding='utf-8')
+edges = [dict(file=f.relative_to(root).as_posix(), bytes=f.stat().st_size, sha256=hashlib.sha256(f.read_bytes()).hexdigest()) for f in sorted(edge.rglob('*')) if f.is_file()]
+(root / 'dataset.json').write_text(json.dumps(dict(seed=a.seed, count=a.count, generator='Pillow 12.3.0 original synthetic bands/shapes', generatorSha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), formats=['jpeg', 'png', 'webp'], items=items, edges=edges), indent=2), encoding='utf-8')
 print(f'complete: {a.count} unique covers, {sum(v["bytes"] for v in items)} bytes', flush=True)

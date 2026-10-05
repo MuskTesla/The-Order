@@ -16,8 +16,10 @@ public sealed class WindowsRasterCodec : IRasterCodec
         // Static PNG/JPEG/WebP only. WIC inspects dimensions before any pixel allocation.
         var bytes = encoded.ToArray();
         bool webp = bytes.Length >= 20 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8);
+        bool png = bytes.Length >= 33 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
         if (webp) ValidateStaticWebp(bytes);
-        else if (!(bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[^2] == 0xff && bytes[^1] == 0xd9) && !(bytes.Length >= 33 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })))
+        else if (png) ValidatePngContainer(bytes);
+        else if (!(bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[^2] == 0xff && bytes[^1] == 0xd9))
             throw new InvalidDataException("图片不是有效的 PNG/JPEG/WebP。");
         using var stream = new InMemoryRandomAccessStream(); await stream.WriteAsync(bytes.AsBuffer()).AsTask(cancellation).ConfigureAwait(false); stream.Seek(0);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellation).ConfigureAwait(false);
@@ -30,6 +32,29 @@ public sealed class WindowsRasterCodec : IRasterCodec
         if (bitmap.PixelWidth > edge || bitmap.PixelHeight > edge) throw new InvalidDataException("解码后的图片超过目标尺寸。");
         var pixels = new byte[checked(bitmap.PixelWidth * bitmap.PixelHeight * 4)]; bitmap.CopyToBuffer(pixels.AsBuffer());
         return new(bitmap.PixelWidth, bitmap.PixelHeight, pixels);
+    }
+    private static void ValidatePngContainer(ReadOnlySpan<byte> bytes)
+    {
+        // WIC can return a blank bitmap for an incomplete IDAT. Require the complete
+        // bounded container before decoding/normalizing a personal photo; WIC still
+        // validates compression/pixels. This is not a replacement PNG decoder.
+        bool data = false;
+        for (int offset = 8; offset < bytes.Length;)
+        {
+            if (bytes.Length - offset < 12) throw new InvalidDataException("PNG 块头不完整。");
+            uint length = BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(offset, 4));
+            if ((ulong)length + 12 > (ulong)(bytes.Length - offset)) throw new InvalidDataException("PNG 块长度无效。");
+            var kind = bytes.Slice(offset + 4, 4);
+            if (offset == 8 && (!kind.SequenceEqual("IHDR"u8) || length != 13)) throw new InvalidDataException("PNG 头无效。");
+            if (kind.SequenceEqual("IDAT"u8) && length > 0) data = true;
+            if (kind.SequenceEqual("IEND"u8))
+            {
+                if (length != 0 || !data || offset + 12 != bytes.Length) throw new InvalidDataException("PNG 结尾无效。");
+                return;
+            }
+            offset += 12 + (int)length;
+        }
+        throw new InvalidDataException("PNG 容器不完整。");
     }
     private static void ValidateStaticWebp(ReadOnlySpan<byte> bytes)
     {

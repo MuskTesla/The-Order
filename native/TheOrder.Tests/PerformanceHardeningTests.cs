@@ -100,6 +100,15 @@ public sealed class PerformanceHardeningTests
         public Task<RasterPixels?> ReadAsync(string key, CancellationToken cancellation) { Reads++; return Task.FromException<RasterPixels?>(Failure()); }
         public Task WriteAsync(string key, RasterPixels pixels, long maximumBytes, CancellationToken cancellation) { Writes++; return Task.FromException(Failure()); }
     }
+    [Fact]
+    public async Task WicToleratedHeaderOnlyPngIsRejectedBeforeItCanBecomeAPersonalCover()
+    {
+        // First 64 bytes of our original Pillow fixture: WIC accepts this incomplete IDAT.
+        var bytes = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAWAAAAH4CAIAAAD7NqA1AAATFUlEQVR4nO3de5CdZX3A8feEk6BACNdQDdGiRA==");
+        await Assert.ThrowsAsync<InvalidDataException>(() => new WindowsRasterCodec().DecodeAsync(bytes, 256, default));
+        using var profile = new TransactionProfile(); string file = Path.Combine(profile.Root, "truncated.png"); await File.WriteAllBytesAsync(file, bytes);
+        await Assert.ThrowsAsync<InvalidDataException>(() => new WindowsRasterCodec().NormalizePhotoAsync(file, default));
+    }
     private sealed class Source : IImageSourceProvider { public Task<byte[]?> ReadAsync(string key, CancellationToken cancellation) => Task.FromResult<byte[]?>([1]); }
     private sealed class NoDisk : IThumbnailDiskCache
     { public Task<RasterPixels?> ReadAsync(string key, CancellationToken cancellation) => Task.FromResult<RasterPixels?>(null); public Task WriteAsync(string key, RasterPixels pixels, long maximumBytes, CancellationToken cancellation) => Task.CompletedTask; }

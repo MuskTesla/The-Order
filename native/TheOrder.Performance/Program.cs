@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -31,7 +32,8 @@ public static class Program
         if (Environment.GetEnvironmentVariable("THE_ORDER_PERF_SEED") is { } configuredSeed) seed = int.Parse(configuredSeed);
         if (args[0] != "soak" && args.Length > 3) libraryCounts = Counts(args[3], 10000);
         if (args.Length > 4) historyCounts = Counts(args[4], 50000);
-        Write(Path.Combine(output, "environment.json"), new { machine = Environment.MachineName, os = RuntimeInformation.OSDescription, framework = RuntimeInformation.FrameworkDescription, cpuCount = Environment.ProcessorCount, processArchitecture = RuntimeInformation.ProcessArchitecture.ToString(), source = SourceIdentity(), productionAccess = false, seed, libraryCounts, historyCounts });
+        var binary = typeof(Program).Assembly;
+        Write(Path.Combine(output, "environment.json"), new { machine = Environment.MachineName, os = RuntimeInformation.OSDescription, framework = RuntimeInformation.FrameworkDescription, cpuCount = Environment.ProcessorCount, processArchitecture = RuntimeInformation.ProcessArchitecture.ToString(), source = new { binaryInformationalVersion = binary.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, mvid = binary.ManifestModule.ModuleVersionId, sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(binary.Location))), runtimeRepositoryHead = SourceIdentity() }, productionAccess = false, seed, libraryCounts, historyCounts });
         try
         {
             if (args[0] == "soak") await Soak(output, covers, args.Length > 3 ? double.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 120);
@@ -83,7 +85,7 @@ public static class Program
             Need(library.Snapshot.Entries.Length == count, "Existing fixture count mismatch");
         }
         owner.CheckpointBackups();
-        var identity = new { seed, count, history, payloadBytes = bytes.Length, sha256 = Convert.ToHexString(SHA256.HashData(bytes)), root, owner.Manifest.ProfileId, owner.Manifest.StoreId, coverDataset = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(covers, "dataset.json")))) };
+        var identity = new { seed, count, history, payloadBytes = bytes.Length, sourcePayloadSha256 = Convert.ToHexString(SHA256.HashData(bytes)), initialEnvelopeSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, "library.json")))), root, owner.Manifest.ProfileId, owner.Manifest.StoreId, coverDataset = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(covers, "dataset.json")))) };
         Write(Path.Combine(root, "performance-dataset.json"), identity); return identity;
     }
     public static async Task Benchmarks(string output, string covers)
