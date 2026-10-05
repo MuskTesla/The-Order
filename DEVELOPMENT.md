@@ -1,20 +1,28 @@
 # 开发与维护
 
-## WinUI Phase 6.2：Production Readiness（进行中，尚未通过独立 Gate）
+## WinUI Phase 6.2：PRODUCTION USE PAUSED（环境阻断）
 
 Phase 6.1 checkpoint `ba37df62dbda23020dd1b85684b42953f999b430` 已独立 **PASS FOR PHASE 6.2**，证据 `.artifacts/native-phase6-1-provenance-regate/gate-audit.json`。该 Gate 实跑 Release 1724/1/0；新增 OBS6 为真实 handoff fixture 一次 RunningLimited，单独复跑通过，未建立与 profile provenance 的因果关系；原五项 observation 保留。
 
-本轮用户首次明确授权 `%LOCALAPPDATA%\TheOrder\Profiles\Production` 的 fresh bootstrap 与最小真实验收，包括外部 safety snapshots 和一次受控 restore drill。Electron `%APPDATA%\KunGalManager` 仍完全禁止 enumerate/read/copy/import，旧资料不是回滚目标。初始 preflight 确认 Production 不存在，证据 `.artifacts/native-phase6-2/preflight.json`。正式数据一经创建不得 reset；异常先停用并保留快照。本阶段完成还需独立 Gate，不能提前进入 Phase 7 或批量日用。
+本轮用户首次明确授权 `%LOCALAPPDATA%\TheOrder\Profiles\Production` 的 fresh bootstrap 与最小真实验收，包括外部 safety snapshots 和一次受控 restore drill。Electron `%APPDATA%\KunGalManager` 仍完全禁止 enumerate/read/copy/import，旧资料不是回滚目标。初始 preflight 在当前宿主视图返回 absent，证据 `.artifacts/native-phase6-2/preflight.json`；随后发现 package 文件虚拟化，因此它不能证明未虚拟化的实际 Production root 不存在。正式数据一经创建不得 reset；异常先停用并保留快照。本阶段完成还需独立 Gate，不能提前进入 Phase 7 或批量日用。
 
 启动前发现 6.1 刻意保留的 authorization API 未连到 WinUI/runner。6.2 最小接入 `--allow-production-profile`：仅显式 argv 设置当前 request 的 authorization；不能用于 fixture 或非 Production kind，默认启动仍拒绝正式 Production，授权不跨进程/请求自动保留。`NativeProfilePaths.Select` 只传递能力，既有 `ProfilePathGuard` 未修改；正式根的子目录/父目录及 Electron 仍不能由该授权放行。设置页仅纠正“隔离开发”旧文案，不改变数据/密钥模型。
 
-已获本轮授权的正式启动方式（首次使用前须完成候选绑定与 preflight）：
+显式启动参数形式如下；**当前已暂停，不能从这个 packaged 宿主继续重试正式启动**。后续须先证明真实根的只读 preflight 与启动均不经过虚拟化：
 
 ```powershell
 & ./native/scripts/native.ps1 -Action Run -Published -PublishedPath '<当前 checkpoint-bound candidate 的绝对 EXE 路径>' -ProfileKind Production -AllowProductionProfile
 ```
 
 未传 `-AllowProductionProfile` 时，runner 仍要求显式隔离 `-DataDirectory`。不得把此文档或启动参数当成未来真实资料操作的独立授权。候选、receipt、自动化与真实验收证据放在 ignored `.artifacts/native-phase6-2/`；真实验收结果尚待完成，不能把本节设计与接入说明当作验收通过。
+
+本轮代码 checkpoint `7a3a739a3a758216419e8d5c0273a74e8e15561c`；locked restore、Debug/Release solution build 均成功（0 warnings/errors），全量各 **1734/0/0**，Debug targeted **648/0/0**、暂停后最终 Release targeted **648/0/0**；9 项新增授权测试，旧测试期望未改。发布目录 `.artifacts/native-phase6-2/publish-final/win-x64`，receipt 绑定 EXE、WinUI MVID、Application/Domain/Infrastructure/Platform.Windows/Presentation 程序集。独立辅助工具只绑定这份发布程序集，不是另一个生产应用。
+
+同一候选在隔离 Production-kind 目录正常显示空库并退出。随后名义正式路径启动：13 个空 bootstrap 文件被创建，manifest 为 Ready，但读取真实文件身份时抛 `DataIsolationException`，未进入可用 UI。只读 handle 检查确认请求 `C:\Users\MUSK\AppData\Local\TheOrder\Profiles\Production` 的文件实际位于 `C:\Users\MUSK\AppData\Local\Packages\OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\TheOrder\Profiles\Production`，每个文件 links=1；证据 `production-read-only-file-identity.json`。此为 packaged 宿主的 LocalAppData 虚拟化环境阻断，精确物理路径保护按预期拒绝，不能因此放宽保护，也不能声称真正 Production bootstrap 成功。
+
+已正常关闭失败进程并停止写入；外部 `safety/first-bootstrap-paused` 完整保存 13 个文件，`production-paused-snapshot.json` 记录来源、时间、checkpoint、逐文件哈希。此快照是失败现场保护，**不是成功的 clean Production 验收快照**。后续只读比较全部哈希不变。名义 root 与虚拟化物理 root 都不得为测试方便删除、重建、移动或改变身份。ProfileId `72bc5132-4033-033b-3abe-c528c67e3d7a`，StoreId `ed629dd4-3207-8e47-3c0e-d71d2f212efd`，Production/format 1；空 library，无 install/session/count/playtime/cover，默认 preferences，credential unconfigured。未读取 Electron 正式资料或凭据。
+
+真实 library/cwd/cover/preferences 保存与重开、direct game、Game-B handoff、pause/tray、manager restart recovery、第二实例、正常 populated backup、一次 restore drill、恢复后写入、实际 Dev/Test/Prod 隔离及资源稳定性均**未验证**；不以自动化或隔离 smoke 代替。没有真实游戏启动、剧情/存档操作或 host sleep/reboot。当前结论 **PRODUCTION USE PAUSED**；环境 BLOCKER 1，尚无新确认产品 MAJOR/MINOR，历史六项 observations 保留。数据保留但尚不能接受为未来 authoritative profile，未 READY FOR PHASE 6.2 INDEPENDENT GATE。完整状态见 `production-readiness-summary.json`；停止后保存文档和证据，未推送、发布正式版或进入 Phase 7。
 
 ## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
 

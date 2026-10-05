@@ -1,11 +1,13 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 6.2：Production Readiness（进行中）
+## WinUI Phase 6.2：PRODUCTION USE PAUSED（环境阻断，未完成验收）
 
-- Phase 6.1 已在 `ba37df62dbda23020dd1b85684b42953f999b430` 独立 **PASS FOR PHASE 6.2**，完整证据 `.artifacts/native-phase6-1-provenance-regate/gate-audit.json`；BLOCKER/MAJOR/MINOR 0，OBSERVATION 6。Gate 实跑 Release 1724/1/0，handoff 单次 RunningLimited 的定向复跑通过，原始失败不抹去。
-- 当前用户明确授权首次真实 native Production bootstrap、最小真实数据和受控恢复验收；仍禁止任何正式 Electron profile 访问/导入，禁止 Phase 7、批量日用、发布/推送。初始 Production preflight absent。正式 profile 创建后不得重建/reset；保留 safety snapshots，完成后等待独立 Gate。
-- 先补齐当前候选缺少的显式入口：`--allow-production-profile` / runner `-AllowProductionProfile -ProfileKind Production`，默认仍拒绝正式根；不修改 guard/schema/Session/accounting，设置页只纠正旧开发资料措辞。候选需新 checkpoint、完整 Debug/Release 与 publish 绑定后才能接触正式数据。
-- 本节记录进行中工作，真实 Production 验收尚未完成；启动、边界和后续证据见 [DEVELOPMENT](../../DEVELOPMENT.md) 与 `.artifacts/native-phase6-2/`。
+- 基线 `ba37df62dbda23020dd1b85684b42953f999b430`、`codex/winui-phase5` 和干净工作区已核对。Phase 6.1 independent Gate 的 PASS 与六项 observations 保留，不把历史 handoff 波动称为已解决。
+- 本轮明确授权最小真实 Production 验收，接入显式 `--allow-production-profile` / runner 开关，代码 checkpoint `7a3a739a3a758216419e8d5c0273a74e8e15561c`。默认拒绝正式根、fixture/其他 kind 不接受授权；guard、schema、Session/accounting 均未修改。新增 9 项授权回归，Debug/Release 全量各 1734/0/0；candidate 和程序集哈希/MVID 见 `.artifacts/native-phase6-2/candidate-identity.json`。
+- 隔离目录中的同一 published candidate 可正常进入空书架并退出。首次名义 Production 启动产生空 bootstrap 文件后，被 `IsolatedLibrarySource.OpenChecked` 的精确物理路径检查拒绝，界面显示 `DataIsolationException`。只读实测所有 13 个文件的 handle final path 位于 `C:\Users\MUSK\AppData\Local\Packages\OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\TheOrder\Profiles\Production`，而请求路径是 `C:\Users\MUSK\AppData\Local\TheOrder\Profiles\Production`，links=1。当前 packaged Codex 宿主发生文件虚拟化，不能放宽 guard 或将此结果算作真实 Production PASS。
+- 初始 absent 结论仅属于当前虚拟化视图，**未证明未虚拟化的实际 Production root 不存在**。失败进程已正常关闭；所有文件及 `.bak` 原样保留，并有外部 `safety/first-bootstrap-paused` 快照和哈希回执，后续只读检查确认未变化。没有添加真实数据、启动游戏、输入凭据、恢复演练、迁移、重建或 reset；Electron root 全程未访问。
+- 暂存 manifest：ProfileId `72bc5132-4033-033b-3abe-c528c67e3d7a`，StoreId `ed629dd4-3207-8e47-3c0e-d71d2f212efd`，Production/format 1；library/install/session/count/total 均 0，credential unconfigured。它是保留的失败现场，尚不能指定为未来 authoritative profile。
+- 自检：**BLOCKER 1（验收环境）/ 新确认产品 MAJOR 0 / MINOR 0 / 历史 OBSERVATION 6**。尚未 READY FOR PHASE 6.2 INDEPENDENT GATE。其余真实验收未做，停止 Production 写入；下一轮需先解决未虚拟化的启动/只读 preflight 边界，再决定是否继续，不能移动此目录冒充恢复。详细边界见 [DEVELOPMENT](../../DEVELOPMENT.md) 和 `.artifacts/native-phase6-2/production-readiness-summary.json`。
 
 ## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
 
