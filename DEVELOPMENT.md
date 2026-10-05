@@ -1,8 +1,8 @@
 # 开发与维护
 
-## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（实施与验收中）
+## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（自检完成，等待独立 Gate）
 
-本轮从 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792` 的干净工作区开始。该基线已通过 5B.1 targeted re-Gate；下方 5B.1 的“等待 re-Gate”属于历史时点。本阶段接入应用生命周期，不进入 Phase 6，不使用正式资料。当前本节记录已实现代码和分层验证，**尚未宣称 5B.2 验收完成或独立 Gate 通过**。
+本轮从 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792` 的干净工作区开始。该基线已通过 5B.1 targeted re-Gate；下方 5B.1 的“等待 re-Gate”属于历史时点。本阶段接入应用生命周期，不进入 Phase 6，不使用正式资料。**READY FOR PHASE 5B.2 INDEPENDENT GATE**：实现与本轮自检已完成，不代替独立 Gate。生产源码 checkpoint 为 `a11704b902d0c643385efa2209713f3f7fff8c01`；后续最终验收文档 checkpoint 由本机 `checkpoint-receipt.json` 绑定，二进制仍明确对应 a11704b，没有冒称内嵌文档提交。
 
 ### 生命周期装配
 
@@ -23,7 +23,7 @@
 
 真实 WinUI 合成链路：首次双进程同时启动只留下 PID 3352，secondary exit 0，activation=1，library hash 未变。启动 fixture PID 26472 只增加一次 count（3→4）；暂停固定 82 秒，Close 后两进程仍活着、窗口隐藏，secondary 唤回同 Session。Explicit Exit 保存 RecoveryPending，游戏存活；双进程重启只恢复一次，原 ID/installation/count/82 秒和暂停意图不变。托盘菜单“恢复计时”由用户操作并确认，随后 UI/JSON 复核为同一 Session 的 unpaused / CurrentProcessOnly。受限状态下隐藏继续从 157 秒累计到 178 秒，未增加次数。未暂停退出为 195 秒 / 1958732436 ticks，离线约 55 秒再启动仍为完全相同 ticks，recovery count 只 +1。模拟托盘初始化失败时点击关闭仍保留窗口、警告与继续计时；fixture 通过正常 stop-file 退出后为 Incomplete / RecoveredProcessEnded / null real exit，累计 243 秒、total=720+243、count=4；用户明确退出入口仍可用。没有伪造 Completed。
 
-资源：真实 WinUI 连续 23 次 secondary exit 0；预热后再 20 次，primary handles **1077→1077**，只有一个窗口/engine。平台测试 30 轮 shell icon/subclass 加入/删除，回调次数精确、移除后不再收到事件，USER/GDI 保持稳定；核心/Windows host 每会话 50 轮 Close/Show 策略，完整数值见 TRX。桌面连接一度超时，恢复后重做了上述链路；早期 PID 16284 的终止没有可归因的退出证据，不纳入成功结论。Windows UI 证据保存在 `windows-ui/` 与 `synthetic-final/`，这些是明确 MVID 的 Debug 自检；最终发布 receipt 与真实游戏 acceptance 仍待完成，不混称最终包证据。
+资源：真实 WinUI 连续 23 次 secondary exit 0；预热后再 20 次，primary handles **1077→1077**，只有一个窗口/engine。平台测试 30 轮 shell icon/subclass 加入/删除，回调次数精确、移除后不再收到事件，USER/GDI 保持稳定；核心/Windows host 每会话 50 轮 Close/Show 策略，完整数值见 TRX。桌面连接一度超时，恢复后重做了上述链路；早期 PID 16284 的终止没有可归因的退出证据，不纳入成功结论。Windows UI 证据保存在 `windows-ui/` 与 `synthetic-final/`，共 8 组 manifest，是 MVID `84a6158e-515a-4af5-8e84-2e1cb48f536e` 的 Debug 自检；下面最终包的 9 组 `published-ui/` manifest 单独绑定，不混称同一 build。UI Automation 缓存过旧的捕获被证据工具拒绝，刷新焦点后重新读取，不降低 freshness 校验。
 
 `native.ps1 -Action Run -Published` **现在必须指定绝对 `-PublishedPath` EXE**，省略即失败，不再暗选旧 Phase 1 包。`check-published-runner.ps1` 同样显式传路径。历史下面的旧调用只描述旧时点，复用时必须补此参数：
 
@@ -31,7 +31,21 @@
 & ./native/scripts/native.ps1 -Action Run -Published -PublishedPath (Join-Path $PWD '.artifacts/native-phase5b2/publish-final/win-x64/TheOrder.WinUI.exe') -DataDirectory (Join-Path $PWD '.artifacts/native-phase5b2/acceptance-profile')
 ```
 
-目录必须事先按隔离 fixture 规则准备；以上不是读取正式资料的授权。最终验收前需以 checkpoint receipt 绑定源码 hash、EXE/DLL hash、MVID、profile、配置和实际证据，不能混用 Debug 中间窗口与最终包截图。
+目录必须事先按隔离 fixture 规则准备；以上不是读取正式资料的授权。最终候选为 `.artifacts/native-phase5b2/publish-final/win-x64/TheOrder.WinUI.exe`，Release / win-x64，隔离 profile 为 `.artifacts/native-phase5b2/acceptance-profile`。发布前工作区干净，`published-identity.json` 记录源码 a11704b、各应用 DLL hash/MVID、profile、配置与验证日志；WinUI MVID **058e7e46-b091-40ab-ad95-3d2682ff50f7**，EXE SHA256 **2C5FBF2E98A9E9EDE80D0DC6F0B522DECF46AB66B90D83FCD2D120220AACE1B9**，WinUI DLL SHA256 **AFF764056B78975940CEEF468F6DF2BD14635DCEDE4A4215E0C4A9F575EC8BE7**。测试 build 内嵌父 SHA 5f57ad8，但受测源码 hash 与 a11704b 相同；发布 build 内嵌 a11704b，分别记录。`final-validation-audit.json` 将原始 TRX 的 counts/times 显式复制成标量，纠正早期 audit 的空数组序列化展示；最终 receipt 再绑定发布、截图、TRX、真实验收和文档提交。
+
+### Published candidate 真实游戏验收（2026-10-05）
+
+只使用已有 Phase 5A 样本 A/B，隔离库从 count/total/history 全零开始，没有复制正式资料或凭据。Game-A（ATRI）启动 **2 次**；Game-B（戦国†恋姫 BRAVE 弐，已核对的 `cs2.exe`）启动 **1 次**。只停留主菜单、暂停/恢复管理器计时、隐藏/唤回管理器、明确退出/重启管理器以及使用游戏正常退出菜单。没有推进剧情、读取存档内容、改补丁/配置、安装更新或强杀游戏。
+
+| 实际链路 | Session / 进程与结果 |
+| --- | --- |
+| A 第一次，正常完整会话与 Tray | Session `1e2b1203-fe1f-4b12-a71b-45d17e72d29a`，PID 41480；暂停约 **55.656 秒**，累计始终 **729608347 ticks / 72 秒**，count=1；恢复后关窗隐藏，游戏存活，同 Session 从 93→118 秒，secondary 退出后窗口恢复。游戏主菜单 EXIT/YES 后 **Completed / ExitConfirmed，164 秒，count=1，history=1**。 |
+| A 第二次，Explicit Exit / recovery | Session `76e97f14-f64f-4e60-b10e-4cc624486345`，PID 45344；manager 35500 正常退出后游戏仍在主菜单，durable **RecoveryPending / ManagerExit，2568789350 ticks**。manager 40652 恢复同 ID / `install-Game-A`，首次 durable 累计仍精确 **2568789350 ticks**，recovery count=1，play count=2，未补约 138 秒离线间隔；UI 明示 **仅观察当前进程**。游戏主菜单正常退出后诚实记录 **Incomplete / RecoveredProcessEnded / null endedAtUtc，312 秒**，A 总计 **476=164+312 秒、2 次、2 条 history**。 |
+| B 唯一一次，handoff 与完整结束 | Session `c1ba40f6-ccee-4483-886b-05601d2e543d`，入口 PID **44140→45024**；handoff **2972.03ms**，主菜单稳定、LaunchScope、count=1。父进程退出未提前终结 Session。游戏“終了”正常退出后 **Completed / ExitConfirmed，45 秒，total=45，count=1，history=1**；真实退出时间与稍后的保存 cutoff 分开，无接续等待补时。 |
+
+重启 A 时一次人工命令错用了 Electron 的环境变量；native 入口以 **DataIsolationException** 在 writer/engine 之前拒绝，未读取正式资料，原 RecoveryPending 未变。关闭提示后使用正确 `THE_ORDER_NATIVE_DATA_DIR` 重启取得上述成功证据；拒绝记录单独保留为 `game-a-second-restart-rejected-missing-native-profile.json`，不当作 recovery 成功。全部真实游戏和候选进程已正常退出，`real-acceptance-audit.json` 记录清理结果和会话汇总；A/B 目录前后文件数量、大小、mtime 无变化，EXE hash 不变。这是目录元数据与 EXE hash 核验，不是全文件内容或内核 IO 审计。
+
+Game-C **本轮未启动**：未修改 cwd/launch payload，沿用下方 Phase 5A.1 的历史 cwd/主菜单/正常退出证据；不冒称最终 5B.2 实测。未访问 `%APPDATA%/KunGalManager`、没有凭据迁移、没有正式 cutover、没有推送。自检 **BLOCKER 0 / MAJOR 0 / MINOR 0**；保留 3 项观察边界：真实 host sleep/hibernate/logoff/reboot 未执行；终态 Stop Observing 的 occupancy 仍仅限 engine 生命周期；资源是短轮次本机证据，托盘 Resume 为用户操作加独立读回，非自动点击或长期/跨机器保证。Phase 5B.0/5B.1 产品及 accounting/identity 契约没有偏离。
 
 后续真实 host 人工验收（本轮不执行 sleep/hibernate/reboot）：用同一候选和隔离 profile 启动一个合成 fixture，记录 SessionId/count/累计；分别由用户触发一次 sleep/resume、hibernate/resume、logoff 或 reboot。恢复后核对没有睡眠/离线补时、无新增 count，跨 boot 按原恢复规则失效而不接管。对比 main JSON 的真实 lifecycle/reason 与 UI，保留 OS 时间和候选身份。异常关机只以实际落盘 checkpoint 为准。
 

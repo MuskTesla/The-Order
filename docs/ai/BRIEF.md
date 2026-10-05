@@ -1,12 +1,14 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（实施与验收中）
+## WinUI Phase 5B.2：App Lifecycle / Tray / Single Instance（自检完成，等待独立 Gate）
 
 - 开始于 `codex/winui-phase5` / `5f57ad8e0a071c2f3c4aed673f546fcf9c2ab792`，核对干净工作区。该基线已通过 5B.1 targeted re-Gate；本轮授权正式接入 5B.2，尚不代表 5B.2 独立 Gate 通过。
 - 已实现 AppInstance 在 writer/engine 前分流、application-owned `AppSessionHost`、恢复完成后开放操作、同 writer 刷新、关闭到托盘、显示/暂停/恢复/明确退出、保存失败取消退出及 bounded shutdown/logoff。窗口隐藏不 dispose engine；Explicit Exit 使用 RecoveryPending，不使用 Stop Observing；重启沿用既有身份恢复并诚实显示 CurrentProcessOnly。
 - Session UI 直接读取已确认 accounting，不增加全局 stopwatch。Paused、Limited、Unknown、Incomplete 和真实 Completed 分开；未改核心计次、awake 时间、5A facts、Phase 2 transaction 或 recovered terminal occupancy 的当前进程边界。新增正常 UI 不暴露普通“停止观察”。
-- 新增 `AppLifecycleTests` / `AppLifecycleWindowsTests` 共 28 项，完整 Debug/Release 各 **1256/0/0**、原 1228 项保留，两配置 build 0 warnings/errors、locked restore、Electron 665/0/0、artifact 32/0/0 通过。真实 WinUI 已验证 simultaneous startup、暂停关窗/唤回、Explicit Exit/no-kill、并发重启只恢复一次、Limited 继续、约 55 秒离线不补时及 Tray failure 可访问；真实托盘 Resume 菜单由用户操作并确认，随后运行时/JSON 复核。完整分层证据见 [DEVELOPMENT](../../DEVELOPMENT.md)。最终包与真实游戏验收仍待完成。
-- Published 入口要求显式绝对 `-PublishedPath`；证据目录 `.artifacts/native-phase5b2/`，最终 receipt 尚待完成。未启动真实游戏，未操作正式资料；真实 host sleep/hibernate/reboot 不在本轮执行授权内。
+- 新增 `AppLifecycleTests` / `AppLifecycleWindowsTests` 共 28 项，完整 Debug/Release 各 **1256/0/0**、原 1228 项保留，两配置 build 0 warnings/errors、locked restore、Electron 665/0/0、artifact 32/0/0 通过。真实 WinUI 已验证 simultaneous startup、暂停关窗/唤回、Explicit Exit/no-kill、并发重启只恢复一次、Limited 继续、约 55 秒离线不补时及 Tray failure 可访问；真实托盘 Resume 菜单由用户操作并确认，随后运行时/JSON 复核。43 次 secondary 激活全部退出，预热后 20 次 handles 1077→1077；Windows shell icon/subclass 30 轮、Close/Show 策略 50 轮通过。
+- 发布源码 checkpoint **a11704b902d0c643385efa2209713f3f7fff8c01**；唯一候选 `.artifacts/native-phase5b2/publish-final/win-x64`，Release WinUI MVID **058e7e46-b091-40ab-ad95-3d2682ff50f7**，使用 `acceptance-profile`。`published-identity.json` 与最终 `checkpoint-receipt.json` 绑定源码/二进制/验证，Published 入口要求显式绝对 `-PublishedPath`。8 组 Debug Windows UI 与 9 组最终包 UI manifest 分开，最终文档提交不冒称二进制内嵌 SHA。
+- 本轮真实 Game-A **2 次**：第一次暂停 55.656 秒累计 ticks 不变，关窗同 Session 继续，正常退出 Completed 164 秒；第二次 Explicit Exit 游戏存活，约 138 秒离线后同 Session/install/count 恢复，ticks 精确不变且 CurrentProcessOnly，随后正常退出为 Incomplete 312 秒，A 总计 476 秒/2 次/2 条记录。Game-B **1 次**：44140→45024 handoff，正常退出 Completed 45 秒/1 次/1 条。仅主菜单与退出；全部验收进程正常退出，A/B 目录元数据及 EXE hash 不变。一次缺少 native profile 参数的启动被隔离保护拒绝，成功恢复证据另列。Game-C 未重跑，旧 cwd 证据明确标为历史。
+- **READY FOR PHASE 5B.2 INDEPENDENT GATE**。自检 BLOCKER 0 / MAJOR 0 / MINOR 0，OBSERVATION 3：真实 host 生命周期待人工验收；终态 occupancy 当前 engine 生命周期边界不变；短轮次本机资源与用户托盘操作证据不代表长期/跨机器保证。未改 5B.0/5B.1 核心规范，未访问正式资料、未推送；完成最终 checkpoint 后暂停，不进入 Phase 6。完整分层证据、发布 hash 和后续人工步骤见 [DEVELOPMENT](../../DEVELOPMENT.md)。
 
 ## WinUI Phase 5B.1：Recovery Occupancy Remediation（2026-10-05）
 
