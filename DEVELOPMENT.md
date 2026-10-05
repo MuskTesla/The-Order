@@ -1,5 +1,41 @@
 # 开发与维护
 
+## WinUI Phase 5B.1：Recovery Occupancy Remediation（2026-10-05）
+
+独立 Gate 在 `3cb1984d2bf2e4186b6fc95aca36f436d72f2b80` 实际复现：recovery 后 Stop Observing 终结 Session/释放 observer，launch admission 因没有 nonterminal Session 而允许第二次 owned launch，但原游戏仍活着。普通未 recovery 路径已有 5A reservation，行为正确。本节取代下方历史实现自检的当前状态；整改不重新实施 5B.1，也不进入 5B.2。
+
+### Occupancy 与 history 分离
+
+唯一生产修改是 `native/TheOrder.Application/SessionEngine.cs`。恢复事务成功后保留已验证的完整 `SessionRecoveryIdentity` 为独立内存记录；不依赖 `Runtime.Native.IsTerminal`、observer 或 JSON 中 token 是否仍存在。复用原 identity 和 installation binding，不引入只看 PID 的弱身份。Stop Observing 原行为保持：Incomplete、无真实 exit 时间、无后续 timing、observer 释放、游戏继续运行。保存失败重试、checkpoint、普通编辑乃至终态条目移除均不能隐式释放 occupancy。
+
+每次后续 LaunchAsync 在既有 `launching` 保护中先做一次有限查询：临时 Attach 核验完整进程身份，再核验原安装及 folder/exe/cwd 身份。Active 返回 AlreadyRunning；查询失败、身份无法确认、安装变化或不可访问均 Unknown/AlreadyRunning。Attach 无法建立时只接受原 5A `RevalidateExternal` 的 Inactive 证明（进程不存在、已退出或 creation generation 不同）；该接口仅按 generation 得到 Active 不足以替代完整 identity 验证。相同 PID 的另一 generation 可以释放原 occupancy，image/file 差异本身不能作为退出证明。
+
+明确 Inactive 时，在同一启动 task 中清除记录后调用原 5A launch admission；第二个并发请求得到 AlreadyLaunching，后续请求仍受原 single-owned 规则保护。被阻止的请求不新增进程、Session、次数、时长或第二条 history。无 kill、无伪造 ExitConfirmed、无重新打开 terminal Session。普通路径的 5A service/reservation 完全未改。
+
+记录由 SessionEngine 拥有；每次 Attach handle 局部 `using`，fallback 使用既有临时 handle，无新增 timer/worker/cancellation source/长期 handle。Active/Unknown 可重复查询；Inactive 清除，Dispose 等待当前 launch 与队列清理后清除。此记录只保证当前 engine 生命周期的占用；terminal 后重新启动管理器不新增恢复资格，跨管理器的 durable occupancy 留在既有恢复/后续宿主边界内。没有扩展 v1 JSON、Phase 2 commit 或 5A Process Fact contract，没有改 accounting。
+
+### 回归与证据
+
+新增 `RecoveredOccupancyTests.cs` 和 `RecoveredOccupancyWindowsTests.cs`：Active/Unknown、Attach/Query/fallback 查询异常、image/file/installation 不匹配、明确退出与 PID reuse、事务失败重试及终态资料编辑、三个并发分支、取消/cleanup、普通 5A 对照、连续 Active/Unknown 复核、真实 Windows 无 kill/占用/退出后只创建一次及 handle 稳定性。原测试期望保持不变。确定性替身的 generation fallback 与生产 Windows 接口保持一致，不能把任意 image 差异误当退出；最初测试替身不一致的失败日志保留。
+
+复验（独立合成 profile；不访问正式资料或真实游戏）：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Debug --filter 'FullyQualifiedName~RecoveredOccupancy|FullyQualifiedName~Session'
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' build native/TheOrder.slnx -c Debug --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Debug --no-build --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' build native/TheOrder.slnx -c Release --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-build --no-restore
+```
+
+日志、TRX、原 Gate probe 复验与最终 audit 放在 `.artifacts/native-phase5b1-remediation/`。不要同时运行同配置 build 和 tests，以免 Windows 锁定测试依赖；首次 Debug build 的复制重试警告保留，待测试退出后单独构建。Electron 源码、共享数据类型、codec 和兼容层均未改，本轮不重复 Electron regression，下方 665 项结果是原实现 checkpoint 的历史证据。
+
+最终结果：新增 **19** 项；Session/recovery targeted **128 passed / 0 failed / 0 skipped**；Debug/Release 完整 native suite 各 **1228/0/0**，逐名称确认原 **1209** 项全部保留；两配置最终 solution build 各 **0 warnings / 0 errors**。真实 Windows fixture 在 A 存活且停止观察后连续 23 次拒绝 B，history bytes 不变；A 正常退出后 B 创建/计次一次。占用复核 handle 数 Debug **727→727**、Release **677→677**；确定性 Active/Unknown 交替 30 轮及各异常分支 20 轮后 temporary handles=0，最终 Inactive 与 engine cleanup 都通过。既有 5A 10 轮资源及 Session power/clock 回归也均通过，具体数组见 audit/TRX。
+
+未修改原 Gate probe 源码，以当前 Debug Application DLL 重新构建后复验：A PID **20360** 仍存活，B **AlreadyRunning**、PID=null、sessions=0、PlayCount 保持 **5**；日志 `original-gate-windows-probe.log`，audit 另核对 probe 与测试 Application DLL SHA256 相同。该临时 probe 的既有 CA1416 平台标注警告与 solution build 分开报告。
+
+**READY FOR PHASE 5B.1 TARGETED RE-GATE**。本轮自检未发现新的 BLOCKER/MAJOR/MINOR；独立 Gate 结论待复审。`validation-audit.json` 绑定最终源码与 Debug/Release 程序集 hash，提交后的 `checkpoint-receipt.json` 绑定整改 SHA；构建嵌入的是父 checkpoint `3cb1984`，不声称嵌入随后生成的提交。未验证真实游戏、长时间运行/真实休眠、终态 occupancy 跨管理器重启或 UI/Tray/Single Instance 集成；未操作正式资料/发布目录、未推送。checkpoint 后停止。
+
 ## WinUI Phase 5B.1：Session / Playtime Core & Lifecycle Engine（2026-10-05）
 
 开始于 `codex/winui-phase5` / `17b91810fa0db9d967a56fc426892608bb6294c1`，工作区干净；这是 5B.0 纯设计 checkpoint，5A.1 实现基线仍为 `041ddca804a134aa146ee7b884d6eff596f451d0`。本轮用户授权覆盖原设计 5B.1—5B.3 的 core，**不包含桌面 UI / Tray / Single Instance**。完成后只交独立 Gate，不自动开始 5B.2。下方 5B.0 的未实施声明和阶段编号均描述历史时点。

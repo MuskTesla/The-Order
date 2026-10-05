@@ -24,6 +24,9 @@ public sealed class SessionEngine : IAsyncDisposable
     private bool closing, disposed;
     private int pendingPower = -1, announcedPower;
     private Runtime? active;
+    // Admission outlives tracking/history. Immutable recovery binding; owns no OS handle.
+    // Initialized by recovery, then only checked/released inside the existing launching gate.
+    private SessionRecoveryIdentity? recoveredOccupancy;
     private SessionEngineSnapshot snapshot = new(null, SessionTracking.Unknown, SessionTiming.Stopped, false, 0, null, null);
     public SessionEngineSnapshot Snapshot => Volatile.Read(ref snapshot);
     public LaunchStatus LaunchStatus => launch.Status;
@@ -78,12 +81,58 @@ public sealed class SessionEngine : IAsyncDisposable
             if (closing || disposed) return launch.Status with { Outcome = LaunchOutcome.Closed };
             if (launching is { IsCompleted: false }) return launch.Status with { Outcome = LaunchOutcome.AlreadyLaunching };
             if (Snapshot.Session?.Native is { IsTerminal: false }) return launch.Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = "已有自有会话待处理。" };
-            task = launching = Task.Run(() => launch.LaunchAsync(gameId, installation, cancellation));
+            task = launching = Task.Run(() => LaunchWithRecoveredOccupancyAsync(gameId, installation, cancellation));
         }
         var result = await task.ConfigureAwait(false);
         // Also reconcile the successful result: event subscribers cannot make OS creation transactional.
         await Submit(() => HandleStatusAsync(result)).ConfigureAwait(false);
         return result;
+    }
+    private async Task<LaunchStatus> LaunchWithRecoveredOccupancyAsync(string gameId, string? installation, CancellationToken cancellation)
+    {
+        if (cancellation.IsCancellationRequested) return launch.Status with { Outcome = LaunchOutcome.Cancelled };
+        if (recoveredOccupancy is { } reservation)
+        {
+            var presence = RevalidateRecoveredOccupancy(reservation);
+            if (presence != ProcessPresence.Inactive)
+                return launch.Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = presence == ProcessPresence.Active
+                    ? "原恢复游戏仍在运行；停止观察不会释放启动占用。"
+                    : "无法确认原恢复游戏已结束，未启动另一个游戏；可稍后重试。" };
+            // No other LaunchAsync can pass the launching gate between this release and 5A admission.
+            recoveredOccupancy = null;
+        }
+        return await launch.LaunchAsync(gameId, installation, cancellation).ConfigureAwait(false);
+    }
+    private ProcessPresence RevalidateRecoveredOccupancy(SessionRecoveryIdentity reservation)
+    {
+        var identity = reservation.Process;
+        try
+        {
+            using (var observed = platform.Attach(identity))
+            {
+                if (observed is not null)
+                {
+                    var value = observed.Query();
+                    if (value.Identity != identity) return ProcessPresence.Unknown;
+                    if (value.State == ProcessTrackingState.Exited) return ProcessPresence.Inactive;
+                    if (!IsRunning(value)) return ProcessPresence.Unknown;
+                    var installation = library.Snapshot.Entries.FirstOrDefault(g => g.Id == reservation.GameId)?
+                        .Installations.FirstOrDefault(i => i.Id == reservation.InstallationId);
+                    if (installation is null || installation.Folder != reservation.Folder.StoredPath
+                        || installation.Executable != reservation.Executable.StoredPath
+                        || LaunchSelection.WorkingDirectory(installation) != reservation.WorkingDirectory.StoredPath)
+                        return ProcessPresence.Unknown;
+                    var preflight = new InstallationPreflightService(filesystem);
+                    preflight.Revalidate(reservation.Folder); preflight.Revalidate(reservation.Executable); preflight.Revalidate(reservation.WorkingDirectory);
+                    return ProcessPresence.Active;
+                }
+            }
+            // Attach may fail for a reused PID or an inaccessible/changed image. Only a positive
+            // generation/exit proof releases ownership; PID+creation alone never proves Active here.
+            return platform.RevalidateExternal(identity) == ProcessPresence.Inactive ? ProcessPresence.Inactive : ProcessPresence.Unknown;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or CandidateStaleException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        { return ProcessPresence.Unknown; }
     }
     public Task DrainAsync() => Submit(() => Task.CompletedTask);
     internal Task ObserveFactAsync(ProcessEvent fact) => Submit(() => HandleFactAsync(fact));
@@ -439,6 +488,7 @@ public sealed class SessionEngine : IAsyncDisposable
                 if (valid)
                 {
                     active = new(origin!, receipt.Value, token!.Process, false) { Durable = receipt.Value, Observed = process };
+                    recoveredOccupancy = token;
                     process = null;
                 }
             }
@@ -466,6 +516,7 @@ public sealed class SessionEngine : IAsyncDisposable
         launch.Changed -= StatusChanged; launch.ProcessChanged -= ProcessChanged;
         await launch.DisposeAsync().ConfigureAwait(false);
         commands.Writer.TryComplete(); await worker.ConfigureAwait(false);
-        active?.Observed?.Dispose(); lifetime.Dispose(); engineLease.Dispose(); lock (gate) disposed = true;
+        active?.Observed?.Dispose(); recoveredOccupancy = null;
+        lifetime.Dispose(); engineLease.Dispose(); lock (gate) disposed = true;
     }
 }

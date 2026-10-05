@@ -386,7 +386,7 @@ W 的重启/hibernate 等会影响主机，实施时必须在显式允许的受�
 | H01—H03 | Core 的 MultiStepHandoff、UnverifiedOrPausedHandoff；Hardening 的 DelayedHandoffDuringCheckpoint；Windows 的 launcher/chain。真实 5A 的 ancestry/Job 契约测试全部保留。 |
 | E01—E02、T01—T03 | Core 的 DelayedExit、InvalidExitTimestamp、WallClockAndTimezone、MissedPowerNotification、MultiStepHandoff；Persistence 的 backward UTC/fractional round-trip。真实 Windows final exit 断言对比 5A OS occurrence；原 5A 延迟发布回归仍运行。 |
 | PW01—PW03 | Core 的 SuspendAndHibernate、ResumeUnknownOrGone、MissedPowerNotification；Hardening 的 DuplicateResume、InstallationFailureAfterResume；Windows 的真实 API 与注入双时钟 5 分钟/8 小时断点。未实际 sleep/hibernate 宿主。 |
-| U01—U02 | Core pause/resume/exit、paused handoff、PauseSurvivesRecovery、StopObserving；只证明 core，不含按钮 UI。 |
+| U01—U02 | Core pause/resume/exit、paused handoff、PauseSurvivesRecovery、StopObserving；5B.1 remediation 的 RecoveredOccupancyTests / RecoveredOccupancyWindowsTests 补充 recovery→停止观察后仍占用、no-kill、Active/Unknown/Inactive、PID reuse、并发与资源；只证明 core，不含按钮 UI。 |
 | L01—L03 | Core LimitedReliableCountsUnknownFreezes、StopObserving；独立 sampler 接口走同一 Platform.Attach，原 5A Limited lease/admission 回归保留。真实恢复 fixture 验证 CurrentProcessOnly/gone，不声称覆盖全部游戏降级链。 |
 | M01、M03 | 窗口/Tray/OS 5 秒退出预算/forced termination 宿主集成不在 5B.1；没有执行，不以 core checkpoint 接口代替。 |
 | M02 | Core ManagerExitCheckpoint 与 Windows RealProcessSurvivesManagerDisposal；Persistence 原子替换后 warning 语义。core 可观察保存失败并拒绝成功退出；实际菜单、创建中关闭 UI 与系统 shutdown 入口待后续集成。 |
@@ -394,7 +394,7 @@ W 的重启/hibernate 等会影响主机，实施时必须在显式允许的受�
 | AC01—AC03 | Core CheckpointThresholdHardCapAndSlowDisk；Persistence PartialAccountingAndRevisionReplay 和 13 个真实隔离磁盘边界用例；Hardening CrashAfterMainReplaceBeforeReceipt、TerminalCheckpointRetry。丢 receipt 为替换后模拟进程内中断，不是物理断电。 |
 | AC04—AC06 | Persistence surplus/旧四字段/零秒重复 native 合并；Core PreferredAndPersonalEdits；Hardening PendingFirstWrite、TerminalDeleteThenImportSameId、DelayedHandoff。原 Phase 2 事务及合并回归仍全部运行。 |
 | AC07 | Hardening malformed numeric/binding、366 天累计上限、32 MiB token 扩容拒绝；原 codec 100000 session/完整文件预算回归保留。没有删除历史来绕过容量限制。 |
-| X01、G01、I01 | Core failed/external/no-second-owned、preferred/personal/恢复安装；Windows 真创建时拒绝第二请求；原 5A installation/external reservation 矩阵仍运行。 |
+| X01、G01、I01 | Core failed/external/no-second-owned、preferred/personal/恢复安装；Windows 真创建时拒绝第二请求；原 5A installation/external reservation 矩阵仍运行。5B.1 remediation 为成功恢复保存独立内存 occupancy，在原 launching gate 内复核、仅明确 Inactive 释放；终态 transaction 不清除它，不改持久化 schema 或原计账语义。 |
 | G02、G03 | CommitSession 按 ID、writer、incarnation 处理；partial replay、旧 writer 与多个非法恢复项有断言。当前只允许一个 owned active，不宣称测试了两个并行 owned Session；owned A + external B 的独立真实双进程产品验收尚未执行。 |
 | C01—C04 | Persistence 原四字段、native round-trip、future schema、portable；Hardening UTF-16、schema/capacity；全部旧差分/导入回归。仅向后读取兼容，旧 Electron writer 保存 native metadata 不是支持能力。 |
 | SI01—SI02 | 本轮仅有原 writer lease 和新单 engine lease，OneWriterCannotAccidentallyOwnTwoEngines 有断言；AppInstance、secondary activation/参数转发尚未实施。 |

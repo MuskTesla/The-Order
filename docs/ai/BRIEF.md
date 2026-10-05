@@ -1,5 +1,13 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5B.1：Recovery Occupancy Remediation（2026-10-05）
+
+- 本轮从 `codex/winui-phase5` / `3cb1984d2bf2e4186b6fc95aca36f436d72f2b80` 干净工作区开始，只修 independent Gate 的唯一 MAJOR：恢复 A 后停止观察，A 尚存活时 B 被错误放行。该 Gate 结论为 **REMEDIATION REQUIRED**，优先于下方历史实现自检声明。
+- `SessionEngine` 在成功恢复时保留独立内存 occupancy，复用完整 `SessionRecoveryIdentity`（PID/creation/image/file identity、game/install 与原 folder/exe/cwd binding）。停止观察仍终结为 Incomplete、停止 timing、释放 observer、清除 durable recovery token，但不释放此占用。普通 Session/personal transaction 不改占用；没有新增 durable schema。
+- 后续启动在原 `launching` gate 内有限复核：完整身份与安装仍有效为 Active；查询失败或不能确认属 Unknown；二者均 AlreadyRunning，不创建进程/Session、不计次/计时。只有明确退出或 PID creation generation 不同为 Inactive，才释放后调用既有 5A admission；并发请求不能穿过复核与释放之间。
+- engine 拥有该无句柄记录；每次复核临时查询 handle 由 `using` 释放，最终 Inactive 或 engine dispose 清除记录。未修改 5A Process Fact / identity、Phase 2 transaction、Session accounting、共享 codec 或 Electron compatibility 层。当前进程外的 terminal reservation 持久化、正式 cutover、UI/Tray/Single Instance 均不在本轮。
+- **READY FOR PHASE 5B.1 TARGETED RE-GATE**（整改自检，不代替独立复审）。新增 19 项；Session/recovery 定向 **128/0/0**，Debug/Release 全量各 **1228/0/0**，原有 1209 项逐名称全部保留；两配置最终 solution build 各 0 warnings/errors。真实 Windows 23 次拒绝后的 handles Debug **727→727**、Release **677→677**，A 正常退出后 B 各只创建一次；原 Gate probe 复验 A PID20360 仍活、B AlreadyRunning/无进程/无 Session/count 不变。证据与 hash audit 存于 `.artifacts/native-phase5b1-remediation/`，详见 [DEVELOPMENT](../../DEVELOPMENT.md)。未发现新的 BLOCKER/MAJOR/MINOR；完成 checkpoint 后暂停，不进入 5B.2，不推送。
+
 ## WinUI Phase 5B.1：Session / Playtime Core & Lifecycle Engine（2026-10-05）
 
 - **READY FOR PHASE 5B.1 INDEPENDENT GATE**（实现自检，不代替独立 Gate）。Debug/Release 全量各 **1209/0/0**，原有 1108 项逐名称全部保留，新增 101 项；两配置 build 均 0 warnings/errors、locked restore 通过。Electron **665/0/0**、build/import、artifact **32/0/0** 通过。checkpoint 后暂停，不进入 5B.2、不推送。
