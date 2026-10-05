@@ -133,4 +133,11 @@ public sealed partial class LibraryPage : Page, IImageHost
             if (FindScroll(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i)) is { } found) return found;
         return null;
     }
+    internal async Task<object> PerformanceScrollAsync(double fraction, int selection)
+    {
+        if (FindScroll(Active) is { } scroll) scroll.ChangeView(null, scroll.ScrollableHeight * Math.Clamp(fraction, 0, 1), null, true);
+        if (ViewModel.Items.Count > 0) Active.SelectedItem = ViewModel.Items[selection % ViewModel.Items.Count];
+        await Task.Delay(80);
+        return RuntimeViewport();
+    }
 }

@@ -4,10 +4,10 @@ using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-public sealed record ImageOptions(int DecodeConcurrency = 2, long MemoryBytes = 64 * 1024 * 1024, long DiskBytes = 128 * 1024 * 1024, int MaximumEdge = 1600);
+public sealed record ImageOptions(int DecodeConcurrency = 2, long MemoryBytes = 64 * 1024 * 1024, long DiskBytes = 128 * 1024 * 1024, int MaximumEdge = 1600, int MemoryItems = 512, int PendingRequests = 256);
 public sealed record RasterPixels(int Width, int Height, byte[] Bgra) { public long Bytes => Bgra.LongLength; }
 public sealed record ImageResult(RasterPixels? Pixels, string Status);
-public sealed record ImageMetrics(long Requests, long Loads, long Hits, long Misses, long Errors, int Outstanding, int ActiveDecodes, int MaximumActiveDecodes, long CachedBytes, int CachedItems);
+public sealed record ImageMetrics(long Requests, long Loads, long Hits, long Misses, long Errors, int Outstanding, int ActiveDecodes, int MaximumActiveDecodes, long CachedBytes, int CachedItems, int PendingOperations = 0, long Coalesced = 0, long Rejected = 0, int PendingWaiters = 0);
 public interface IRasterCodec
 {
     Task<RasterPixels> DecodeAsync(ReadOnlyMemory<byte> encoded, int edge, CancellationToken cancellation);
@@ -34,27 +34,58 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
     private readonly object gate = new();
     private readonly Dictionary<string, LinkedListNode<(string Key, RasterPixels Pixels)>> cache = [];
     private readonly LinkedList<(string Key, RasterPixels Pixels)> lru = [];
-    private readonly HashSet<Task> operations = [];
+    private sealed class SharedRequest(CancellationToken stopping)
+    {
+        public readonly CancellationTokenSource Cancellation = CancellationTokenSource.CreateLinkedTokenSource(stopping);
+        public Task<ImageResult> Work = null!;
+        public int Waiters;
+    }
+    private readonly Dictionary<string, SharedRequest> operations = [];
     private long requests, loads, hits, misses, errors, bytes;
-    private int outstanding, active, maximum;
+    private int outstanding, active, maximum, waiters;
     private bool disposed;
-    public ImageMetrics Metrics { get { lock (gate) return new(requests, loads, hits, misses, errors, outstanding, active, maximum, bytes, cache.Count); } }
+    private Task? disposal;
+    private long coalesced, rejected;
+    public ImageMetrics Metrics { get { lock (gate) return new(requests, loads, hits, misses, errors, outstanding, active, maximum, bytes, cache.Count, operations.Count, coalesced, rejected, waiters); } }
     public Task<ImageResult> LoadAsync(string? key, int edge, CancellationToken cancellation)
     {
         lock (gate)
         {
             if (disposed) return Task.FromResult(new ImageResult(null, "cancelled"));
             requests++;
+            if (cancellation.IsCancellationRequested) return Task.FromResult(new ImageResult(null, "cancelled"));
             if (string.IsNullOrEmpty(key)) return Task.FromResult(new ImageResult(null, "placeholder"));
-            var operation = Task.Run(() => LoadCoreAsync(key, Math.Clamp(edge, 16, Math.Clamp(options.MaximumEdge, 16, 1600)), cancellation));
-            operations.Add(operation);
-            _ = operation.ContinueWith(t => { lock (gate) operations.Remove(t); }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            return operation;
+            edge = Math.Clamp(edge, 16, Math.Clamp(options.MaximumEdge, 16, 1600));
+            var cacheKey = key + "-" + edge;
+            if (TryCached(cacheKey) is { } cached) { hits++; return Task.FromResult(new ImageResult(cached, "memory")); }
+            if (waiters >= Math.Clamp(options.PendingRequests, 1, 1024)) { rejected++; return Task.FromResult(new ImageResult(null, "busy")); }
+            if (!operations.TryGetValue(cacheKey, out var shared))
+            {
+                if (operations.Count >= Math.Clamp(options.PendingRequests, 1, 1024)) { rejected++; return Task.FromResult(new ImageResult(null, "busy")); }
+                shared = new(stopping.Token); operations.Add(cacheKey, shared);
+                var request = shared;
+                request.Work = Task.Run(() => LoadCoreAsync(key, edge, request.Cancellation.Token));
+                _ = request.Work.ContinueWith(completed =>
+                {
+                    // A recycled/cancelled view may no longer await an unexpected decoder fault.
+                    if (completed.IsFaulted) _ = completed.Exception;
+                    lock (gate) { operations.Remove(cacheKey); request.Cancellation.Dispose(); }
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+            else coalesced++;
+            shared.Waiters++; waiters++;
+            return WaitAsync(shared, cancellation);
         }
+    }
+    private async Task<ImageResult> WaitAsync(SharedRequest request, CancellationToken cancellation)
+    {
+        try { return await request.Work.WaitAsync(cancellation).ConfigureAwait(false); }
+        catch (OperationCanceledException) { return new(null, "cancelled"); }
+        finally { lock (gate) { request.Waiters--; waiters--; if (request.Waiters == 0 && !request.Work.IsCompleted) request.Cancellation.Cancel(); } }
     }
     private async Task<ImageResult> LoadCoreAsync(string key, int edge, CancellationToken cancellation)
     {
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, stopping.Token); var token = linked.Token;
+        var token = cancellation;
         bool acquired = false, decoding = false;
         var cacheKey = key + "-" + edge;
         lock (gate) outstanding++;
@@ -79,28 +110,38 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
             token.ThrowIfCancellationRequested();
             lock (gate)
             {
-                if (pixels.Bytes <= options.MemoryBytes && !cache.ContainsKey(cacheKey))
+                if (pixels.Bytes <= options.MemoryBytes && options.MemoryItems > 0 && !cache.ContainsKey(cacheKey))
                 {
-                    while (bytes + pixels.Bytes > options.MemoryBytes && lru.Last is { } oldest) { bytes -= oldest.Value.Pixels.Bytes; cache.Remove(oldest.Value.Key); lru.RemoveLast(); }
+                    while ((bytes + pixels.Bytes > options.MemoryBytes || cache.Count >= options.MemoryItems) && lru.Last is { } oldest) { bytes -= oldest.Value.Pixels.Bytes; cache.Remove(oldest.Value.Key); lru.RemoveLast(); }
                     cache.Add(cacheKey, lru.AddFirst((cacheKey, pixels))); bytes += pixels.Bytes;
                 }
             }
             return new(pixels, "loaded");
         }
         catch (OperationCanceledException) { return new(null, "cancelled"); }
-        catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
+        catch (Exception e) when (e is IOException or InvalidDataException or DataIsolationException or ArgumentException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
         { lock (gate) errors++; return new(null, "invalid"); }
         finally { lock (gate) { outstanding--; if (decoding) active--; } if (acquired) slots.Release(); }
     }
     private RasterPixels? TryCached(string key)
     { if (!cache.TryGetValue(key, out var node)) return null; lru.Remove(node); lru.AddFirst(node); return node.Value.Pixels; }
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        Task[] pending;
-        lock (gate) { if (disposed) return; disposed = true; stopping.Cancel(); pending = [.. operations]; }
-        await Task.WhenAll(pending).ConfigureAwait(false);
-        lock (gate) { cache.Clear(); lru.Clear(); bytes = 0; }
-        stopping.Dispose(); slots.Dispose();
+        lock (gate)
+        {
+            if (disposal is not null) return new(disposal);
+            disposed = true; stopping.Cancel();
+            return new(disposal = DrainAsync([.. operations.Values.Select(r => r.Work)]));
+        }
+    }
+    private async Task DrainAsync(Task[] pending)
+    {
+        try { await Task.WhenAll(pending).ConfigureAwait(false); }
+        finally
+        {
+            lock (gate) { cache.Clear(); lru.Clear(); bytes = 0; }
+            stopping.Dispose(); slots.Dispose();
+        }
     }
 }
 

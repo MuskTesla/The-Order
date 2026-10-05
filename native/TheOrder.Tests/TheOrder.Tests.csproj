@@ -10,6 +10,7 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <ProjectReference Include="../TheOrder.Infrastructure/TheOrder.Infrastructure.csproj" />
     <ProjectReference Include="../TheOrder.Presentation/TheOrder.Presentation.csproj" />
+    <ProjectReference Include="../TheOrder.Performance/TheOrder.Performance.csproj" />
     <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
     <ProjectReference Include="../TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />

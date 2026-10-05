@@ -36,12 +36,15 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
+    private readonly bool performanceFixture;
     public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
         this.recognition = recognition;
         this.files = files; this.images = images;
+        performanceFixture = configuration.Diagnostics && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+            && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT") is not null;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
         Navigation.IsEnabled = false;
@@ -76,6 +79,7 @@ public sealed partial class MainWindow : Window
             var height = Math.Min((int)(820 * scale), (int)(area.Height * .95));
             AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height));
             initialization = Initialize();
+            if (performanceFixture) _ = RunPerformanceAfterInitializationAsync();
         };
     }
     private async Task Initialize()
@@ -188,6 +192,12 @@ public sealed partial class MainWindow : Window
     private void OnCancelOperation(object sender, RoutedEventArgs e) => ViewModel.CancelPendingOperation();
     private void OnDiagnostics(object? sender, object e)
     {
+        if (performanceFixture)
+        {
+            double now = Program.StartupClock.Elapsed.TotalMilliseconds;
+            if (performanceLastUiTick > 0 && performanceUiGaps.Count < 10000) performanceUiGaps.Add(now - performanceLastUiTick);
+            performanceLastUiTick = now;
+        }
         using var process = Process.GetCurrentProcess();
         var state = ViewModel.IsLoading ? "loading" : !ViewModel.IsLoaded ? "error" : ViewModel.IsReadOnly ? "read-only"
             : ViewModel.IsSearching ? "searching" : ViewModel.TotalCount == 0 ? "empty" : ViewModel.Items.Count == 0 ? "zero-results" : "normal";

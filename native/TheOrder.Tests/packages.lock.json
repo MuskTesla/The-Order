@@ -108,6 +108,14 @@
           "TheOrder.Application": "[1.0.0, )"
         }
       },
+      "theorder.performance": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Infrastructure": "[1.0.0, )",
+          "TheOrder.Platform.Windows": "[1.0.0, )",
+          "TheOrder.Presentation": "[1.0.0, )"
+        }
+      },
       "theorder.platform.windows": {
         "type": "Project",
         "dependencies": {

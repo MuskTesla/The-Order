@@ -9,6 +9,8 @@ namespace TheOrder.WinUI;
 
 internal static class Program
 {
+    internal static readonly System.Diagnostics.Stopwatch StartupClock = System.Diagnostics.Stopwatch.StartNew();
+    internal static double ProfileOpenMilliseconds;
     private static AppInstance? primary;
     private static AppInstance? current;
     public static int Activations;
@@ -17,6 +19,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        _ = StartupClock.Elapsed; // Force the marker before profile I/O even on beforefieldinit runtimes.
         WinRT.ComWrappersSupport.InitializeComWrappers();
         try
         {
@@ -48,6 +51,7 @@ internal static class Program
                 catch { return 3; } // Failed forwarding still exits without creating an application/writer.
             }
             if (request is not null) Profile = NativeProfileStore.Open(request, new NativeLibraryCodec());
+            ProfileOpenMilliseconds = StartupClock.Elapsed.TotalMilliseconds;
             Microsoft.UI.Xaml.Application.Start(p =>
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));

@@ -15,6 +15,8 @@ public sealed class CoverPresenter : Grid
     private readonly FontIcon placeholder = new() { Glyph = "\uE8F1", FontSize = 32 };
     private readonly ImageRequestSlot request = new();
     private bool loaded;
+    private string? requestedKey;
+    private int requestedEdge;
     public static readonly DependencyProperty SourceKeyProperty = DependencyProperty.Register(nameof(SourceKey), typeof(string), typeof(CoverPresenter), new PropertyMetadata(null, OnSourceChanged));
     public string? SourceKey { get => (string?)GetValue(SourceKeyProperty); set => SetValue(SourceKeyProperty, value); }
     public int MinimumEdge { get; set; } = 16;
@@ -26,15 +28,19 @@ public sealed class CoverPresenter : Grid
         SizeChanged += (_, _) => { if (loaded) Start(); };
     }
     private static void OnSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) => ((CoverPresenter)sender).Start();
-    private void Reset() { request.Clear(); image.Source = null; placeholder.Visibility = Visibility.Visible; }
+    private void Reset() { requestedKey = null; requestedEdge = 0; request.Clear(); image.Source = null; placeholder.Visibility = Visibility.Visible; }
     private void Start()
     {
-        Reset(); if (!loaded || SourceKey is null) return;
+        if (!loaded || SourceKey is null) { Reset(); return; }
+        if (ActualWidth <= 0 || ActualHeight <= 0) return;
         DependencyObject? ancestor = this;
         while (ancestor is not null && ancestor is not IImageHost) ancestor = VisualTreeHelper.GetParent(ancestor);
         if (ancestor is not IImageHost host) return;
-        var key = SourceKey; var lease = request.Begin(key);
-        var edge = Math.Clamp((int)Math.Ceiling(Math.Max(MinimumEdge, Math.Max(ActualWidth, ActualHeight) * (XamlRoot?.RasterizationScale ?? 1)) / 64) * 64, 64, 1600);
+        var key = SourceKey;
+        var edge = ThumbnailSizing.Edge(ActualWidth, ActualHeight, XamlRoot?.RasterizationScale ?? 1, MinimumEdge);
+        if (requestedKey == key && requestedEdge == edge) return;
+        Reset(); requestedKey = key; requestedEdge = edge;
+        var lease = request.Begin(key);
         _ = LoadAsync(host.Images, key, edge, lease.Generation, lease.Cancellation);
     }
     private async Task LoadAsync(IImagePipeline pipeline, string key, int edge, long version, CancellationToken cancellation)

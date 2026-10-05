@@ -245,7 +245,10 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
             {
                 // Lossy normalization is not an accepted native bootstrap source.
                 if (a.GetArrayLength() != b.GetArrayLength()) throw new NativeProfileException("NoncanonicalLibraryArray");
-                for (var i = 0; i < a.GetArrayLength(); i++) Compare(a[i], b[i]);
+                // JsonElement's indexer walks variable-sized children from the array start.
+                // Sequential enumerators keep complete validation linear for large history arrays.
+                var left = a.EnumerateArray(); var right = b.EnumerateArray();
+                while (left.MoveNext()) { right.MoveNext(); Compare(left.Current, right.Current); }
             }
         }
     }
