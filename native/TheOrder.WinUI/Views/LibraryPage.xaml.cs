@@ -140,4 +140,16 @@ public sealed partial class LibraryPage : Page, IImageHost
         await Task.Delay(80);
         return RuntimeViewport();
     }
+    internal bool PerformanceHasVisibleBitmap() => VisibleBitmap(Active, Active);
+    private static bool VisibleBitmap(DependencyObject root, FrameworkElement viewport)
+    {
+        if (root is Image image && image.Source is not null && image.Visibility == Visibility.Visible && image.ActualWidth > 0 && image.ActualHeight > 0)
+        {
+            var bounds = image.TransformToVisual(viewport).TransformBounds(new global::Windows.Foundation.Rect(0, 0, image.ActualWidth, image.ActualHeight));
+            if (bounds.X < viewport.ActualWidth && bounds.Y < viewport.ActualHeight && bounds.X + bounds.Width > 0 && bounds.Y + bounds.Height > 0) return true;
+        }
+        for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            if (VisibleBitmap(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i), viewport)) return true;
+        return false;
+    }
 }

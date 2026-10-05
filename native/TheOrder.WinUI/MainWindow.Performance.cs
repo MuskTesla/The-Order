@@ -33,8 +33,8 @@ public sealed partial class MainWindow
             var firstViewport = libraryPage.RuntimeViewport();
             double firstUsableMs = Program.StartupClock.Elapsed.TotalMilliseconds;
             var coverWait = Stopwatch.StartNew();
-            while (!HasVisibleBitmap(libraryPage) && coverWait.Elapsed < TimeSpan.FromSeconds(15)) await Task.Delay(50);
-            double? firstCoverMs = HasVisibleBitmap(libraryPage) ? Program.StartupClock.Elapsed.TotalMilliseconds : null;
+            while (!libraryPage.PerformanceHasVisibleBitmap() && coverWait.Elapsed < TimeSpan.FromSeconds(15)) await Task.Delay(50);
+            double? firstCoverMs = libraryPage.PerformanceHasVisibleBitmap() ? Program.StartupClock.Elapsed.TotalMilliseconds : null;
             WritePerformance(output, "startup.json", new { status = "USABLE", profileOpenMs = Program.ProfileOpenMilliseconds, viewModelReadyMs, firstUsableMs, firstCoverMs, firstViewport, entries = ViewModel.Items.Count, images = images.Metrics, note = "Process-relative managed entry clock; OS cache uncontrolled. First usable requires loaded query and actual realized viewport; first cover requires an Image surface." });
             int rounds = int.TryParse(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_ROUNDS"), out var value) ? Math.Clamp(value, 0, 1000) : 120;
             double minutes = double.TryParse(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_MINUTES"), System.Globalization.CultureInfo.InvariantCulture, out var requestedMinutes) ? Math.Clamp(requestedMinutes, 0, 120) : 0;
@@ -54,7 +54,8 @@ public sealed partial class MainWindow
                 using var process = Process.GetCurrentProcess();
                 var sample = new { round = i, elapsedMs = Program.StartupClock.Elapsed.TotalMilliseconds, layout = ViewModel.Layout, viewport, images = images.Metrics,
                     workingSet = process.WorkingSet64, privateBytes = process.PrivateMemorySize64, managedHeap = GC.GetTotalMemory(false), handles = process.HandleCount, threads = process.Threads.Count,
-                    imageSurfaces = CountCoverPresenters(Root), outstandingThreadPool = ThreadPool.PendingWorkItemCount };
+                    imageSurfaces = CountCoverPresenters(Root), staleCoverSources = CountStaleCoverSources(Root), outstandingThreadPool = ThreadPool.PendingWorkItemCount };
+                if (CountStaleCoverSources(Root) != 0) throw new InvalidOperationException("Recycled cover source mismatch");
                 samples.Add(sample);
                 if (i % 10 == 0) await Task.Run(() => WritePerformance(output, "progress.json", sample));
                 if (pace > 0) await Task.Delay(pace);
@@ -68,16 +69,16 @@ public sealed partial class MainWindow
         }
         finally { if (App.Instance is { } app) await app.RequestExitAsync(); }
     }
-    private static bool HasVisibleBitmap(DependencyObject root)
-    {
-        if (root is Microsoft.UI.Xaml.Controls.Image image && image.Source is not null) return true;
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) if (HasVisibleBitmap(VisualTreeHelper.GetChild(root, i))) return true;
-        return false;
-    }
     private static int CountCoverPresenters(DependencyObject root)
     {
         int count = root is CoverPresenter ? 1 : 0;
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) count += CountCoverPresenters(VisualTreeHelper.GetChild(root, i));
+        return count;
+    }
+    private static int CountStaleCoverSources(DependencyObject root)
+    {
+        int count = root is CoverPresenter cover && !cover.PerformanceSourceCurrent ? 1 : 0;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) count += CountStaleCoverSources(VisualTreeHelper.GetChild(root, i));
         return count;
     }
     private static void WritePerformance(string output, string name, object value) => File.WriteAllText(Path.Combine(output, name), JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true }));

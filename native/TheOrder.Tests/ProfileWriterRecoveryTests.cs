@@ -11,6 +11,27 @@ namespace TheOrder.Tests;
 [Collection("Native profile resource")]
 public sealed class ProfileWriterRecoveryTests(ITestOutputHelper output)
 {
+    private async Task WaitForProbeExitAsync(Process process, TimeSpan? deadline = null)
+    {
+        try { await process.WaitForExitAsync().WaitAsync(deadline ?? TimeSpan.FromSeconds(30)); }
+        catch (TimeoutException)
+        {
+            output.WriteLine($"Owned synthetic ProfileProbe exit timeout, pid={process.Id}");
+            if (!process.HasExited) process.Kill();
+            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            throw; // Timeout remains a failure; never infer a successful transaction/exit.
+        }
+    }
+    [Fact]
+    public async Task ProbeExitDeadlineFailsAndReleasesOnlyTheOwnedSyntheticChild()
+    {
+        using var f = new ProfileFixture(); using var child = f.Start("a", "None", true);
+        await NativeProfileTests.Until(() => File.Exists(Path.Combine(f.Parent, "a.started")) || child.HasExited);
+        Assert.False(child.HasExited);
+        await Assert.ThrowsAsync<TimeoutException>(() => WaitForProbeExitAsync(child, TimeSpan.FromMilliseconds(100)));
+        Assert.True(child.HasExited);
+        using var owner = f.Open(); using var writer = owner.CreateLibraryPersistence(); Assert.NotNull(writer.ReadMain());
+    }
     private static string MainPath(ProfileFixture f) => Path.Combine(f.Root, "library.json");
     private static string Backup(ProfileFixture f) => MainPath(f) + ".bak";
     private static void Corrupt(ProfileFixture f, string kind)
@@ -30,14 +51,14 @@ public sealed class ProfileWriterRecoveryTests(ITestOutputHelper output)
                 Assert.False(child.HasExited);
                 for (var i = 0; i < 5; i++) Assert.ThrowsAny<IOException>(() => owner.CreateLibraryPersistence());
                 File.WriteAllText(Path.Combine(f.Parent, "release"), "release");
-                await child.WaitForExitAsync(); Assert.Equal(0, child.ExitCode);
+                await WaitForProbeExitAsync(child); Assert.Equal(0, child.ExitCode);
             }
             using (var writer = owner.CreateLibraryPersistence()) Assert.NotNull(writer.ReadMain());
             // Failure -> dispose even while main remains externally unavailable.
             using (var locked = new FileStream(MainPath(f), FileMode.Open, FileAccess.Read, FileShare.None))
             { Assert.ThrowsAny<IOException>(() => owner.CreateLibraryPersistence()); owner.Dispose(); }
             using var second = f.Start("b", "Borrow", false);
-            await second.WaitForExitAsync(); Assert.Equal(0, second.ExitCode);
+            await WaitForProbeExitAsync(second); Assert.Equal(0, second.ExitCode);
             Assert.True(File.Exists(Path.Combine(f.Parent, "b.ready")));
         }
         finally { owner.Dispose(); }

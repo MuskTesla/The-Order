@@ -27,7 +27,14 @@ public sealed class CoverPresenter : Grid
         Unloaded += (_, _) => { loaded = false; Reset(); };
         SizeChanged += (_, _) => { if (loaded) Start(); };
     }
-    private static void OnSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args) => ((CoverPresenter)sender).Start();
+    private static void OnSourceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+    {
+        var presenter = (CoverPresenter)sender;
+        // Invalidate the old generation immediately, including while layout is zero-sized.
+        if ((string?)args.OldValue != (string?)args.NewValue) presenter.Reset();
+        presenter.Start();
+    }
+    internal bool PerformanceSourceCurrent => image.Source is null || requestedKey == SourceKey;
     private void Reset() { requestedKey = null; requestedEdge = 0; request.Clear(); image.Source = null; placeholder.Visibility = Visibility.Visible; }
     private void Start()
     {
