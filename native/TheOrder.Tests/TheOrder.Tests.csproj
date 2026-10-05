@@ -12,6 +12,7 @@
     <ProjectReference Include="../TheOrder.Presentation/TheOrder.Presentation.csproj" />
     <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
     <ProjectReference Include="../TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />
     <None Include="../fixtures/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

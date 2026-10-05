@@ -93,7 +93,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             try { main = persistence.ReadMain(); if (main is not null) document = Read(main); }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { mainError = e; }
             // Construction/output capability must never be interpreted as input corruption.
-            if (document is not null) return Create(document, LibraryRecovery.Main);
+            if (document is not null) return Create(document, (persistence as ILibraryRecoveryProvenance)?.MainRecovery ?? LibraryRecovery.Main);
             try { backup = persistence.ReadBackup(); if (backup is not null) document = Read(backup); }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { throw new InvalidDataException("主文件及备份不可用；原文件已保留。", e); }
             if (document is not null) return Create(document, LibraryRecovery.Backup);

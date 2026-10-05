@@ -1,4 +1,5 @@
-param([switch]$WithoutSdkLookup, [Parameter(Mandatory)][string]$PublishedPath, [string]$DataDirectory)
+param([switch]$WithoutSdkLookup, [Parameter(Mandatory)][string]$PublishedPath, [string]$DataDirectory,
+  [switch]$FixtureProfile, [ValidateSet('Development','Test','Production')][string]$ProfileKind = 'Test')
 $ErrorActionPreference = 'Stop'
 $taskRunner = Join-Path $PSScriptRoot 'native.ps1'
 $taskPreviousPath = $env:PATH
@@ -17,7 +18,7 @@ try {
       Microsoft.PowerShell.Management\Test-Path @PSBoundParameters
     }
   }
-  $taskOutput = & $taskRunner -Action Run -Published -PublishedPath $PublishedPath -DataDirectory $DataDirectory
+  $taskOutput = & $taskRunner -Action Run -Published -PublishedPath $PublishedPath -DataDirectory $DataDirectory -ProfileKind $ProfileKind -FixtureProfile:$FixtureProfile
   $taskMatch = [regex]::Match(($taskOutput -join "`n"), 'Candidate PID=(\d+);')
   if (-not $taskMatch.Success) { throw 'Runner did not return the launched candidate PID.' }
   $taskProcess = Get-Process -Id ([int]$taskMatch.Groups[1].Value)

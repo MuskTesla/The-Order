@@ -55,11 +55,11 @@ public sealed partial class IsolatedThumbnailCache(NativeConfiguration configura
         {
             return await Task.Run(() =>
             {
-                var profile = IsolatedLibrarySource.ValidateDirectory(configuration.DataDirectory);
+                var profile = NativeProfileAccess.Validate(configuration);
                 var handles = IsolatedLibraryPersistence.PinDirectoryChain(profile);
                 try
                 {
-                    IsolatedLibrarySource.ValidateDirectory(profile);
+                    NativeProfileAccess.Validate(configuration);
                     var cacheRoot = Path.Combine(profile, "native-thumbnails-v1");
                     Directory.CreateDirectory(cacheRoot);
                     var cacheHandles = IsolatedLibraryPersistence.PinDirectoryChain(cacheRoot);

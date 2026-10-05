@@ -8,6 +8,7 @@ public sealed class IsolatedRecognitionReviewStorage(NativeConfiguration configu
     private readonly SemaphoreSlim queue = new(1, 1);
     public Task<RecognitionReviewDocuments> ReadAsync(CancellationToken cancellation) => Run(root =>
     {
+        if (configuration.Profile is { } profile) return new RecognitionReviewDocuments(profile.ReadComponent("native-recognition.json"), null);
         byte[]? Read(string name)
         {
             try
@@ -23,6 +24,7 @@ public sealed class IsolatedRecognitionReviewStorage(NativeConfiguration configu
     public Task WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellation) => Run(root =>
     {
         if (bytes.Length > Maximum) throw new InvalidDataException("核对队列过大，未保存。");
+        if (configuration.Profile is { } profile) { profile.WriteComponent("native-recognition.json", bytes); return true; }
         var target = Path.Combine(root, "native-recognition.json"); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var file = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
         Check();
@@ -41,8 +43,8 @@ public sealed class IsolatedRecognitionReviewStorage(NativeConfiguration configu
         {
             return await Task.Run(() =>
             {
-                var root = IsolatedLibrarySource.ValidateDirectory(configuration.DataDirectory); var handles = IsolatedLibraryPersistence.PinDirectoryChain(root);
-                try { IsolatedLibrarySource.ValidateDirectory(root); cancellation.ThrowIfCancellationRequested(); return action(root); }
+                var root = NativeProfileAccess.Validate(configuration); var handles = IsolatedLibraryPersistence.PinDirectoryChain(root);
+                try { NativeProfileAccess.Validate(configuration); cancellation.ThrowIfCancellationRequested(); return action(root); }
                 finally { foreach (var handle in handles) handle.Dispose(); }
             }, cancellation).ConfigureAwait(false);
         }

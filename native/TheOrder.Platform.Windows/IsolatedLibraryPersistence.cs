@@ -75,41 +75,8 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
         var main = await WriteAtomic("library.json", candidate, PersistenceTarget.Main).ConfigureAwait(false);
         return new(main.Warning ?? backup.Warning);
     }
-    private async Task<PersistenceReceipt> WriteAtomic(string name, ReadOnlyMemory<byte> bytes, PersistenceTarget kind)
-    {
-        var target = Path.Combine(root, name); var temp = Path.Combine(root, name + "." + Guid.NewGuid().ToString("N") + ".tmp");
-        bool committed = false;
-        try
-        {
-            CheckExisting(target);
-            await Reach(kind, PersistenceStage.BeforeTempWrite).ConfigureAwait(false);
-            using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous | FileOptions.WriteThrough))
-            {
-                var split = bytes.Length / 2;
-                await file.WriteAsync(bytes[..split]).ConfigureAwait(false);
-                await Reach(kind, PersistenceStage.DuringTempWrite).ConfigureAwait(false);
-                await file.WriteAsync(bytes[split..]).ConfigureAwait(false);
-                file.Flush(flushToDisk: true);
-            }
-            await Reach(kind, PersistenceStage.AfterTempWrite).ConfigureAwait(false);
-            await Reach(kind, PersistenceStage.BeforeReplace).ConfigureAwait(false);
-            CheckExisting(target);
-            await Reach(kind, PersistenceStage.Replace).ConfigureAwait(false);
-            // Same-directory MoveFileEx REPLACE_EXISTING | WRITE_THROUGH, one atomic namespace switch.
-            // No target is ever truncated or deleted first. The backup is the canonical lastGood.
-            if (!MoveFileEx(temp, target, 0x1 | 0x8)) throw new IOException("原子替换失败。", new Win32Exception());
-            committed = true;
-            await Reach(kind, PersistenceStage.AfterReplace).ConfigureAwait(false);
-            return new();
-        }
-        catch (Exception) when (committed)
-        {
-            // The primary namespace switch has already succeeded. Never report it as rolled back.
-            // Backup-only warnings are safe to continue: its new contents equal lastGood.
-            return new("替换已完成；提交后检查发生 I/O 错误。");
-        }
-        finally { try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
-    }
+    private Task<PersistenceReceipt> WriteAtomic(string name, ReadOnlyMemory<byte> bytes, PersistenceTarget kind)
+        => WindowsAtomicFile.WriteAsync(Path.Combine(root, name), bytes, stage => Reach(kind, stage));
     private Task Reach(PersistenceTarget target, PersistenceStage stage) => probe?.ReachAsync(target, stage) ?? Task.CompletedTask;
     private static void CheckExisting(string path)
     {
@@ -123,7 +90,4 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool MoveFileEx(string source, string target, uint flags);
 }

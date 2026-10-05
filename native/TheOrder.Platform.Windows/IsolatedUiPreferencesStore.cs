@@ -11,8 +11,31 @@ public sealed class IsolatedUiPreferencesStore(NativeConfiguration configuration
     private sealed record StoredPreferences(NativeTheme Theme, string Layout, string Sort, ImmutableArray<SavedFilter> SavedFilters);
     private sealed record Envelope(int Version, StoredPreferences Preferences);
     private readonly SemaphoreSlim queue = new(1, 1);
+    internal static byte[] Encode(ClientPreferences preferences)
+    {
+        PreferenceValidation.Validate(preferences);
+        return JsonSerializer.SerializeToUtf8Bytes(new Envelope(1, new(preferences.Theme, preferences.Layout, preferences.Sort, preferences.Filters)), Options);
+    }
+    internal static ClientPreferences Decode(byte[] bytes)
+    {
+        if (bytes.Length > 200000) throw new InvalidDataException("界面偏好过大。");
+        Envelope envelope;
+        try { envelope = JsonSerializer.Deserialize<Envelope>(bytes, new JsonSerializerOptions(Options) {
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow, RespectRequiredConstructorParameters = true }) ?? throw new InvalidDataException("界面偏好无效。"); }
+        catch (JsonException e)
+        {
+            try { using var document = JsonDocument.Parse(bytes); }
+            catch (JsonException) { throw new InvalidDataException("界面偏好损坏。", e); }
+            throw new NativeProfileException("UnsupportedPreferenceSchema");
+        }
+        if (envelope.Version != 1 || envelope.Preferences is null) throw new NativeProfileException("UnsupportedPreferenceVersion");
+        var value = envelope.Preferences;
+        var preferences = new ClientPreferences(value.Theme, value.Layout, value.Sort, value.SavedFilters);
+        PreferenceValidation.Validate(preferences); return preferences;
+    }
     public Task<ClientPreferences> LoadAsync(CancellationToken cancellation) => RunAsync(root =>
     {
+        if (configuration.Profile is { } profile) return Decode(profile.ReadComponent("native-ui.json") ?? throw new InvalidDataException("Missing preferences"));
         var file = Path.Combine(root, "native-ui.json");
         try
         {
@@ -30,8 +53,9 @@ public sealed class IsolatedUiPreferencesStore(NativeConfiguration configuration
     public Task SaveAsync(ClientPreferences preferences, CancellationToken cancellation) => RunAsync(root =>
     {
         PreferenceValidation.Validate(preferences);
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new Envelope(1, new(preferences.Theme, preferences.Layout, preferences.Sort, preferences.Filters)), Options);
+        var bytes = Encode(preferences);
         if (bytes.Length > 200000) throw new InvalidDataException("界面偏好过大，未保存。");
+        if (configuration.Profile is { } profile) { profile.WriteComponent("native-ui.json", bytes); return true; }
         var target = Path.Combine(root, "native-ui.json"); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var held = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
         Check();
@@ -49,9 +73,9 @@ public sealed class IsolatedUiPreferencesStore(NativeConfiguration configuration
         {
             return await Task.Run(() =>
             {
-                var root = IsolatedLibrarySource.ValidateDirectory(configuration.DataDirectory);
+                var root = NativeProfileAccess.Validate(configuration);
                 var handles = IsolatedLibraryPersistence.PinDirectoryChain(root);
-                try { IsolatedLibrarySource.ValidateDirectory(root); return action(root); }
+                try { NativeProfileAccess.Validate(configuration); return action(root); }
                 finally { foreach (var handle in handles) handle.Dispose(); }
             }, cancellation).ConfigureAwait(false);
         }

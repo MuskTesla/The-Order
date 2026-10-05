@@ -2,6 +2,8 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
 using TheOrder.Platform.Windows;
+using TheOrder.Application;
+using TheOrder.Infrastructure.Legacy;
 
 namespace TheOrder.WinUI;
 
@@ -11,13 +13,23 @@ internal static class Program
     private static AppInstance? current;
     public static int Activations;
     public static string ActivationArguments = "";
+    internal static NativeProfileStore? Profile;
     [STAThread]
     public static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
         try
         {
-            var key = NativeInstanceIdentity.ForProfile(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_DATA_DIR"));
+            var directory = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_DATA_DIR");
+            // Existing Phase 1–5 raw synthetic fixtures remain an explicit tooling-only entry.
+            var fixture = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_FIXTURE_PROFILE") == "1";
+#if NATIVE_PRODUCTION_CANDIDATE
+            const NativeProfileKind buildKind = NativeProfileKind.Production;
+#else
+            const NativeProfileKind buildKind = NativeProfileKind.Development;
+#endif
+            var request = fixture ? null : NativeProfilePaths.Select(buildKind, Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND"), directory);
+            var key = request is null ? NativeInstanceIdentity.ForProfile(directory) : NativeInstanceIdentity.ForNativeProfile(request);
             current = AppInstance.GetCurrent();
             current.Activated += Activated; // Subscribe before registration exposes us to a simultaneous secondary.
             var activation = current.GetActivatedEventArgs();
@@ -33,6 +45,7 @@ internal static class Program
                 try { redirect.GetAwaiter().GetResult(); return 0; }
                 catch { return 3; } // Failed forwarding still exits without creating an application/writer.
             }
+            if (request is not null) Profile = NativeProfileStore.Open(request, new NativeLibraryCodec());
             Microsoft.UI.Xaml.Application.Start(p =>
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
@@ -41,7 +54,7 @@ internal static class Program
             return 0;
         }
         catch (Exception e) { MessageBox(IntPtr.Zero, "The Order 无法安全启动：" + e.GetType().Name + "。请核对隔离资料目录；没有打开第二个书架。", "The Order", 0x10); return 1; }
-        finally { if (current is not null) current.Activated -= Activated; if (primary?.IsCurrent == true) primary.UnregisterKey(); }
+        finally { Profile?.Dispose(); if (current is not null) current.Activated -= Activated; if (primary?.IsCurrent == true) primary.UnregisterKey(); }
     }
     private static void Activated(object? sender, AppActivationArguments args)
     {

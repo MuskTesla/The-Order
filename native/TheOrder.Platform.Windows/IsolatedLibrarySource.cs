@@ -21,6 +21,7 @@ public sealed class IsolatedLibrarySource : IIsolatedLibrarySource
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(explicitDirectory));
         var formal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KunGalManager");
         if (Within(formal, root) || Within(root, formal)) throw new DataIsolationException("Phase 1 禁止访问正式资料目录及其父子目录。");
+        if (NativeProfilePaths.Overlaps(root, NativeProfilePaths.ProductionRoot)) throw new DataIsolationException("合成入口禁止访问 native production 根目录。");
         for (DirectoryInfo? current = new(root); current is not null; current = current.Parent)
         {
             if (!current.Exists) throw new DirectoryNotFoundException();

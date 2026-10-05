@@ -1,12 +1,59 @@
 # 开发与维护
 
-## WinUI Phase 6：Production Store Bootstrap（范围已重设，实施中）
+## WinUI Phase 6.1：Production Store Bootstrap（自检完成，等待 independent Gate）
 
-当前规范见 [PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md](docs/ai/PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。旧 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md) 已 **SUPERSEDED**：其“重要 Electron 正式资料必须无损迁移”的前提失效。历史 benchmark/设计仍保留，不作为当前迁移义务。
+开始时核对 `codex/winui-phase5` / `b2a360a005aecd8bea1b18571eb78b75259c115b` 干净基线。范围重设纯文档 checkpoint：**62da4b46829602e3f4852d094489bbf15d10113b**。旧 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md) 顶部标记 **SUPERSEDED**，仅保留历史；其重要 Electron 资料必须无损迁移的前提已失效。当前规范与真实文件布局见 [PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md](docs/ai/PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。Phase 6.2 已改为 Production Readiness / First Real Profile，以后另获用户授权；下方旧阶段 migrated-store/cutover 义务由本节物理隔离与 fresh store 方案取代。
 
-Phase 6.1 仅在临时、显式隔离 profile 中实现 Production Store Bootstrap。继续 JSON、Phase 2 transaction/atomic persistence、Phase 5B Session 与当前 native cover schema；不做 Electron discovery/import、snapshot/migration state machine、credential/localStorage 迁移、activation、mutation latch、Electron rollback/协调或 SQLite。
+### 当前实现
 
-Phase 6.2 改为 **Production Readiness / First Real Profile**；必须以后另获用户明确授权才创建并验收第一份真实 production profile。本阶段禁止访问旧正式 `%APPDATA%\KunGalManager`、真实 native production profile 与正式凭据。现有 reader/import 仅属 optional explicit import。旧章节的 migrated-store/cutover 前提由本节物理隔离与全新 store 方案取代。
+- `NativeProfilePaths` 区分 Development / Test / Production；native Production=`%LOCALAPPDATA%\TheOrder\Profiles\Production`，Development 为同级 `Development`，Test 必须显式提供隔离目录。与 Electron `%APPDATA%\KunGalManager` 完全分离。路径规范化、父链 pin、拒绝重解析/硬链接文件/歧义别名、真实 Production 授权检查均在资料访问前执行。真实 Production 只保留显式授权 API 接入点，当前 GUI/runner 不开放该授权。
+- `NativeProfileStore` 从初始化前到应用退出持有唯一 `.the-order-writer.lock`；库、Session、偏好、credential、核对建议、启动位置共用 owner。借出的 library writer 也只能一个。身份 manifest 与 component/backup 同时验证 ProfileId / StoreId / Kind / physical binding；minimum writer、capability、未来格式、未知字段拒写，包括 main 正常但 backup 属于未来或其他 store 的情况。
+- Initializing 身份锚→空库/原生默认偏好/空凭据与 companion backups→Ready 原子发布→重开验证。GUID 根据物理目录身份确定，manifest temp/replace 前中断仍保持同一身份。缺旧身份而调用者要求已有 identity 时拒绝，不能另建库。续作先检查所有已有数据只能是预期空值；Ready 缺件或身份损坏不默默重置。
+- Phase 2 原子写入实现提取为共享 `WindowsAtomicFile`；现有隔离 persistence 和新 profile adapter 共同复用。候选 round-trip、串行库 transaction、last-good、stale commit、提交后 warning 语义保留。唯一相邻接口扩展是可选 `ILibraryRecoveryProvenance`，使显式 restore 后的 main 仍以 Backup 来源交给原 SessionEngine；普通编辑不能清掉待恢复 Session 的备份来源。
+- `CheckpointBackups()` 与 `Restore(name)` 为可执行 API；Restore 要求关闭库，验证 backup 和 identity，再原子重建 main 并重开验证。逐组件 last-good 不等于跨组件原子快照；未知/未来/异库 backup 不被正常保存覆盖。库损坏/缺失也能沿原 Phase 2 自动读 backup，明确保存后写回。无高级 backup UI、跨物理根 adopt 或 Electron rollback。
+- 新增 manifest/envelope v1；现有库内部、Session、workingDirectory、cover Base64、DPAPI payload 与 UI preference model 保留。外层 Data Base64 包装有约 1/3 磁盘开销。新库空 history/count/total，无 historical Electron floor 导入。凭据只测试 synthetic 值；无 legacy credential 或 localStorage 读取。
+
+### 验证入口与证据
+
+证据统一在 ignored `.artifacts/native-phase6-1/`，最终 counts/source hash/binary hash/TRX/UI记录由 `validation-audit.json` 与 `checkpoint-receipt.json` 绑定。新增测试为 `NativeProfileTests`、`NativeProfileBoundaryTests`、`NativeProfileIntegrationTests`；`TheOrder.ProfileProbe` 是受显式 synthetic parent marker 约束的真实子进程测试 host，不是产品入口。
+
+```powershell
+& ./.artifacts/native-phase1/tools/dotnet/dotnet.exe restore native/TheOrder.slnx --locked-mode
+& ./.artifacts/native-phase1/tools/dotnet/dotnet.exe build native/TheOrder.slnx --no-restore -c Debug
+& ./.artifacts/native-phase1/tools/dotnet/dotnet.exe build native/TheOrder.slnx --no-restore -c Release -p:NativeProductionCandidate=true
+& ./.artifacts/native-phase1/tools/dotnet/dotnet.exe test native/TheOrder.Tests/TheOrder.Tests.csproj --no-build --no-restore -c Debug
+& ./.artifacts/native-phase1/tools/dotnet/dotnet.exe test native/TheOrder.Tests/TheOrder.Tests.csproj --no-build --no-restore -c Release
+```
+
+开发 build 默认 Development；publish 必须显式 `-p:NativeProductionCandidate=true`，runner 已提供此标记，发布包默认 Production，真实路径仍受 guard 拒绝。`native.ps1 -Action Run` 必须给绝对 `-DataDirectory`；可显式 `-ProfileKind Production` 选择临时 production-like 根。新 profile 不要求 Phase 1 marker，也不自动 adopt 旧目录。旧 raw fixtures 必须加 `-FixtureProfile`，`check-published-runner.ps1` 同样支持此显式参数；历史命令省略参数不再代表可直接复用。禁止把此处命令当成正式 profile 操作授权。
+
+实际 Windows UI 已用隔离 `.artifacts/native-phase6-1/ui-production-like` 从 Debug 启动空库、切换列表、正常退出，再由 Release 发布入口重开；相同 ProfileId/StoreId、空库和列表偏好保留。还验证发布构建不传 `PROFILE_KIND` 时默认 Production。初次 UI 点击两次遇到工具 `coordinate input geometry is unavailable`，重新观察后操作成功；失败点击未冒称保存/退出。只测试 bootstrap/startup/preferences/exit，没有扩大 UI、Tray、Single Instance 功能。
+
+故障覆盖：root 创建、manifest 前/temp/replace、library/settings 中断、单文件/companion 缺失、Ready receipt lost、reopen 前中断、writer 冲突、manifest 损坏、身份/类型/未来字段、backup/main/restore 失败。每个 bootstrap 点同时做 exception injection 与真实子进程 `Environment.Exit(86)`，不执行 managed finally，重启后重开验证。两子进程同时首次启动只有一个 owner；另一个明确冲突。真实 synthetic game 覆盖 fresh→launch→Session/count/time→管理器退出不 kill→同身份恢复→退出→backup→corrupt main→restore→reopen；备份来源本身不能重新接管活动进程。另覆盖 cwd、remote/personal cover、credentials、preferences 和跨 Dev/Test/Prod-like 的全部写入隔离。
+
+最终源码冻结后，Debug `full-debug-verified.trx` 与 Release `full-release-verified.trx` 各 **1363 passed / 0 failed / 0 skipped**；原基线 1278 项逐名称全部保留，新增 85 项。Recognition 分组 `recognition-recheck.trx` **44/0/0**、Windows Session 分组 `windows-recheck.trx` **9/0/0**、独立性能/资源 `performance-resource.trx` **4/0/0**。locked restore 成功；最终 Debug/Release solution build 各 0 warnings/errors，Release publish 成功。早期定向 252 项通过属于迭代证据，不替代最终完整测试。
+
+最终候选为 `.artifacts/native-phase6-1/publish-final/win-x64`；Platform DLL SHA256=`B5108FB78136A31DD2181BE97DE2C99650DB3FE4740D5E70F57C6471DDBC15ED`，MVID=`aaab99ab-17af-4bf9-820f-8e03216dd325`。最终 UI 重开并正常退出，进程退出码 **0**，见 `ui-final-completion.json`。184 个 native source/project/lock/script 文件及 12 个 fixture 文件纳入 audit；源码最终提交由 `checkpoint-receipt.json` 绑定。二进制构建时 HEAD 为 scope-reset checkpoint 加本轮实现工作区，不冒称程序集内嵌了后续 implementation commit。
+
+独立 Release 性能采样（synthetic native store；单位 ms，四项均为实际 profile API）：
+
+| 条目 | Open | Write | Backup | Restore |
+| --- | ---: | ---: | ---: | ---: |
+| 1k | 68 | 50 | 67 | 195 |
+| 5k | 987 | 623 | 562 | 1682 |
+| 10k | 1280 | 841 | 1104 | 3929 |
+
+对应文件约 1.34 / 6.68 / 13.36 MB；该独立测试进程最高记录 peak 约 315 MiB（累计进程峰值，不是单操作或每个规模的独立内存测量）。30 轮 open/conflict/backup/restore/close handles **435→437**，在原有容差内；最终完整 Debug 同项 **741→741**。这证明短轮次有界，没有声称长期零增长或大封面压力已通过。
+
+两项中途失败完整保留，不修改原测试或阈值：`full-debug-complete.trx` 中既有 `InvalidLiveCandidateStructureCannotRestore(fault: "conflicts")` 在准备 candidate 时数组越界；`full-release-complete.trx` 中既有 `RealFiveAProcessFactsCreateSingleHistoryAndFinalExitUsesOsOccurrence(mode: "game")` 等待 terminal 超时。随后各自分组及最终完整 Debug/Release 均通过；根因未确定，不能据此断言与本轮无关。列为 **OBSERVATION 2**，独立 Gate 需留意其稳定性。
+
+**READY FOR PHASE 6.1 INDEPENDENT GATE**。自检未发现新的 BLOCKER / MAJOR / MINOR，独立 Gate 尚未进行。完成 implementation checkpoint 后暂停，不推送、不进入 6.2。
+
+### 范围与未验证边界
+
+Electron 源码、格式和 writer 未改，因此本轮不重跑全量 Electron；隔离 legacy fixture 继续被改写时 native hashes 不变。没有 migration engine、SQLite、localStorage exporter、credential migration、media refactor 或 Phase 6.2 工作。正式 Electron profile **未访问/未复制**，真实 native production profile **未创建/未打开/未访问**，正式 credential **未读**；没有启动真实游戏、替换正式程序、删除 Electron 或推送。
+
+OBSERVATION：恢复演练只覆盖本机同一物理 profile；跨机器/根 adopt、真实断电耐久、真实首份 profile 和长期大封面压力尚未验证。原 5B host sleep/hibernate/logoff/reboot 与终态 occupancy 生命周期边界保持。备份是组件 last-good，非跨组件全库原子快照；fresh schema 的 v1→v2 upgrader 未实施。独立 Gate 尚未执行，自检不替代独立通过。
 
 ## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
 

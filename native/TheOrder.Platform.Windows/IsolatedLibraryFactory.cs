@@ -6,7 +6,7 @@ public sealed class IsolatedLibraryFactory(ILibraryCodec codec, NativeConfigurat
 {
     public Task<TransactionalLibrary> OpenAsync(CancellationToken cancellation) => Task.Run(() =>
     {
-        var persistence = new IsolatedLibraryPersistence(configuration.DataDirectory!);
+        var persistence = configuration.Profile?.CreateLibraryPersistence() ?? new IsolatedLibraryPersistence(configuration.DataDirectory!);
         var library = TransactionalLibrary.Open(codec, persistence);
         if (cancellation.IsCancellationRequested) { library.Dispose(); cancellation.ThrowIfCancellationRequested(); }
         return library;

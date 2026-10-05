@@ -27,11 +27,11 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
             library = await factory.OpenAsync(cancellation).ConfigureAwait(false);
             var snapshot = library.Snapshot;
             Volatile.Write(ref capability, new(true, snapshot.Access == LibraryAccess.ValidWritable,
-                snapshot.ReadOnlyReason is not null ? "资料可以查看，但当前容量条件下无法安全保存。已禁用编辑，原文件保持不变。" : (snapshot.Recovery == LibraryRecovery.Backup ? "已从有效备份读取。下一次明确保存将写回主库。" : "隔离书架 · 所有更改仅保存在指定开发目录")));
+                snapshot.ReadOnlyReason is not null ? "资料可以查看，但当前容量条件下无法安全保存。已禁用编辑，原文件保持不变。" : (snapshot.Recovery == LibraryRecovery.Backup ? "已从有效备份读取。下一次明确保存将写回主库。" : "书架已加载，修改会保存在当前资料目录。")));
             return new(ClientOutcome.Success, snapshot.Recovery == LibraryRecovery.Backup ? Capability.Message : "");
         }
         catch (OperationCanceledException) { return new(ClientOutcome.Cancelled, "读取已取消。"); }
-        catch (Exception e) when (e is IOException or InvalidDataException or DataIsolationException or UnauthorizedAccessException)
+        catch (Exception e) when (e is IOException or InvalidDataException or DataIsolationException or UnauthorizedAccessException or NativeProfileException)
         {
             Volatile.Write(ref capability, new(false, false, "书架未能读取，原文件已保留。请检查隔离目录与资料完整性。"));
             return new(ClientOutcome.LoadFailure, Capability.Message);

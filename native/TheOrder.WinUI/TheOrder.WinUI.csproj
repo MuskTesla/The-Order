@@ -8,6 +8,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWinUI>true</UseWinUI>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <DefineConstants Condition="'$(NativeProductionCandidate)' == 'true'">$(DefineConstants);NATIVE_PRODUCTION_CANDIDATE</DefineConstants>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
@@ -32,6 +33,9 @@
   <!-- SDK 2.5.1 copies generated XAML/PRI to build output but omits them from
        this unpackaged dotnet publish pipeline. Declare publish inputs explicitly;
        never repair a shipped folder by manually copying files after publication. -->
+  <Target Name="RequireNativePublishIdentity" BeforeTargets="PrepareForPublish">
+    <Error Condition="'$(NativeProductionCandidate)' != 'true'" Text="Publish requires -p:NativeProductionCandidate=true. Its real production path remains authorization-guarded." />
+  </Target>
   <Target Name="IncludeNativeXamlResources" AfterTargets="ComputeFilesToPublish">
     <Error Condition="!Exists('$(TargetDir)$(AssemblyName).pri')" Text="Missing generated application PRI; refusing an incomplete native publish." />
     <ItemGroup>

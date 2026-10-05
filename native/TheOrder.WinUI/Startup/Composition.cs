@@ -17,7 +17,8 @@ internal static class Composition
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables("THE_ORDER_NATIVE_").Build();
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
-        var nativeConfiguration = new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
+        var nativeConfiguration = Program.Profile?.Configuration(configuration["DIAGNOSTICS"] == "1")
+            ?? new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
         services.AddSingleton(nativeConfiguration);
         services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
@@ -34,7 +35,7 @@ internal static class Composition
             if (!client.Capability.Loaded) throw new IOException(client.Capability.Message);
             if (!client.Capability.CanEdit) return null;
             return client.CreateSessionEngine(p.GetRequiredService<IFilesystemIdentity>(), p.GetRequiredService<IGameProcessPlatform>(),
-                p.GetRequiredService<ILaunchPositionStore>(), new WindowsSessionClock(), new WindowsSessionRecoveryTokens(nativeConfiguration.DataDirectory!), p.GetRequiredService<WindowsSessionPowerEvents>());
+                p.GetRequiredService<ILaunchPositionStore>(), new WindowsSessionClock(), new WindowsSessionRecoveryTokens(nativeConfiguration), p.GetRequiredService<WindowsSessionPowerEvents>());
         }, () => p.GetRequiredService<OfflineLibraryClient>().CurrentSnapshot));
         services.AddSingleton(p => new LaunchViewModel(p.GetRequiredService<ILaunchLibrary>(), p.GetRequiredService<AppSessionHost>()));
         services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();

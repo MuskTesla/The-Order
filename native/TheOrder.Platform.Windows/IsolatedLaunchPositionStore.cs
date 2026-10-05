@@ -16,7 +16,9 @@ public sealed class IsolatedLaunchPositionStore(NativeConfiguration configuratio
     {
         try
         {
-            using var stream = IsolatedLibrarySource.OpenChecked(Path.Combine(root, FileName));
+            using Stream stream = configuration.Profile is { } profile
+                ? new MemoryStream(profile.ReadComponent(FileName) ?? throw new FileNotFoundException())
+                : IsolatedLibrarySource.OpenChecked(Path.Combine(root, FileName));
             if (stream.Length is < 1 or > Maximum) throw new InvalidDataException("启动位置核对记录大小无效。");
             var encrypted = new byte[(int)stream.Length]; stream.ReadExactly(encrypted);
             var plain = WindowsDataProtection.Protect(encrypted, false);
@@ -35,6 +37,7 @@ public sealed class IsolatedLaunchPositionStore(NativeConfiguration configuratio
         if (plain.Length > Maximum - 1024) throw new InvalidDataException("启动位置记录容量不足。");
         var bytes = WindowsDataProtection.Protect(plain, true);
         if (bytes.Length > Maximum) throw new InvalidDataException("启动位置记录容量不足。");
+        if (configuration.Profile is { } profile) { profile.WriteComponent(FileName, bytes); return true; }
         var target = Path.Combine(root, FileName); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var existing = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
         Check();
@@ -71,9 +74,9 @@ public sealed class IsolatedLaunchPositionStore(NativeConfiguration configuratio
         {
             return await Task.Run(() =>
             {
-                var root = IsolatedLibrarySource.ValidateDirectory(configuration.DataDirectory);
+                var root = NativeProfileAccess.Validate(configuration);
                 var pins = IsolatedLibraryPersistence.PinDirectoryChain(root);
-                try { IsolatedLibrarySource.ValidateDirectory(root); cancellation.ThrowIfCancellationRequested(); return action(root); }
+                try { NativeProfileAccess.Validate(configuration); cancellation.ThrowIfCancellationRequested(); return action(root); }
                 finally { foreach (var pin in pins) pin.Dispose(); }
             }, cancellation).ConfigureAwait(false);
         }

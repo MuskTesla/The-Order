@@ -1,12 +1,14 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 6：范围收缩与 Production Store Bootstrap（实施中）
+## WinUI Phase 6.1：Production Store Bootstrap（自检完成，等待独立 Gate）
 
 - 基线 `codex/winui-phase5` / `b2a360a005aecd8bea1b18571eb78b75259c115b`，Phase 5B 已通过最终独立 Gate（`3d9a71ad920b5c20fe38772ef3e5c1698dd5010d`）。
 - 产品事实更新：没有要求保留的 Electron 正式资料。旧 [PHASE6_MIGRATION_AND_STORE.md](PHASE6_MIGRATION_AND_STORE.md) 已标记 **SUPERSEDED**，仅保留历史，不再是实施计划。
 - 当前规范为 [PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md](PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。6.1 只在隔离 synthetic production-like profile 实现新库初始化、物理隔离、身份与版本门禁、单 writer、备份恢复和原生凭据/偏好；不建立正式 profile，不自动导入 legacy。
 - 6.2 为 **Production Readiness / First Real Profile**，以后另获明确授权才创建第一份真实 native production profile。旧 Electron 归档可另行授权；无无损迁移、回滚到 Electron、双 writer 协调或 SQLite 要求。
-- 本节是范围重设，尚未声明 6.1 实现或自检完成；下方旧阶段状态为历史记录。
+- scope-reset 文档 checkpoint：`62da4b46829602e3f4852d094489bbf15d10113b`。已完成 native profile owner、稳定身份、严格版本/能力门禁、崩溃续作、跨进程单 writer、Phase 2 共用原子写与实际 restore。新增 manifest/envelope v1，库内部、Session accounting、cwd、cover 和 DPAPI model 保留；备份来源传回原 SessionEngine，不能恢复活动进程的接管资格。
+- 最终 Debug/Release 全量各 **1363/0/0**，原有 1278 项逐名称保留，新增 85 项；locked restore、两配置 build（0 warnings/errors）与隔离 publish 通过。最终 Windows Session 分组 **9/0/0**，recognition **44/0/0**，独立性能/资源 **4/0/0**。实际 WinUI 已验证空库、偏好重开、发布默认 Production 与正常退出（exit code 0）；全部指向隔离 production-like 根。
+- **READY FOR PHASE 6.1 INDEPENDENT GATE**。自检未发现新的 BLOCKER / MAJOR / MINOR；保留两项既有测试间歇失败观察，分组与最终完整复验均通过但根因尚未确定，未改原测试期望。完整数字、限制及源码/二进制/checkpoint 绑定见 [DEVELOPMENT](../../DEVELOPMENT.md) 与 ignored `.artifacts/native-phase6-1/validation-audit.json`、`checkpoint-receipt.json`。正式 Electron/native profile 和凭据未访问，无真实游戏、Electron 改动或推送；暂停等待独立 Gate，不进入 6.2。下方旧阶段状态为历史记录。
 
 ## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
 

@@ -10,6 +10,7 @@ public sealed class WindowsSessionRecoveryTokens : ISessionRecoveryTokens
     private readonly string root;
     private readonly WindowsFilesystemIdentity filesystem = new();
     public WindowsSessionRecoveryTokens(string explicitSyntheticDirectory) => root = IsolatedLibrarySource.ValidateDirectory(explicitSyntheticDirectory);
+    public WindowsSessionRecoveryTokens(NativeConfiguration configuration) => root = NativeProfileAccess.Validate(configuration);
     public FilesystemIdentity ProfileIdentity => filesystem.Inspect(root).Observation?.Identity ?? throw new IOException("无法核对恢复资料目录身份。");
     public uint? BootId
     {

@@ -14,7 +14,9 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
     {
         try
         {
-            using var input = IsolatedLibrarySource.OpenChecked(Path.Combine(root, "native-online-key.dpapi"));
+            using Stream input = configuration.Profile is { } profile
+                ? new MemoryStream(profile.ReadComponent("native-online-key.dpapi") ?? throw new FileNotFoundException())
+                : IsolatedLibrarySource.OpenChecked(Path.Combine(root, "native-online-key.dpapi"));
             if (input.Length is <= 0 or > 16384) throw new OnlineException(OnlineFailure.CredentialStorageCorrupt);
             var encrypted = new byte[(int)input.Length]; input.ReadExactly(encrypted); var plain = WindowsDataProtection.Protect(encrypted, false);
             try
@@ -36,6 +38,7 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
         {
             var plain = Encoding.UTF8.GetBytes(normalized); byte[] encrypted;
             try { encrypted = WindowsDataProtection.Protect(plain, true); } finally { CryptographicOperations.ZeroMemory(plain); }
+            if (configuration.Profile is { } profile) { profile.WriteComponent("native-online-key.dpapi", encrypted); return true; }
             var target = Path.Combine(root, "native-online-key.dpapi"); var temp = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
             void Check() { try { using var prior = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
             Check();
@@ -46,6 +49,7 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
     }
     public Task ClearAsync(CancellationToken cancellation) => Run(root =>
     {
+        if (configuration.Profile is { } profile) { profile.WriteComponent("native-online-key.dpapi", ReadOnlyMemory<byte>.Empty); return true; }
         var target = Path.Combine(root, "native-online-key.dpapi");
         try { using (IsolatedLibrarySource.OpenChecked(target)) { } File.Delete(target); } catch (FileNotFoundException) { }
         return true;
@@ -57,9 +61,9 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
         {
             return await Task.Run(() =>
             {
-                var root = IsolatedLibrarySource.ValidateDirectory(configuration.DataDirectory);
+                var root = NativeProfileAccess.Validate(configuration);
                 var held = IsolatedLibraryPersistence.PinDirectoryChain(root);
-                try { IsolatedLibrarySource.ValidateDirectory(root); cancellation.ThrowIfCancellationRequested(); return action(root); }
+                try { NativeProfileAccess.Validate(configuration); cancellation.ThrowIfCancellationRequested(); return action(root); }
                 finally { foreach (var handle in held) handle.Dispose(); }
             }, cancellation).ConfigureAwait(false);
         }
