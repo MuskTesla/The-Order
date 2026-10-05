@@ -1,5 +1,13 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 6.0：正式迁移与权威存储设计（设计完成，尚未实施）
+
+- 当前已通过 Phase 5B 最终独立 Gate：`codex/winui-phase5` / `3d9a71ad920b5c20fe38772ef3e5c1698dd5010d`，**PASS FOR PHASE 6**。下方“等待 targeted re-Gate”是历史时点，不代表当前 Gate 状态。
+- Phase 6.0 结论 **READY FOR PHASE 6 IMPLEMENTATION**；完整规范见 [PHASE6_MIGRATION_AND_STORE.md](PHASE6_MIGRATION_AND_STORE.md)。设计规定 legacy/native 物理分离、独立 writer/format gate、sealed source snapshot、候选逐类对账、单一 authority activation point，以及覆盖所有用户状态的首次 mutation latch 和分阶段 rollback。
+- 保留 JSON 与 inline personal cover；1k/5k/10k及 history/notes/cover 压力测量已完成，109项既有存储隔离回归通过。大封面样本内存较高，正式副本须通过容量/延迟/内存 readiness 门槛，不能把合成结果解释为任意真实库都可切换。
+- Credential 默认重新输入；localStorage 采用一次性副本-context 白名单 exporter；切换临界区另设计原-context legacy source guard，需额外明确授权。上述迁移、guard、store adapter 和 envelope 均**尚未实现**。
+- 本轮只有文档源码变更；未访问/复制正式 profile、读取或解密正式凭据、建立正式 native store、启动真实游戏、替换安装或推送。Phase 6.1 等待后续实施授权；6.2 正式副本操作及最终 cutover 分别需明确授权。
+
 ## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
 
 - 本轮从 `codex/winui-phase5` / `9f1aef2e944f8ad07c31a5b43f6f7c84b97d678d` 干净基线开始，独立 Final Gate 的 **REMEDIATION REQUIRED / MAJOR 2** 取代下方历史自检结论。只修两项 persistence retry，不进入 Phase 6。

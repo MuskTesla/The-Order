@@ -1,5 +1,13 @@
 # 开发与维护
 
+## WinUI Phase 6.0：Migration / Authoritative Store Design Gate
+
+Phase 5B 在 `codex/winui-phase5` / `3d9a71ad920b5c20fe38772ef3e5c1698dd5010d` 已取得 **PASS FOR PHASE 6**；以下旧章节的等待复审状态属于历史记录。Phase 6.0 仅完成设计，结论 **READY FOR PHASE 6 IMPLEMENTATION**。规范、源码 inventory、16项架构决策、状态机、对账/故障矩阵、benchmark 和6.1/6.2拆分统一维护在 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md)，此处不复制全文。
+
+本轮在 `.artifacts/native-phase6-design/` 用现有 Release DLL、fake clock/process 与真实隔离磁盘 persistence 测量1k/5k/10k及历史/notes/cover压力。JSON继续保留；全部checkpoint样本最大1033.2ms，cover样本进程峰值932.4MiB，真实库切换前需按规范再验证。既有 `LegacyCompatibilityTests|SessionPersistenceTests|TransactionSafetyTests` **109/0/0**；未声称重新运行完整native suite。harness/输出是ignored产物，不是新增生产实现或维护测试。
+
+设计新增的正式profile、version gate、snapshot/migration、activation、mutation latch、preference helper/legacy source guard、credential envelope均待6.1实施。当前应用仍保持synthetic-only；不改环境变量就运行应用仍不是本阶段允许的正式资料操作。6.2需额外授权后才可盘点/复制正式源；运行原-context source guard、处理credential与最终cutover必须在各自明确权限范围。只取得read-only/copy权限不得激活。没有复制正式资料、迁移或替换正式程序；本轮文档checkpoint之后停止。
+
 ## WinUI Phase 5B.2：Persistence Retry Remediation（等待 targeted re-Gate）
 
 本轮从 `codex/winui-phase5` / `9f1aef2e944f8ad07c31a5b43f6f7c84b97d678d` 的干净工作区开始。已核对它相对受测生产 checkpoint `a11704b902d0c643385efa2209713f3f7fff8c01` 只有两份文档变化。独立 Final Gate 的 **REMEDIATION REQUIRED / MAJOR 2** 优先于下方历史自检结论；本次仅整改初始化与终态持久化重试，尚未通过独立 re-Gate，不代表 Phase 5B 完成。
