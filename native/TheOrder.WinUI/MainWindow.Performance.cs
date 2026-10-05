@@ -23,6 +23,7 @@ public sealed partial class MainWindow
     {
         string output = Path.GetFullPath(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT")!);
         var samples = new List<object>();
+        string stage = "startup"; int currentRound = -1;
         try
         {
             if (!output.Contains(Path.DirectorySeparatorChar + ".artifacts" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Artifact output required");
@@ -42,15 +43,19 @@ public sealed partial class MainWindow
             var workloadClock = Stopwatch.StartNew();
             for (int i = 0; i < rounds || workloadClock.Elapsed < TimeSpan.FromMinutes(minutes); i++)
             {
+                currentRound = i; stage = "layout";
                 if (i % 12 == 0) await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, ViewModel.Layout == "grid" ? "list" : "grid");
+                stage = "scroll";
                 var viewport = await libraryPage.PerformanceScrollAsync((i % 11) / 10d, i * 47);
                 if (i % 3 == 0)
                 {
+                    stage = "details-navigation";
                     var id = ViewModel.Items[(i * 47) % ViewModel.Items.Count].Id;
                     await Navigate(WorkspacePage.Details, id); await Task.Delay(60);
                     await Navigate(WorkspacePage.Library); await Task.Delay(60);
                 }
-                if (i % 20 == 0) { AppWindow.Hide(); await Sessions.CheckpointAsync(); AppWindow.Show(); }
+                if (i % 20 == 0) { stage = "window-hide"; AppWindow.Hide(); stage = "checkpoint"; await Sessions.CheckpointAsync(); stage = "window-show"; AppWindow.Show(); }
+                stage = "resource-sample";
                 using var process = Process.GetCurrentProcess();
                 var sample = new { round = i, elapsedMs = Program.StartupClock.Elapsed.TotalMilliseconds, layout = ViewModel.Layout, viewport, images = images.Metrics,
                     workingSet = process.WorkingSet64, privateBytes = process.PrivateMemorySize64, managedHeap = GC.GetTotalMemory(false), handles = process.HandleCount, threads = process.Threads.Count,
@@ -65,7 +70,7 @@ public sealed partial class MainWindow
         }
         catch (Exception e)
         {
-            if (Directory.Exists(output)) await Task.Run(() => WritePerformance(output, "ui-failure.json", new { type = e.GetType().Name, e.Message, samples }));
+            if (Directory.Exists(output)) await Task.Run(() => WritePerformance(output, "ui-failure.json", new { type = e.GetType().Name, e.Message, e.HResult, e.StackTrace, stage, currentRound, samples }));
         }
         finally { if (App.Instance is { } app) await app.RequestExitAsync(); }
     }
