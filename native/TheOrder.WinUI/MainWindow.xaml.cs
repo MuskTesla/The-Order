@@ -24,6 +24,8 @@ public sealed partial class MainWindow : Window
     private readonly ImportPage importPage;
     private readonly InstallationsPage installationsPage;
     private readonly FilesViewModel files;
+    public LaunchViewModel Launch { get; }
+    private readonly DispatcherTimer launchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly InstallationNavigation installationNavigation;
     private readonly IImagePipeline images;
     private bool navigating, synchronizing;
@@ -31,15 +33,15 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer? diagnosticsTimer;
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
-        this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture;
+        this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
         this.recognition = recognition;
         this.files = files; this.images = images;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import) };
-        detailsPage = new(workspace, images) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
+        detailsPage = new(workspace, images, launch) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         onlinePage = new(online, images);
         recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };
@@ -52,6 +54,7 @@ public sealed partial class MainWindow : Window
         installationsPage = new(files, workspace) { ChooseFolder = PickFolder, ChooseExecutable = () => PickFile(".exe") };
         workspace.ThemeChanged += ApplyTheme; workspace.PropertyChanged += OnState;
         ApplyTheme(); ShowPage();
+        launchTimer.Tick += OnLaunchRefresh; launchTimer.Start();
         if (configuration.Diagnostics)
         {
             DiagnosticsPanel.Visibility = Visibility.Visible;
@@ -128,9 +131,12 @@ public sealed partial class MainWindow : Window
     }
     private void ApplyTheme() => Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
     public void CancelOnlineRequests() => online.Leave();
+    private void OnLaunchRefresh(object? sender, object e) => Launch.Refresh();
     public async ValueTask StopAsync()
     {
         onlineFixture?.ReleaseCandidate();
+        launchTimer.Stop(); launchTimer.Tick -= OnLaunchRefresh;
+        await Launch.DisposeAsync();
         installationNavigation.Invalidate();
         if (diagnosticsTimer is not null) { diagnosticsTimer.Stop(); diagnosticsTimer.Tick -= OnDiagnostics; }
         ViewModel.ThemeChanged -= ApplyTheme; ViewModel.PropertyChanged -= OnState;
@@ -162,11 +168,17 @@ public sealed partial class MainWindow : Window
         var snapshot = new
         {
             schema = 1, timestamp = DateTimeOffset.UtcNow, processId = Environment.ProcessId,
+            launch = new { outcome = Launch.Runtime.Outcome.ToString(), tracking = Launch.Runtime.Tracking.ToString(), game = Launch.Runtime.Snapshot?.Game.GameId,
+                operation = Launch.Runtime.Snapshot?.OperationId, generation = Launch.Runtime.Snapshot?.Generation, initialPid = Launch.Runtime.Initial?.Pid,
+                currentPid = Launch.Runtime.Current?.Pid, creationTime = Launch.Runtime.Current?.CreationFileTime.ToString(System.Globalization.CultureInfo.InvariantCulture), created = Launch.Runtime.ProcessCreated,
+                startMs = Launch.Runtime.StartMilliseconds, attachMs = Launch.Runtime.AttachMilliseconds, handoffMs = Launch.Runtime.HandoffMilliseconds,
+                lastRequest = Launch.LastRequestOutcome?.ToString(), selected = Launch.SelectedInstallationId, availability = Launch.Availability.ToString() },
             build = typeof(App).Assembly.ManifestModule.ModuleVersionId.ToString(),
             checkpoint = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion,
             itemCount = ViewModel.Items.Count, totalCount = ViewModel.TotalCount, viewMode = ViewModel.Layout,
             theme = Root.ActualTheme.ToString(), readOnly = ViewModel.IsReadOnly, state, page = ViewModel.Page.ToString(),
             viewport = libraryPage.RuntimeViewport(), workingSetBytes = process.WorkingSet64, privateBytes = process.PrivateMemorySize64,
+            processCpuMs = process.TotalProcessorTime.TotalMilliseconds, processHandles = process.HandleCount,
             dirty = ViewModel.IsDirty, saving = ViewModel.IsSaving, detailsLoading = ViewModel.IsDetailsLoading,
             preferenceState = ViewModel.PreferenceState.ToString(), savedFilterCount = ViewModel.SavedFilters.Count,
             notice = ViewModel.Notice.Message, persistence = ViewModel.PersistenceResult?.Outcome.ToString(), refresh = ViewModel.LastRefresh.ToString(),

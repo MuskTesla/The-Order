@@ -1,5 +1,18 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5A：Game Launch & Process Continuity（本机 Gate 通过）
+
+- 从可信Phase4 checkpoint `7965bee95c49750e26b85302da037582b96a54fc` 创建 `codex/winui-phase5`；Phase5A本机Gate通过，当前阶段提交即Phase5A checkpoint，精确SHA见Git及本机checkpoint receipt。**提交后暂停，未进入5B**。
+- LaunchViewModel→GameLaunchService/serialized library admission→Windows process平台。不可变snapshot、独立launch lifecycle、最终folder/exe/cwd物理身份复核、structured ArgumentList、明确cwd、首选/本次显式安装；位置首次核对后保存在隔离机器DPAPI，非legacy/session数据。保留single-active，分开Started与TrackingLimited，PID+creation+image+retained handle防复用，有限parent/child唯一窗口接续，不选同目录最新进程。
+- cancel/shutdown不kill，不写时长、次数、历史、session persistence或tray session。native候选窗口关闭真正退出，旧Electron活动窗口隐藏托盘语义留待5B；正式资料及正式程序没有接管。
+- 自有fixture新增65项production-path测试通过。真实验收暴露并修复两处通用问题：关闭后迟到的Details.Unloaded访问已释放CTS（2项回归先失败）；扩展EXE路径影响旧引擎/按路径兼容行为（2项读取实际Windows命令行的回归先失败）。前者增加disposed保护；后者仅对再次验证为同一物理文件的短路径使用普通Win32写法，身份、固定句柄、structured args及安全边界不变。未修改GPU设置，无游戏名特例。
+- Game-A x86直接启动、实际cwd、AlreadyRunning、正常退出检测通过。最终候选PID7904 exit0，Game-A PID44384/creation134356586222243292保持运行且窗口可用，随后游戏正常退出；此前用户同时关闭所有进程不算证据，早期manager崩溃的no-kill也不算clean shutdown PASS。
+- Game-B按用户纠正使用真正游戏入口，原扩展路径只有无窗口子进程；普通路径对照成功，最终WinUI也成功：入口31608→同目录子进程28316，父子/创建时间/唯一窗口接续、主菜单、cwd、正常退出检测全部通过。GPU偏好注册项只读确认仍存在，没有直接测量最终GPU选择；不能把路径对照结果夸大为驱动根因证明。旧错误launcher与无窗口证据已supersede。
+- Game-C x64资源在已有`files`子目录。仅修改隔离样本的explicit workingDirectory并重新核对位置，最终PID2572正常主菜单/实际cwd/退出检测通过，未移动资源或改游戏配置。备用Game-D只作有界选择，因B已提供真实handoff，没有执行。
+- 证据`.artifacts/native-phase5a/`：26组manifest/27截图，requested/runtime、长度及SHA256已核验，无重复截图hash；`win32-b-real-menu`像素被管理器遮挡，明确INVALID，由`win32-b-real-menu-foreground`替代。最终包`win32-fixed/win-x64`，WinUI MVID db300925-99ba-455e-bc36-93e2ee5d55b3；全层bundle hashes与最终commit receipt绑定，不把内嵌父SHA7965当成本阶段commit。
+- A/B目录元数据无变化，C仅既有启动日志变化；无新增/删除文件，无The Order/代理写入游戏目录的操作，不冒称内核级IO审计。隔离4条library SHA256逐字节不变，时长/次数/history未写入。未访问正式profile、API凭据、修改图形设置或替换正式Electron。
+- 最终Debug/Release完整C#各1077/0/0；65启动专项、Electron665/0/0、build/import、artifact32/0/0、locked restore、两配置0warnings/errors、Release publish通过。未进入5B。UAC、DRM、broker、未观察到的快速中间进程、UNC、需要扩展语法的长路径及跨重启恢复没有扩大承诺。完整旧Electron行为表、证据版本与baseline见[DEVELOPMENT](../../DEVELOPMENT.md)。
+
 ## WinUI Phase 4R：Real API / CDN Compatibility Validation（2026-10-05 完成）
 
 - 从已通过 targeted re-Gate 的 `codex/winui-phase4` / `c077fd257c5195e790a540f77c571269375a7f0d` 继续。**REAL API SMOKE PASS；PHASE 4 COMPLETE — READY FOR PHASE 5**。只完成本阶段并暂停，没有进入 Phase5。以下旧节中的“未验证真实 API/CDN”仍描述其历史 checkpoint，本节补充当前真实服务证据，不代表正式部署或全部真实游戏兼容。

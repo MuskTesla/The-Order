@@ -1,5 +1,91 @@
 # 开发与维护
 
+## WinUI Phase 5A：Game Launch & Process Continuity（本机 Gate 通过）
+
+从 `7965bee95c49750e26b85302da037582b96a54fc` 创建 `codex/winui-phase5`。本阶段启动和进程连续性已完成本机合成、真实游戏与发布验收；建立Phase5A checkpoint后暂停，**不进入Phase5B**。不写时长、次数、session history或active-session恢复。真实样本仅在合成Gate通过后从用户授权的 `D:\entertainment\PC` 有界选择；关系和资料全部在隔离profile。不是正式部署或全部游戏兼容性承诺。
+
+### 旧 Electron 行为表（实际读取源码）
+
+| 行为 | 当前源码事实 |
+| --- | --- |
+| 默认安装 | `electron/playtime.ts:launch`：preferred ID存在则选它；否则只有恰好一个安装才允许启动。多安装未选preferred报错；启动接口仅gameId，无explicit安装参数 |
+| 并发政策 | 一个PlaytimeTracker只有一个active；active、launching、finishing任一存在就拒绝其他启动，包括不同作品及同作品不同安装；main另外用identity lock串行启动/删除/导入 |
+| 参数 / cwd | `spawn(file, [...arguments], {cwd:dirname(file), shell:false, windowsHide:false, stdio:'ignore'})`；数组保留，旧版实际不消费native新增workingDirectory字段 |
+| 启动检查 | realpath安装与exe，检查最终exe在目录内、扩展名exe且是文件；没有持久机器级filesystem identity核对 |
+| 初始退出 | Node child exit事件；spawn失败不计时。退出前成功创建的PID加入knownPids |
+| continuation | 退出后最多6000ms，每次最多等待750ms；PowerShell/CIM枚举全系统后过滤目录；排除已知PID、早于启动约1秒的进程，按createdAt最新选一条；不验证parent relation、不保护PID复用 |
+| 替代进程退出 | 每1000ms重新查目录PID；查询失败会结束记录，缺少query failure/真实exit区分；相同目录其他进程有误绑定风险 |
+| 窗口关闭 / 应用退出 | 活动或launching时关窗口仅隐藏到托盘；明确退出等待启动、保存记录并退出。finishSession注释及实现明确不signal游戏；shutdown不kill游戏 |
+| 已在运行 / 重开 | 已active直接拒绝；首次启动前existing目录PID只用于handoff排除，没有跨进程重启恢复或可靠external AlreadyRunning接管 |
+| 测试依据 | `tests/playtime.test.ts`：数组/cwd、重复active拒绝、spawn失败、exit、目录内新PIDhandoff、失败保存重试及no-kill；Windows API查询另有临时空目录只读测试 |
+
+### 本阶段明确的改进方向
+
+保留single-active政策与structured arguments；explicit installation只影响本次启动，不暗改preferred。有效explicit workingDirectory优先，缺省才用exe目录，无效不静默fallback。使用Windows进程句柄、PID+creation time+image观察，有限parent/child证据替代“同目录最新进程”；证据不足返回TrackingLimited。应用关闭真正退出但不结束游戏（托盘/计时属于5B，旧隐藏窗口语义本阶段不实现）。
+
+Phase3B的PathObservation明确是临时观察，旧library没有持久机器身份，不能声称可以凭旧JSON发现启动前的目录替换。新启动授权需要独立的本机安装观察基线；旧/未核对关系必须先显式核对，再保存机器身份，启动时再校验；不得自动把变化目标重新信任。该记录不是active-session persistence，也不能随书架导出授予另一台机器启动权限。
+
+### Phase 5A 当前实现与已验证范围
+
+- `LaunchViewModel` → `GameLaunchService` / `ILaunchLibrary` → `WindowsGameProcesses`。详情只做UI wiring，进程观察由Application拥有，离开详情不会结束游戏。独立launch incarnation保护删除/恢复、合并、移除后重加安装；同一安装参数编辑只影响下一次snapshot。序列化library admission中的最终创建不写个人/游玩数据。
+- snapshot包含operation/generation、game epoch/incarnation、installation/preferred、原结构化参数和folder/exe/cwd三份filesystem observation。每次启动前固定祖先/reparse目标与exe句柄，再复核Phase3B identity；无shell、`ArgumentList`、继承环境、明确cwd，拒绝无效/越界目录。明确cwd优先，否则exe目录；长度达到260的cwd显式拒绝，不做静默fallback。ordinary/junction/symlink/SUBST retarget均有实际Windows测试。
+- `native-launch-positions.dpapi`仅保存本机核对位置，使用同一隔离根/安全打开/原子写与DPAPI helper；最多10000项/16MiB，损坏不伪装缺失，不自动信任新目标。旧library没有该机器授权记录，第一次启动需显式核对。不是session persistence，不改变legacy备份格式。DPAPI helper从原credential store原样抽出，无本阶段凭据读取或网络请求。
+- 句柄+PID+creation FILETIME+image filesystem identity共同标识进程；Windows查询失败为Unknown/Limited，不是Exited。创建成功后附着/观察失败只返回StartedButTrackingLimited；single-active reservation保持，不能因此再开一份。已有相同image进程阻止新启动，但不冒称跨重启恢复/接管。
+- continuation：初始12秒观察、退出后6秒观察，250ms轮询、稳定运行后1秒；最多8192系统行/32候选/240轮树观察，候选稳定750ms。验证parent lifetime、creation time、安装边界及唯一可见非辅助窗口；多个候选/不完整查询/无法附着保守Limited。同目录无关进程、缺失creation、仅选择最新进程均不接纳。Windows不能补回从未观察到的极短中间进程，broker/脱离树/长期延迟接续仍有限制。
+- 所有cancel/dispose/shutdown只停止观察和释放句柄；没有Kill/TerminateProcess。UI本阶段关闭真正退出，不实现旧Electron活动时隐藏托盘；计时、次数、历史、tray session、active-session恢复留给5B。
+- 项目自有WinForms fixture支持直接窗口、launcher→game、launcher→helper→game、空入口、快速子进程、多候选、参数/cwd/原始Windows命令行回报及正常stop文件关窗。不会复制到真实游戏目录。新增65项production-path测试，包括13项实际Electron oracle检查/差分；旧同目录最新进程策略与native严格接续的差异明确标注。
+- 实际WinUI发现缺失exe提示误写“目录不存在”，已分为启动文件/安装目录/工作目录文案并扩展现有回归。一次全量测试在fixture窗口被观察前就关窗，正确得到Limited而使测试失败；测试改为等待生产monitor实际消费HasWindow=true，不改变生产策略。保留失败日志，最终`launch-stable-window.trx` **61/0/0**、`Debug-complete.trx`/`Release-complete.trx`各 **1073/0/0**。
+- locked restore、两配置solution build各0 warnings/errors、Release publish通过；原102 transaction、13 filesystem/cover、32 online、254 recognition差分和14fault保留；Electron完整665/0/0、build、37条真实UI合成导入/重复0新增37跳过/重启个人数据保留通过；artifact collector32/0/0。没有升级依赖。
+
+最终真实验收发现的通用修复（supersede上面的1073中间结果）：
+
+- 正常关闭时先dispose host，随后WinUI Details.Unloaded又调用Launch.Leave，触发已释放CTS的Cancel。早期candidate exit `0xc000027b`，不能把游戏仍活着当作正常退出通过。新增2项production VM迟到回调测试先失败；仅为Leave/Cancel增加disposed保护。最终两次真实正常关闭均exit0，no-kill由保留进程句柄验证。
+- Game-B用户指定的正确入口在旧`\\?\`物理路径启动下只出现无窗口子进程，而普通路径、相同cwd/空参数、同样UseShellExecute=false的对照出现正常主菜单。Windows为普通路径保存的GpuPreference注册值只读确认，未改GPU/驱动/系统设置，也未直接测量GPU归属，因此这是已验证的路径兼容问题，不宣称确定的驱动根因。新增2项真实fixture回归读取GetCommandLineW，在旧实现中失败（单独QueryFullProcessImageName会被运行时规范化，不足以证明实际启动字符串）。`WindowsGameProcesses`保留扩展路径作身份/固定/复核，仅当短普通路径再次Inspect得到同一file ID和final path时，用普通写法创建进程。不能等价转换的路径保留扩展语法，无shell、参数、权限、reparse或候选选择规则放宽，无游戏特例。
+- 最终`win32-path-fixed.trx` **65/0/0**；`Debug-win32-final.trx` / `Release-win32-final.trx`各 **1077/0/0**，两配置build各0 warnings/errors。Electron665、artifact32、build/import结果仍有效（其源码未变）；最新Release publish为下述win32-fixed。保留修复前失败TRX，不能覆盖为成功。
+
+### 真实样本、隔离与最终门禁
+
+关系在`.artifacts/native-phase5a/real-profile`，有合成标记及4条别名记录，不是正式资料。A/B/C实际执行，D只作备用选择未执行；B已提供真实接续，不再扩大执行样本。真实args为空，未注入未知flags；复杂quoting由fixture验证。未进入剧情、读写存档或更改游戏设置，均通过标准关闭及游戏自身确认退出。
+
+| 样本 | 最终结果 |
+| --- | --- |
+| Game-A，x86直接入口，空格/中文路径 | 初次直接启动、实际cwd/PID+creation、AlreadyRunning且仅一个实例、正常退出检测通过。最终包管理器7904→游戏44384，creation134356586222243292；管理器正常exit0后保留同一游戏句柄/PID/creation且主菜单可用，随后游戏正常退出 |
+| Game-B，x86自重启入口，日文复杂路径 | 用户纠正入口后发现扩展路径兼容问题；普通路径对照成功，最终WinUI入口31608（creation134356583555791717）→同一exe子进程28316（creation134356583556359697），parent=31608，唯一可见主菜单、实际cwd、RunningConfirmed接续与正常退出检测通过。没有把较早错误bootmenu的安装提示当作真实游戏不兼容 |
+| Game-C，x64直接入口，显式工作目录 | 原exe目录cwd找不到SCRIPT.PAK；只读文件名确认资源位于已有files子目录，仅调整隔离安装的workingDirectory并重新显式核对。最终PID2572/creation134356584994899275，实际cwd与声明一致且不同于exe目录；主菜单、RunningConfirmed和正常退出检测通过，未移动资源、无产品cwd规则修改 |
+| Game-D，备用日文launcher | 已有界选择及元数据基线，但未执行；不列为通过样本 |
+
+用户曾同时关闭管理器和所有游戏的那一次，明确不作为no-kill证据。早期`resume-a-*`虽然游戏存活但manager崩溃，也不是clean shutdown PASS。`fixed-a-no-kill.json`证明关窗修复后exit0；最终`win32-a-no-kill.json`进一步绑定最新包、退出前后保留句柄，manager exit0且游戏同一身份继续运行。没有强制结束游戏。未自然出现可单独核验的helper/updater混合主窗口，真实helper场景不冒称覆盖；确定性多候选、辅助进程、未知身份和PID复用回归继续通过。
+
+隔离library在B入口/C cwd/D样本设置完成后记录基线；最终SHA256 `841096FF850FA3805C16AFE6C497B711973DCB1DBEEC8C419E7CCD8791688D04`逐字节不变，个人字段、720秒/3次/空history均未被启动写入。正式profile、credential、API和正式Electron未访问/替换。A73文件、B352文件前后元数据无变化；C44文件只有已有启动日志大小/mtime变化，无新增/删除文件，文件名和时序对应游戏启动日志（未读取日志内容）。The Order/代理没有向游戏目录写文件的操作；这是元数据审计与操作范围证明，不是内核级逐进程IO归因。
+
+### 当前发布启动入口
+
+`native/scripts/native.ps1 -Action Run -Published`仍指Phase1默认发布目录，不能据此启动最新Phase5A。当前验收包为仓库下`.artifacts/native-phase5a/win32-fixed/win-x64`；从仓库根使用下列显式入口。该目录是本机生成候选，不替换正式程序。
+
+```powershell
+$env:DOTNET_ROOT = (Resolve-Path '.artifacts/native-phase1/tools/dotnet').Path
+$env:THE_ORDER_NATIVE_DATA_DIR = (Resolve-Path '.artifacts/native-phase5a/real-profile').Path
+$env:THE_ORDER_NATIVE_DIAGNOSTICS = '1'
+$phase5Candidate = (Resolve-Path '.artifacts/native-phase5a/win32-fixed/win-x64/TheOrder.WinUI.exe').Path
+Start-Process -FilePath $phase5Candidate -WorkingDirectory (Split-Path $phase5Candidate) -WindowStyle Normal
+Remove-Item Env:THE_ORDER_NATIVE_DATA_DIR, Env:THE_ORDER_NATIVE_DIAGNOSTICS
+```
+
+### 证据身份、作废记录与baseline
+
+`.artifacts/native-phase5a/`的`final-artifact-audit.json`核验26组manifest、27张截图，requested与fresh runtime逐字段相同、tree/runtime一致、文件字节长度/SHA256相同，没有重复截图hash。最终真实游戏截图另以PID/creation/实际image/cwd receipt关联，不伪装游戏内部也有The Order runtime。关键画面已实际检查。
+
+- `synthetic-direct/handoff/limited-accepted`和`final-missing-executable`分别证明合成直接/接续/受限与缺失文件文案；`synthetic-exit-debug`仅调试历史，旧`synthetic-missing-accepted`由最终missing文案替代。
+- `real-a-*`为首次直接/重复/退出，`win32-a-before-manager-close` + `win32-a-survives-manager-close` + `win32-a-no-kill.json`为最新包完整no-kill证据。
+- `real-b-launcher-*`是用户纠正前的错误入口，`fixed-b-correct-entry-limited`是路径兼容修复前的真实反例；最终`win32-b-real-handoff`、`win32-b-real-menu-foreground`、`win32-b-exit-detected` supersede旧不兼容判断。`b-ordinary-path-control-visible`只证明独立ProcessStart对照，不当成WinUI启动。
+- **`win32-b-real-menu`截图被前景管理器遮挡，明确INVALID**，即使tree/PID/hash校验成功也不能接受；已由置前重新采集的`win32-b-real-menu-foreground`替代。旧文件保留，防止把采集成功当作内容正确。
+- `win32-c-explicit-cwd-running`、`win32-c-real-menu`、`win32-c-exit-detected`证明已有explicit cwd功能在真实资源目录可用，原SCRIPT.PAK错误是历史记录。
+- `build-bundles.json`保存accepted/final/shutdown-fixed/win32-fixed各层DLL/EXE hashes。最终WinUI MVID `db300925-99ba-455e-bc36-93e2ee5d55b3`；程序集仍嵌入父SHA7965，源码hash及提交后receipt绑定Phase5A checkpoint，不声称已嵌入最终提交。较早bundle不能单凭相同UI MVID当成全部程序集相同。
+
+Phase5A少量baseline（非SLA）：合成直接Start60.0ms/附着75.1ms，合成launcher Start55.8ms/最终附着2541.3ms/观察退出后handoff845.5ms；最终Game-A Start39.3ms/附着54.7ms，Game-B Start40.6ms/最终附着3343.8ms/handoff3018.2ms。Game-C数值见最终manifest。旧Game-A运行期间管理器全进程（含可见UI/diagnostics）5.04秒耗1937.5ms CPU、handles984→984、working set约255MiB，不能当成独立observer成本或正式性能SLA。生产250ms有界树观察/稳定后1秒轮询上限由回归验证，未进行长期压力测量。
+
+**Phase5A本机Gate通过，可提交独立评审；建立checkpoint后暂停，不进入5B。** 剩余边界：UAC需提升时明确拒绝、不绕过DRM；broker/脱离树/未观察到的快速中间进程、超时后才出现窗口及无窗口接续保守Limited。UNC、需要扩展语法的长路径、按链接别名保存的图形偏好、干净机签名/安装及长期压力未实测；不保证所有真实游戏。路径对照证明本次兼容恢复，不证明GPU驱动内部行为。跨重启进程恢复、托盘及游玩数据属于后续5B，当前未实现。
+
 ## WinUI Phase 4R：真实 API / CDN 验收与局部 WebP 兼容修复（2026-10-05）
 
 可信起点 `codex/winui-phase4` / `c077fd257c5195e790a540f77c571269375a7f0d`，用户确认4B.1.1 targeted re-Gate已通过。本轮结论 **REAL API SMOKE PASS；PHASE 4 COMPLETE — READY FOR PHASE 5**。保持当前分支，建立Phase4R checkpoint后暂停，不进入Phase5。旧4A/4B的未联网声明属于其历史证据范围，不能用旧合成证据替代本节真实服务结果。

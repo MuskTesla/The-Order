@@ -16,7 +16,7 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
         {
             using var input = IsolatedLibrarySource.OpenChecked(Path.Combine(root, "native-online-key.dpapi"));
             if (input.Length is <= 0 or > 16384) throw new OnlineException(OnlineFailure.CredentialStorageCorrupt);
-            var encrypted = new byte[(int)input.Length]; input.ReadExactly(encrypted); var plain = Protect(encrypted, false);
+            var encrypted = new byte[(int)input.Length]; input.ReadExactly(encrypted); var plain = WindowsDataProtection.Protect(encrypted, false);
             try
             {
                 var secret = new UTF8Encoding(false, true).GetString(plain);
@@ -35,7 +35,7 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
         return Run(root =>
         {
             var plain = Encoding.UTF8.GetBytes(normalized); byte[] encrypted;
-            try { encrypted = Protect(plain, true); } finally { CryptographicOperations.ZeroMemory(plain); }
+            try { encrypted = WindowsDataProtection.Protect(plain, true); } finally { CryptographicOperations.ZeroMemory(plain); }
             var target = Path.Combine(root, "native-online-key.dpapi"); var temp = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
             void Check() { try { using var prior = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
             Check();
@@ -66,26 +66,4 @@ public sealed class IsolatedCredentialStore(NativeConfiguration configuration) :
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or DataIsolationException or CryptographicException) { throw new OnlineException(OnlineFailure.CredentialStorage); }
         finally { queue.Release(); }
     }
-    private static byte[] Protect(byte[] bytes, bool encrypt)
-    {
-        var input = new Blob { Length = bytes.Length, Data = Marshal.AllocHGlobal(bytes.Length) }; Blob output = default;
-        try
-        {
-            Marshal.Copy(bytes, 0, input.Data, bytes.Length);
-            bool ok = encrypt ? CryptProtectData(ref input, null, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output)
-                : CryptUnprotectData(ref input, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output);
-            if (!ok) throw new CryptographicException();
-            var result = new byte[output.Length]; Marshal.Copy(output.Data, result, 0, result.Length); return result;
-        }
-        finally
-        {
-            for (int i = 0; i < input.Length; i++) Marshal.WriteByte(input.Data, i, 0);
-            Marshal.FreeHGlobal(input.Data);
-            if (output.Data != IntPtr.Zero) { for (int i = 0; i < output.Length; i++) Marshal.WriteByte(output.Data, i, 0); LocalFree(output.Data); }
-        }
-    }
-    [StructLayout(LayoutKind.Sequential)] private struct Blob { public int Length; public IntPtr Data; }
-    [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CryptProtectData(ref Blob input, string? description, IntPtr entropy, IntPtr reserved, IntPtr prompt, uint flags, out Blob output);
-    [DllImport("crypt32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CryptUnprotectData(ref Blob input, IntPtr description, IntPtr entropy, IntPtr reserved, IntPtr prompt, uint flags, out Blob output);
-    [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
 }

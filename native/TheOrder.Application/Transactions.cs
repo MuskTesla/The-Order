@@ -67,6 +67,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
     private readonly Dictionary<long, CancellationTokenRegistration> requestCancellations = [];
     private readonly Guid epoch = Guid.NewGuid();
     private Dictionary<string, Lifecycle> lifecycles = [];
+    private Dictionary<string, Guid> launchIncarnations = [];
     private long revision, request;
     private LibrarySnapshot current;
     private byte[] lastGood;
@@ -79,7 +80,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
     {
         this.codec = codec; this.persistence = persistence; this.now = now; this.newId = newId;
         current = new(document.Entries, recovery, document.Access, document.Reason); lastGood = document.WritableBytes ?? [];
-        foreach (var e in document.Entries) lifecycles[e.Id] = new(Guid.NewGuid(), ++revision);
+        foreach (var e in document.Entries) { lifecycles[e.Id] = new(Guid.NewGuid(), ++revision); launchIncarnations[e.Id] = Guid.NewGuid(); }
     }
     public static TransactionalLibrary Open(ILibraryCodec codec, ILibraryPersistence persistence, Func<string>? clock = null, Func<string>? idFactory = null, TimeProvider? timeProvider = null)
     {
@@ -143,8 +144,14 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             // Once the primary switches, publishing the prepared state requires only assignments.
             var old = previous.ToDictionary(e => e.Id);
             var nextLifecycles = new Dictionary<string, Lifecycle>(lifecycles);
+            var nextLaunchIncarnations = new Dictionary<string, Guid>(launchIncarnations);
             var nextRevision = revision;
             foreach (var id in nextLifecycles.Keys.Except(validated.Select(e => e.Id)).ToArray()) nextLifecycles.Remove(id);
+            foreach (var id in nextLaunchIncarnations.Keys.Except(validated.Select(e => e.Id)).ToArray()) nextLaunchIncarnations.Remove(id);
+            foreach (var e in validated)
+                if (e.Id == forceNewGeneration || !nextLaunchIncarnations.ContainsKey(e.Id)
+                    || old.TryGetValue(e.Id, out var priorLaunch) && !priorLaunch.Installations.Select(i => i.Id).Order().SequenceEqual(e.Installations.Select(i => i.Id).Order()))
+                    nextLaunchIncarnations[e.Id] = Guid.NewGuid();
             foreach (var e in validated)
                 if (e.Id == forceNewGeneration || !old.TryGetValue(e.Id, out var before) || codec.EvidenceIdentity(before) != codec.EvidenceIdentity(e))
                     nextLifecycles[e.Id] = new(Guid.NewGuid(), ++nextRevision);
@@ -156,7 +163,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             cancellation.ThrowIfCancellationRequested();
             // No cancellation inside the durable phase. A post-replace warning is a committed result.
             var receipt = await persistence.SaveAsync(lastGood, serialized).ConfigureAwait(false);
-            lifecycles = nextLifecycles; revision = nextRevision;
+            lifecycles = nextLifecycles; launchIncarnations = nextLaunchIncarnations; revision = nextRevision;
             lastGood = serialized;
             Volatile.Write(ref current, nextSnapshot);
             foreach (var retired in retiredRequests) UnregisterRequest(retired);

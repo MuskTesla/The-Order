@@ -1,0 +1,151 @@
+{
+  "electron": "44.5.1",
+  "hashes": {
+    "electron/playtime.ts": "136f75eccc28219a68c803313f286f73a208f1dc58532035f793c43bb79d7ff9",
+    "electron/library.ts": "651d3c627f755e547e6d4c45f0c1e4a53b8ddf84d46aa25c936b97310ff7f447",
+    "native/scripts/generate-launch-oracle.mjs": "48921a6111ea7f8fc4c6ac2d6d514096f5062ea6066884478340dc9ba7934a79"
+  },
+  "cases": [
+    {
+      "name": "single",
+      "count": 1,
+      "preferred": 0,
+      "accepted": true,
+      "call": {
+        "index": 0,
+        "args": [
+          "",
+          "two words",
+          "日本語",
+          "中文",
+          "\"quote\"",
+          "a\"b",
+          "C:\\path\\",
+          "$(literal)"
+        ],
+        "cwdIsExecutableDirectory": true
+      },
+      "duplicateRejected": true,
+      "noKill": true
+    },
+    {
+      "name": "single-no-preferred",
+      "count": 1,
+      "preferred": null,
+      "accepted": true,
+      "call": {
+        "index": 0,
+        "args": [
+          "",
+          "two words",
+          "日本語",
+          "中文",
+          "\"quote\"",
+          "a\"b",
+          "C:\\path\\",
+          "$(literal)"
+        ],
+        "cwdIsExecutableDirectory": true
+      },
+      "duplicateRejected": true,
+      "noKill": true
+    },
+    {
+      "name": "two-no-preferred",
+      "count": 2,
+      "preferred": null,
+      "accepted": false,
+      "call": null,
+      "duplicateRejected": false,
+      "noKill": true
+    },
+    {
+      "name": "first",
+      "count": 2,
+      "preferred": 0,
+      "accepted": true,
+      "call": {
+        "index": 0,
+        "args": [
+          "",
+          "two words",
+          "日本語",
+          "中文",
+          "\"quote\"",
+          "a\"b",
+          "C:\\path\\",
+          "$(literal)"
+        ],
+        "cwdIsExecutableDirectory": true
+      },
+      "duplicateRejected": true,
+      "noKill": true
+    },
+    {
+      "name": "second",
+      "count": 2,
+      "preferred": 1,
+      "accepted": true,
+      "call": {
+        "index": 1,
+        "args": [
+          "",
+          "two words",
+          "日本語",
+          "中文",
+          "\"quote\"",
+          "a\"b",
+          "C:\\path\\",
+          "$(literal)"
+        ],
+        "cwdIsExecutableDirectory": true
+      },
+      "duplicateRejected": true,
+      "noKill": true
+    }
+  ],
+  "continuations": [
+    {
+      "name": "unique-child",
+      "selectedPid": 700,
+      "nativeExpected": "handoff",
+      "intentionalImprovement": false
+    },
+    {
+      "name": "same-directory-unrelated",
+      "selectedPid": 700,
+      "nativeExpected": "limited",
+      "intentionalImprovement": true
+    },
+    {
+      "name": "multiple",
+      "selectedPid": 701,
+      "nativeExpected": "limited",
+      "intentionalImprovement": true
+    },
+    {
+      "name": "known-pid",
+      "selectedPid": null,
+      "nativeExpected": "limited",
+      "intentionalImprovement": false
+    },
+    {
+      "name": "outside",
+      "selectedPid": null,
+      "nativeExpected": "limited",
+      "intentionalImprovement": false
+    },
+    {
+      "name": "too-old",
+      "selectedPid": null,
+      "nativeExpected": "limited",
+      "intentionalImprovement": false
+    },
+    {
+      "name": "missing-creation",
+      "selectedPid": 700,
+      "nativeExpected": "limited",
+      "intentionalImprovement": true
+    }
+  ]
+}

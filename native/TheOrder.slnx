@@ -5,5 +5,6 @@
   <Project Path="TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
   <Project Path="TheOrder.Presentation/TheOrder.Presentation.csproj" />
   <Project Path="TheOrder.Tests/TheOrder.Tests.csproj" />
+  <Project Path="TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" />
   <Project Path="TheOrder.WinUI/TheOrder.WinUI.csproj" />
 </Solution>

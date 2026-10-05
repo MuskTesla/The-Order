@@ -23,6 +23,11 @@ internal static class Composition
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
         services.AddSingleton<OfflineLibraryClient>();
         services.AddSingleton<IFilesystemIdentity, WindowsFilesystemIdentity>();
+        services.AddSingleton<ILaunchLibrary, OfflineLaunchLibrary>();
+        services.AddSingleton<ILaunchPositionStore, IsolatedLaunchPositionStore>();
+        services.AddSingleton<IGameProcessPlatform, WindowsGameProcesses>();
+        services.AddSingleton<GameLaunchService>();
+        services.AddSingleton<LaunchViewModel>();
         services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();
         services.AddSingleton<BoundedScanner>();
         services.AddSingleton<IRasterCodec, WindowsRasterCodec>();

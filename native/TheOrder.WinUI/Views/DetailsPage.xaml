@@ -6,6 +6,18 @@
     <Border Height="144" CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><views:CoverPresenter SourceKey="{x:Bind ViewModel.Draft.Source.CoverKey, Mode=OneWay}" MinimumEdge="512"/></Border>
     <StackPanel Grid.Column="1" Spacing="8"><TextBlock Text="{x:Bind ViewModel.Draft.Source.Personal.Name, Mode=OneWay}" Style="{ThemeResource SubtitleTextBlockStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="DetailTitle"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.MetadataTitle, Mode=OneWay}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.OriginalTitle, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" FontSize="12"/></StackPanel>
    </Grid></Border>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="16"><StackPanel Spacing="10">
+    <TextBlock Text="启动游戏" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+    <ComboBox x:Name="LaunchInstallation" Header="本次使用的安装" ItemsSource="{x:Bind Launch.Installations, Mode=OneWay}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{x:Bind Launch.SelectedInstallationId, Mode=OneWay}" SelectionChanged="OnLaunchInstallation" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LaunchInstallation"/>
+    <TextBlock Text="{x:Bind Launch.Position, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+    <TextBlock Text="{x:Bind Launch.Message, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchMessage"/>
+    <StackPanel Orientation="Horizontal" Spacing="8">
+     <Button Content="确认启动位置" Click="OnConfirmPosition" IsEnabled="{x:Bind Launch.CanConfirm, Mode=OneWay}" AutomationProperties.AutomationId="ConfirmLaunchPosition"/>
+     <Button Content="启动游戏" Click="OnLaunch" IsEnabled="{x:Bind Launch.CanLaunch, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="LaunchGame"/>
+     <Button Content="取消启动 / 停止观察" Click="OnCancelLaunch" IsEnabled="{x:Bind Launch.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelLaunch"/>
+    </StackPanel>
+    <TextBlock Text="关闭管理器或停止观察不会结束已启动的游戏。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+   </StackPanel></Border>
    <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="管理本地安装" Click="OnInstallations" AutomationProperties.AutomationId="ManageInstallations"/><Button Content="选择本地封面" Click="OnCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="ChooseLocalCover"/><Button Content="重新识别" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeOne"/></StackPanel><ContentControl IsEnabled="{x:Bind ViewModel.CanEditDetails, Mode=OneWay}" HorizontalContentAlignment="Stretch"><StackPanel x:Name="Editor" Spacing="14">
     <TextBox Header="个人名称" Text="{x:Bind ViewModel.Draft.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="2000" AutomationProperties.AutomationId="EditName"/>
     <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
