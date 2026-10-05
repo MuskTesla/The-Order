@@ -172,6 +172,7 @@ public sealed partial class MainWindow : Window
                 operation = Launch.Runtime.Snapshot?.OperationId, generation = Launch.Runtime.Snapshot?.Generation, initialPid = Launch.Runtime.Initial?.Pid,
                 currentPid = Launch.Runtime.Current?.Pid, creationTime = Launch.Runtime.Current?.CreationFileTime.ToString(System.Globalization.CultureInfo.InvariantCulture), created = Launch.Runtime.ProcessCreated,
                 startMs = Launch.Runtime.StartMilliseconds, attachMs = Launch.Runtime.AttachMilliseconds, handoffMs = Launch.Runtime.HandoffMilliseconds,
+                exitOccurredAtUtc = Launch.Runtime.ExitOccurredAtUtc,
                 lastRequest = Launch.LastRequestOutcome?.ToString(), selected = Launch.SelectedInstallationId, availability = Launch.Availability.ToString() },
             build = typeof(App).Assembly.ManifestModule.ModuleVersionId.ToString(),
             checkpoint = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion,

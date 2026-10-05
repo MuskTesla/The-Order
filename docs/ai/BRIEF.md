@@ -1,5 +1,16 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5A.1：Process Fact Remediation（整改自检完成）
+
+- 可信起点 `codex/winui-phase5` / `9b9b15983124aaf3622056475037b665dd68a2e4`。独立5A Gate为NO-GO；本轮仅修M1–M4与external AlreadyRunning占用，保留分层，不进入5B。
+- M1：Windows创建时原子关联非kill Job，补充连续的后代存活事实；可见且被证明是唯一存活者的当前进程形成authoritative checkpoint。最终退出要求保留句柄的真实exit、scope为空、checkpoint后无新出生及无未解决歧义。漏掉helper不能把空快照当作结束。Limited之后有界复核scope，空才释放admission，不补造exit。
+- M2：snapshot capture开始时间、同一候选句柄的真实parent PID、父代identity/已确认退出区间共同约束；后续Attach仍校验完整identity。M3：cwd普通路径重新观察并比较目录file ID/final path，非等价明确拒绝。M4：Started/Exited发生时间与ObservedAtUtc分开，最终ExitOccurredAtUtc不包含6秒接续等待。
+- external AlreadyRunning只保存外部身份用于后续复核，不产生owned session；同代存活/Unknown拒绝重复启动，旧代退出或PID换代后可重新走正常启动链。不写playtime、次数、history，不访问正式资料/credential，不改真实游戏文件。
+- Job accounting→membership→accounting前后必须一致，6项确定性回归防跨查询混合状态；整个整改新增31项、Launch及整改96项。最终Debug/Release各**1108/0/0**，build各0warnings/errors，locked restore、Electron665/0/0、build/import、artifact32/0/0、Release publish均通过。最终10轮handle Debug653→640、Release675→654稳定；一次早期654→661阈值失败保留，未改门槛，单独及最终完整复测通过。
+- 本轮A直启/退出、B39256→14568接续/主菜单/退出、C显式cwd/主菜单/正常退出通过；A/B真实OS退出时间与Application精确一致。C独立watcher的0FILETIME作废，不当作精确时间交叉验证。最后跨查询加固后，最终包额外复验B35468→31244、正常退出时间08:45:42.0073080Z一致，manager46636 exit0。A/C证据属于加固前候选，最终fixture完整覆盖，不冒充重跑。
+- 隔离library逐字节不变，不写时长/次数/history；A/B游戏元数据不变，C仅既有启动日志，无新增/删除。8组UI manifest/12截图按实际两批build绑定并核查。最终包 `.artifacts/native-phase5a1/publish-final/win-x64`，MVID f5bffdd1-7798-4d10-a408-35b583972075；内嵌父SHA9b9，source/bundle hashes+receipt绑定本轮checkpoint。具体契约/入口与broker、breakaway、UNC未验证边界见DEVELOPMENT。
+- **PASS FOR PHASE 5B（本轮整改自检）**；当前阶段提交即Phase5A.1 checkpoint，精确SHA见Git及本机receipt。完成后暂停，未进入5B，不替代独立Gate；下方旧5A本机通过不代表其独立Gate通过。
+
 ## WinUI Phase 5A：Game Launch & Process Continuity（本机 Gate 通过）
 
 - 从可信Phase4 checkpoint `7965bee95c49750e26b85302da037582b96a54fc` 创建 `codex/winui-phase5`；Phase5A本机Gate通过，当前阶段提交即Phase5A checkpoint，精确SHA见Git及本机checkpoint receipt。**提交后暂停，未进入5B**。

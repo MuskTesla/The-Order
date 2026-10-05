@@ -25,6 +25,8 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
     private readonly LaunchTrackingOptions options = trackingOptions ?? new();
     private Task? startTask, monitorTask;
     private bool starting, reserved, closing;
+    private IProcessLifetimeScope? lifetimeScope;
+    private ImmutableArray<ProcessIdentity> externalReservation = [];
     private long generation;
     private LaunchStatus status = new(LaunchOutcome.Ready, ProcessTrackingState.None, null, null, null, "尚未启动。");
     public LaunchStatus Status => Volatile.Read(ref status);
@@ -37,7 +39,10 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
         // Observers cannot turn a successful OS creation into a launch failure.
         foreach (Action<LaunchStatus> listener in Changed?.GetInvocationList() ?? []) { try { listener(value); } catch { } }
         if (kind is null || value.Snapshot is null) return;
-        var notification = new ProcessEvent(kind.Value, value.Snapshot.OperationId, previous, value.Current, DateTimeOffset.UtcNow);
+        var occurred = kind == ProcessEventKind.ProcessStarted && value.Current is { } started ? FileTime(started.CreationFileTime)
+            : kind == ProcessEventKind.ProcessExited ? value.ExitOccurredAtUtc : null;
+        var notification = new ProcessEvent(kind.Value, value.Snapshot.OperationId, previous, value.Current, DateTimeOffset.UtcNow, occurred,
+            kind == ProcessEventKind.ProcessExited ? value.ExitOccurredAtUtc : null);
         foreach (Action<ProcessEvent> listener in ProcessChanged?.GetInvocationList() ?? []) { try { listener(notification); } catch { } }
     }
 
@@ -121,7 +126,7 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
         {
             if (closing) return Task.FromResult(Status with { Outcome = LaunchOutcome.Closed, Message = "管理器正在关闭。" });
             if (starting) return Task.FromResult(Status with { Outcome = LaunchOutcome.AlreadyLaunching, Message = "已有启动操作正在进行，没有重复启动。" });
-            if (reserved) return Task.FromResult(Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = "已有游戏运行或追踪尚未确认结束，没有再次启动。" });
+            if (reserved && monitorTask is { IsCompleted: false }) return Task.FromResult(Occupied());
             starting = true;
             var task = StartCoreAsync(gameId, explicitInstallation, cancellation); startTask = task; return task;
         }
@@ -135,6 +140,15 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
         var clock = Stopwatch.StartNew();
         try
         {
+            if (reserved)
+            {
+                ProcessPresence presence;
+                try { presence = await Task.Run(RevalidateReservation, stop.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { return Status with { Outcome = LaunchOutcome.Cancelled, Message = "已取消本次启动请求，原进程状态未改变。" }; }
+                if (presence != ProcessPresence.Inactive) return Occupied(presence == ProcessPresence.Unknown);
+                lock (gate) { lifetimeScope?.Dispose(); lifetimeScope = null; externalReservation = []; reserved = false; }
+                // Releasing admission does not manufacture an exit event/session boundary.
+            }
             var preparation = await PrepareAsync(gameId, explicitInstallation, stop.Token).ConfigureAwait(false);
             snapshot = preparation.Snapshot;
             if (preparation.Outcome != LaunchOutcome.Ready || snapshot is null)
@@ -144,12 +158,13 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
             if (!existing.IsEmpty)
             {
                 var already = new LaunchStatus(LaunchOutcome.AlreadyRunning, ProcessTrackingState.RunningLimited, snapshot, existing[0], existing[0], "同一启动文件已有进程运行，没有再次启动；跨重启会话恢复尚未启用。");
-                lock (gate) reserved = true;
+                lock (gate) { externalReservation = existing; reserved = true; }
                 Publish(already); return already;
             }
             process = await library.WithLaunchAdmissionAsync(snapshot.Game, snapshot.Installation.Id, () => { clock.Restart(); return platform.Start(snapshot, stop.Token); }, stop.Token).ConfigureAwait(false);
             // From here onward every failure describes successful creation with limited observation.
             lock (gate) reserved = true;
+            lifetimeScope = process.RetainLifetimeScope();
             ProcessObservation first;
             try { first = process.Query(); } catch { first = new(null, ProcessTrackingState.Unknown); }
             var identity = first.Identity;
@@ -181,9 +196,10 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, requestedCancellation);
         var owned = new List<IObservedProcess> { initial };
         var clock = Stopwatch.StartNew(); var current = initial;
-        bool hadWindow = false, ambiguous = false;
+        bool hadWindow = false, ambiguous = false, incompleteTree = false;
         double? exitedAt = null, candidateSince = null;
         ProcessIdentity? candidateIdentity = null;
+        uint? authoritativeScopeGeneration = null;
         int treePolls = 0;
         try
         {
@@ -193,6 +209,12 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                 var observed = owned.Select(p => p.Query()).ToImmutableArray();
                 var root = observed[owned.IndexOf(current)];
                 hadWindow |= root.HasWindow;
+                var membership = lifetimeScope?.Query();
+                // A visible tracked process is authoritative only after the kernel scope
+                // proves it is the sole survivor. Later births invalidate this checkpoint.
+                if (root.State == ProcessTrackingState.RunningConfirmed && root.HasWindow && membership is { Complete: true, ActiveProcesses: 1 }
+                    && membership.ActivePids.Length == 1 && membership.ActivePids[0] == current.Pid)
+                    authoritativeScopeGeneration = membership.TotalProcesses;
                 if (root.State is ProcessTrackingState.Unknown or ProcessTrackingState.RunningLimited || root.Identity is null)
                 { Limited("程序已经启动，但无法可靠查询进程；没有把查询失败当作退出。"); return; }
                 bool exited = root.State == ProcessTrackingState.Exited;
@@ -201,7 +223,7 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                 if (observeTree && treePolls++ < options.MaximumTreePolls)
                 {
                     var tree = platform.Descendants(observed, options.MaximumProcesses, options.MaximumCandidates);
-                    ambiguous |= !tree.Complete;
+                    incompleteTree |= !tree.Complete;
                     foreach (var item in tree.Candidates)
                     {
                         var id = item.Observation.Identity;
@@ -210,6 +232,11 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                         var attached = platform.Attach(id);
                         if (attached is not null) owned.Add(attached); else ambiguous = true;
                     }
+                    // A raced enumeration may recover when a later verified snapshot
+                    // accounts for every currently live member of the kernel-owned scope.
+                    var coverage = lifetimeScope?.Query();
+                    if (tree.Complete && coverage is { Complete: true } && coverage.ActivePids.All(pid => owned.Any(p => p.Pid == pid)))
+                        incompleteTree = false;
                 }
                 else if (observeTree) ambiguous = true;
                 if (exited)
@@ -220,7 +247,7 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                             && p.Observation.HasWindow && LaunchSelection.IsContinuationExecutable(Path.GetFileName(id.ImagePath))
                             && InstallationPreflightService.Within(id.ImagePath, created.Snapshot!.Folder.FinalPath)).ToArray();
                     if (candidates.Length > 1) ambiguous = true;
-                    if (!ambiguous && candidates.Length == 1)
+                    if (!ambiguous && !incompleteTree && candidates.Length == 1)
                     {
                         var next = candidates[0];
                         if (candidateIdentity != next.Observation.Identity) { candidateIdentity = next.Observation.Identity; candidateSince = clock.Elapsed.TotalMilliseconds; }
@@ -228,6 +255,8 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                         {
                             var handoffMs = clock.Elapsed.TotalMilliseconds - exitedAt;
                             var previous = Status.Current; current = next.Process; hadWindow = true; exitedAt = null; candidateSince = null;
+                            authoritativeScopeGeneration = membership is { Complete: true, ActiveProcesses: 1 }
+                                && membership.ActivePids.Length == 1 && membership.ActivePids[0] == current.Pid ? membership.TotalProcesses : null;
                             Publish(Status with { Current = next.Observation.Identity, Tracking = ProcessTrackingState.RunningConfirmed, AttachMilliseconds = created.StartMilliseconds + clock.Elapsed.TotalMilliseconds, HandoffMilliseconds = handoffMs,
                                 Message = "已根据父子关系、创建时间和唯一游戏窗口接续追踪。" }, ProcessEventKind.ProcessHandoff, previous);
                         }
@@ -235,11 +264,17 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                     else { candidateIdentity = null; candidateSince = null; }
                     if (exitedAt is { } ended && clock.Elapsed.TotalMilliseconds - ended >= options.HandoffWindow.TotalMilliseconds)
                     {
-                        bool anyUnresolved = ambiguous || owned.Where(p => p != current).Any(p => p.Query().State != ProcessTrackingState.Exited);
-                        if (hadWindow && !anyUnresolved)
+                        bool anyUnresolved = ambiguous || incompleteTree || owned.Where(p => p != current).Any(p => p.Query().State != ProcessTrackingState.Exited);
+                        var lifetimeEvidence = lifetimeScope?.Query();
+                        // Snapshot completeness is only a successful enumeration. It is NOT
+                        // proof that all short-lived intermediaries were ever observed.
+                        bool endedCompletely = lifetimeEvidence is { Complete: true, ActiveProcesses: 0 }
+                            && authoritativeScopeGeneration is { } completeGeneration && lifetimeEvidence.TotalProcesses == completeGeneration;
+                        var actualExit = root.ExitFileTime is { } time ? FileTime(time) : null;
+                        if (hadWindow && !anyUnresolved && endedCompletely && actualExit is not null)
                         {
-                            Publish(Status with { Tracking = ProcessTrackingState.Exited, Message = "已确认所追踪的游戏进程退出。" }, ProcessEventKind.ProcessExited);
-                            lock (gate) reserved = false;
+                            Publish(Status with { Tracking = ProcessTrackingState.Exited, ExitOccurredAtUtc = actualExit, Message = "已确认所追踪的游戏进程退出，所属进程范围已结束。" }, ProcessEventKind.ProcessExited);
+                            lock (gate) { lifetimeScope?.Dispose(); lifetimeScope = null; reserved = false; }
                         }
                         else Limited("入口已退出，但未能确认唯一游戏接续进程；程序曾成功创建，请勿重复启动。");
                         return;
@@ -263,6 +298,25 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
         lock (gate) { if (closing) return; closing = true; lifetime.Cancel(); start = startTask; }
         if (start is not null) await start.ConfigureAwait(false);
         if (monitorTask is not null) await monitorTask.ConfigureAwait(false);
+        lifetimeScope?.Dispose(); lifetimeScope = null;
         // No Kill/TerminateProcess/job-object close action. Only observer handles are released.
     }
+    private LaunchStatus Occupied(bool unknown = false) => Status with { Outcome = LaunchOutcome.AlreadyRunning,
+        Message = unknown ? "不能可靠确认原进程范围已结束，未重复启动；可稍后重试核对。" : "已有游戏运行或追踪尚未确认结束，没有再次启动。" };
+    private ProcessPresence RevalidateReservation()
+    {
+        try
+        {
+            if (!externalReservation.IsEmpty)
+            {
+                var states = externalReservation.Select(platform.RevalidateExternal).ToArray();
+                return states.Contains(ProcessPresence.Active) ? ProcessPresence.Active : states.All(s => s == ProcessPresence.Inactive) ? ProcessPresence.Inactive : ProcessPresence.Unknown;
+            }
+            var scope = lifetimeScope?.Query();
+            return scope is not { Complete: true } ? ProcessPresence.Unknown : scope.ActiveProcesses == 0 ? ProcessPresence.Inactive : ProcessPresence.Active;
+        }
+        catch { return ProcessPresence.Unknown; }
+    }
+    private static DateTimeOffset? FileTime(long value)
+    { try { return value > 0 ? DateTimeOffset.FromFileTime(value).ToUniversalTime() : null; } catch (ArgumentOutOfRangeException) { return null; } }
 }

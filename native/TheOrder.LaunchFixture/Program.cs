@@ -14,6 +14,7 @@ internal static class Program
         File.WriteAllText(Path.Combine(root, name + ".json"), JsonSerializer.Serialize(new
         { pid = Environment.ProcessId, cwd = Environment.CurrentDirectory, arguments = args.Skip(3).ToArray(), commandLine = System.Runtime.InteropServices.Marshal.PtrToStringUni(GetCommandLine()), mode, started = DateTimeOffset.UtcNow }));
         if (mode == "empty") return;
+        if (mode == "gap-helper") { Spawn("child_game.exe", "game", name + "-game"); return; }
         if (mode is "launcher" or "chain" or "helper" or "multiple" or "quick-launcher")
         {
             Thread.Sleep(600); // Lets the bounded observer establish this parent's identity.
@@ -29,7 +30,13 @@ internal static class Program
         using var form = new Form { Text = "The Order · synthetic process " + name, Width = 420, Height = 220 };
         form.Controls.Add(new Label { Text = "Synthetic launch fixture\nPID: " + Environment.ProcessId, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
         using var timer = new System.Windows.Forms.Timer { Interval = 100 };
-        timer.Tick += (_, _) => { if (mode == "quick" || File.Exists(stopFile)) form.Close(); };
+        bool spawned = false;
+        timer.Tick += (_, _) =>
+        {
+            if (mode == "delayed-gap" && !spawned && File.Exists(Path.Combine(root, name + ".spawn")))
+            { spawned = true; Spawn("helper.exe", "gap-helper", name + "-helper"); }
+            if (mode == "quick" || File.Exists(stopFile)) form.Close();
+        };
         timer.Start();
         System.Windows.Forms.Application.Run(form);
         return;

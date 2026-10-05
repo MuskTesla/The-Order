@@ -1,5 +1,57 @@
 # 开发与维护
 
+## WinUI Phase 5A.1：Process Fact Remediation（整改自检完成）
+
+本轮从 `codex/winui-phase5` / `9b9b15983124aaf3622056475037b665dd68a2e4` 修复独立 Gate 的四项 MAJOR 和 external AlreadyRunning 占用问题。保留 Application / Platform / Presentation 分层；下方 Phase5A「本机通过」只证明历史样本，不再代表可以直接进入5B。仍不写 playtime、次数、session/history，不实现托盘或恢复，不访问正式资料。
+
+### 生命周期完整性与启动范围
+
+- `WindowsProcessLifetimeScope` 使用 Windows 10+ `PROC_THREAD_ATTRIBUTE_JOB_LIST`，在 `CreateProcessW` 的初始线程运行前原子建立独立 Job membership。不是启动后再 Assign，也不是靠高频快照推断没漏进程。不设置 KILL_ON_JOB_CLOSE、资源限额、UI 限制或继承 job handle；关闭/取消仅释放观察句柄，后代继续运行。创建失败不回退到未受观察的第二次启动。为传递启动属性，Windows 创建边界改用直接 CreateProcessW；EXE 单独传参，结构化 arguments 只做 Windows argv 编码，不经过 shell；空参数、引号、反斜杠、Unicode 与原始命令行由真实 fixture 回读。
+- `ProcessTreeObservation.Complete` 只表示本次快照关系核对完整，不能作为生命周期结束证明。内核范围额外记录 active membership 和累计创建数，范围中缺失的短命 helper 不会被当成从未存在。
+- authoritative checkpoint：当前有窗口的已跟踪进程必须被 Job membership 证明为唯一存活者，记录该时刻的累计创建数。最终 `ProcessExited` 还要求该进程保留句柄确认退出、有真实退出时间、Job 已为空、累计创建数未增加，且不存在未解决的候选歧义/观察失败。Handoff 的 child 需要自己的 authoritative checkpoint，不能继承 launcher 的结束事实。
+- Job accounting / membership 不是单次原子查询：读取 accounting → PID list → accounting，前后 active/total 与列表数量必须一致才接受。期间出生、退出或同数量换代均返回 incomplete；不能用旧 total 配上新列表建立错误 checkpoint。6个确定性用例直接调用生产 reconciliation，实际 Windows fixture 验证完整链。
+- 后续有新出生进程会使原 checkpoint 失效；若稍后仍能证明当前游戏是唯一存活者，才可建立新的 checkpoint。已漏掉中间进程而最终游戏仍活着时，空 ancestry snapshot 不足以发布 Exited。未能建立最终身份/时间时保留 Limited，即使后来范围为空，也只释放 admission，不补造游戏退出时间。
+- Limited/Detached 后保留一个独立 Job 观察 lease。后续 Launch 进行有界复核：scope 确认空才释放；仍活跃或 Unknown 就明确拒绝重复启动。运行中的 monitor 和启动请求仍受原 single-active gate 串行保护。外部 AlreadyRunning 保存的是 external identity 集合；下次请求分别复核 PID+creation/实际退出，不接管 session。Unknown 不解释为退出，失效 reservation 释放后仍重新执行正常 preflight/existing 检查。
+
+### 代际、路径和事件契约
+
+- Toolhelp 记录 capture 开始时间，候选创建时间晚于 capture 的快照父关系被拒绝。候选保留句柄通过 `NtQueryInformationProcess` 取得该代真实 parent PID，必须与快照一致；父进程仍运行时重新核对其完整 identity。已退出父代使用此前保留句柄取得的封闭 creation/exit 区间，不要求重新打开已退出 PID。测试注入仅替换 snapshot/open，运行同一生产 binder；`Attach` 继续核对完整身份。
+- EXE 的普通路径同一性检查保持；cwd 转换后重新 Inspect，目录类型、volume/file ID、最终路径必须全部一致，否则 WorkingDirectoryInvalid，不回退。原 explicit cwd 优先、缺省 exe 目录、260 长度限制、安装边界和启动时路径固定保持。
+- `ProcessEvent.ObservedAtUtc` 是发布/确认时间；`OccurredAtUtc` 对 Started 是 OS creation、对最终 Exited 是 OS exit。`ExitOccurredAtUtc` 同时保留在最终事件与 LaunchStatus，不能使用通知延迟作为 session 边界；handoff 事件仅表示接续观察，launcher exit 不发布为最终游戏 exit。未来5B持续时间仍需单独设计 monotonic accounting，本阶段没有实现。
+- LaunchAccepted 由带 operation/game incarnation/实际 installation 的 Starting 状态表达，不等于已创建；ProcessStarted、TrackingAttached、ProcessHandoff(old,new)、TrackingLimited、ProcessExited、Detached 独立表达。发生时间不可取得时保持 null，不用 UtcNow 伪装。external AlreadyRunning 不产生 owned ProcessStarted。
+
+### 验证与发布入口
+
+**PASS FOR PHASE 5B（本轮整改自检）**；当前阶段提交即Phase5A.1 checkpoint，精确SHA由Git及本机checkpoint receipt绑定。提交后暂停，未进入5B。结果、TRX、诊断 JSON 和候选包均在 `.artifacts/native-phase5a1/`。隔离真实复验副本为该目录 `real-profile`，只从历史测试 profile 复制 synthetic marker、library 和 launch-position DPAPI，不复制 credential。最终候选为 `publish-final/win-x64/TheOrder.WinUI.exe`；较早`publish/win-x64`保留历史A/B/C证据，不作为最新启动入口。旧 `native.ps1 -Action Run -Published` 默认位置不代表本轮包。
+
+```powershell
+$env:DOTNET_ROOT = Join-Path $PWD '.artifacts/native-phase1/tools/dotnet'
+$env:THE_ORDER_NATIVE_DATA_DIR = Join-Path $PWD '.artifacts/native-phase5a1/real-profile'
+$candidate = Join-Path $PWD '.artifacts/native-phase5a1/publish-final/win-x64/TheOrder.WinUI.exe'
+Start-Process -FilePath $candidate -WorkingDirectory (Split-Path $candidate) -WindowStyle Normal
+```
+
+- locked restore、Debug/Release solution build各0 warnings/errors，完整C#各**1108/0/0**；相对5A新增**31**项production-path回归，Launch及整改共**96**项。旧differential/filesystem/online/recognition/fault injection全部包含在完整套件中。Electron完整**665/0/0**、build/import（37新增、重复0新增37跳过、个人数据与重读保留、rendererErrors0）、artifact collector**32/0/0**、Release publish通过。未升级依赖。
+- `test-audit-final.json`、`targeted-test-results-final.json`及`deterministic-evidence-final.json`来自实际TRX：漏helper不伪造退出且最终空scope可再启动、生产PID代际binder、cwd同一性/尾点非等价拒绝、external退出重开、最终child时间均通过。6秒延迟：Release真实exit08:41:38.4503144Z，Observed08:41:44.5132429Z，事件ExitOccurred与前者精确相同。
+- 每配置10轮真实fixture handoff/no-kill/正常stop，Debug句柄`653,643,643,640,640,640,640,640,640,640`，Release`675,663,663,663,654,654,654,654,654,654`。snapshot/process/ancestor/job SafeHandle、native临时buffer及linked cancellation的所有权已检查，无后台native watcher。此前一次全量资源阈值失败（654→661）保留为`Debug-final-resource-threshold-failure.trx`；未改门槛，单独10轮452→约456及最终双配置全量均通过，不把短期审计写成长时无泄漏保证。
+- 最终WinUI MVID **f5bffdd1-7798-4d10-a408-35b583972075**；内嵌版本仍是父SHA9b9b1598，最终source/bundle hashes与提交后receipt绑定，不能声称二进制嵌入未来提交SHA。中间1102结果由最终1108/TRX supersede，原始失败记录保留。
+
+范围边界：Job 证明本次创建的直接后代范围，不能发现通过既有外部服务/RPC broker 启动的游戏；不支持把这类启动宣称为完整 session。Job 默认不允许 breakaway，需要主动脱离 Job 或不兼容嵌套 Job 的程序不在已验证范围内；不以放开 breakaway 降低完整性标准。未知/无窗口/歧义接续仍 Limited。UNC 实机、干净机签名安装和长期压力未验证。没有作品名、cs2.exe 或 SCRIPT.PAK 特例。
+
+### 本轮真实样本与证据边界
+
+A/B/C使用本轮隔离4条库，没有API credential；candidate PID9716、MVID `dc324977-1087-49dd-89b1-c301e76f2a2e`，具体bundle hashes见`real-candidate-build.json`。这轮真实样本在最后的Job accounting一致性加固之前完成，不能把其MVID冒充最终发布包。
+
+| 样本 | 本轮实际结果 |
+| --- | --- |
+| A | PID19056，creation134356619830625282；直接启动、主菜单、实际cwd、正常退出，应用与独立OS观察均为2026-10-05T08:22:21.0360229Z |
+| B | 正确入口39256→child14568，child creation134356621890414019；父子接续、主菜单、实际cwd、正常退出，应用与独立OS观察均为2026-10-05T08:24:57.6979752Z |
+| C | PID11160，creation134356623605491216；实际cwd为原有files子目录、主菜单、标准确认正常退出，应用报告最终退出。独立PowerShell watcher在退出瞬间读到0 FILETIME，`Game-C-exit.json`的时间字段明确INVALID，不用于交叉验证真实退出时间；应用manifest仍有效，精确时间由A/B及生产synthetic延迟测试支持 |
+
+`artifact-audit.json`校验6组UI manifest/tree、6张UI截图与3张游戏主菜单截图，requested==runtime、长度/哈希一致，9个截图SHA256均不同。candidate随后正常exit0。隔离library SHA256仍为`841096FF850FA3805C16AFE6C497B711973DCB1DBEEC8C419E7CCD8791688D04`，无playtime/count/history写入。A73/B352文件元数据不变；C44文件仅既有AIR_startup_log.txt变化，无新增/删除文件，没有代理/产品写游戏目录的操作；这不是内核级IO归因。旧5A真实no-kill仍为历史证据，新Job的no-kill由重复fixture关service后子进程仍存活验证，不宣称本轮又做了真实A关管理器no-kill。
+
+最终包补验B：candidate46636，入口35468→child31244/creation134356634689715214，实际cwd/唯一窗口/主菜单/正常退出通过；OS独立等待和最终Application均为2026-10-05T08:45:42.0073080Z。最后Job跨查询加固因此有最终包真实接续证据，A/C的路径创建链由上述真实样本及最终完整fixture回归覆盖，不冒充最终包重跑了A/C。`ui-final`两组manifest和`Game-B-final-menu.jpg`单独保存；最终管理器exit0。全部合计8组UI manifest、12张截图，build身份按两批分别核对。
+
 ## WinUI Phase 5A：Game Launch & Process Continuity（本机 Gate 通过）
 
 从 `7965bee95c49750e26b85302da037582b96a54fc` 创建 `codex/winui-phase5`。本阶段启动和进程连续性已完成本机合成、真实游戏与发布验收；建立Phase5A checkpoint后暂停，**不进入Phase5B**。不写时长、次数、session history或active-session恢复。真实样本仅在合成Gate通过后从用户授权的 `D:\entertainment\PC` 有界选择；关系和资料全部在隔离profile。不是正式部署或全部游戏兼容性承诺。

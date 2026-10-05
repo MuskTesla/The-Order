@@ -8,7 +8,8 @@ using TheOrder.Application;
 
 namespace TheOrder.Platform.Windows;
 
-public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGameProcessPlatform
+public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem, IProcessSnapshotSource? snapshots = null,
+    Func<int, IObservedProcess?>? openProcess = null) : IGameProcessPlatform
 {
     public IObservedProcess Start(LaunchSnapshot snapshot, CancellationToken cancellation)
     {
@@ -40,27 +41,22 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
             try { preflight.Revalidate(snapshot.Folder); preflight.Revalidate(snapshot.Executable); preflight.Revalidate(snapshot.WorkingDirectory); }
             catch (InvalidDataException) { throw new LaunchValidationException(LaunchOutcome.StaleInstallation, "安装在启动前发生变化，未执行程序。"); }
             cancellation.ThrowIfCancellationRequested();
-            var cwd = NormalPath(snapshot.WorkingDirectory.FinalPath);
+            var cwd = LaunchWorkingDirectory(snapshot.WorkingDirectory);
             if (cwd.Length >= 260)
                 throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, "Windows 创建进程不支持此长度的工作目录；未更换目录，也未执行程序。");
-            var start = new ProcessStartInfo(LaunchExecutablePath(snapshot.Executable))
-            {
-                UseShellExecute = false, CreateNoWindow = false, WorkingDirectory = cwd,
-                RedirectStandardInput = false, RedirectStandardOutput = false, RedirectStandardError = false
-            };
-            foreach (var argument in snapshot.Installation.Arguments) start.ArgumentList.Add(argument);
-            // Environment is inherited normally; no credentials or special test env are added here.
-            Process? process;
+            // Atomic scope association closes the unobserved, short-lived intermediary gap.
+            // Structured arguments are encoded once for CreateProcessW, without a shell.
             var startedAt = Stopwatch.GetTimestamp();
-            try { process = Process.Start(start); }
+            try
+            {
+                var created = WindowsProcessLifetimeScope.Start(LaunchExecutablePath(snapshot.Executable), snapshot.Installation.Arguments, cwd);
+                return new Observed(created.Pid, created.Handle, filesystem, snapshot.Executable, startedAt, created.Scope);
+            }
             catch (Win32Exception error)
             {
                 throw new LaunchValidationException(error.NativeErrorCode is 5 or 740 ? LaunchOutcome.AccessDenied : LaunchOutcome.LaunchFailed,
                     error.NativeErrorCode == 740 ? "此程序需要提升权限；管理器不会绕过 UAC。" : "Windows 未能创建游戏进程。");
             }
-            if (process is null) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, "Windows 未返回已创建进程。");
-            // Constructor performs no fallible query: a post-create query failure stays a started result.
-            return new Observed(process, filesystem, snapshot.Executable, startedAt);
         }
         finally { foreach (var handle in leases) handle.Dispose(); }
     }
@@ -83,6 +79,25 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
             ? normal : executable.FinalPath;
     }
 
+    private string LaunchWorkingDirectory(PathObservation working)
+    {
+        var normal = NormalPath(working.FinalPath);
+        var actual = filesystem.Inspect(normal);
+        if (normal.Length >= 260 || !actual.IsValid || actual.Observation is not { IsDirectory: true } observed
+            || observed.Identity != working.Identity || !string.Equals(observed.FinalPath, working.FinalPath, StringComparison.OrdinalIgnoreCase))
+            throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, "工作目录无法转换为同一身份的 Windows 启动路径，未更换目录，也未执行程序。");
+        return normal;
+    }
+
+    public ProcessPresence RevalidateExternal(ProcessIdentity identity)
+    {
+        using var handle = OpenProcess(0x100000 | 0x1000, false, identity.Pid);
+        if (handle.IsInvalid) return Marshal.GetLastWin32Error() == 87 ? ProcessPresence.Inactive : ProcessPresence.Unknown;
+        if (!GetProcessTimes(handle, out var creation, out _, out _, out _)) return ProcessPresence.Unknown;
+        if (creation != identity.CreationFileTime) return ProcessPresence.Inactive;
+        return WaitForSingleObject(handle, 0) switch { 0 => ProcessPresence.Inactive, 258 => ProcessPresence.Active, _ => ProcessPresence.Unknown };
+    }
+
     public IObservedProcess? Attach(ProcessIdentity identity)
     {
         var handle = OpenProcess(0x100000 | 0x1000, false, identity.Pid);
@@ -94,10 +109,10 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
 
     public ImmutableArray<ProcessIdentity> FindExisting(PathObservation executable, int maximumProcesses)
     {
-        var rows = Snapshot(maximumProcesses);
+        var rows = Capture(maximumProcesses);
         if (rows is null) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, "无法完成启动前进程检查，未重复创建程序。");
         var result = ImmutableArray.CreateBuilder<ProcessIdentity>();
-        foreach (var row in rows.Where(r => string.Equals(r.Name, Path.GetFileName(executable.StoredPath), StringComparison.OrdinalIgnoreCase)))
+        foreach (var row in rows.Rows.Where(r => string.Equals(r.Name, Path.GetFileName(executable.StoredPath), StringComparison.OrdinalIgnoreCase)))
         {
             using var observed = Open(row.Pid);
             var value = observed?.Query();
@@ -110,66 +125,47 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
 
     public ProcessTreeObservation Descendants(ImmutableArray<ProcessObservation> ancestors, int maximumProcesses, int maximumCandidates)
     {
-        var rows = Snapshot(maximumProcesses);
-        if (rows is null) return new([], false);
-        var known = ancestors.Where(a => a.Identity is not null).ToDictionary(a => a.Identity!.Pid);
-        var candidates = ImmutableArray.CreateBuilder<ProcessTreeCandidate>();
-        bool complete = true, added;
-        do
-        {
-            added = false;
-            foreach (var row in rows)
-            {
-                if (known.ContainsKey(row.Pid) || !known.TryGetValue(row.Parent, out var parent)) continue;
-                using var child = Open(row.Pid);
-                var value = child?.Query();
-                if (value?.Identity is not { } identity) { complete = false; continue; }
-                // A reused parent PID cannot adopt children born after that parent's actual exit.
-                if (identity.CreationFileTime < parent.Identity!.CreationFileTime
-                    || parent.ExitFileTime is { } exit && identity.CreationFileTime > exit) continue;
-                if (known.Count >= maximumCandidates) return new(candidates.ToImmutable(), false);
-                known.Add(row.Pid, value); candidates.Add(new(row.Parent, value)); added = true;
-            }
-        } while (added);
-        return new(candidates.ToImmutable(), complete);
+        var snapshot = Capture(maximumProcesses);
+        return snapshot is null ? new([], false) : ProcessSnapshotGeneration.Bind(snapshot, ancestors, maximumCandidates, Open);
     }
 
-    private Observed? Open(int pid)
+    private IObservedProcess? Open(int pid)
     {
+        if (openProcess is not null) return openProcess(pid);
         var handle = OpenProcess(0x100000 | 0x1000, false, pid);
         if (handle.IsInvalid) { handle.Dispose(); return null; }
-        return new(pid, handle, filesystem);
+        return new Observed(pid, handle, filesystem);
     }
-    private sealed record Row(int Pid, int Parent, string Name);
-    private static List<Row>? Snapshot(int maximum)
+    private ProcessSnapshot? Capture(int maximum) => snapshots is null ? Snapshot(maximum) : snapshots.Capture(maximum);
+    private static ProcessSnapshot? Snapshot(int maximum)
     {
+        var before = DateTimeOffset.UtcNow.ToFileTime();
         using var handle = CreateToolhelp32Snapshot(2, 0);
         if (handle.IsInvalid) return null;
         var item = new ProcessEntry { Size = (uint)Marshal.SizeOf<ProcessEntry>() };
-        if (!Process32First(handle, ref item)) return Marshal.GetLastWin32Error() == 18 ? [] : null;
-        var rows = new List<Row>();
+        if (!Process32First(handle, ref item)) return Marshal.GetLastWin32Error() == 18 ? new(before, []) : null;
+        var rows = ImmutableArray.CreateBuilder<ProcessSnapshotRow>();
         do { if (rows.Count >= maximum) return null; rows.Add(new((int)item.Pid, (int)item.Parent, item.Name)); } while (Process32Next(handle, ref item));
-        return Marshal.GetLastWin32Error() == 18 ? rows : null;
+        return Marshal.GetLastWin32Error() == 18 ? new(before, rows.ToImmutable()) : null;
     }
 
     private sealed class Observed : IObservedProcess
     {
-        private readonly Process? process;
-        private readonly SafeProcessHandle? handle;
+        private readonly SafeProcessHandle handle;
+        private readonly WindowsProcessLifetimeScope? scope;
         private readonly IFilesystemIdentity filesystem;
         private readonly PathObservation? expected;
         private ProcessIdentity? identity;
         public int Pid { get; }
         public long? StartTimestamp { get; }
-        public Observed(Process process, IFilesystemIdentity filesystem, PathObservation expected, long startedAt)
-        { this.process = process; this.filesystem = filesystem; this.expected = expected; Pid = process.Id; StartTimestamp = startedAt; }
-        public Observed(int pid, SafeProcessHandle handle, IFilesystemIdentity filesystem)
-        { Pid = pid; this.handle = handle; this.filesystem = filesystem; }
+        public Observed(int pid, SafeProcessHandle handle, IFilesystemIdentity filesystem, PathObservation? expected = null, long? startedAt = null, WindowsProcessLifetimeScope? scope = null)
+        { Pid = pid; this.handle = handle; this.filesystem = filesystem; this.expected = expected; StartTimestamp = startedAt; this.scope = scope; }
+        public IProcessLifetimeScope? RetainLifetimeScope() => scope?.Retain();
         public ProcessObservation Query()
         {
             try
             {
-                var retained = handle ?? process!.SafeHandle;
+                var retained = handle;
                 uint wait = WaitForSingleObject(retained, 0);
                 if (wait is not (0 or 258) || !GetProcessTimes(retained, out var creation, out var exit, out _, out _)) return new(identity, ProcessTrackingState.Unknown);
                 if (identity is null)
@@ -179,18 +175,20 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
                     if (QueryFullProcessImageName(retained, 0, name, ref size)) image = filesystem.Inspect(name.ToString(), false).Observation ?? expected;
                     if (image is not null) identity = new(Pid, creation, image.FinalPath, image.Identity);
                 }
-                if (wait == 0) return new(identity, ProcessTrackingState.Exited, exit > 0 ? exit : null);
+                int? parent = NtQueryInformationProcess(retained, 0, out var basic, (uint)Marshal.SizeOf<BasicProcessInformation>(), out _) >= 0
+                    ? checked((int)basic.ParentPid) : null;
+                if (wait == 0) return new(identity, ProcessTrackingState.Exited, exit > 0 ? exit : null, ParentPid: parent);
                 bool window = false;
                 // A window is supplementary handoff evidence. Failure/racing exit in this
                 // optional query must not discard the retained handle's lifetime evidence.
                 try { using var live = Process.GetProcessById(Pid); window = live.MainWindowHandle != IntPtr.Zero; }
                 catch (Exception e) when (e is Win32Exception or InvalidOperationException or ArgumentException) { }
-                return new(identity, identity is null ? ProcessTrackingState.RunningLimited : ProcessTrackingState.RunningConfirmed, HasWindow: window);
+                return new(identity, identity is null ? ProcessTrackingState.RunningLimited : ProcessTrackingState.RunningConfirmed, HasWindow: window, ParentPid: parent);
             }
             catch (Exception e) when (e is Win32Exception or InvalidOperationException or ArgumentException or IOException or UnauthorizedAccessException)
             { return new(identity, ProcessTrackingState.Unknown); }
         }
-        public void Dispose() { process?.Dispose(); handle?.Dispose(); }
+        public void Dispose() { handle.Dispose(); scope?.Dispose(); }
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -203,6 +201,9 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem) : IGame
         public uint Flags;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string Name;
     }
+    [StructLayout(LayoutKind.Sequential)] private struct BasicProcessInformation
+    { public nint ExitStatus, PebAddress, AffinityMask, BasePriority; public nuint Pid, ParentPid; }
+    [DllImport("ntdll.dll")] private static extern int NtQueryInformationProcess(SafeProcessHandle process, int kind, out BasicProcessInformation info, uint size, out uint returned);
     [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern SafeFileHandle CreateFile(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern SafeProcessHandle OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, int pid);
