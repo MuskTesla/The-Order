@@ -1,5 +1,13 @@
 # 开发与维护
 
+## WinUI Phase 5B.0：Session / Playtime Semantic Design Gate（2026-10-05）
+
+**READY FOR PHASE 5B IMPLEMENTATION**。正式规范为 [docs/ai/PHASE5B_SESSION_SEMANTICS.md](docs/ai/PHASE5B_SESSION_SEMANTICS.md)，后续实现和测试必须遵循其中的状态转移、awake 时钟、恢复资格、同文件原子差额记账和 legacy 映射；按 5B.1—5B.5 分段 Gate。
+
+设计开始时实际分支 `codex/winui-phase5`、HEAD `041ddca804a134aa146ee7b884d6eff596f451d0`、工作区干净。此前 Phase 5A.1 独立 targeted Gate 已通过且未改代码，该 SHA 仍是实现基线；本次只建立纯文档 checkpoint，不产生新构建。下方自检/真实样本记录保持其原有版本及覆盖边界。
+
+本轮只读核对源码、现有测试和 Microsoft API 文档，并检查本次文档。未运行新的构建、桌面或真实游戏验收；未修改 production/test code、接管正式 profile、读取凭据、迁移数据或推送。Session Engine、sleep/recovery、Tray、Single Instance 均尚未实施，本阶段完成后暂停。
+
 ## WinUI Phase 5A.1：Process Fact Remediation（整改自检完成）
 
 本轮从 `codex/winui-phase5` / `9b9b15983124aaf3622056475037b665dd68a2e4` 修复独立 Gate 的四项 MAJOR 和 external AlreadyRunning 占用问题。保留 Application / Platform / Presentation 分层；下方 Phase5A「本机通过」只证明历史样本，不再代表可以直接进入5B。仍不写 playtime、次数、session/history，不实现托盘或恢复，不访问正式资料。

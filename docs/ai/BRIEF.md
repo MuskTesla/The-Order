@@ -1,5 +1,11 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5B.0：Session / Playtime 语义设计 Gate（2026-10-05）
+
+- **READY FOR PHASE 5B IMPLEMENTATION**。规范见 [PHASE5B_SESSION_SEMANTICS.md](PHASE5B_SESSION_SEMANTICS.md)，包含状态机、真实 Process Fact 映射、计次/时长/恢复/兼容契约及分层测试矩阵。这里只完成设计，Phase 5B production implementation 尚未开始；纯文档 checkpoint 后暂停。
+- 开始时核对 `codex/winui-phase5` / `041ddca804a134aa146ee7b884d6eff596f451d0`，工作区干净。此前独立 targeted Gate 已通过 Phase 5A.1 且没有修改代码；该 SHA 仍是实现基线，下方“整改自检完成”是历史证据，不能把本次文档提交当作新的实现或二进制 checkpoint。
+- 本设计规定：新 Session 首次 durable 创建计次，awake 时长排除睡眠；同 Session handoff、legacy total 保底、原子差额记账；重启同身份恢复不补离线时间且降为 CurrentProcessOnly / Limited；保留全局单 owned launch。关窗默认托盘和零秒成功启动计次是相对旧 Electron 的明确行为变化。均待后续实施验证，未操作正式数据、凭据、真实游戏或发布包。
+
 ## WinUI Phase 5A.1：Process Fact Remediation（整改自检完成）
 
 - 可信起点 `codex/winui-phase5` / `9b9b15983124aaf3622056475037b665dd68a2e4`。独立5A Gate为NO-GO；本轮仅修M1–M4与external AlreadyRunning占用，保留分层，不进入5B。
