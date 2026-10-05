@@ -1,5 +1,18 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 4R：Real API / CDN Compatibility Validation（2026-10-05 完成）
+
+- 从已通过 targeted re-Gate 的 `codex/winui-phase4` / `c077fd257c5195e790a540f77c571269375a7f0d` 继续。**REAL API SMOKE PASS；PHASE 4 COMPLETE — READY FOR PHASE 5**。只完成本阶段并暂停，没有进入 Phase5。以下旧节中的“未验证真实 API/CDN”仍描述其历史 checkpoint，本节补充当前真实服务证据，不代表正式部署或全部真实游戏兼容。
+- 只使用用户提供的专用 test credential、`.artifacts/native-phase4r/profile` 的 DPAPI 和3条合成库。未访问正式 profile/凭据/真实游戏，未替换 Electron、迁移 SQLite 或推送远程。测试凭据按授权保留于隔离 DPAPI，明文全仓审计0匹配。
+- 用户修正测试 DNS 后，`image.kungal.iloveren.link` 返回真实公网 IPv4/IPv6，原生产 IsPublic 检查通过；Fake-IP、私网、DNS/IP校验、TLS、无任意跳转规则均不变。API默认代理策略和图片无代理路径在当前网络均成功；本轮没有更改系统网络设置。
+- 真实 CDN 暴露静态 **WebP** 兼容缺口。获授权进入局部4R.1：仅 RemoteCoverSource 增加 `image/webp`，WindowsRasterCodec 增加有界 RIFF/WebP 静态容器校验并使用原 Windows WIC 解码。动画/坏长度/超大画布拒绝，20MiB/4000万像素/目标边长/并发边界保留。新增10项生产路径回归，先3失败7通过，再全部通过；无依赖升级、识别规则或事务修改。
+- 真实鉴权、日文/中文/零结果搜索、分页20→40、详情133/15/919的请求=响应=canonical ID、3张真实WebP、缩略图与A→B→A缓存通过。无效ID为HTTP400/INVALID_PARAMETER→InvalidRequest。实际可选null/缺失cursor等被原DTO正确处理，无schema修改；canonical merge、429、其他CDN格式未自然遇到，不主动枚举或制造限流。
+- 最终发布包真实WinUI：连接/搜索/分页/详情/封面/识别/Review/Apply/Manual/重启通过。千恋万花15明确候选0.985、3独立来源一致；Summer Pockets4候选，版本不确定/编号冲突正确阻止Apply。隔离Apply15、明确Manual4成功，错误Manual零库写入；重启个人名称、笔记、评分、分类/标签、安装和游玩数据保留，UTC时间戳仅格式规范化；原合成库没有个人封面，不冒称非空个人封面实测。
+- 真实响应受控延迟的生产VM harness验证快速换查询、取消、旧分页、移除/替换同一凭据；旧上下文不接纳，UI也验证远程候选撤销而本地证据保留。最终包活动关闭另使用仅候选进程的透明TLS延迟通道，未解密/更改响应或TLS校验，真实连接处于Loading时关闭、exit0，通道已停止；普通综合smoke仍用正常网络。早期两个关窗观察有采样间隔，不能单独证明活动关闭。
+- locked restore、Debug/Release build各0 warnings/errors，完整C#各 **1012/0/0**；102 original、13 filesystem/cover、32 online、254 recognition差分及14fault保留。Electron完整 **665/0/0**、build/import回归、Release publish通过。
+- `.artifacts/native-phase4r/` 保存 **13组最终截图/tree/manifest**，requested==runtime、SHA256及构建MVID核对；`real-service-harness.json`只有脱敏schema/状态摘要，不保存原始API响应。旧Fake-IP blocker及封面失败证据由本节/最终证据supersede，保留为历史。最终包嵌入父SHA c077，使用build-identity/提交后receipt绑定本次checkpoint，不能声称嵌入最终commit。
+- 剩余边界：自然merge/429未遇到、离线以确定性回归为准；WIC/WebP在当前Windows验证，干净机codec/发布签名升级仍需后续验证。此前UNC/reparse、10k unique images及正式库写入前workingDirectory门禁继续保留。详细证据见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
 ## WinUI Phase 4B.1.1：Final Recognition Gate Remediation（整改自检完成）
 
 - 基线 `codex/winui-phase4` / `41fa1e0a573d83f232e3d5e8d2d2011bf884acc6`。Phase4B.1 targeted re-Gate实际判定 **NO-GO**，本轮只修剩余M1/M5；本节 supersede 下方旧M1/M5完成及放行声明，其余已通过整改保持不变。没有改评分/veto或Review UI，没有进入Phase5。

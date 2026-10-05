@@ -1,5 +1,59 @@
 # 开发与维护
 
+## WinUI Phase 4R：真实 API / CDN 验收与局部 WebP 兼容修复（2026-10-05）
+
+可信起点 `codex/winui-phase4` / `c077fd257c5195e790a540f77c571269375a7f0d`，用户确认4B.1.1 targeted re-Gate已通过。本轮结论 **REAL API SMOKE PASS；PHASE 4 COMPLETE — READY FOR PHASE 5**。保持当前分支，建立Phase4R checkpoint后暂停，不进入Phase5。旧4A/4B的未联网声明属于其历史证据范围，不能用旧合成证据替代本节真实服务结果。
+
+### 隔离、DNS与网络边界
+
+数据/凭据根均为仓库下 `.artifacts/native-phase4r/profile`，只含3条合成条目与不可执行的占位素材。专用测试凭据由运行时读取用户明确指定的任务附件，经当前Windows用户DPAPI保存；没有把明文写到脚本、参数、日志、文档或Git。正式 `%APPDATA%/KunGalManager`、旧safeStorage、真实游戏目录均未访问，也未执行游戏或替换正式应用。测试凭据最终按授权留在隔离DPAPI；截图时输入已清空，输入期间PasswordBox仅显示掩码。
+
+首先重新解析 `image.kungal.iloveren.link`：172.67.144.240、104.21.10.82、2606:4700:3037::6815:a52、2606:4700:3033::ac43:90f0，全部经过原生产IsPublic判为公网。没有放行198.18/15、fdfe fake range、私网或其他非公网地址，没有改变DNS/IP绑定、HTTPS/TLS、超时、大小上限或重定向规则。当前普通环境API默认代理策略与图片UseProxy=false路径均成功；不能由一次IsBypassed值推断实际采用了某个系统代理。没有更改系统代理/VPN/DNS设置。
+
+### Phase 4R.1：唯一产品兼容修改
+
+真实133封面返回HTTP200、`image/webp`，RIFF/WEBP签名，14982字节；原实现只接纳PNG/JPEG，属于真实服务兼容问题。先添加 `WebpCompatibilityTests`：原始自制4×6纯色有损/无损alpha素材，无远程作品素材或密钥。修改前 **3失败/7通过**；修复后专项100通过，新增10项全部通过。
+
+- `RemoteCoverSource` 只增加明确的 `image/webp` MIME，不接受任意octet-stream或host例外。
+- `WindowsRasterCodec` 校验RIFF总长度、chunk长度/填充、VP8X头及画布；拒绝ANIM/ANMF及动画flag，再交给原Windows WIC。保留单帧、4000万像素、65535单轴、20MiB输入、1600目标边长、原解码并发限制；解码后再次检查目标尺寸。没有新decoder依赖。
+- 回归穿过生产remote source、Windows decoder、ImagePipeline及隔离磁盘缩略图缓存；涵盖有损/alpha无损、坏长度/截断/动画/大画布及旧Fake-IP拒绝。PNG/JPEG和个人照片导入扩展名政策不改，没有重写Recognition、Review或事务。
+
+### 实际服务结果与证据范围
+
+| 场景 | 本机真实结果 |
+| --- | --- |
+| 鉴权与搜索 | 隔离DPAPI回读一致；真实Test Connection成功；此前日文查询4条，中文千恋万花1条、ID15；安全零结果为Empty |
+| 分页 | 查询“恋”首20条→累计40条，cursor正常、无重复、首屏顺序保留；重复cursor未自然遇到，原确定性回归保留 |
+| 详情身份 | 133、15、919均requested=response=canonical；aliases14/14/4，release2008-09-26/2016-07-01/2008-11-28，sources35/34/13，covers6/10/6 |
+| 错误 | 单个明确无效ID，HTTP400、INVALID_PARAMETER、Problem JSON shape，由原逻辑映射InvalidRequest；未新增错误映射 |
+| CDN | image.kungal.iloveren.link，HTTPS200、无redirect；3张均image/webp且签名一致；14982/103658/12588字节；缩略图256×178、229×320、245×320 |
+| 缓存 | 真实A→B→A回到memory，3loads/1hit/0errors；生产缩略图缓存以及最终WinUI封面、重启书架封面通过；无错误旧图覆盖 |
+| Schema | 实际ID为string，可选latin为null、无后续页时next_cursor缺失，bulk详情顺序由客户端按搜索ID还原；原DTO接纳，不需schema/nullability/pagination修复。只保存字段名/类型/安全状态摘要，未保存原始response body |
+| Merge / rate limit | **NOT ENCOUNTERED**；没有为了发现merge枚举作品或主动制造429 |
+| 其他图片格式 | 此次3张CDN探针均WebP，JPEG/PNG/非标准MIME未自然遇到；保留现有确定性格式回归，不扩大格式范围 |
+
+`real-service-harness.json` 来自实际production catalog/transport/VM/image pipeline/WIC及真实HTTP。快速A→B、取消和旧page2→新query用诊断transport暂缓**已从真实服务收到的响应**的交付，未伪造或改动body；结果B保持current、旧A/旧分页丢弃，取消后Idle/空结果/非busy，生产取消文案为“搜索已取消”。它证明受控迟到的接纳规则，不宣称自然网络恰好发生了乱序。移除和保存同一测试凭据也在该受控窗口进行，epoch递增，旧连接回到Idle，持久状态与操作一致。
+
+最终候选 `.artifacts/native-phase4r/publish/win-x64/TheOrder.WinUI.exe` 无online/recognition fixture，真实Windows界面完成：连接、搜索、20→40分页、919详情及WebP、local→real enrichment、候选详情、Review/Apply、Manual、重启。Summer Pockets有4在线候选和1本地索引：作品4得分0.820且版本不确定，其他独立编号冲突，均不能直接Apply。千恋万花15得分0.985，vndb/bangumi/steam三来源一致；选择并重新校验详情后显式Apply提交，UI“修改已经保存”。不会因真实服务返回高分取消veto或自动决定。
+
+隔离Manual对明确错误ID为ValidationFailure且library字节不变；明确指定真实ID4经lookup/canonical/事务保存。重启后15和4关联保留，全部实际个人字段（名称/个人名标记、notes、personalRating、customTags/categories、installations/preferredInstallationId、favorite/status、totalPlaySeconds/playCount/sessions及日期）逐项比较通过。日期由Z规范化为.000Z，时刻不变。原库无个人封面，未把“无字段被删除”宣称成非空个人封面实测。
+
+实际UI移除测试凭据后，remote候选/详情撤销，本地候选和证据保留；随后恢复，重启设置页确认隔离凭据仍存在。正常重启实例PID41956退出码0。早期活动关闭观察到Enriching但观察与关窗存在采样间隔，相关 `close-request*` / `active-exit.json` 只作历史诊断，不单独判活动关闭通过。
+
+为补足精确关闭证据，仅最终一个候选进程通过环境变量使用临时loopback CONNECT通道，唯一允许目的地为api.nextmoe.dev:443。通道转发不解密的端到端TLS、仅解析外层记录长度，对真实server ciphertext延迟30秒，不记录payload/凭据，不修改TLS验证或产品代码，不改变系统网络设置。`final-close-active`实际runtime为Connection Loading；真实server ciphertext于05:19:59Z进入延迟，客户端05:20:13Z关闭，尚未到放行时间；候选PID35284 **exit0**，通道随后停止。此项明确属于受控网络延迟；其他最终综合操作均在正常网络完成。离线转换未人为断网，以原确定性offline回归为准。
+
+### 完整回归、artifact核验与身份
+
+- locked restore通过；Debug/Release solution build各 **0 warnings / 0 errors**。
+- 完整C# Debug、Release各 **1012 passed / 0 failed / 0 skipped**，新增10 WebP；102 original differential（54 mutation+43 codec+5 lifecycle，另1 oracle freshness）、13 filesystem/cover、32 online、254 recognition（98+122+34）、14fault（13 persistence边界+1失败类别）全部保留并由TRX核对。
+- Electron完整 **665/0/0**、build通过；实际desktop import新增37、重复跳过37、个人字段/重读保留、game files保留、renderer errors0。Release publish成功。未修改Electron源码/依赖。
+- `.artifacts/native-phase4r/` 中最终 **13组JPEG/UI tree/manifest**：connection、search-page1、search-page2、detail-webp、recognition-multiple-veto、review-ready、apply-saved、auth-local-retained、manual-rejected、manual-saved、restart、credential-restored、close-active，均带final前缀。requested逐字段等于runtime，manifest与tree一致，截图文件SHA256和13个不同hash核对；关键画面实际检查。状态尚未刷新或凭据尚未初始化导致的requested/runtime不一致会直接中止采集，没有输出伪场景。
+- `artifact-sanity.json`、`validation-audit.json`、`restart-personal-fields.json`、`real-service-harness.json`、`secret-audit.json`、build-identity和提交后receipt供核验。整个仓库（含ignored/hidden/generated/log/artifact/Git/untracked）测试凭据完整字符串 **0明文匹配**；只排除旧Phase3B不可读broken-junction本身，无可读内容被略去。最终截图输入为空/未显示，UI tree/manifests无凭据。
+- 早期 `blocker-summary.json`、`cover-probe.json`、`detail-133-cover-blocked.*` 描述旧Fake-IP网络失败，保留历史并由本节、`cover-probe-realip.json`及最终WebP证据明确supersede，不改成旧测试通过。旧3A已作废证据继续作废。
+- 最终WinUI MVID `fb541fb8-ed14-4fd9-8194-141a177e22eb`；构建时程序集仍嵌入父SHA c077，build-identity保存源文件与各层DLL/EXE SHA256，提交后的receipt绑定最终checkpoint，不能声称已嵌入最终提交。
+
+剩余风险：本机少量真实服务样本不是SLA/负载测试，也不证明全部真实作品/环境；自然merge/429和其他CDN格式未遇到。Windows WIC/WebP在当前系统及发布包已验证，干净机codec/安装/签名/升级仍须后续验证。既有UNC/reparse、10k unique images和正式库写入前workingDirectory降级门禁保持。没有开放正式数据写入、真实游戏执行或进入Phase5。
+
 ## WinUI Phase 4B.1.1：Final Recognition Gate Remediation（2026-10-05）
 
 基线 `codex/winui-phase4` / `41fa1e0a573d83f232e3d5e8d2d2011bf884acc6`。上一轮 targeted re-Gate 为 **NO-GO**，仅剩 M1（PE 排序与截断）和 M5（初始化接纳竞态）。本节 supersede 下方 Phase4B.1 对这两项已充分修复及 Gate 放行的判断；旧 artifacts 仍是原场景的历史证据，不能证明本轮两个反例已消失。本轮没有修改评分/veto、Review UI、provider-name exclusion、历史校验或 auth/local 规则，没有进入 Phase5、访问真实 API/credential/正式资料或真实游戏。

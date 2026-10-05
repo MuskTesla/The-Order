@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Buffers.Binary;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 using TheOrder.Application;
@@ -12,10 +13,12 @@ public sealed class WindowsRasterCodec : IRasterCodec
     public async Task<RasterPixels> DecodeAsync(ReadOnlyMemory<byte> encoded, int edge, CancellationToken cancellation)
     {
         if (encoded.Length is < 4 or > MaximumSourceBytes || edge is < 1 or > 1600) throw new InvalidDataException("图片大小超出范围。");
-        // Only PNG/JPEG. Header dimensions are inspected by WIC before requesting any pixel allocation.
+        // Static PNG/JPEG/WebP only. WIC inspects dimensions before any pixel allocation.
         var bytes = encoded.ToArray();
-        if (!(bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[^2] == 0xff && bytes[^1] == 0xd9) && !(bytes.Length >= 33 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })))
-            throw new InvalidDataException("照片不是有效的 PNG/JPEG。");
+        bool webp = bytes.Length >= 20 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8);
+        if (webp) ValidateStaticWebp(bytes);
+        else if (!(bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[^2] == 0xff && bytes[^1] == 0xd9) && !(bytes.Length >= 33 && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })))
+            throw new InvalidDataException("图片不是有效的 PNG/JPEG/WebP。");
         using var stream = new InMemoryRandomAccessStream(); await stream.WriteAsync(bytes.AsBuffer()).AsTask(cancellation).ConfigureAwait(false); stream.Seek(0);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellation).ConfigureAwait(false);
         if (decoder.PixelWidth is < 1 or > 65535 || decoder.PixelHeight is < 1 or > 65535 || (ulong)decoder.PixelWidth * decoder.PixelHeight > 40_000_000 || decoder.FrameCount != 1)
@@ -27,6 +30,29 @@ public sealed class WindowsRasterCodec : IRasterCodec
         if (bitmap.PixelWidth > edge || bitmap.PixelHeight > edge) throw new InvalidDataException("解码后的图片超过目标尺寸。");
         var pixels = new byte[checked(bitmap.PixelWidth * bitmap.PixelHeight * 4)]; bitmap.CopyToBuffer(pixels.AsBuffer());
         return new(bitmap.PixelWidth, bitmap.PixelHeight, pixels);
+    }
+    private static void ValidateStaticWebp(ReadOnlySpan<byte> bytes)
+    {
+        if (BinaryPrimitives.ReadUInt32LittleEndian(bytes[4..8]) != bytes.Length - 8) throw new InvalidDataException("WebP 容器长度无效。");
+        // Some installed WIC codecs expose only the first animation frame. Reject animation at
+        // the container boundary as well as retaining the common decoder.FrameCount guard.
+        for (int offset = 12; offset < bytes.Length;)
+        {
+            if (bytes.Length - offset < 8) throw new InvalidDataException("WebP 块头不完整。");
+            var kind = bytes.Slice(offset, 4);
+            uint length = BinaryPrimitives.ReadUInt32LittleEndian(bytes.Slice(offset + 4, 4));
+            if ((ulong)length + (length & 1) > (ulong)(bytes.Length - offset - 8)) throw new InvalidDataException("WebP 块长度无效。");
+            if (kind.SequenceEqual("ANIM"u8) || kind.SequenceEqual("ANMF"u8)) throw new InvalidDataException("仅支持静态 WebP。");
+            if (kind.SequenceEqual("VP8X"u8))
+            {
+                var header = bytes.Slice(offset + 8, (int)length);
+                if (length != 10 || (header[0] & 2) != 0) throw new InvalidDataException("WebP 扩展头无效或包含动画。");
+                int width = 1 + header[4] + (header[5] << 8) + (header[6] << 16);
+                int height = 1 + header[7] + (header[8] << 8) + (header[9] << 16);
+                if (width > 65535 || height > 65535 || (long)width * height > 40_000_000) throw new InvalidDataException("图片超过 4000 万像素或尺寸限制。");
+            }
+            offset += 8 + (int)length + (int)(length & 1);
+        }
     }
     public Task<LocalCover> NormalizePhotoAsync(string path, CancellationToken cancellation) => Task.Run(async () =>
     {

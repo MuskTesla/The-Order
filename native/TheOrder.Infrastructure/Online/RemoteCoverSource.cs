@@ -33,7 +33,7 @@ public sealed class RemoteCoverSource(HttpClient http) : IImageSourceProvider, I
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType is not ("image/jpeg" or "image/png")) return null;
+            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType is not ("image/jpeg" or "image/png" or "image/webp")) return null;
             var bytes = await CatalogTransport.ReadBoundedAsync(response.Content, MaximumBytes, timeout.Token).ConfigureAwait(false);
             // Decoder validates format and pixel count before allocation. Encoded cache is a separate,
             // disposable 32 MiB / 64-entry memory cache; personal covers never enter it.
