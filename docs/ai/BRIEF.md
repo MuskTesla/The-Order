@@ -1,5 +1,14 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 5B.1：Session / Playtime Core & Lifecycle Engine（2026-10-05）
+
+- **READY FOR PHASE 5B.1 INDEPENDENT GATE**（实现自检，不代替独立 Gate）。Debug/Release 全量各 **1209/0/0**，原有 1108 项逐名称全部保留，新增 101 项；两配置 build 均 0 warnings/errors、locked restore 通过。Electron **665/0/0**、build/import、artifact **32/0/0** 通过。checkpoint 后暂停，不进入 5B.2、不推送。
+- 从纯设计 checkpoint `17b91810fa0db9d967a56fc426892608bb6294c1`、分支 `codex/winui-phase5` 开始。用户本轮授权将原计划的 Domain、accounting、Process Fact integration、Windows awake clock、suspend 与 recovery core 合并为 5B.1；原 5B.0 的分阶段编号为历史计划。尚未接入 WinUI、Tray、Single Instance 或正式 profile，不代表桌面产品已经启用计时。
+- 已实现 `SessionEngine` 单消费者有界事件队列、独立只读进程采样、v1 native history 扩展、串行原子差额记账与恢复资格。实际 launch operation 是 SessionId；创建成功但身份未知也形成零秒 invocation；首次 durable 保存计次一次，handoff/pause/recovery/replay 不再计次。真实退出事实与保存 cutoff 分开；未知、睡眠、离线、写盘等待不补时。
+- Windows 时钟使用 precise unbiased interrupt API，双时钟断点与 power callback 冻结区间；DPAPI token 绑定物理 profile、BootId、PID/creation/image identity、原安装路径身份。重开仅恢复同代进程为 CurrentProcessOnly；backup/import/多候选/身份失效全部拒绝自动接管。未改 5A Process Fact / identity contract 或 Phase 2 原子替换保证。
+- legacy 四字段、ID、count、aggregate surplus 保留；未知新 schema 只读，不退回备份覆盖。可移植导入/导出清除恢复资格。旧 Electron 不能与 native 共用可写 profile，也不保证它保留 native 扩展。
+- 本轮验证清单与准确结果见 [DEVELOPMENT](../../DEVELOPMENT.md) 的 Phase 5B.1 节；证据位于 ignored `.artifacts/native-phase5b1/`。Windows 合成 EXE 证明直接/多级接续、真实退出时间与管理器释放后进程仍活着；休眠/重启采用语义及身份故障注入，没有实际让宿主休眠/重启，没有本轮真实游戏验证。下方各阶段为其当时的历史记录。
+
 ## WinUI Phase 5B.0：Session / Playtime 语义设计 Gate（2026-10-05）
 
 - **READY FOR PHASE 5B IMPLEMENTATION**。规范见 [PHASE5B_SESSION_SEMANTICS.md](PHASE5B_SESSION_SEMANTICS.md)，包含状态机、真实 Process Fact 映射、计次/时长/恢复/兼容契约及分层测试矩阵。这里只完成设计，Phase 5B production implementation 尚未开始；纯文档 checkpoint 后暂停。

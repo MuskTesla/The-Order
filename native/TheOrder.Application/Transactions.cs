@@ -130,12 +130,13 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             });
         }
     }
-    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null, Func<Task>? verifyBeforeCommit = null)
+    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null, Func<Task>? verifyBeforeCommit = null, bool sessionMutation = false)
         => Enqueue(async () =>
         {
             if (current.Access != LibraryAccess.ValidWritable) throw new LibraryReadOnlyException(current.ReadOnlyReason!);
             var previous = current.Entries;
             var (candidate, result) = operation(previous);
+            if (!sessionMutation) ProtectSessionBindings(previous, candidate, forceNewGeneration);
             // Round-trip validates and canonicalizes the complete candidate before any I/O.
             var serialized = codec.Encode(candidate, now());
             var validated = codec.Decode(serialized);
@@ -158,6 +159,11 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             var retiredRequests = lifecycles.Where(pair => !nextLifecycles.TryGetValue(pair.Key, out var next) || next.Generation != pair.Value.Generation)
                 .Select(pair => pair.Value.Request).ToArray();
             var nextSnapshot = new LibrarySnapshot(validated, LibraryRecovery.Main);
+            var releasedPending = sessionMutation ? pendingOwnedSessions.Keys.Where(id =>
+            {
+                var oldIds = previous.FirstOrDefault(e => e.Id == id)?.Sessions.Select(s => s.Id).ToHashSet() ?? [];
+                return validated.FirstOrDefault(e => e.Id == id)?.Sessions.Any(s => s.Native is not null && !oldIds.Contains(s.Id)) == true;
+            }).ToArray() : [];
             precommit?.Invoke();
             if (verifyBeforeCommit is not null) await verifyBeforeCommit().ConfigureAwait(false);
             cancellation.ThrowIfCancellationRequested();
@@ -166,6 +172,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             lifecycles = nextLifecycles; launchIncarnations = nextLaunchIncarnations; revision = nextRevision;
             lastGood = serialized;
             Volatile.Write(ref current, nextSnapshot);
+            foreach (var id in releasedPending) pendingOwnedSessions.Remove(id);
             foreach (var retired in retiredRequests) UnregisterRequest(retired);
             return new CommitResult<T>(result, cancellation.IsCancellationRequested, receipt.Warning);
         }, cancellation);
@@ -176,7 +183,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
         // As with Stream.WriteAsync, caller retains buffer ownership until completion.
         return Mutate(games =>
         {
-            var incoming = codec.Decode(backup.ToArray());
+            var incoming = codec.Decode(backup.ToArray()).Select(PortableSessionHistory).ToImmutableArray();
             var ids = games.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
             var workIds = games.Where(e => e.Metadata is not null).Select(e => e.Metadata!.Id).ToHashSet(StringComparer.Ordinal);
             var folders = games.SelectMany(e => e.Installations).Select(i => codec.InstallationKey(i.Folder)).ToHashSet(StringComparer.Ordinal);
@@ -317,6 +324,16 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
                 {
                     if (!sessionIndices.TryGetValue(play.Id, out var index)) { sessionIndices.Add(play.Id, sessions.Count); sessions.Add(play); continue; }
                     var previous = sessions[index];
+                    if (previous.Native is not null || play.Native is not null)
+                    {
+                        if (previous.Native is not { IsTerminal: true } a || play.Native is not { IsTerminal: true } b
+                            || a.GameId != b.GameId || a.InstallationId != b.InstallationId || a.CreatedObservedAtUtc != b.CreatedObservedAtUtc
+                            || a.StartedAtUtc != b.StartedAtUtc || a.Lifecycle != b.Lifecycle || a.Reason != b.Reason || a.EndedAtUtc != b.EndedAtUtc)
+                            throw new SessionConflictException("原生游玩记录冲突，未合并。");
+                        duplicateSeconds += Math.Min(previous.Seconds, play.Seconds); duplicateCount++;
+                        if (b.Accumulated100ns > a.Accumulated100ns) sessions[index] = play;
+                        continue;
+                    }
                     if (previous.StartedAt != play.StartedAt) throw new InvalidDataException("游玩记录编号冲突，未合并。");
                     duplicateSeconds += Math.Min(previous.Seconds, play.Seconds);
                     if (previous.Seconds > 0 && play.Seconds > 0) duplicateCount++;

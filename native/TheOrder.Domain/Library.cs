@@ -4,7 +4,7 @@ namespace TheOrder.Domain;
 
 // Domain objects deliberately have no JSON attributes or file/network dependencies.
 public sealed record Installation(string Id, string Folder, string? Executable, ImmutableArray<string> Arguments, string? WorkingDirectory = null);
-public sealed record PlaySession(string Id, string StartedAt, string EndedAt, long Seconds);
+public sealed record PlaySession(string Id, string StartedAt, string EndedAt, long Seconds, NativeSession? Native = null);
 public sealed record LocalCover(string DataUrl, int Width, int Height);
 public sealed record CoverPreference(bool IsSpecified, string? Mode);
 public sealed record WorkCover(string Id, string Url, int? Width, int? Height, long? Votes, string? Sexual);

@@ -1,5 +1,71 @@
 # 开发与维护
 
+## WinUI Phase 5B.1：Session / Playtime Core & Lifecycle Engine（2026-10-05）
+
+开始于 `codex/winui-phase5` / `17b91810fa0db9d967a56fc426892608bb6294c1`，工作区干净；这是 5B.0 纯设计 checkpoint，5A.1 实现基线仍为 `041ddca804a134aa146ee7b884d6eff596f451d0`。本轮用户授权覆盖原设计 5B.1—5B.3 的 core，**不包含桌面 UI / Tray / Single Instance**。完成后只交独立 Gate，不自动开始 5B.2。下方 5B.0 的未实施声明和阶段编号均描述历史时点。
+
+### 实际生产实现与装配边界
+
+| 文件 / 符号 | 实际职责 |
+| --- | --- |
+| `TheOrder.Domain/Sessions.cs`、`Library.cs` | nullable native v1 扩展；生命周期、跟踪能力、计时状态分离；开始/真实结束/cutoff、100ns 累计、revision/writer/recovery marker；366 天上限、兼容四字段投影。没有 native 的记录保持 legacy，不捏造安装或真实退出事实。 |
+| `TheOrder.Application/SessionContracts.cs` | 可注入时钟、power、token 接口及累计器；两端查询确认区间，55 秒触发 checkpoint、60 秒未提交硬上限；先累计 ticks 再取整。 |
+| `SessionEngine.cs` | 自有 `GameLaunchService` 与独立 sampler handle；256 项有界单消费者队列、单个 1 秒 timer；成功结果 fallback、fact 接续、pause/stop、power、恢复及显式退出 checkpoint。Changed snapshot 给后续 UI 使用；本轮没有把它装入现有 WinUI 窗口。 |
+| `SessionTransactions.cs`、`Transactions.cs` | 同一 library writer 队列中的会话 mutation；原始 incarnation/安装绑定、pending create 保护、单 engine lease；同文件 Session/count/total/token 原子提交；导出副本及导入清除恢复资格、native 重复历史合并。提交后仍只进行预先准备好的内存发布/退休，未放松 Phase 2 保证。 |
+| `TheOrder.Infrastructure/Legacy/NativeSessionCodec.cs`、`NativeLibraryCodec.cs` | 严格 v1 schema 与未知版本只读；保留 legacy UTF-16 及路径拼写；native 扩展也计入 32 MiB 文件预算；不截断历史。 |
+| `TheOrder.Platform.Windows/WindowsSessionClock.cs` | `QueryUnbiasedInterruptTimePrecise` 计 awake；前后 `QueryInterruptTimePrecise` 检测 sleep bias 断点，另有 power epoch；不从 UTC 推导 duration。精确函数从 `api-ms-win-core-realtime-l1-1-1.dll` 导入，本机 kernel32 无相应导出。 |
+| `WindowsSessionPowerEvents.cs`、`WindowsSessionRecoveryTokens.cs` | 无窗口 power 注册/注销；DPAPI token、只读 BootId、物理 profile identity；不读凭据、不恢复旧 Job。调用方拥有 library/power，engine 拥有 service/timer/sampler；退出调用方必须先检查 checkpoint 返回值。 |
+
+以上文件相对 `native/`。Application 对测试程序集增加 `InternalsVisibleTo`，用于确定性迟到 fact 注入；真实 Windows tests 仍走生产 5A 事件。没有修改 5A service、Process Fact 或 Windows identity binder，没有新增包或升级依赖。
+
+### 状态、计时和 exactly-once
+
+- `LaunchStatus.ProcessCreated` 的实际 operation ID 建立 invocation；不使用 preview ID。身份未知/保留 lease 失败仍有零秒 Session。首次存储失败保留可见错误和 pending reservation，禁止再创建游戏；重试不增加第二次 count。第一笔持久化前管理器被终止仍可能没有记录，这是规范允许的初始窗口。
+- `Open / RecoveryPending / Completed / Incomplete / LegacyUnknown` 与 `LaunchScope / CurrentProcessOnly / Unknown / Detached`、独立 timing/pause 组合。仅 5A 当前身份的最终 ProcessExited 携带一致真实 exit UTC 才 Completed；sampler 先见 gone 但完整 monitor 仍在时等待最终 fact。observer delay、UTC 前后跳及最后未确认尾段不计入时长。
+- verified handoff 复用 ID/start/game/install/count，更新当前 identity/token。仅同 epoch、未暂停/未知/失败且 6 秒内桥接一次；其他 gap 丢弃。Limited 用自己的受限查询 handle 只计可证明区间；Unknown 冻结，恢复身份后重建 baseline。有限观察中的 gone 记 Incomplete，不造 exit。
+- 单个 timer 每次等待上一条采样完成，不堆叠 tick；所有写盘都冻结 baseline，故慢盘/队列等待会保守少计而不外推。55 秒请求 checkpoint，未确认差额最多 60 秒。366 天容量或保存失败冻结并给出错误，游戏继续运行。
+- pause 不新建、不计次、不 kill；suspend 丢弃不确定尾段，resume 核对进程及原安装。安装核验失败保持锁存，后续 tick 不能绕过它。重复 resume 不抹掉已建立区间；漏通知由双时钟断点补充防线。
+- `floor(newAccumulated/10^7) - oldSession.seconds` 与 count 创建标记在同一 JSON 原子替换；旧 aggregate surplus 不重算。revision/owner/incarnation 防止迟到写回；重复、低版本、重复 terminal 均不 double-count，冲突拒绝。普通 notes/preferred 编辑保留，活动条目删除、合并或安装集合更换拒绝。
+
+### 恢复及兼容
+
+仅 canonical main 中唯一非终态候选可尝试恢复。DPAPI 资格绑定 Session/game/install、BootId、物理 profile、PID+creation+image file identity、原 folder/exe/cwd 观察。重新核验当前身份和安装、再次核对 boot 后，原子领取新 writer/recovery marker；同一 writer 重复初始化不增加 marker。恢复后的 baseline 从新观察开始，offline gap=0，能力仅 CurrentProcessOnly；后来消失记 RecoveredProcessEnded / Incomplete。旧匿名 Job 不可跨管理器恢复，外部同名进程不接管。
+
+无 token、解密/boot/路径/代际不符、backup、导入及多个候选均不能恢复；多个候选在一个事务内失效，防止部分失败后误选最后一项。真实 exit 与 Incomplete cutoff 始终分开。`CheckpointForExitAsync(ManagerExit/SystemShutdown)` 冻结并提交 RecoveryPending，失败返回 false；5 秒系统退出预算、窗口提示、关闭到托盘和主实例激活留给后续宿主集成，本轮不声称已完成系统退出路径。`DisposeAsync` 只释放资源，不冒充 graceful checkpoint，也不关闭游戏。
+
+legacy 缺扩展继续合法；ID、次数、聚合时长、原历史均保留，不由 history sum 降低总量。future native version/field/enum 导致只读，不能自动退 backup 丢字段；损坏 v1 显式无效。新 invocation ID 全库唯一；历史别名可暂存内容完全相同的 terminal native ID，显式合并只扣重复 invocation 一次（含零秒），冲突拒绝。这是对原规范“新 ID 唯一 / 历史重复合并”的实现澄清。导出处理副本不改源库；导入即使带 token 也不赋予恢复资格。旧 Electron writer 不保留 native 字段，不能共用可写 profile；正式迁移仍在 Phase 6。
+
+### 验证与证据
+
+新测试为 `SessionCoreTests`、`SessionPersistenceTests`、`SessionHardeningTests`、`SessionWindowsTests`，共用 `SessionTestRig`。fake clock/facts 的精确断言与真实 Windows fixture 分层；没有以测试注入冒充真实睡眠、真实游戏或强制断电。
+
+结果以 `.artifacts/native-phase5b1/validation-audit.json`、`tests/debug-full.trx`、`tests/release-full.trx` 和本节最终记录为准。初期失败保留：缺少 installation 验证异常捕获、kernel32 precise API 入口不存在、native extension 重序列化未配套 UTF-16 converter；均已局部修复后重跑，没有放松断言或资源门槛。最终构建前增加容量/文件预算反例。
+
+最终结果：locked restore 成功；Debug/Release solution build 各 **0 warnings / 0 errors**，全量 C# 各 **1209 passed / 0 failed / 0 skipped**。逐名称对照上一阶段最终 TRX，原 **1108** 项全部保留；新增 **101** 项为 Core 39、Persistence 30、Hardening 23、Windows 9（含两个注入双时钟用例）。Electron **665/0/0**、build、desktop import（37 新增、重复 0 新增/37 跳过、个人资料/重读/游戏文件保留、rendererErrors=0）、artifact collector **32/0/0** 均通过。没有重新发布或替换正式程序。
+
+13 个会话原子持久化边界用例使用真实隔离文件：替换前失败保留旧值、AfterReplace 返回已提交 warning；重开验证 count、30 秒差额和 terminal 状态始终在同一版本。另有 1 个替换成功后丢失 receipt 的模拟 crash，重开再 recovery/replay 不重复入账。资源输出：新增 power/clock Debug **669→672**、Release **722→725**；既有 5A 10 轮真实接续 Debug **645×10**，Release **642×7、645×3**，均通过原门槛。20 轮 fake launch/recovery/disposal 每轮 sampler handles=0。
+
+**READY FOR PHASE 5B.1 INDEPENDENT GATE**。最终 checkpoint 由 Git 与本机 `checkpoint-receipt.json` 绑定，`build-identity.json` 保存源文件/两配置程序集 hash；本轮程序集内嵌的是构建时父 checkpoint `17b9181`，不冒称嵌入之后的实现提交。当前自检未发现未解决的 BLOCKER/MAJOR/MINOR；OBSERVATION 是下述已声明的宿主与真实环境覆盖边界，仍需独立 targeted Gate。提交后停止，不进入 5B.2、不推送。
+
+复验命令（从仓库根运行；测试自建临时合成 profile，**不设置正式数据路径**）：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' restore native/TheOrder.slnx --locked-mode
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' build native/TheOrder.slnx -c Debug --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Debug --no-build --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' build native/TheOrder.slnx -c Release --no-restore
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-build --no-restore
+node --test native/scripts/capture-ui-evidence.test.mjs
+npm test
+npm run build
+Remove-Item Env:KGM_TEST_EXECUTABLE -ErrorAction SilentlyContinue
+node tests/desktop-import.mjs
+```
+
+资源审查：有界队列不丢 critical fact；5A 后台 publisher 可背压，native power callback 只合并标记不等磁盘；一个 timer 串行采样；退出取消 timer、退订事件、drain、释放 service 与 sampler，power adapter 由调用方注销。20 轮 fake lifecycle 逐轮要求 sampler handles=0；真实 Windows 40 轮 power 注册/800 次 clock 读取及原 5A 10 轮 lifecycle handle 回归保留门槛。这是短期稳定性证据，不是长期无泄漏保证。
+
+本轮没有新产品 UI 截图、发布包、Tray/Single Instance、实际宿主 sleep/hibernate/reboot/Fast Startup、强制断电、真实游戏/API/credential 或正式 profile 访问。真实 Windows fixture 只证明合成直接/launcher/chain、退出事实、no-kill、同代恢复及 DPAPI/API 可用；特殊 DRM/UAC/broker、breakaway、UNC、不同 Windows 机器和长时运行仍未扩大承诺。
+
 ## WinUI Phase 5B.0：Session / Playtime Semantic Design Gate（2026-10-05）
 
 **READY FOR PHASE 5B IMPLEMENTATION**。正式规范为 [docs/ai/PHASE5B_SESSION_SEMANTICS.md](docs/ai/PHASE5B_SESSION_SEMANTICS.md)，后续实现和测试必须遵循其中的状态转移、awake 时钟、恢复资格、同文件原子差额记账和 legacy 映射；按 5B.1—5B.5 分段 Gate。

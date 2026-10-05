@@ -4,6 +4,8 @@
 
 本规范的“必须 / 不得 / 应 / 可以”分别对应 MUST / MUST NOT / SHOULD / MAY。除“源码事实”部分外，下文均为**待实施的 5B 设计**，不是已经具备的产品能力。5B.0 仅写文档，完成后暂停；后续各阶段仍需用户授权。
 
+**2026-10-05 / 5B.1 实施更新**：以上段落保留 5B.0 设计时点。用户随后授权在 5B.1 一并实现 Session/accounting、Process Fact integration、Windows clock、suspend/recovery core；当前实际实现及证据见文末映射与 [DEVELOPMENT](../../DEVELOPMENT.md) 的 5B.1 节。本文的语义要求继续适用，原第 21 节拆分编号被本轮授权范围取代；未装配的 UI、Tray、Single Instance 和真实游戏验收仍不能写成已完成。
+
 ## 基线、证据与架构判断
 
 开始时实际核对：分支 `codex/winui-phase5`，HEAD `041ddca804a134aa146ee7b884d6eff596f451d0`，工作区干净。此前独立 targeted Gate 已通过 5A.1，Gate 本身没有产生实现提交。本规范及其纯文档提交不得被称为新的 5A 二进制或 5B 实现 checkpoint。
@@ -291,7 +293,7 @@ Start、handoff、suspend、pause/resume、关键 Limited/恢复、authoritative
 
 旧 Electron writer 不认识 native 元数据，可能丢掉它，且新字段本身不能阻止旧程序写。因此“新 reader 能读旧记录”不等于“可以让旧 Electron 与新 native 共用一个可写 profile”。5B 仅隔离数据；正式切换/回退的防旧 writer 丢字段门禁留在 Phase 6，不能宣称已完成双向写兼容。
 
-## 20. Phase 5B 测试矩阵（待执行）
+## 20. Phase 5B 测试矩阵（5B.0 原始要求；5B.1 实施映射见文末）
 
 层次：U=纯 unit（fake clocks/facts）；A=Application 集成（真实 coordinator+5A service，fake platform）；P=持久化集成（真实 codec/transaction/隔离文件+故障注入）；W=Windows 合成 LaunchFixture / 真实 API；R=后续单独授权真实游戏验收。下表所有预期都必须变成断言，不以截图/日志口头替代；本 Gate 未实施或执行它们。
 
@@ -352,6 +354,8 @@ W 的重启/hibernate 等会影响主机，实施时必须在显式允许的受�
 
 ## 21. 实施拆分与各 Gate
 
+以下表格是 **5B.0 历史计划**。5B.1 最新用户授权合并前三行的 core；后续 5B.2 范围须由用户另行授权，不按此旧编号自动继续。
+
 | 阶段 | 纵向交付 | 独立 Gate（通过后暂停） |
 | --- | --- | --- |
 | 5B.1 Session Domain + Accounting Core | 状态机、可注入时间契约、native codec extension、串行 session mutation、exactly-once、legacy read/merge；纯及隔离持久化测试 | S/AC/C 的无OS部分；所有原Phase2与legacy oracle不退化。不可启用正式启动入口写时长。 |
@@ -369,3 +373,31 @@ W 的重启/hibernate 等会影响主机，实施时必须在显式允许的受�
 ## Gate 与尚未验证范围
 
 **READY FOR PHASE 5B IMPLEMENTATION** 表示语义闭合、可据此实现及测试；不表示实现已经完成。当前仅完成源码/测试阅读、官方API语义核对及文档检查。新的 clock、sleep排除、recovery、session写入、tray、single-instance、真实游戏验收均**尚未实现或验证**。正式 profile/凭据、真实游戏、发布包均未因本设计任务被操作。纯文档 checkpoint 后停止，等待下一阶段授权。
+
+上段为 **5B.0 的历史 Gate 结论**。5B.1 的当前范围与验证如下，不以旧设计 Gate 代替新的独立评审。
+
+## 5B.1 实施映射与证据边界
+
+以下测试类均位于 `native/TheOrder.Tests/`：Core=`SessionCoreTests`，Persistence=`SessionPersistenceTests`，Hardening=`SessionHardeningTests`，Windows=`SessionWindowsTests`。完整 Debug/Release TRX、资源输出与故障点证据保存在 `.artifacts/native-phase5b1/`，最终准确计数见 DEVELOPMENT。真实 Windows fixture 使用仓库合成 EXE，不是本轮真实游戏验收。
+
+| 原矩阵 ID | 当前证据 / 剩余边界 |
+| --- | --- |
+| S01—S05 | Core 的 ActualLaunchOperation、SuccessfulCreation、FailedOrExternal、ImmediateAuthoritativeExit、FirstWriteFailure、ExitQueued；Windows 的真实 5A 三种启动路径。创建前取消继续由原 5A 全量回归覆盖；首次 durable 前真实 kill 窗口没有另作宿主崩溃实验。 |
+| H01—H03 | Core 的 MultiStepHandoff、UnverifiedOrPausedHandoff；Hardening 的 DelayedHandoffDuringCheckpoint；Windows 的 launcher/chain。真实 5A 的 ancestry/Job 契约测试全部保留。 |
+| E01—E02、T01—T03 | Core 的 DelayedExit、InvalidExitTimestamp、WallClockAndTimezone、MissedPowerNotification、MultiStepHandoff；Persistence 的 backward UTC/fractional round-trip。真实 Windows final exit 断言对比 5A OS occurrence；原 5A 延迟发布回归仍运行。 |
+| PW01—PW03 | Core 的 SuspendAndHibernate、ResumeUnknownOrGone、MissedPowerNotification；Hardening 的 DuplicateResume、InstallationFailureAfterResume；Windows 的真实 API 与注入双时钟 5 分钟/8 小时断点。未实际 sleep/hibernate 宿主。 |
+| U01—U02 | Core pause/resume/exit、paused handoff、PauseSurvivesRecovery、StopObserving；只证明 core，不含按钮 UI。 |
+| L01—L03 | Core LimitedReliableCountsUnknownFreezes、StopObserving；独立 sampler 接口走同一 Platform.Attach，原 5A Limited lease/admission 回归保留。真实恢复 fixture 验证 CurrentProcessOnly/gone，不声称覆盖全部游戏降级链。 |
+| M01、M03 | 窗口/Tray/OS 5 秒退出预算/forced termination 宿主集成不在 5B.1；没有执行，不以 core checkpoint 接口代替。 |
+| M02 | Core ManagerExitCheckpoint 与 Windows RealProcessSurvivesManagerDisposal；Persistence 原子替换后 warning 语义。core 可观察保存失败并拒绝成功退出；实际菜单、创建中关闭 UI 与系统 shutdown 入口待后续集成。 |
+| R01—R06 | Core 同代恢复、每项身份 mismatch、pause/旧 writer；Persistence backup/多候选/安装缺失/import；Hardening malformed token/恢复写失败/丢 receipt；Windows 真实 DPAPI/profile 及同代进程恢复。BootId 改变、读取失败与 PID 重用是注入，未真实 reboot/Fast Startup。 |
+| AC01—AC03 | Core CheckpointThresholdHardCapAndSlowDisk；Persistence PartialAccountingAndRevisionReplay 和 13 个真实隔离磁盘边界用例；Hardening CrashAfterMainReplaceBeforeReceipt、TerminalCheckpointRetry。丢 receipt 为替换后模拟进程内中断，不是物理断电。 |
+| AC04—AC06 | Persistence surplus/旧四字段/零秒重复 native 合并；Core PreferredAndPersonalEdits；Hardening PendingFirstWrite、TerminalDeleteThenImportSameId、DelayedHandoff。原 Phase 2 事务及合并回归仍全部运行。 |
+| AC07 | Hardening malformed numeric/binding、366 天累计上限、32 MiB token 扩容拒绝；原 codec 100000 session/完整文件预算回归保留。没有删除历史来绕过容量限制。 |
+| X01、G01、I01 | Core failed/external/no-second-owned、preferred/personal/恢复安装；Windows 真创建时拒绝第二请求；原 5A installation/external reservation 矩阵仍运行。 |
+| G02、G03 | CommitSession 按 ID、writer、incarnation 处理；partial replay、旧 writer 与多个非法恢复项有断言。当前只允许一个 owned active，不宣称测试了两个并行 owned Session；owned A + external B 的独立真实双进程产品验收尚未执行。 |
+| C01—C04 | Persistence 原四字段、native round-trip、future schema、portable；Hardening UTF-16、schema/capacity；全部旧差分/导入回归。仅向后读取兼容，旧 Electron writer 保存 native metadata 不是支持能力。 |
+| SI01—SI02 | 本轮仅有原 writer lease 和新单 engine lease，OneWriterCannotAccidentallyOwnTwoEngines 有断言；AppInstance、secondary activation/参数转发尚未实施。 |
+| RGA、RGB | 本轮均未授权和执行。旧 5A 游戏证据只属于旧版本和范围，不证明 5B Session 产品体验。 |
+
+实现澄清：写盘期间丢弃计时 baseline，以允许保守少计落实 60 秒硬上限；并未改用 wall clock 或允许未知 gap。新 ID 创建全局唯一，历史内容完全相同的 terminal 别名允许在显式合并前共存，以实现原规范的重复 invocation 去重；不允许 active/conflicting ID 重复。precise clock 的 API-set 导入路径是平台表达修正。没有重开或修改 5A Process Fact、ProcessIdentity 信任边界、Phase 2 原子保证和已确定的产品语义。
