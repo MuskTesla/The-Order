@@ -28,7 +28,9 @@ internal static class Program
 #else
             const NativeProfileKind buildKind = NativeProfileKind.Development;
 #endif
-            var request = fixture ? null : NativeProfilePaths.Select(buildKind, Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND"), directory);
+            var authorizeProduction = args.Contains("--allow-production-profile", StringComparer.Ordinal);
+            if (fixture && authorizeProduction) throw new NativeProfileException("ProductionAuthorizationFixtureForbidden");
+            var request = fixture ? null : NativeProfilePaths.Select(buildKind, Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND"), directory, authorizeProduction);
             var key = request is null ? NativeInstanceIdentity.ForProfile(directory) : NativeInstanceIdentity.ForNativeProfile(request);
             current = AppInstance.GetCurrent();
             current.Activated += Activated; // Subscribe before registration exposes us to a simultaneous secondary.

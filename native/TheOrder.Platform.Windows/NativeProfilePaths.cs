@@ -11,13 +11,14 @@ public static class NativeProfilePaths
     public static string LegacyRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KunGalManager");
     public static string ProductionRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TheOrder", "Profiles", "Production");
     public static string DevelopmentRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TheOrder", "Profiles", "Development");
-    public static NativeProfileRequest Select(NativeProfileKind buildKind, string? explicitKind, string? explicitRoot)
+    public static NativeProfileRequest Select(NativeProfileKind buildKind, string? explicitKind, string? explicitRoot, bool explicitProductionAuthorization = false)
     {
         var kind = buildKind;
         if (explicitKind is not null && (!Enum.TryParse(explicitKind, false, out kind) || !Enum.IsDefined(kind)))
             throw new NativeProfileException("InvalidProfileKind");
         if (kind == NativeProfileKind.Test && string.IsNullOrWhiteSpace(explicitRoot)) throw new NativeProfileException("TestRequiresExplicitRoot");
-        return new(kind, explicitRoot ?? (kind == NativeProfileKind.Production ? ProductionRoot : DevelopmentRoot));
+        if (explicitProductionAuthorization && kind != NativeProfileKind.Production) throw new NativeProfileException("ProductionAuthorizationKindMismatch");
+        return new(kind, explicitRoot ?? (kind == NativeProfileKind.Production ? ProductionRoot : DevelopmentRoot), explicitProductionAuthorization);
     }
     public static string Validate(NativeProfileRequest request)
     {

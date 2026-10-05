@@ -5,6 +5,7 @@ param(
   [string]$DataDirectory,
   [ValidateSet('Development','Test','Production')][string]$ProfileKind = 'Test',
   [switch]$FixtureProfile,
+  [switch]$AllowProductionProfile,
   [switch]$InstallSdk,
   [switch]$Published,
   [string]$PublishedPath
@@ -51,7 +52,9 @@ try {
     'Test' { Invoke-NativeDotnet @('test','TheOrder.Tests/TheOrder.Tests.csproj','-c',$Configuration,'--no-restore','--logger','trx;LogFileName=compatibility.trx','--results-directory',(Join-Path $taskArtifacts 'test-results')) }
     'Publish' { Invoke-NativeDotnet @('publish','TheOrder.WinUI/TheOrder.WinUI.csproj','-c','Release','--no-restore','-p:NativeProductionCandidate=true','-o',(Join-Path $taskArtifacts 'publish/win-x64')) }
     'Run' {
-      if (-not $DataDirectory) { throw 'Run requires an explicit isolated -DataDirectory. Real production creation is not enabled by this runner.' }
+      if ($AllowProductionProfile -and ($ProfileKind -ne 'Production' -or $FixtureProfile)) { throw '-AllowProductionProfile requires -ProfileKind Production and cannot be used with -FixtureProfile.' }
+      if (-not $DataDirectory -and $AllowProductionProfile) { $DataDirectory = Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Production' }
+      if (-not $DataDirectory) { throw 'Run requires an explicit isolated -DataDirectory, or explicit -AllowProductionProfile -ProfileKind Production.' }
       if (-not [IO.Path]::IsPathFullyQualified($DataDirectory)) { throw 'DataDirectory must be absolute.' }
       $env:THE_ORDER_NATIVE_DATA_DIR = $DataDirectory
       $env:THE_ORDER_NATIVE_PROFILE_KIND = $ProfileKind
@@ -61,8 +64,10 @@ try {
       $taskExe = if ($Published) { $PublishedPath } else { Join-Path $taskNative "TheOrder.WinUI/bin/$Configuration/net10.0-windows10.0.26100.0/win-x64/TheOrder.WinUI.exe" }
       if (-not (Test-Path -LiteralPath $taskExe)) { throw 'Build or publish the candidate first.' }
       # This is the explicitly requested interactive candidate window.
-      $taskProcess = Start-Process -FilePath $taskExe -WorkingDirectory (Split-Path $taskExe) -WindowStyle Normal -PassThru
-      Write-Output "Candidate PID=$($taskProcess.Id); synthetic data=$DataDirectory"
+      $taskStart = @{ FilePath=$taskExe; WorkingDirectory=(Split-Path $taskExe); WindowStyle='Normal'; PassThru=$true }
+      if ($AllowProductionProfile) { $taskStart.ArgumentList = @('--allow-production-profile') }
+      $taskProcess = Start-Process @taskStart
+      Write-Output "Candidate PID=$($taskProcess.Id); profile=$ProfileKind; data=$DataDirectory; production authorization=$([bool]$AllowProductionProfile)"
     }
   }
 } finally {

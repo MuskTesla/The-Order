@@ -1,5 +1,12 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 6.2：Production Readiness（进行中）
+
+- Phase 6.1 已在 `ba37df62dbda23020dd1b85684b42953f999b430` 独立 **PASS FOR PHASE 6.2**，完整证据 `.artifacts/native-phase6-1-provenance-regate/gate-audit.json`；BLOCKER/MAJOR/MINOR 0，OBSERVATION 6。Gate 实跑 Release 1724/1/0，handoff 单次 RunningLimited 的定向复跑通过，原始失败不抹去。
+- 当前用户明确授权首次真实 native Production bootstrap、最小真实数据和受控恢复验收；仍禁止任何正式 Electron profile 访问/导入，禁止 Phase 7、批量日用、发布/推送。初始 Production preflight absent。正式 profile 创建后不得重建/reset；保留 safety snapshots，完成后等待独立 Gate。
+- 先补齐当前候选缺少的显式入口：`--allow-production-profile` / runner `-AllowProductionProfile -ProfileKind Production`，默认仍拒绝正式根；不修改 guard/schema/Session/accounting，设置页只纠正旧开发资料措辞。候选需新 checkpoint、完整 Debug/Release 与 publish 绑定后才能接触正式数据。
+- 本节记录进行中工作，真实 Production 验收尚未完成；启动、边界和后续证据见 [DEVELOPMENT](../../DEVELOPMENT.md) 与 `.artifacts/native-phase6-2/`。
+
 ## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
 
 - 基线 `codex/winui-phase5` / `a0befa5895dd05181047be609d4545041f054a64`，最新 targeted re-Gate 为 **MAJOR 1 / OBSERVATION 5**；已通过的 ProfilePathGuard 和原 ownership exception safety 保留，scope reset 不变。

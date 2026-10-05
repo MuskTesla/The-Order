@@ -1,5 +1,21 @@
 # 开发与维护
 
+## WinUI Phase 6.2：Production Readiness（进行中，尚未通过独立 Gate）
+
+Phase 6.1 checkpoint `ba37df62dbda23020dd1b85684b42953f999b430` 已独立 **PASS FOR PHASE 6.2**，证据 `.artifacts/native-phase6-1-provenance-regate/gate-audit.json`。该 Gate 实跑 Release 1724/1/0；新增 OBS6 为真实 handoff fixture 一次 RunningLimited，单独复跑通过，未建立与 profile provenance 的因果关系；原五项 observation 保留。
+
+本轮用户首次明确授权 `%LOCALAPPDATA%\TheOrder\Profiles\Production` 的 fresh bootstrap 与最小真实验收，包括外部 safety snapshots 和一次受控 restore drill。Electron `%APPDATA%\KunGalManager` 仍完全禁止 enumerate/read/copy/import，旧资料不是回滚目标。初始 preflight 确认 Production 不存在，证据 `.artifacts/native-phase6-2/preflight.json`。正式数据一经创建不得 reset；异常先停用并保留快照。本阶段完成还需独立 Gate，不能提前进入 Phase 7 或批量日用。
+
+启动前发现 6.1 刻意保留的 authorization API 未连到 WinUI/runner。6.2 最小接入 `--allow-production-profile`：仅显式 argv 设置当前 request 的 authorization；不能用于 fixture 或非 Production kind，默认启动仍拒绝正式 Production，授权不跨进程/请求自动保留。`NativeProfilePaths.Select` 只传递能力，既有 `ProfilePathGuard` 未修改；正式根的子目录/父目录及 Electron 仍不能由该授权放行。设置页仅纠正“隔离开发”旧文案，不改变数据/密钥模型。
+
+已获本轮授权的正式启动方式（首次使用前须完成候选绑定与 preflight）：
+
+```powershell
+& ./native/scripts/native.ps1 -Action Run -Published -PublishedPath '<当前 checkpoint-bound candidate 的绝对 EXE 路径>' -ProfileKind Production -AllowProductionProfile
+```
+
+未传 `-AllowProductionProfile` 时，runner 仍要求显式隔离 `-DataDirectory`。不得把此文档或启动参数当成未来真实资料操作的独立授权。候选、receipt、自动化与真实验收证据放在 ignored `.artifacts/native-phase6-2/`；真实验收结果尚待完成，不能把本节设计与接入说明当作验收通过。
+
 ## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
 
 本轮从 `codex/winui-phase5` / `a0befa5895dd05181047be609d4545041f054a64` 干净基线开始，核对 `.artifacts/native-phase6-1-regate/gate-audit.json`、`child-race-results.json` 及上一轮 checkpoint receipt。最新独立结论 **REMEDIATION REQUIRED / MAJOR 1 / OBSERVATION 5** 优先于下方历史自检。已通过的路径 guard 和原 ownership 修复保留；scope reset `62da4b46829602e3f4852d094489bbf15d10113b` 不变，不进入 6.2。
