@@ -1,5 +1,15 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 6.1：Guard + Writer Exception-Safety Remediation（等待 targeted re-Gate）
+
+- 本轮从 `codex/winui-phase5` / `f797809983111e3f0f6becfc484dc13a803b203f` 的干净基线开始，核对 independent Gate audit/probes。该 Gate **REMEDIATION REQUIRED / MAJOR 2 / OBSERVATION 5** 优先于下方旧自检结论。仅整改 M1/M2，未改变 scope reset `62da4b46829602e3f4852d094489bbf15d10113b` 或进入 6.2。
+- M1：新增共享纯 `ProfilePathGuard`，正常 profile 与 raw/fixture 均先规范 ordinary/extended DOS alias 并判断正式根 overlap/授权，再进入既有 filesystem identity/reparse/pin 检查。不支持的 UNC/device/NT namespace 在 I/O 前拒绝；raw 不能碰默认 Production/Development/Electron roots。Program 两条入口、library/credential/preferences/Session/persistence 与 backup/restore/open-existing 均经共享边界；ProfileProbe 也先 guard 再读 marker。
+- M2：原先先置 ownership、constructor 再读 main，异常形成 phantom borrower。现在在同一 owner gate 内先验证 main/允许的 backup 和有界 baseline，无 I/O constructor 成功后才交付 ownership；异常不改变 flag，取消/后续 open 失败沿既有 dispose 清理。锁冲突可重试；有界 malformed/truncated main 保留 Phase 2 fallback；外层超 48 MiB 明确 `LibraryRecoveryRequired`，允许显式 Restore 后 borrow。没有自动覆盖、放宽 stale-write 或 backup identity/version/compatibility 门禁。
+- 新增 `ProfilePathGuardTests` **321** 项与 `ProfileWriterRecoveryTests` **16** 项；相关 targeted **753/0/0**，含旧 profile 85 与 Session/persistence/transaction 331。547 次 alias/namespace/capability 拒绝断言均为零文件访问边界；synthetic-equivalent known roots 与正向 I/O 对照，不访问真实 Production 验证。跨进程 main 锁、第二 owner、十轮双 borrower、取消、三类损坏、容量边界、invalid/future/foreign backup、恢复后 stale-write 与 cwd/accounting 组合回归通过。
+- Debug/Release 完整各 **1700/0/0**，原有 1363 项逐名称保留，最终全量均一次通过；locked restore、两配置 solution build（0 warnings/errors）通过。完整验证见 [DEVELOPMENT](../../DEVELOPMENT.md) 与 ignored `.artifacts/native-phase6-1-remediation/validation-audit.json` / 提交后 `checkpoint-receipt.json`。失败路径短轮次资源 targeted 472→472、Debug 全量中 672→672；Release 650→653 后稳定 21 个采样，原阈值通过；temp 0，owner/borrower 均可释放。旧测试和阈值未改；初期新测试的编译/有效输入/既有脱敏异常契约错误保留日志。
+- 未修改 Electron、Phase 2 transaction/atomic primitive、Phase 5A/5B identity/accounting 或 durable schema；未访问正式 native/Electron profiles、凭据，未启动真实游戏、重新 publish、替换程序或推送。原五项 observation 保留（跨组件非原子备份、性能、短轮次资源、历史 recognition/Windows Session 波动）；不把回归绿灯当作历史根因解决或长期保证。独立 targeted re-Gate 尚待执行。
+- **READY FOR PHASE 6.1 TARGETED RE-GATE**。整改自检 BLOCKER 0 / MAJOR 0 / MINOR 0 / OBSERVATION 5；不代替独立复审。独立整改 checkpoint 后暂停，不进入 6.2。
+
 ## WinUI Phase 6.1：Production Store Bootstrap（自检完成，等待独立 Gate）
 
 - 基线 `codex/winui-phase5` / `b2a360a005aecd8bea1b18571eb78b75259c115b`，Phase 5B 已通过最终独立 Gate（`3d9a71ad920b5c20fe38772ef3e5c1698dd5010d`）。

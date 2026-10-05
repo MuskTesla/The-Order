@@ -16,12 +16,10 @@ public sealed class IsolatedLibrarySource : IIsolatedLibrarySource
 
     internal static string ValidateDirectory(string? explicitDirectory)
     {
-        if (string.IsNullOrWhiteSpace(explicitDirectory) || !Path.IsPathFullyQualified(explicitDirectory))
-            throw new DataIsolationException("未指定绝对路径的合成资料目录。请通过 THE_ORDER_NATIVE_DATA_DIR 设置；不会读取正式书架。");
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(explicitDirectory));
-        var formal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KunGalManager");
-        if (Within(formal, root) || Within(root, formal)) throw new DataIsolationException("Phase 1 禁止访问正式资料目录及其父子目录。");
-        if (NativeProfilePaths.Overlaps(root, NativeProfilePaths.ProductionRoot)) throw new DataIsolationException("合成入口禁止访问 native production 根目录。");
+        string root;
+        try { root = ProfilePathGuard.Validate(explicitDirectory); }
+        catch (NativeProfileException) { throw new DataIsolationException("资料路径命名空间或范围不符合隔离要求，已在访问前拒绝。"); }
+        ProfilePathGuard.BeforeFilesystem();
         for (DirectoryInfo? current = new(root); current is not null; current = current.Parent)
         {
             if (!current.Exists) throw new DirectoryNotFoundException();
@@ -38,7 +36,6 @@ public sealed class IsolatedLibrarySource : IIsolatedLibrarySource
         return root;
     }
 
-    private static bool Within(string root, string child) => child.Equals(root, StringComparison.OrdinalIgnoreCase) || child.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
     internal static FileStream OpenChecked(string path)
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new DataIsolationException("拒绝读取链接文件。");

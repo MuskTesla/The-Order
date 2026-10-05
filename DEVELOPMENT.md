@@ -1,5 +1,41 @@
 # 开发与维护
 
+## WinUI Phase 6.1：Guard + Writer Exception-Safety Remediation（等待 targeted re-Gate）
+
+本轮开始核对 `codex/winui-phase5` / `f797809983111e3f0f6becfc484dc13a803b203f` 干净基线，以及 `.artifacts/native-phase6-1-gate/gate-audit.json` / `independent-probes.json`。独立 Gate 的 **REMEDIATION REQUIRED / MAJOR 2 / OBSERVATION 5** 优先于下方历史自检结论。只修 M1/M2；scope reset checkpoint `62da4b46829602e3f4852d094489bbf15d10113b` 与 Phase 6 范围不变。
+
+### M1：共享 pre-I/O namespace / alias guard
+
+旧 raw/fixture guard 用保留 `\\?\` 前缀的字符串与普通 DOS 正式根比较，扩展路径未匹配禁区，就先执行父目录/marker 查询。新增 `ProfilePathGuard` 统一供 `NativeProfilePaths.Validate` 与 `IsolatedLibrarySource.ValidateDirectory` 使用：先纯字符串分类、规范化、父子 overlap 与授权判断，返回规范 DOS root 后才进入原 filesystem / reparse / pin / final-path 检查。
+
+支持本地绝对普通 DOS 与 extended DOS；统一斜杠、末尾分隔符、`.`/`..` 和 Windows 大小写比较。普通/extended UNC、device/NT/GLOBALROOT/volume namespace、相对路径、ADS、短名 `~`、歧义末尾点/空格与设备保留名在 I/O 前拒绝。没有环境变量展开。Electron 正式根及其父子路径始终拒绝；默认 native Production 仅匹配 exact root + Production kind + explicit authorization；默认 Development 仅匹配 exact root + Development kind。raw/fixture 不获上述 capability，不能碰默认 native roots。
+
+正常 Program 的 profile selector / `ForNativeProfile`、fixture 的 `ForProfile`、explicit Test、bootstrap/open-existing、library factory/source/raw persistence、credentials/preferences、Session recovery、launch positions、review/cache，以及 owner 的 backup/restore/borrow/read/write 均汇入上述两处边界。子进程 ProfileProbe 也先验证 root，再读取 synthetic parent marker；未复制另一份路径规则。已打开 owner 在 `ValidateAccess` 复核授权，新增恢复基线路径没有绕过它。
+
+`ProfilePathGuard.Probe` 是 internal、AsyncLocal 的测试 seam，没有环境变量/CLI 配置入口：用不存在且不访问的 synthetic-equivalent known roots 替代正式根，并在两条路径的**首个文件访问边界**记录/抛错。它不是系统级 I/O tracing，也不声称覆盖恶意 filesystem 替换攻击。新增 M1 **321** 项：298 个 alias/入口组合、12 类不支持命名空间各遍历 20 入口、9 个已打开 capability 操作、纯授权/正向边界和有效隔离 extended-root 实际 I/O。拒绝矩阵全部 `RejectedBeforeIo=true / FilesystemQueryCount=0`；正向 seam 对照为 1，隔离 extended-root 能正常读写。未拿真实 Production 目录试探。
+
+### M2：先验证状态，成功才交付 borrower
+
+旧实现先置 `libraryOwned=true`，constructor 字段初始化再读 main；锁冲突/超限读取抛错后无 borrower 负责释放，导致 retry/restore/dispose 均被 phantom ownership 阻止。
+
+现在在原 owner `gate` 内检查已有 borrower，核对 backup compatibility，再有界读取 main 并验证 main 或允许的 fallback；constructor 仅接收已建立的基线，不执行 I/O。最后一步才置 `libraryOwned=true` 并返回。任何此前异常不改变所有权；没有可能清除其他成功 borrower 的 catch rollback。成功 borrower 由原 Dispose 幂等释放；factory 取消或后续 Phase 2 open 失败沿原 cleanup 释放。没有新增 OS handle、timer、CTS 或持久化字段。
+
+锁定 main 允许失败，解除锁后重试成功。malformed/truncated/缺失 main 的有界比较 token 与经验证的 backup 保留原 Phase 2 fallback；打开本身不写盘。外层超过 48 MiB 时无法安全建立比较基线：验证 same-store backup 后明确 `LibraryRecoveryRequired`，不借出 writer、不隐式恢复，允许 `Restore("library.json")` 后再 borrow。覆盖 48 MiB + 1 byte、49 MiB 与 80 MiB，不对 Gate 文件大小写特例。Restore、borrow、dispose 使用同一 gate；`CloseLibraryBeforeRestore` 仍只对应真正 active borrower。原逐字节 main 比较、manifest identity/version/kind/minimum writer/capabilities 与 backup future/foreign/schema 门禁保留。
+
+新增 M2 **16** 项：真实第二进程独占 main、失败/解锁重试/失败后 dispose/真实 second-owner borrow；三类损坏组合恢复；错/未来/损坏/未知字段 backup 拒绝；容量边界；十轮双线程竞争及失败方不能释放成功方；取得 lease 前/后的 recovery 失败；factory 取消前/中；失败资源循环。组合路径覆盖 Ready→锁定失败→重试写入→backup→损坏→重开/recovery→再写→重开，ProfileId/StoreId/Kind、workingDirectory、count/total 和数据保持，无 temp 泄漏；恢复后外部改 main 仍拒绝 stale write。
+
+### 本轮验证与边界
+
+本机日志/TRX 在 ignored `.artifacts/native-phase6-1-remediation/`。相关 targeted **753 passed / 0 failed / 0 skipped**，包含新增 M1/M2 **337**、原 profile **85**、Session/persistence/transaction **331**。旧测试及阈值未改。初次新测试编译发现 helper 名称/collection expression/analyzer 问题；首轮新测试误将 credential 的既有脱敏异常当原始隔离异常，且 thumbnail 输入不符合既有 key 格式。仅修正新测试的有效输入和既有异常契约，保持零 I/O 断言及生产行为不变，失败日志/TRX 保留。
+
+最终完整 Debug/Release 各 **1700 passed / 0 failed / 0 skipped**，逐名称核对原 1363 项全部保留；两配置全量一次通过，本轮未再出现历史 recognition 数组越界或 Windows Session timeout。locked restore 成功，两配置 solution build 均 **0 warnings / 0 errors**；Release 使用 `NativeProductionCandidate=true`。没有重新 publish 或 UI 手动验收，旧 publish 仍为旧 checkpoint。源码/程序集/TRX hash 见本轮 `validation-audit.json`，提交后由 `checkpoint-receipt.json` 绑定整改 SHA；构建内嵌父 checkpoint f797809，不冒称内嵌后来生成的 remediation commit。
+
+失败路径资源：预热 5 轮后 30 轮共 120 次 sharing failure、30 次 capacity failure、每轮 recovery/restore/reborrow；targeted 句柄 **472→472**，Debug 全量中 **672→672**，两者 30 个采样均不变。Release 全量 **650→653**，前 9 个采样 650，后 21 个均为 653，无持续线性增长，原 +6 阈值通过。每次测试 35 个 owner 均释放、临时文件 0，最终新 owner 可借 writer。该证据仅覆盖本机短轮次，不等于长期无泄漏保证。
+
+未改 Phase 2 transaction / atomic primitive、Phase 5A/5B facts/accounting、Electron 或共享兼容层，不重跑 Electron 全量。未访问真实 native Production、正式 Electron profile 或正式凭据，未启动真实游戏，未替换程序/重新 publish/推送，不进入 6.2。原 5 项 observation 保留：多组件备份非全局原子快照、性能、本机短轮次资源、历史 recognition 数组越界、历史 Windows Session timeout；不因本轮回归通过宣称根因已解决。真实断电、长期/跨机器、UI 手动操作与恶意 filesystem 竞态不在本轮新验证范围。修复候选仍需独立 targeted re-Gate。
+
+**READY FOR PHASE 6.1 TARGETED RE-GATE**。整改自检 BLOCKER 0 / MAJOR 0 / MINOR 0，保留 OBSERVATION 5，不代替独立复审结论；独立 remediation checkpoint 完成后暂停。
+
 ## WinUI Phase 6.1：Production Store Bootstrap（自检完成，等待 independent Gate）
 
 开始时核对 `codex/winui-phase5` / `b2a360a005aecd8bea1b18571eb78b75259c115b` 干净基线。范围重设纯文档 checkpoint：**62da4b46829602e3f4852d094489bbf15d10113b**。旧 [PHASE6_MIGRATION_AND_STORE.md](docs/ai/PHASE6_MIGRATION_AND_STORE.md) 顶部标记 **SUPERSEDED**，仅保留历史；其重要 Electron 资料必须无损迁移的前提已失效。当前规范与真实文件布局见 [PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md](docs/ai/PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。Phase 6.2 已改为 Production Readiness / First Real Profile，以后另获用户授权；下方旧阶段 migrated-store/cutover 义务由本节物理隔离与 fresh store 方案取代。

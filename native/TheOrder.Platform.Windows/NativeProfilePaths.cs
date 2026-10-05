@@ -21,19 +21,12 @@ public static class NativeProfilePaths
     }
     public static string Validate(NativeProfileRequest request)
     {
-        if (!Enum.IsDefined(request.Kind) || !Path.IsPathFullyQualified(request.Root) || request.Root.StartsWith(@"\\", StringComparison.Ordinal)
-            || request.Root.Contains('~') || request.Root.IndexOf(':', 2) >= 0) throw new NativeProfileException("InvalidProfilePath");
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(request.Root));
-        if (root.Split('\\', '/').Any(part => part.EndsWith('.') || part.EndsWith(' '))) throw new NativeProfileException("AmbiguousProfilePath");
-        if (Overlaps(root, LegacyRoot)) throw new NativeProfileException("LegacyProfileForbidden");
-        if (Overlaps(root, ProductionRoot) && (request.Kind != NativeProfileKind.Production || !request.ExplicitProductionAuthorization
-            || !root.Equals(ProductionRoot, StringComparison.OrdinalIgnoreCase))) throw new NativeProfileException("ProductionAuthorizationRequired");
-        if (Overlaps(root, DevelopmentRoot) && (request.Kind != NativeProfileKind.Development || !root.Equals(DevelopmentRoot, StringComparison.OrdinalIgnoreCase)))
-            throw new NativeProfileException("WrongProfileScope");
+        var root = ProfilePathGuard.Validate(request.Root, request.Kind, request.ExplicitProductionAuthorization);
         CheckChain(root); return root;
     }
     internal static void CheckChain(string root)
     {
+        ProfilePathGuard.BeforeFilesystem();
         for (DirectoryInfo? directory = new(root); directory is not null; directory = directory.Parent)
         {
             // GetAttributes also detects dangling links; Directory.Exists alone does not.

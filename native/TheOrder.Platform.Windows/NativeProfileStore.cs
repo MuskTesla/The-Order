@@ -293,7 +293,31 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
     }
     public ILibraryPersistence CreateLibraryPersistence()
     {
-        lock (gate) { ValidateAccess(); if (libraryOwned) throw new NativeProfileException("LibraryWriterAlreadyOwned"); libraryOwned = true; return new LibraryPersistence(this); }
+        lock (gate)
+        {
+            ValidateAccess();
+            if (libraryOwned) throw new NativeProfileException("LibraryWriterAlreadyOwned");
+            EnsureBackupCompatible("library.json");
+            byte[]? baseline;
+            try { baseline = ReadFile("library.json"); }
+            catch (InvalidDataException)
+            {
+                // A capacity-invalid main cannot supply a bounded stale-write baseline. Do not borrow
+                // or implicitly replace it: validate recovery, then let explicit Restore establish one.
+                ValidatePayload("library.json", ReadCore("library.json", true));
+                throw new NativeProfileException("LibraryRecoveryRequired");
+            }
+            try { ValidatePayload("library.json", Unwrap("library.json", baseline ?? throw new FileNotFoundException())); }
+            catch (Exception e) when (e is IOException or InvalidDataException)
+            {
+                // Same validation and compatibility boundary as profile open / Phase 2 fallback.
+                // Retain the exact corrupt/missing main as the comparison token, never blindly overwrite it.
+                ValidatePayload("library.json", ReadCore("library.json", true));
+            }
+            var borrower = new LibraryPersistence(this, baseline); // constructor performs no I/O
+            libraryOwned = true; // sole transfer point, under the same gate as restore/dispose/borrow
+            return borrower;
+        }
     }
     private PersistenceReceipt SaveCore(string name, ReadOnlyMemory<byte> previous, ReadOnlyMemory<byte> candidate, bool restored = false)
     {
@@ -339,10 +363,10 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
             else if (e.ValueKind == JsonValueKind.Array) foreach (var item in e.EnumerateArray()) Unique(item);
         }
     }
-    private sealed class LibraryPersistence(NativeProfileStore owner) : ILibraryPersistence, ILibraryRecoveryProvenance
+    private sealed class LibraryPersistence(NativeProfileStore owner, byte[]? baseline) : ILibraryPersistence, ILibraryRecoveryProvenance
     {
         private bool closed;
-        private byte[]? expectedMain = owner.ReadFile("library.json");
+        private byte[]? expectedMain = baseline;
         private bool fromBackup;
         public LibraryRecovery MainRecovery => fromBackup ? LibraryRecovery.Backup : LibraryRecovery.Main;
         public byte[]? ReadMain() => Read(false);

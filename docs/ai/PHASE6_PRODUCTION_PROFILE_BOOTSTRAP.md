@@ -58,6 +58,8 @@ Initializing 续作前先核对所有已有组件只能是同身份的预期空�
 
 `CheckpointBackups()` 在 owner 串行区内验证并复制各组件；这是逐组件 last-good 链，**不是跨多个文件的全库原子快照**。`Restore(name)` 在库关闭后，验证当前主文件未属未来/错身份版本，再验证 backup，原子恢复并重开验证。库 main 损坏/缺失还可沿原 Phase 2 自动从 backup 读取，下一次明确保存写回；偏好等损坏可调用显式 Restore API。本轮不做高级恢复 UI 或跨机器/跨物理根 adopt。
 
+6.1 Gate 整改澄清：writer 在 owner 的同一串行区内先验证 main/允许的 backup，再建立有界 main 比较基线；构造无 I/O，成功才交付 library ownership。超过外层 48 MiB 上限的 main 无法建立此基线，验证 backup 后明确返回 `LibraryRecoveryRequired`，不借出 writer、不隐式写盘；显式 Restore 后可重新 borrow。所有失败均不能留下阻止 restore/dispose 的 phantom ownership。普通可有界读取的损坏/缺失 main 保留上述 Phase 2 fallback 与逐字节 stale-write 检查。
+
 显式恢复库 main 时 durable envelope 标记 `RestoredFromBackup`。可选 `ILibraryRecoveryProvenance` 把它传给现有 `LibraryRecovery.Backup`，SessionEngine 沿原 `BackupRecovery` 分支处理；普通编辑不能在待恢复 Session 仍存在时清掉来源。由此防止“backup 复制成 main → 重新获得 active Session 自动接管资格”。恢复不增加 count、不补时、不 kill 游戏；已终态历史、ID、cwd、cover/accounting 保持。
 
 ## 启动和隔离工具
