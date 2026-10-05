@@ -1,5 +1,42 @@
 # 开发与维护
 
+## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
+
+本轮从 `codex/winui-phase5` / `a0befa5895dd05181047be609d4545041f054a64` 干净基线开始，核对 `.artifacts/native-phase6-1-regate/gate-audit.json`、`child-race-results.json` 及上一轮 checkpoint receipt。最新独立结论 **REMEDIATION REQUIRED / MAJOR 1 / OBSERVATION 5** 优先于下方历史自检。已通过的路径 guard 和原 ownership 修复保留；scope reset `62da4b46829602e3f4852d094489bbf15d10113b` 不变，不进入 6.2。
+
+根因：native borrow 用新 main 建立比较 baseline，后续 Phase 2 `Open/ReadMain` 独立读取遇到短暂锁，通用 fallback 却加载旧 backup。随后普通分类保存仍与未变的新 main baseline 比较，放行旧备注/收藏覆盖新 main。问题是 editable data 与 stale baseline 的 generation/source 不一致。
+
+生产修改仅在 `NativeProfileStore` adapter：
+
+- writer 持有同一份已验证 authoritative main envelope：其 payload 是加载来源，完整 envelope bytes 是 stale comparison token，既有 `RestoredFromBackup` 保留 recovery 来源，不增加 schema。constructor 无 I/O，验证/恢复/readback 全部成功后才转移 ownership。
+- 实际加载时在 owner gate 内复核当前 main 与 baseline 字节一致，再从 baseline envelope 解出数据。sharing/temporary I/O/AccessDenied 抛 `LibraryTemporarilyUnavailable`，不会被 Phase 2 当作 corruption fallback；factory/Open 既有失败清理释放 writer。borrow 前的访问失败同样直接失败，解锁后重试重新读取当前 main。
+- 已借出的 writer 不允许 `ReadBackup` 选择另一 generation。baseline 后 main 消失/替换/损坏会拒绝 Open，不能 silent backup writable open；外部修改后的旧 writer Save 仍被 `LibraryChangedOutsideWriter` 拒绝，baseline 不自动跟随外部文件变化。
+- main 被证明 malformed/truncated/structurally invalid 或缺失，且 backup 有效、身份/版本/能力兼容时，在 native borrow 阶段先用既有原子 primitive 恢复 main，readback 验证后，以恢复后的 main 建立 baseline。此处是 native recovery-before-borrow，不是 Phase 2 `TransactionalLibrary.Open` 写盘；通用 Phase 2 Open、事务、业务 mutation 和 raw adapter 全部未改。主文件读取容量超 48 MiB 仍只返回 `LibraryRecoveryRequired`，要求显式 Restore 后 borrow。临时访问失败从不授权自动恢复。
+- 沿用 owner gate、stream 的 using 和原子写 temp 清理，无新增长期 handle、timer、task owner。恢复替换前失败保持损坏 main/有效 backup 且无 borrower；替换后故障按既有已提交语义 readback，不伪报回滚。backup 恢复标记继续传给原 Session/recovery 逻辑，不改变 accounting。
+
+验证和源码/二进制身份统一记录在 ignored `.artifacts/native-phase6-1-provenance/`；最终数值见下方验证记录。25 项新回归覆盖原 Gate 新备注/收藏 + 旧 backup + 普通分类编辑，真实子进程/同进程各三次 baseline 后锁、锁前/无锁对照、AccessDenied 注入、缺失/原子替换、恢复后外部 valid edit、bounded invalid backup、恢复发布故障、并发失败/赢家保护及失败路径资源循环。没有修改任何旧测试期望或资源阈值。
+
+未修改 `ProfilePathGuard`、Phase 2 contract/atomic primitive、Session/accounting、Electron、共享数据模型、凭据格式或 durable schema；未访问正式 native Production、正式 Electron profile、正式凭据，未启动真实游戏、publish、替换程序或推送。AccessDenied 用注入验证分类，真实 Windows sharing 用实际文件/子进程锁验证；不声称真实 ACL 拒绝、长时间运行、跨机器或断电测试。原五项 observation 保留；本轮自检不代替独立 targeted re-Gate。
+
+验证结果（2026-10-06，本轮实际执行）：
+
+| 验证 | passed / failed / skipped |
+| --- | --- |
+| 新增 provenance/source 回归 | 25 / 0 / 0 |
+| Profile / persistence / transaction 相关 targeted | 708 / 0 / 0 |
+| 完整 native Debug | 1725 / 0 / 0 |
+| 完整 native Release | 1725 / 0 / 0 |
+| 历史 recognition remediation 分组单独复跑 | 44 / 0 / 0 |
+| Windows Session 分组单独复跑 | 9 / 0 / 0 |
+
+原 1700 项逐名称保留。最终两个全量均一次通过，顺序执行且没有与外部探针重叠；没有重现历史两项失败，也未声称其根因解决。locked restore 成功，Debug/Release solution build 均 0 warnings / 0 errors，Release 指定 `NativeProductionCandidate=true`。Electron 未改，不重复 Electron 全量。
+
+原 Gate child-race probe 保留在原位置；本轮复制到独立证据目录，改为新输出路径、期望拒绝断言和解锁后分类保存断言，链接当前 Release DLL。锁前/无锁对照 + baseline 后真实 child 锁 3 次全部通过：main/backup 在失败 Open 前后字节不变，未产生 writable backup，retry/save 保留 new main/收藏 true，play count=3、total=71 不变，second owner exit=0、temp=0、dataLost=false。probe 加载的 Platform DLL 与全量受测 DLL hash 一致。
+
+新增 30 轮 late-lock → Open fail → cleanup → unlock → retry/save 资源结果：单独 targeted **468→468**，相关 targeted **507→507**，Debug 全量 **671→671**，Release 全量 **676→676**，各自全部采样保持相同值，temp=0，后继 owner 可借用。既有混合失败循环 Release **655→657**（中间 658 平台期），原阈值通过，未改阈值。所有任务有界等待/结束，无新增常驻任务。初期新增测试的 ImmutableArray 比较重载错误保留在 `provenance-initial.trx/log`，修正断言方式后验证实际 Notes/Favorite/Category，不放宽期望。
+
+本轮整改自检 **BLOCKER 0 / MAJOR 0 / MINOR 0 / OBSERVATION 5**；**READY FOR PHASE 6.1 TARGETED RE-GATE**，仍需独立复审。当前构建内嵌父 checkpoint a0befa5；`validation-audit.json` 绑定源码/程序集/TRX hashes，提交后 `checkpoint-receipt.json` 绑定 remediation commit，不冒称构建内嵌事后生成的 commit。完成独立整改提交后暂停。
+
 ## WinUI Phase 6.1：Guard + Writer Exception-Safety Remediation（等待 targeted re-Gate）
 
 本轮开始核对 `codex/winui-phase5` / `f797809983111e3f0f6becfc484dc13a803b203f` 干净基线，以及 `.artifacts/native-phase6-1-gate/gate-audit.json` / `independent-probes.json`。独立 Gate 的 **REMEDIATION REQUIRED / MAJOR 2 / OBSERVATION 5** 优先于下方历史自检结论。只修 M1/M2；scope reset checkpoint `62da4b46829602e3f4852d094489bbf15d10113b` 与 Phase 6 范围不变。

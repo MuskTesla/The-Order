@@ -1,5 +1,14 @@
 # The Order：当前实现与评审交接
 
+## WinUI Phase 6.1：Read Provenance / Stale-Write Remediation（等待 targeted re-Gate）
+
+- 基线 `codex/winui-phase5` / `a0befa5895dd05181047be609d4545041f054a64`，最新 targeted re-Gate 为 **MAJOR 1 / OBSERVATION 5**；已通过的 ProfilePathGuard 和原 ownership exception safety 保留，scope reset 不变。
+- 唯一剩余缺陷是新 main baseline 与旧 backup editable state 混用。现在 native writer 的加载 payload、recovery 来源和 stale token 绑定同一份已验证 authoritative main envelope；再次访问遇到 sharing/AccessDenied 明确失败，不 fallback。main generation 变化拒绝 Open/Save，解锁后重试读取当前 main。
+- 确认 malformed/truncated/structural/missing main 才允许在 native borrow 前恢复兼容 backup → main，readback 后新建 baseline。已借出 writer 不能另选 backup；超限 main 继续 `LibraryRecoveryRequired → 显式 Restore → borrow`。Phase 2 通用 Open 本身不写盘，事务和业务 mutation 未改；Session accounting/schema/guard/Electron 未改。
+- 新增 25 项回归和实际 child-process 原 Gate probe 复验，最终测试/构建/资源数值见 [DEVELOPMENT](../../DEVELOPMENT.md)。证据位于 ignored `.artifacts/native-phase6-1-provenance/validation-audit.json` 与提交后 `checkpoint-receipt.json`。旧测试和阈值未改，五项 observations 保留；不把本轮自检当作独立 Gate 通过。
+- 最终 provenance targeted **25/0/0**、相关 **708/0/0**，完整 Debug/Release 各 **1725/0/0**，原 1700 项逐名称保留；recognition **44/0/0**、Windows Session **9/0/0**。两配置构建 0 warnings/errors、locked restore 通过；三轮独立 child-race 均无回退，新增资源循环 Debug **671→671** / Release **676→676**。自检 **BLOCKER 0 / MAJOR 0 / MINOR 0 / OBSERVATION 5**，**READY FOR PHASE 6.1 TARGETED RE-GATE**。
+- 正式 native/Electron profile、凭据未访问；无真实游戏、重新发布、正式替换、推送或 6.2 工作。完成本次独立整改 checkpoint 后暂停，等待 targeted re-Gate。
+
 ## WinUI Phase 6.1：Guard + Writer Exception-Safety Remediation（等待 targeted re-Gate）
 
 - 本轮从 `codex/winui-phase5` / `f797809983111e3f0f6becfc484dc13a803b203f` 的干净基线开始，核对 independent Gate audit/probes。该 Gate **REMEDIATION REQUIRED / MAJOR 2 / OBSERVATION 5** 优先于下方旧自检结论。仅整改 M1/M2，未改变 scope reset `62da4b46829602e3f4852d094489bbf15d10113b` 或进入 6.2。

@@ -308,17 +308,24 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
                 throw new NativeProfileException("LibraryRecoveryRequired");
             }
             try { ValidatePayload("library.json", Unwrap("library.json", baseline ?? throw new FileNotFoundException())); }
-            catch (Exception e) when (e is IOException or InvalidDataException)
+            catch (Exception e) when (e is FileNotFoundException or InvalidDataException)
             {
-                // Same validation and compatibility boundary as profile open / Phase 2 fallback.
-                // Retain the exact corrupt/missing main as the comparison token, never blindly overwrite it.
-                ValidatePayload("library.json", ReadCore("library.json", true));
+                // Only proven invalid/absent input authorizes recovery, never an access failure.
+                // Complete native recovery BEFORE handing a writable generation to Phase 2.
+                var recovered = ReadCore("library.json", true); ValidatePayload("library.json", recovered);
+                if (!SameBytes(baseline, ReadFile("library.json"))) throw new NativeProfileException("LibraryChangedOutsideWriter");
+                var restored = Wrap("library.json", recovered, true);
+                WriteFile("library.json", restored, stage => Reach(PersistenceTarget.Main, stage));
+                baseline = ReadFile("library.json");
+                if (!SameBytes(restored, baseline)) throw new NativeProfileException("LibraryChangedOutsideWriter");
+                ValidatePayload("library.json", Unwrap("library.json", baseline!));
             }
-            var borrower = new LibraryPersistence(this, baseline); // constructor performs no I/O
+            var borrower = new LibraryPersistence(this, baseline!); // validated envelope is both source and comparison token; no constructor I/O
             libraryOwned = true; // sole transfer point, under the same gate as restore/dispose/borrow
             return borrower;
         }
     }
+    private static bool SameBytes(byte[]? a, byte[]? b) => a is null ? b is null : b is not null && a.AsSpan().SequenceEqual(b);
     private PersistenceReceipt SaveCore(string name, ReadOnlyMemory<byte> previous, ReadOnlyMemory<byte> candidate, bool restored = false)
     {
         EnsureBackupCompatible(name);
@@ -363,22 +370,38 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
             else if (e.ValueKind == JsonValueKind.Array) foreach (var item in e.EnumerateArray()) Unique(item);
         }
     }
-    private sealed class LibraryPersistence(NativeProfileStore owner, byte[]? baseline) : ILibraryPersistence, ILibraryRecoveryProvenance
+    private sealed class LibraryPersistence(NativeProfileStore owner, byte[] baseline) : ILibraryPersistence, ILibraryRecoveryProvenance
     {
         private bool closed;
-        private byte[]? expectedMain = baseline;
-        private bool fromBackup;
+        private byte[] expectedMain = baseline;
+        private bool fromBackup = Deserialize<Component>(baseline).RestoredFromBackup;
         public LibraryRecovery MainRecovery => fromBackup ? LibraryRecovery.Backup : LibraryRecovery.Main;
-        public byte[]? ReadMain() => Read(false);
-        public byte[]? ReadBackup() => Read(true);
-        private byte[] Read(bool backup)
+        public byte[]? ReadMain()
+        {
+            lock (owner.gate)
+            {
+                ObjectDisposedException.ThrowIf(closed, this);
+                byte[]? current;
+                try { owner.ValidateAccess(); current = owner.ReadFile("library.json"); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // Not an IOException: Phase 2 must not interpret a temporary inaccessible main
+                    // as permission to load an older backup. Factory/Open cleanup releases this lease.
+                    throw new NativeProfileException("LibraryTemporarilyUnavailable");
+                }
+                if (!SameBytes(expectedMain, current)) throw new InvalidDataException("LibraryReadGenerationChanged");
+                // Read data and provenance from the SAME validated envelope used by stale-write checks.
+                return owner.Unwrap("library.json", expectedMain);
+            }
+        }
+        public byte[]? ReadBackup()
         {
             lock (owner.gate)
             {
                 ObjectDisposedException.ThrowIf(closed, this); owner.ValidateAccess();
-                var bytes = owner.ReadCore("library.json", backup); owner.ValidatePayload("library.json", bytes);
-                fromBackup = backup || Deserialize<Component>(owner.ReadFile("library.json")!).RestoredFromBackup;
-                return bytes;
+                // A borrowed native writer is already bound to an authoritative main generation.
+                // Recovery requires releasing it and acquiring a fresh generation through the owner.
+                throw new InvalidDataException("LibraryReadGenerationChanged: reopen native profile writer for recovery");
             }
         }
         public Task<PersistenceReceipt> SaveAsync(ReadOnlyMemory<byte> previous, ReadOnlyMemory<byte> candidate)
@@ -387,7 +410,7 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
             {
                 ObjectDisposedException.ThrowIf(closed, this); owner.ValidateAccess(); owner.ValidatePayload("library.json", candidate.ToArray());
                 var actualMain = owner.ReadFile("library.json");
-                if (!(actualMain is null && expectedMain is null) && (actualMain is null || expectedMain is null || !actualMain.AsSpan().SequenceEqual(expectedMain)))
+                if (!SameBytes(actualMain, expectedMain))
                     throw new NativeProfileException("LibraryChangedOutsideWriter");
                 var retainProvenance = fromBackup && owner.codec.Decode(candidate).Any(e => e.Sessions.Any(s => s.Native is { IsTerminal: false }));
                 var receipt = owner.SaveCore("library.json", previous, candidate, retainProvenance);
