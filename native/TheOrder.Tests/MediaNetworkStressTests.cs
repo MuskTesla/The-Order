@@ -11,6 +11,15 @@ namespace TheOrder.Tests;
 public sealed class MediaNetworkStressTests
 {
     [Fact]
+    public async Task LoopbackFixtureRepeatedShutdownDrainsItsPendingAccept()
+    {
+        for (int i = 0; i < 50; i++)
+        {
+            var server = new Server([1]); await server.DisposeAsync();
+            Assert.True(server.IsStopped); Assert.Equal(0, server.Requests);
+        }
+    }
+    [Fact]
     public async Task LocalHttpFixtureExercisesMissHitRevisionCorruptionAndConcurrentRequests()
     {
         var png = await ImagePipelineTests.Png(320, 480);
@@ -62,6 +71,7 @@ public sealed class MediaNetworkStressTests
         private readonly Task serving;
         private readonly byte[] png;
         public int Requests;
+        public bool IsStopped => serving.IsCompletedSuccessfully;
         public int Port => ((IPEndPoint)listener.LocalEndpoint).Port;
         public Server(byte[] png) { this.png = png; listener.Start(); serving = Serve(); }
         private async Task Serve()
@@ -83,8 +93,9 @@ public sealed class MediaNetworkStressTests
                     catch (IOException) { }
                 }
             }
-            catch (Exception e) when (stopping.IsCancellationRequested && e is OperationCanceledException or SocketException) { }
+            catch (Exception e) when (stopping.IsCancellationRequested && e is OperationCanceledException or SocketException or ObjectDisposedException) { }
         }
-        public async ValueTask DisposeAsync() { stopping.Cancel(); listener.Stop(); await serving; stopping.Dispose(); }
+        public async ValueTask DisposeAsync()
+        { try { stopping.Cancel(); listener.Stop(); await serving; } finally { stopping.Dispose(); } }
     }
 }
