@@ -195,7 +195,7 @@ public sealed partial class MainWindow : Window
         if (performanceFixture)
         {
             double now = Program.StartupClock.Elapsed.TotalMilliseconds;
-            if (performanceLastUiTick > 0 && performanceUiGaps.Count < 10000) performanceUiGaps.Add(now - performanceLastUiTick);
+            if (performanceLastUiTick > 0 && performanceUiGaps.Count < 32768) performanceUiGaps.Add(now - performanceLastUiTick);
             performanceLastUiTick = now;
         }
         using var process = Process.GetCurrentProcess();

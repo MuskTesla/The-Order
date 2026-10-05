@@ -37,7 +37,10 @@ public sealed partial class MainWindow
             double? firstCoverMs = HasVisibleBitmap(libraryPage) ? Program.StartupClock.Elapsed.TotalMilliseconds : null;
             WritePerformance(output, "startup.json", new { status = "USABLE", profileOpenMs = Program.ProfileOpenMilliseconds, viewModelReadyMs, firstUsableMs, firstCoverMs, firstViewport, entries = ViewModel.Items.Count, images = images.Metrics, note = "Process-relative managed entry clock; OS cache uncontrolled. First usable requires loaded query and actual realized viewport; first cover requires an Image surface." });
             int rounds = int.TryParse(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_ROUNDS"), out var value) ? Math.Clamp(value, 0, 1000) : 120;
-            for (int i = 0; i < rounds; i++)
+            double minutes = double.TryParse(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_MINUTES"), System.Globalization.CultureInfo.InvariantCulture, out var requestedMinutes) ? Math.Clamp(requestedMinutes, 0, 120) : 0;
+            int pace = int.TryParse(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_PACE_MS"), out var requestedPace) ? Math.Clamp(requestedPace, 0, 10000) : 0;
+            var workloadClock = Stopwatch.StartNew();
+            for (int i = 0; i < rounds || workloadClock.Elapsed < TimeSpan.FromMinutes(minutes); i++)
             {
                 if (i % 12 == 0) await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, ViewModel.Layout == "grid" ? "list" : "grid");
                 var viewport = await libraryPage.PerformanceScrollAsync((i % 11) / 10d, i * 47);
@@ -54,9 +57,10 @@ public sealed partial class MainWindow
                     imageSurfaces = CountCoverPresenters(Root), outstandingThreadPool = ThreadPool.PendingWorkItemCount };
                 samples.Add(sample);
                 if (i % 10 == 0) await Task.Run(() => WritePerformance(output, "progress.json", sample));
+                if (pace > 0) await Task.Delay(pace);
             }
             await Navigate(WorkspacePage.Library); await Task.Delay(300);
-            await Task.Run(() => WritePerformance(output, "ui-result.json", new { status = "UI_WORKLOAD_COMPLETED", rounds, samples, images = images.Metrics, uiTickGapsMs = performanceUiGaps, actualXaml = true, productionAccess = false, systemTrayMenuAutomated = false }));
+            await Task.Run(() => WritePerformance(output, "ui-result.json", new { status = "UI_WORKLOAD_COMPLETED", rounds = samples.Count, durationSeconds = workloadClock.Elapsed.TotalSeconds, requestedMinutes = minutes, paceMs = pace, samples, images = images.Metrics, uiTickGapsMs = performanceUiGaps, actualXaml = true, productionAccess = false, systemTrayMenuAutomated = false }));
         }
         catch (Exception e)
         {

@@ -74,6 +74,32 @@ public sealed class PerformanceHardeningTests
     [Fact]
     public void SizeBucketsRemainStableAndBoundPathologicalLayoutDimensions()
     { Assert.Equal(ThumbnailSizing.Edge(160, 240, 1), ThumbnailSizing.Edge(161, 241, 1)); Assert.Equal(1600, ThumbnailSizing.Edge(10000, 10000, 2)); Assert.Equal(64, ThumbnailSizing.Edge(double.NaN, 10, 1)); }
+    [Theory][InlineData("io")][InlineData("access")][InlineData("isolation")]
+    public async Task UnavailableDerivedCacheDoesNotRetryOrPreventValidImage(string kind)
+    {
+        var disk = new FailingDisk(kind); var codec = new GateCodec(); codec.Release.TrySetResult();
+        await using var pipe = new ImagePipeline(new Source(), codec, disk, new(MemoryBytes: 0));
+        for (int i = 0; i < 30; i++) Assert.NotNull((await pipe.LoadAsync("cache-error-" + i, 64, default)).Pixels);
+        Assert.Equal(30, disk.Reads); Assert.Equal(30, disk.Writes); Assert.Equal(30, codec.Calls);
+        Assert.Equal(0, pipe.Metrics.Outstanding); Assert.Equal(0, pipe.Metrics.PendingWaiters);
+    }
+    [Fact]
+    public async Task ActualCachePathBlockedByOrdinaryFileRemainsBoundedAndDoesNotLoseImage()
+    {
+        using var profile = new TransactionProfile(); var path = Path.Combine(profile.Root, "native-thumbnails-v1"); File.WriteAllText(path, "synthetic cache obstruction");
+        var codec = new GateCodec(); codec.Release.TrySetResult();
+        await using var pipe = new ImagePipeline(new Source(), codec, new IsolatedThumbnailCache(new(profile.Root)), new(MemoryBytes: 0));
+        for (int i = 0; i < 30; i++) Assert.NotNull((await pipe.LoadAsync(new string('A', 64), 64, default)).Pixels);
+        Assert.Equal("synthetic cache obstruction", File.ReadAllText(path)); Assert.Equal(30, codec.Calls);
+        Assert.Equal(0, pipe.Metrics.Outstanding); Assert.Equal(0, pipe.Metrics.PendingWaiters);
+    }
+    private sealed class FailingDisk(string kind) : IThumbnailDiskCache
+    {
+        public int Reads, Writes;
+        private Exception Failure() => kind switch { "access" => new UnauthorizedAccessException(), "isolation" => new DataIsolationException("synthetic"), _ => new IOException() };
+        public Task<RasterPixels?> ReadAsync(string key, CancellationToken cancellation) { Reads++; return Task.FromException<RasterPixels?>(Failure()); }
+        public Task WriteAsync(string key, RasterPixels pixels, long maximumBytes, CancellationToken cancellation) { Writes++; return Task.FromException(Failure()); }
+    }
     private sealed class Source : IImageSourceProvider { public Task<byte[]?> ReadAsync(string key, CancellationToken cancellation) => Task.FromResult<byte[]?>([1]); }
     private sealed class NoDisk : IThumbnailDiskCache
     { public Task<RasterPixels?> ReadAsync(string key, CancellationToken cancellation) => Task.FromResult<RasterPixels?>(null); public Task WriteAsync(string key, RasterPixels pixels, long maximumBytes, CancellationToken cancellation) => Task.CompletedTask; }
