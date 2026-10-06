@@ -243,6 +243,8 @@ internal sealed class MaterialPolicy : IDisposable
                 state.EnergySaver is not null && state.AdvancedEffects.HasValue && state.CompositionSupported.HasValue,
             materialFault,
             ownedBrushCount = ownedBrushes.Length,
+            ownedFallback = ownedBrushes.Select(x => x.AlwaysUseFallback).ToArray(),
+            fallbackScope = "Owned Navigation/Toolbar/Details and public FlyoutPresenter/MenuFlyoutPresenter keys; ContentDialog uses solid ContentBrush. OS titlebar/menu outside scope.",
             bindingsResolved,
             level = state.EffectsAllowed ? 2 : 1
         };

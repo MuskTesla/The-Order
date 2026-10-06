@@ -72,6 +72,14 @@ public sealed partial class MainWindow
             PageContent.Margin = Navigation.DisplayMode == NavigationViewDisplayMode.Minimal ? new Thickness(0, 36, 0, 0) : new Thickness(0);
     }
 
+    private void OnShellSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (Navigation is null) return;
+        Navigation.PaneDisplayMode = args.NewSize.Width < 740 ? NavigationViewPaneDisplayMode.LeftMinimal : NavigationViewPaneDisplayMode.Auto;
+        if (args.NewSize.Width < 740) Navigation.IsPaneOpen = false;
+        UpdateNavigationSpacing();
+    }
+
     private void StartVisualFixture(object sender, RoutedEventArgs e) => visualFixtureTimer?.Start();
     private void ApplyMaterialPolicy()
     {
@@ -162,8 +170,9 @@ public sealed partial class MainWindow
 
     private object VisualEvidence() => new
     {
-        direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen,
+        direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts,
+        round3 = Round3Evidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
         dpiScale = Root.XamlRoot?.RasterizationScale,
         foregroundSource = "existing SessionPresentation and WorkspaceViewModel"
@@ -208,6 +217,13 @@ public sealed partial class MainWindow
                 case "states": ShowSessionStateFixtures(); break;
                 case "galleryStep": gallery?.StepPattern(root.GetProperty("value").GetDouble()); break;
                 case "search": await ViewModel.SetQueryAsync(ViewModel.Query with { Text = root.GetProperty("value").GetString() ?? "" }); break;
+                case "filter": libraryPage.ShowVisualFilter(); break;
+                case "closeFilter": libraryPage.HideVisualFilter(); break;
+                case "capture": await CaptureRound3Async(root.GetProperty("value").GetString() ?? ""); break;
+                case "dialog": ShowRound3Dialog(); break;
+                case "closeDialog": round3Dialog?.Hide(); break;
+                case "timer": round3TimerOverride = root.GetProperty("value").GetString() ?? ""; break;
+                case "focusSearch": libraryPage.FocusVisualSearch(); break;
                 case "probe": break;
                 case "exit": if (App.Instance is { } app) await app.RequestExitAsync(); return;
                 default: throw new InvalidDataException("Unsupported visual fixture action.");

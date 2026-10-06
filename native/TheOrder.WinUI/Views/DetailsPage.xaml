@@ -46,30 +46,33 @@
        <views:CoverPresenter SourceKey="{x:Bind ViewModel.Draft.Source.CoverKey, Mode=OneWay}" MinimumEdge="512"/>
       </Border>
       <StackPanel x:Name="IdentityFacts" Grid.Row="1" Grid.Column="1" Spacing="8">
-       <TextBlock Text="目录名称与原名" Style="{StaticResource MetadataTextStyle}"/>
-       <TextBlock Text="{x:Bind ViewModel.Draft.Source.MetadataTitle, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
-       <TextBlock Text="{x:Bind ViewModel.Draft.Source.OriginalTitle, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
+       <TextBlock Text="{x:Bind StatusLabel(ViewModel.Draft.Status), Mode=OneWay}" Foreground="{ThemeResource AccentBrush}" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="DetailPersonalStatus"/>
+       <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+       <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
        <TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
       </StackPanel>
      </Grid>
     </Border>
     <Border Style="{StaticResource ToolbarSurfaceStyle}" Padding="20">
-     <Grid ColumnSpacing="16" RowSpacing="12">
+     <StackPanel Spacing="12"><TextBlock Text="启动与安装" Style="{StaticResource SectionTitleStyle}"/>
+      <StackPanel x:Name="EmptyInstallation" Grid.Row="1" Grid.ColumnSpan="2" Spacing="8" Visibility="{x:Bind NoInstallations(Launch.Installations.Length), Mode=OneWay}"><TextBlock Text="还没有本地安装，暂时无法启动。" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="EmptyInstallationReason"/><Button Content="添加或管理本地安装" Click="OnInstallations" HorizontalAlignment="Left" AutomationProperties.AutomationId="AddLocalInstallation"/></StackPanel>
+     <Grid ColumnSpacing="16" RowSpacing="12" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <TextBlock Grid.ColumnSpan="2" Text="启动游戏" Style="{StaticResource SectionTitleStyle}"/>
-      <ComboBox x:Name="LaunchInstallation" Grid.Row="1" Header="本次使用的安装" ItemsSource="{x:Bind Launch.Installations, Mode=OneWay}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{x:Bind Launch.SelectedInstallationId, Mode=OneWay}" SelectionChanged="OnLaunchInstallation" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LaunchInstallation" AutomationProperties.Name="本次使用的游戏安装"/>
+      
+
+      <ComboBox x:Name="LaunchInstallation" Grid.Row="1" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" ItemsSource="{x:Bind Launch.Installations, Mode=OneWay}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{x:Bind Launch.SelectedInstallationId, Mode=OneWay}" SelectionChanged="OnLaunchInstallation" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LaunchInstallation" AutomationProperties.Name="本次使用的游戏安装"/>
       <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{x:Bind Launch.Position, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-      <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{x:Bind Launch.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchMessage" AutomationProperties.LiveSetting="Polite"/>
-      <Grid x:Name="LaunchActions" Grid.Row="1" Grid.Column="1" ColumnSpacing="8" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+      <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Text="{x:Bind Launch.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchMessage" AutomationProperties.LiveSetting="Polite"/>
+      <Grid x:Name="LaunchActions" Grid.Row="1" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Grid.Column="1" ColumnSpacing="8" HorizontalAlignment="Right" VerticalAlignment="Bottom">
        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Button x:Name="ConfirmLaunchButton" Content="确认启动位置" Click="OnConfirmPosition" IsEnabled="{x:Bind Launch.CanConfirm, Mode=OneWay}" AutomationProperties.AutomationId="ConfirmLaunchPosition"/>
+       <Button x:Name="ConfirmLaunchButton" Content="确认启动位置" Visibility="{x:Bind ActionVisible(Launch.CanConfirm), Mode=OneWay}" Click="OnConfirmPosition" IsEnabled="{x:Bind Launch.CanConfirm, Mode=OneWay}" AutomationProperties.AutomationId="ConfirmLaunchPosition"/>
        <Button x:Name="LaunchGameButton" Grid.Column="1" Content="启动游戏" Click="OnLaunch" IsEnabled="{x:Bind Launch.CanLaunch, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="LaunchGame"/>
-       <Button x:Name="CancelLaunchButton" Grid.Column="2" Content="取消启动" Click="OnCancelLaunch" IsEnabled="{x:Bind Launch.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelLaunch"/>
+       <Button x:Name="CancelLaunchButton" Grid.Column="2" Content="取消启动" Visibility="{x:Bind ActionVisible(Launch.CanCancel), Mode=OneWay}" Click="OnCancelLaunch" IsEnabled="{x:Bind Launch.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelLaunch"/>
       </Grid>
-      <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Text="关闭窗口会保留在托盘；退出 The Order 不会结束游戏。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
-     </Grid>
+      <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Text="关闭窗口会保留在托盘；退出 The Order 不会结束游戏。" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+     </Grid></StackPanel>
     </Border>
     <Border Style="{StaticResource SurfaceStyle}" Padding="24">
      <StackPanel Spacing="16">

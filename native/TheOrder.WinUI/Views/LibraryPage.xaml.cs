@@ -102,6 +102,7 @@ public sealed partial class LibraryPage : Page, IImageHost
     {
         if (SelectionCountText is null || GameGrid is null || GameList is null) return;
         var count = Active.SelectedItems.Count;
+        SelectionContext.Visibility = Visible(count > 0);
         SelectionCountText.Text = count == 0 ? "选择作品以查看详情或批量管理" : $"已选择 {count} 部作品";
         OpenDetailsButton.IsEnabled = count > 0;
         RecognizeSelectedButton.IsEnabled = count > 0;
@@ -110,35 +111,36 @@ public sealed partial class LibraryPage : Page, IImageHost
     private void OnLibrarySizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (ToolbarGrid is null || ToolbarControls is null || SelectionContext is null) return;
-        var available = Math.Max(0, e.NewSize.Width - LibraryCanvas.Padding.Left - LibraryCanvas.Padding.Right);
-        var stacked = available < 780;
-        ToolbarGrid.RowSpacing = stacked ? 10 : 0;
-        Grid.SetRow(ToolbarControls, stacked ? 1 : 0);
-        Grid.SetColumn(ToolbarControls, stacked ? 0 : 1);
-        Grid.SetColumnSpan(ToolbarControls, stacked ? 2 : 1);
+        var narrow = e.NewSize.Width < 650;
+        LibraryCanvas.Padding = narrow ? new Thickness(16, 16, 16, 16) : new Thickness(32, 24, 32, 24);
+        ToolbarSurface.Padding = new Thickness(narrow ? 8 : 12);
+        ToolbarGrid.RowSpacing = narrow ? 8 : 0;
+        Grid.SetRow(ToolbarControls, narrow ? 1 : 0);
+        Grid.SetColumn(ToolbarControls, narrow ? 0 : 1);
+        Grid.SetColumnSpan(ToolbarControls, narrow ? 2 : 1);
         ToolbarControls.HorizontalAlignment = HorizontalAlignment.Left;
-        var narrow = available < 520;
-        ToolbarControls.RowSpacing = narrow ? 8 : 0;
-        ToolbarControls.ColumnDefinitions[2].Width = new GridLength(narrow ? 0 : 88);
-        ToolbarControls.ColumnDefinitions[3].Width = new GridLength(narrow ? 0 : 78);
-        Grid.SetRow(LayoutControls, narrow ? 1 : 0);
-        Grid.SetColumn(LayoutControls, narrow ? 0 : 2);
-        Grid.SetRow(FilterButton, narrow ? 1 : 0);
-        Grid.SetColumn(FilterButton, narrow ? 1 : 3);
-        FilterButton.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
-        var contextStacked = available < 680;
-        SelectionContext.RowSpacing = contextStacked ? 8 : 0;
-        Grid.SetRow(ContextActions, contextStacked ? 1 : 0);
-        Grid.SetColumn(ContextActions, contextStacked ? 0 : 1);
-        Grid.SetColumnSpan(ContextActions, contextStacked ? 2 : 1);
-        ContextActions.HorizontalAlignment = HorizontalAlignment.Left;
-        var compactActions = available < 430;
-        ContextActions.RowSpacing = compactActions ? 8 : 0;
-        Grid.SetRow(BatchEditButton, compactActions ? 1 : 0);
-        Grid.SetColumn(BatchEditButton, compactActions ? 0 : 2);
-        Grid.SetRow(ReloadButton, compactActions ? 1 : 0);
-        Grid.SetColumn(ReloadButton, compactActions ? 1 : 3);
+        ToolbarControls.RowSpacing = 0;
+        ImportButton.Visibility = Visible(!narrow);
+        SelectionContext.RowSpacing = narrow ? 8 : 0;
+        Grid.SetRow(ContextActions, narrow ? 1 : 0);
+        Grid.SetColumn(ContextActions, narrow ? 0 : 1);
+        Grid.SetColumnSpan(ContextActions, narrow ? 2 : 1);
+        RecognizeSelectedButton.Visibility = Visible(!narrow);
+        BatchEditButton.Visibility = Visible(!narrow);
+        ReloadButton.Visibility = Visibility.Collapsed;
+        SelectionMore.Visibility = Visible(narrow);
+        // Popup height is constrained independently so its action row never scrolls.
+        FilterPanel.MaxHeight = Math.Max(180, Math.Min(520, XamlRoot?.Size.Height - 110 ?? 520));
     }
+    internal void ShowVisualFilter() => FilterFlyout.ShowAt(FilterButton);
+    internal void HideVisualFilter() => FilterFlyout.Hide();
+    internal void FocusVisualSearch() => SearchBox.Focus(FocusState.Keyboard);
+    internal object VisualLayoutEvidence() => new { width = ActualWidth, viewportWidth = Active.ActualWidth, viewportHeight = Active.ActualHeight,
+        selection = Active.SelectedItems.Count, selectionVisible = SelectionContext.Visibility.ToString(),
+        filterHeight = FilterPanel.ActualHeight, footerHeight = FilterFooter.ActualHeight,
+        footerY = FilterFooter.ActualHeight == 0 ? 0 : FilterFooter.TransformToVisual(FilterPanel).TransformPoint(new Windows.Foundation.Point()).Y,
+        searchFocus = SearchBox.FocusState.ToString(), itemCount = Active.Items.Count };
+    private void OnFinishFilter(object sender, RoutedEventArgs e) => FilterFlyout.Hide();
     private void OnListRowSizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is not Grid row || row.ColumnDefinitions.Count != 5) return;

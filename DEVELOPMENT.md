@@ -1,5 +1,16 @@
 # 开发与维护
 
+## Phase 7.1 closure / Phase 7.2A Round 3（2026-10-07）
+
+Phase 7.1 已正式 **PASS — PHASE 7.1 MEMORY MAJOR CLOSED / B0/M0/m0 / PASS FOR PHASE 7.2**。主工作区 closure 见 `D:/Projects/The-Order/docs/ai/PHASE7_PERFORMANCE_AND_RELIABILITY.md`；原 memory 诊断源码不复制进视觉分支。anonymous owner、global bitmap/GPU/COM、约3MiB residual、storage scaling、Level3独立验证均为 OBS，不再阻塞视觉工作。
+
+Round 3 仅修复原六项：移除 Shell enclosing glass；窄窗零选择隐藏 bulk、范围/排序进入筛选、低频命令 overflow；Details 首屏去重标题并上移状态，无安装显示 compact next-action；Filter body 滚动而 footer 固定（条件仍即时应用，完成只关闭）；Dark brand semantic control resources 保持灰绿，系统 focus/high-contrast 不改；共享 owned Acrylic fallback 覆盖 Navigation/Toolbar/Details 与公开 FlyoutPresenter/MenuFlyoutPresenter，ContentDialog 用实色。OS caption/system menu 不在自有材质承诺内。
+
+计时使用固定 240DIP 等宽数字区域；Test-only visual fixture 增加 bounded screenshot/layout/keyboard evidence 入口。Library 默认虚拟化与 inactive ItemsSource=null 保留；未修改 CoverPresenter/cache/业务服务/Session accounting。Level3 Gallery 保留 Test-only，未接入 Shell/Toolbar/Details。
+
+本源码 checkpoint 后重新 build/publish，再补齐实际 DPI、键盘、text scale、motion/transparency 与六项 targeted evidence；完成后更新此处结果。新候选绑定与原始证据保存在 `.artifacts/phase7-2a-round3/`。旧轮 checkpoint/MVID 的证据保留为历史，不冒称本轮 final。视觉 Gate 只重审六项，仍须用户实际体验确认，不自动 merge/push/Productionize。
+
+
 ## Phase 7.2A 独立视觉审阅
 
 从 `C:/Users/MUSK/.codex/worktrees/winui-phase7-visual/The-Order` 工作。主开发目录及 Phase 7.1 frozen candidate 不用于视觉构建。固定 SDK 与 Electron 合成测试 runtime 均已复制到视觉 worktree 的独立生成目录；没有升级依赖。

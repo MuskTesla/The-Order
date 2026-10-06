@@ -104,6 +104,7 @@ public sealed partial class MainWindow : Window
         SessionDuration.Text = value.Duration + "  " + value.History;
         PauseTiming.IsEnabled = value.CanPause; ResumeTiming.IsEnabled = value.CanResume;
         UpdateSessionChrome(value);
+        if (visualFixtureTimer is not null && round3TimerOverride is not null) { SessionDuration.Text = round3TimerOverride; SessionDuration.Visibility = Visibility.Visible; }
         App.Instance?.RefreshTray(value);
     }
     private void OnState(object? sender, PropertyChangedEventArgs e)

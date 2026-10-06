@@ -36,6 +36,12 @@ public sealed partial class DetailsPage : Page, IImageHost
         // Reflow the existing controls; drafts, launch state and image ownership stay in place.
         VisualStateManager.GoToState(this, e.NewSize.Width < 720 ? "DetailsNarrow" : "DetailsWide", false);
     }
+    public string StatusLabel(string status) => "当前状态 · " + StatusNames.Display(status);
+    public string AlternateTitle(string primary, string other) => string.Equals(primary?.Trim(), other?.Trim(), StringComparison.Ordinal) ? "" : other ?? "";
+    public Visibility AlternateTitleVisible(string primary, string other) => string.IsNullOrWhiteSpace(AlternateTitle(primary, other)) ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility HasInstallations(int count) => count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility NoInstallations(int count) => count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility ActionVisible(bool enabled) => enabled ? Visibility.Visible : Visibility.Collapsed;
     public string DirtyText(bool dirty) => dirty ? "有尚未保存的修改" : "当前资料已保存";
     private async void OnSave(object sender, RoutedEventArgs e) => await ViewModel.SaveAsync();
     private async void OnCancel(object sender, RoutedEventArgs e)
