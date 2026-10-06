@@ -1,49 +1,25 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <ResourceDictionary.ThemeDictionaries>
   <ResourceDictionary x:Key="Light">
-   <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#32685E"/><SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#3D766A"/><SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#457F72"/><SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF"/>
-   <SolidColorBrush x:Key="CanvasBrush" Color="#F2F3EF"/><SolidColorBrush x:Key="ContentBrush" Color="#FAFBF8"/><SolidColorBrush x:Key="TextPrimaryBrush" Color="#263230"/><SolidColorBrush x:Key="TextSecondaryBrush" Color="#53635F"/><SolidColorBrush x:Key="StrokeBrush" Color="#D9E1DC"/><SolidColorBrush x:Key="AccentBrush" Color="#32685E"/><SolidColorBrush x:Key="SelectionBrush" Color="#DFECE5"/><SolidColorBrush x:Key="WarningTextBrush" Color="#805300"/><SolidColorBrush x:Key="ErrorTextBrush" Color="#A63235"/><SolidColorBrush x:Key="SuccessTextBrush" Color="#256448"/>
+   <SolidColorBrush x:Key="CanvasBrush" Color="#F2F3EF"/><SolidColorBrush x:Key="ContentBrush" Color="#FAFBF8"/><SolidColorBrush x:Key="TextPrimaryBrush" Color="#263230"/><SolidColorBrush x:Key="TextSecondaryBrush" Color="#53635F"/><SolidColorBrush x:Key="StrokeBrush" Color="#D9E1DC"/><SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemAccentColorDark1}"/><SolidColorBrush x:Key="SelectionBrush" Color="{ThemeResource SystemAccentColorDark1}" Opacity="0.14"/><SolidColorBrush x:Key="WarningTextBrush" Color="#805300"/><SolidColorBrush x:Key="ErrorTextBrush" Color="#A63235"/><SolidColorBrush x:Key="SuccessTextBrush" Color="#256448"/>
    <AcrylicBrush x:Key="NavigationSurfaceBrush" TintColor="#F3F6F0" TintOpacity="0.86" FallbackColor="#EFF3EE"/>
    <AcrylicBrush x:Key="ToolbarBrush" TintColor="#FAFCF6" TintOpacity="0.92" FallbackColor="#F8FAF5"/>
-
      <SolidColorBrush x:Key="BrandBadgeBrush" Color="#E5EBE7"/>
-   <SolidColorBrush x:Key="AccentButtonBackground" Color="#32685E"/><SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#32685E"/><SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#32685E"/><SolidColorBrush x:Key="AccentButtonForeground" Color="#FFFFFF"/>
-   <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="#32685E"/>
    <StaticResource x:Key="FlyoutPresenterBackground" ResourceKey="ToolbarBrush"/><StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="ToolbarBrush"/><StaticResource x:Key="ContentDialogBackground" ResourceKey="ContentBrush"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#32685E"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#32685E"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#32685E"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#32685E"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#32685E"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#32685E"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#FFFFFF"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#FFFFFF"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#FFFFFF"/>
+   <SolidColorBrush x:Key="RecoveryTextBrush" Color="#6651A6"/>
 </ResourceDictionary>
   <ResourceDictionary x:Key="Dark">
-   <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#88BBAE"/><SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#9AC8BB"/><SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#ABD2C6"/><SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#172D26"/>
-   <SolidColorBrush x:Key="CanvasBrush" Color="#1B2324"/><SolidColorBrush x:Key="ContentBrush" Color="#242D2E"/><SolidColorBrush x:Key="TextPrimaryBrush" Color="#E5EBE7"/><SolidColorBrush x:Key="TextSecondaryBrush" Color="#B4C2BC"/><SolidColorBrush x:Key="StrokeBrush" Color="#3C4A48"/><SolidColorBrush x:Key="AccentBrush" Color="#88BBAE"/><SolidColorBrush x:Key="SelectionBrush" Color="#354D45"/><SolidColorBrush x:Key="WarningTextBrush" Color="#F0C77B"/><SolidColorBrush x:Key="ErrorTextBrush" Color="#F5A4A1"/><SolidColorBrush x:Key="SuccessTextBrush" Color="#9BD1AF"/>
+   <SolidColorBrush x:Key="CanvasBrush" Color="#1B2324"/><SolidColorBrush x:Key="ContentBrush" Color="#242D2E"/><SolidColorBrush x:Key="TextPrimaryBrush" Color="#E5EBE7"/><SolidColorBrush x:Key="TextSecondaryBrush" Color="#B4C2BC"/><SolidColorBrush x:Key="StrokeBrush" Color="#3C4A48"/><SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemAccentColorLight2}"/><SolidColorBrush x:Key="SelectionBrush" Color="{ThemeResource SystemAccentColorLight2}" Opacity="0.14"/><SolidColorBrush x:Key="WarningTextBrush" Color="#F0C77B"/><SolidColorBrush x:Key="ErrorTextBrush" Color="#F5A4A1"/><SolidColorBrush x:Key="SuccessTextBrush" Color="#9BD1AF"/>
    <AcrylicBrush x:Key="NavigationSurfaceBrush" TintColor="#273332" TintOpacity="0.89" FallbackColor="#273332"/>
    <AcrylicBrush x:Key="ToolbarBrush" TintColor="#2E3A37" TintOpacity="0.94" FallbackColor="#2E3A37"/>
-
      <SolidColorBrush x:Key="BrandBadgeBrush" Color="#E5EBE7"/>
-   <SolidColorBrush x:Key="AccentButtonBackground" Color="#88BBAE"/><SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#88BBAE"/><SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#88BBAE"/><SolidColorBrush x:Key="AccentButtonForeground" Color="#172D26"/>
-   <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="#88BBAE"/>
    <StaticResource x:Key="FlyoutPresenterBackground" ResourceKey="ToolbarBrush"/><StaticResource x:Key="MenuFlyoutPresenterBackground" ResourceKey="ToolbarBrush"/><StaticResource x:Key="ContentDialogBackground" ResourceKey="ContentBrush"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#88BBAE"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#172D26"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="#172D26"/>
-   <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="#172D26"/>
+   <SolidColorBrush x:Key="RecoveryTextBrush" Color="#CCBFFF"/>
 </ResourceDictionary>
   <ResourceDictionary x:Key="HighContrast">
    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="{ThemeResource SystemColorHighlightColor}"/><SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="{ThemeResource SystemColorHighlightTextColor}"/>
    <SolidColorBrush x:Key="CanvasBrush" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="ContentBrush" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="TextPrimaryBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="TextSecondaryBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="StrokeBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemColorHighlightColor}"/><SolidColorBrush x:Key="SelectionBrush" Color="{ThemeResource SystemColorHighlightColor}"/><SolidColorBrush x:Key="WarningTextBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="ErrorTextBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="SuccessTextBrush" Color="{ThemeResource SystemColorWindowTextColor}"/><SolidColorBrush x:Key="NavigationSurfaceBrush" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="ToolbarBrush" Color="{ThemeResource SystemColorWindowColor}"/>
-     <SolidColorBrush x:Key="BrandBadgeBrush" Color="{ThemeResource SystemColorWindowColor}"/>
+     <SolidColorBrush x:Key="BrandBadgeBrush" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="RecoveryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
    <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{ThemeResource SystemColorWindowColor}"/><SolidColorBrush x:Key="ContentDialogBackground" Color="{ThemeResource SystemColorWindowColor}"/>
 </ResourceDictionary>
  </ResourceDictionary.ThemeDictionaries>

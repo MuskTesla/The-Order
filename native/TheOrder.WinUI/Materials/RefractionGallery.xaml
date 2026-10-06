@@ -10,17 +10,17 @@
     <TextBlock Text="固定文字与图标位于采样层之上。拖动背景或透镜位置，可直接观察细线与色块在边缘的位移。" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
    </StackPanel>
    <Border Style="{StaticResource SurfaceStyle}" Padding="0" CornerRadius="20">
-    <Grid x:Name="Stage" Height="340" SizeChanged="OnStageSizeChanged">
+    <Grid x:Name="Stage" Height="280" SizeChanged="OnStageSizeChanged">
      <Grid x:Name="PatternSource" Background="#FFE8EDF0">
       <Canvas x:Name="PatternLayer" Width="1300" Height="660" HorizontalAlignment="Left" VerticalAlignment="Top"/>
      </Grid>
-     <Border x:Name="LensFrame" Width="320" Height="180" CornerRadius="20" BorderThickness="1" BorderBrush="#CFFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center">
+     <Border x:Name="LensFrame" Width="320" Height="180" CornerRadius="20" PointerEntered="OnLensHover" PointerExited="OnLensExit" PointerPressed="OnLensPress" PointerReleased="OnLensRelease" BorderThickness="1" BorderBrush="{ThemeResource StrokeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
       <Grid>
-       <Grid x:Name="LensHost"/>
-       <Border x:Name="StableForeground" Background="#8CFFFFFF" CornerRadius="19" Padding="24">
+       <Grid x:Name="LensHost" IsHitTestVisible="False"/>
+       <Border x:Name="StableForeground" Background="#C8FFFFFF" CornerRadius="19" Padding="24">
         <StackPanel VerticalAlignment="Center" Spacing="8">
          <StackPanel Orientation="Horizontal" Spacing="8">
-          <FontIcon x:Name="StableIcon" Glyph="&#xE71A;" FontSize="16" Foreground="#FF183A45"/>
+          <PathIcon x:Name="StableIcon" Width="18" Height="18" Data="F0 M 2,1 H 14 V 17 H 2 Z M 4,3 V 15 H 12 V 3 Z M 5,5 H 11 V 6 H 5 Z M 5,8 H 11 V 9 H 5 Z M 5,11 H 9 V 12 H 5 Z" Foreground="#FF183A45" AutomationProperties.AccessibilityView="Raw"/>
           <TextBlock x:Name="StableTitle" Text="文字保持稳定" FontSize="18" FontWeight="SemiBold" Foreground="#FF183A45"/>
          </StackPanel>
          <TextBlock x:Name="StableBody" Text="The Order · 内容优先" FontSize="14" Foreground="#FF294852"/>
@@ -33,21 +33,20 @@
    </Border>
    <Border Style="{StaticResource ToolbarSurfaceStyle}">
     <StackPanel Spacing="14">
-     <StackPanel Orientation="Horizontal" Spacing="12">
+     <StackPanel x:Name="ControlActions" Orientation="Horizontal" Spacing="12">
       <ToggleSwitch x:Name="AdvancedSwitch" Header="实时折射原型" IsOn="True" Toggled="OnAdvancedToggled" AutomationProperties.Name="启用实时内部背景折射原型"/>
       <Button Content="演示一次背景移动" Click="OnMovePattern" AutomationProperties.AutomationId="GalleryMovePattern"/>
       <Button Content="恢复起点" Click="OnResetPattern" AutomationProperties.AutomationId="GalleryResetPattern"/>
      </StackPanel>
-     <Grid ColumnSpacing="16">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <Grid x:Name="SlidersLayout" ColumnSpacing="16" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <StackPanel Spacing="4"><TextBlock Text="背景位置" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="PatternSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="OnPatternChanged" AutomationProperties.Name="背景位置"/></StackPanel>
-      <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="透镜位置" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="LensSlider" Minimum="-100" Maximum="100" Value="0" ValueChanged="OnLensChanged" AutomationProperties.Name="透镜位置"/></StackPanel>
-      <StackPanel Grid.Column="2" Spacing="4"><TextBlock Text="折射强度" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="StrengthSlider" Minimum="0" Maximum="1.5" Value="1" ValueChanged="OnStrengthChanged" AutomationProperties.Name="折射强度"/></StackPanel>
+      <StackPanel x:Name="LensSliderPanel" Grid.Column="1" Spacing="4"><TextBlock Text="透镜位置" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="LensSlider" Minimum="-100" Maximum="100" Value="0" ValueChanged="OnLensChanged" AutomationProperties.Name="透镜位置"/></StackPanel>
+      <StackPanel x:Name="StrengthSliderPanel" Grid.Column="2" Spacing="4"><TextBlock Text="折射强度" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="StrengthSlider" Minimum="0" Maximum="1.5" Value="1" ValueChanged="OnStrengthChanged" AutomationProperties.Name="折射强度"/></StackPanel>
      </Grid>
     </StackPanel>
    </Border>
    <TextBlock x:Name="MaterialState" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="GalleryMaterialState"/>
-   <TextBlock Text="背景来源：应用内实时棋盘格、细线与色块。18 个有界几何采样带近似透镜边缘；不是自定义光学着色器，也不采样系统桌面。此处仅用于独立视觉候选的开发验证。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+   <TextBlock Text="背景来源：应用内实时棋盘格、细线与色块。连续遮罩混合中心与边缘两次实时采样；细线可能柔化，不是光学位移着色器，也不采样系统桌面。此处仅用于独立视觉候选的开发验证。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>
 </UserControl>

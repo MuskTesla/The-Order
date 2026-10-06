@@ -3,131 +3,119 @@ using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Hosting;
 using Windows.Foundation;
+using Windows.UI;
 
 namespace TheOrder.WinUI.Materials;
 
-/// <summary>
-/// Development Gallery only: a public-API, live internal-content geometric lens.
-/// Nested rounded clips vary magnification near the edge. This is a bounded,
-/// piecewise approximation, not a custom optical shader or desktop capture.
-/// The source subtree must never include the lens or its stable foreground.
-/// </summary>
+// Test-only continuous alpha transition between two live affine samples.
+// Quiet 1:1 center, magnified edge, one rounded perimeter. Cross-fade can soften
+// fine lines; this is an approximation, not a displacement shader. Source trees
+// exclude the output and stable foreground. No timer or capture loop.
 internal sealed class RefractionLens : IDisposable
 {
-    private const int Bands = 18;
-    private readonly FrameworkElement source;
-    private readonly FrameworkElement host;
-    private readonly List<SpriteVisual> visuals = [];
-    private readonly List<CompositionSurfaceBrush> brushes = [];
-    private readonly List<CompositionRoundedRectangleGeometry> geometries = [];
-    private readonly List<CompositionGeometricClip> clips = [];
-    private CompositionVisualSurface? surface;
-    private ContainerVisual? root;
+    private readonly FrameworkElement source, host;
+    private readonly MaterialResources resources = new();
+    private CompositionVisualSurface? surface, maskSurface;
+    private ContainerVisual? root, maskRoot;
+    private CompositionSurfaceBrush? centerBrush, edgeBrush;
+    private CompositionRoundedRectangleGeometry? perimeter;
+    private readonly List<SpriteVisual> maskVisuals = [];
     private bool disposed;
-    private double strength = 1;
+    private (float W, float H, float SW, float SH, float X, float Y, float Strength)? last;
+    internal long UpdateCount { get; private set; }
+    internal int CleanupFailures => resources.CleanupFailures;
+    internal int RemainingResources => resources.Remaining;
+    internal int SurfaceCount => disposed ? 0 : 2;
+    internal int BrushCount => disposed ? 0 : 8;
+    internal int VisualCount => disposed ? 0 : 8;
+    internal int ClipCount => disposed ? 0 : 1;
+    internal int GeometryCount => disposed ? 0 : 1;
 
-    internal RefractionLens(FrameworkElement source, FrameworkElement host)
+    internal RefractionLens(FrameworkElement source, FrameworkElement host, bool failAfterSource = false)
     {
-        this.source = source;
-        this.host = host;
+        this.source = source; this.host = host;
         try
         {
-            // The XAML-owned compositor owns its device recovery. Do not dispose it.
-            var compositor = ElementCompositionPreview.GetElementVisual(host).Compositor;
-            surface = compositor.CreateVisualSurface();
+            var c = ElementCompositionPreview.GetElementVisual(host).Compositor;
+            surface = resources.Own(c.CreateVisualSurface());
             surface.SourceVisual = ElementCompositionPreview.GetElementVisual(source);
-            root = compositor.CreateContainerVisual();
-            for (var i = 0; i < Bands; i++)
+            if (failAfterSource) throw new InvalidOperationException("Test partial material initialization failure");
+            maskRoot = resources.Own(c.CreateContainerVisual());
+            for (var i = 0; i < 4; i++)
             {
-                var brush = compositor.CreateSurfaceBrush(surface);
-                brushes.Add(brush);
-                brush.Stretch = CompositionStretch.None;
-                brush.HorizontalAlignmentRatio = 0;
-                brush.VerticalAlignmentRatio = 0;
-                brush.BitmapInterpolationMode = CompositionBitmapInterpolationMode.Linear;
-                var geometry = compositor.CreateRoundedRectangleGeometry();
-                geometries.Add(geometry);
-                var clip = compositor.CreateGeometricClip(geometry);
-                clips.Add(clip);
-                var visual = compositor.CreateSpriteVisual();
-                visuals.Add(visual);
-                visual.Brush = brush;
-                visual.Clip = clip;
-                root.Children.InsertAtTop(visual);
+                var gradient = resources.Own(c.CreateLinearGradientBrush());
+                gradient.StartPoint = Vector2.Zero;
+                gradient.EndPoint = i < 2 ? Vector2.UnitX : Vector2.UnitY;
+                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(0, Color.FromArgb(255, 255, 255, 255))));
+                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(.12f, Color.FromArgb(255, 255, 255, 255))));
+                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(1, Color.FromArgb(0, 255, 255, 255))));
+                if (i is 1 or 3) (gradient.StartPoint, gradient.EndPoint) = (gradient.EndPoint, gradient.StartPoint);
+                var v = resources.Own(c.CreateSpriteVisual()); v.Brush = gradient;
+                maskVisuals.Add(v); maskRoot.Children.InsertAtTop(v);
             }
+            maskSurface = resources.Own(c.CreateVisualSurface()); maskSurface.SourceVisual = maskRoot;
+            centerBrush = resources.Own(c.CreateSurfaceBrush(surface));
+            edgeBrush = resources.Own(c.CreateSurfaceBrush(surface));
+            foreach (var brush in new[] { centerBrush, edgeBrush })
+            {
+                brush.Stretch = CompositionStretch.None;
+                brush.HorizontalAlignmentRatio = 0; brush.VerticalAlignmentRatio = 0;
+                brush.BitmapInterpolationMode = CompositionBitmapInterpolationMode.Linear;
+            }
+            var mask = resources.Own(c.CreateSurfaceBrush(maskSurface)); mask.Stretch = CompositionStretch.Fill;
+            var masked = resources.Own(c.CreateMaskBrush()); masked.Source = edgeBrush; masked.Mask = mask;
+            root = resources.Own(c.CreateContainerVisual());
+            perimeter = resources.Own(c.CreateRoundedRectangleGeometry());
+            perimeter.CornerRadius = new Vector2(19);
+            root.Clip = resources.Own(c.CreateGeometricClip(perimeter));
+            var center = resources.Own(c.CreateSpriteVisual()); center.Brush = centerBrush;
+            var edge = resources.Own(c.CreateSpriteVisual()); edge.Brush = masked;
+            root.Children.InsertAtBottom(center); root.Children.InsertAtTop(edge);
             ElementCompositionPreview.SetElementChildVisual(host, root);
             Update(1);
         }
-        catch
-        {
-            Dispose();
-            throw;
-        }
+        catch { Dispose(); throw; }
     }
 
-    internal int SurfaceCount => disposed ? 0 : surface is null ? 0 : 1;
-    internal int BrushCount => disposed ? 0 : brushes.Count;
-    internal int VisualCount => disposed ? 0 : visuals.Count + (root is null ? 0 : 1);
-    internal int ClipCount => disposed ? 0 : clips.Count;
-    internal int GeometryCount => disposed ? 0 : geometries.Count;
-
-    internal void Update(double newStrength)
+    internal void Update(double strength)
     {
-        if (disposed || root is null || surface is null) return;
-        strength = Math.Clamp(newStrength, 0, 1.5);
-        var width = (float)host.ActualWidth;
-        var height = (float)host.ActualHeight;
-        if (width <= 0 || height <= 0 || source.ActualWidth <= 0 || source.ActualHeight <= 0) return;
-        var offset = host.TransformToVisual(source).TransformPoint(new Point(0, 0));
-        root.Size = new Vector2(width, height);
-        surface.SourceOffset = Vector2.Zero;
-        surface.SourceSize = new Vector2((float)source.ActualWidth, (float)source.ActualHeight);
-        var center = new Vector2((float)offset.X + width / 2, (float)offset.Y + height / 2);
-        for (var i = 0; i < Bands; i++)
+        if (disposed || root is null || surface is null || maskRoot is null || maskSurface is null) return;
+        var w = (float)host.ActualWidth; var h = (float)host.ActualHeight;
+        var sw = (float)source.ActualWidth; var sh = (float)source.ActualHeight;
+        if (w <= 0 || h <= 0 || sw <= 0 || sh <= 0) return;
+        var p = host.TransformToVisual(source).TransformPoint(new Point());
+        var current = (w, h, sw, sh, (float)p.X, (float)p.Y, (float)Math.Clamp(strength, 0, 1.5));
+        if (last == current) return;
+        last = current; UpdateCount++;
+        root.Size = maskRoot.Size = new(w, h); perimeter!.Size = root.Size;
+        surface.SourceSize = new(sw, sh); surface.SourceOffset = Vector2.Zero;
+        maskSurface.SourceSize = root.Size;
+        var edgeWidth = Math.Min(24, Math.Min(w, h) / 3);
+        for (var i = 0; i < 4; i++)
         {
-            var inset = i * .8f;
-            var distance = i / (float)(Bands - 1);
-            // A quiet center and a stronger perimeter. Each band samples live pixels.
-            var magnification = 1 + (float)strength * (.012f + .085f * MathF.Pow(1 - distance, 2));
-            brushes[i].TransformMatrix = new Matrix3x2(magnification, 0, 0, magnification,
-                width / 2 - magnification * center.X, height / 2 - magnification * center.Y);
-            visuals[i].Size = root.Size;
-            geometries[i].Offset = new Vector2(inset);
-            geometries[i].Size = new Vector2(Math.Max(1, width - inset * 2), Math.Max(1, height - inset * 2));
-            geometries[i].CornerRadius = new Vector2(Math.Max(2, 20 - inset));
+            maskVisuals[i].Size = i < 2 ? new(edgeWidth, h) : new(w, edgeWidth);
+            maskVisuals[i].Offset = i == 1 ? new(w - edgeWidth, 0, 0) : i == 3 ? new(0, h - edgeWidth, 0) : Vector3.Zero;
         }
+        foreach (SpriteVisual child in root.Children) child.Size = root.Size;
+        centerBrush!.TransformMatrix = Matrix3x2.CreateTranslation(-(float)p.X, -(float)p.Y);
+        var magnification = 1 + current.Item7 * .026f;
+        edgeBrush!.TransformMatrix = new(magnification, 0, 0, magnification,
+            w / 2 - magnification * ((float)p.X + w / 2), h / 2 - magnification * ((float)p.Y + h / 2));
     }
 
     public void Dispose()
     {
-        if (disposed) return;
-        disposed = true;
-        // Remove the child tree before releasing sampled surface and brush resources.
-        try { ElementCompositionPreview.SetElementChildVisual(host, null); } catch (Exception) { }
-        if (root is not null)
+        if (!disposed)
         {
-            try { root.Children.RemoveAll(); } catch (Exception) { }
+            disposed = true;
+            try { ElementCompositionPreview.SetElementChildVisual(host, null); }
+            catch (Exception) { /* Close failures below remain observable. */ }
         }
-        foreach (var visual in visuals)
+        resources.Dispose();
+        if (resources.Remaining == 0)
         {
-            try { visual.Brush = null; visual.Clip = null; } catch (Exception) { }
-            try { visual.Dispose(); } catch (Exception) { }
+            surface = maskSurface = null; root = maskRoot = null;
+            centerBrush = edgeBrush = null; perimeter = null; maskVisuals.Clear();
         }
-        foreach (var brush in brushes)
-        {
-            try { brush.Surface = null; } catch (Exception) { }
-            try { brush.Dispose(); } catch (Exception) { }
-        }
-        foreach (var clip in clips) { try { clip.Dispose(); } catch (Exception) { } }
-        foreach (var geometry in geometries) { try { geometry.Dispose(); } catch (Exception) { } }
-        if (surface is not null)
-        {
-            try { surface.SourceVisual = null; } catch (Exception) { }
-            try { surface.Dispose(); } catch (Exception) { }
-        }
-        try { root?.Dispose(); } catch (Exception) { }
-        root = null;
-        surface = null;
-        visuals.Clear(); brushes.Clear(); geometries.Clear(); clips.Clear();
     }
 }

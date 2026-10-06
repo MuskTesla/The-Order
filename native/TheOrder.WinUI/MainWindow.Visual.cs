@@ -14,6 +14,7 @@ public sealed partial class MainWindow
 {
     private MaterialPolicy? materialPolicy;
     private RefractionGallery? gallery;
+    private bool requestedGlass;
     private bool galleryVisible, visualStopped, fixtureBusy;
     private string direction = "B", fixtureNonce = "";
     private string visualScreen = "VisualGallery";
@@ -27,6 +28,7 @@ public sealed partial class MainWindow
         if (configuration.Diagnostics && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") == "1")
         {
+            ReadSystemAccentOnce();
             direction = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_DIRECTION") == "A" ? "A" : "B";
             var directory = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_CONTROL");
             if (!string.IsNullOrWhiteSpace(directory) && Path.IsPathFullyQualified(directory))
@@ -122,14 +124,14 @@ public sealed partial class MainWindow
     private static (string Glyph, string BrushKey) SessionVisualFacts(NativeSession? native, SessionTracking? tracking, SessionTiming? timing, bool error = false, bool recovering = false)
     {
         if (error) return ("\uEA39", "ErrorTextBrush");
-        if (recovering) return ("\uE777", "AccentBrush");
+        if (recovering) return ("\uE777", "RecoveryTextBrush");
         if (native is null) return ("\uE8F1", "TextSecondaryBrush");
         if (native.Lifecycle == SessionLifecycle.Completed) return ("\uE73E", "SuccessTextBrush");
         if (native.Lifecycle == SessionLifecycle.Incomplete) return ("\uE783", "WarningTextBrush");
-        if (native.Lifecycle == SessionLifecycle.RecoveryPending) return ("\uE777", "AccentBrush");
+        if (native.Lifecycle == SessionLifecycle.RecoveryPending) return ("\uE777", "RecoveryTextBrush");
         if (native.UserPaused) return ("\uE769", "WarningTextBrush");
         if (tracking != SessionTracking.LaunchScope) return ("\uE7BA", "WarningTextBrush");
-        return timing == SessionTiming.Running ? ("\uE768", "SuccessTextBrush") : ("\uE823", "AccentBrush");
+        return timing == SessionTiming.Running ? ("\uE768", "SuccessTextBrush") : ("\uE823", "TextSecondaryBrush");
     }
 
     private Brush ResolveSessionBrush(string key)
@@ -162,7 +164,7 @@ public sealed partial class MainWindow
     private void ShowGallery()
     {
         if (visualFixtureTimer is null || visualStopped) return;
-        gallery ??= new(materialPolicy?.EffectsAllowed == true);
+        gallery ??= new(materialPolicy?.EffectsAllowed == true, requestedGlass);
         PageContent.Content = gallery; galleryVisible = true;
         visualScreen = "VisualGallery";
         ApplyMaterialPolicy();
@@ -172,7 +174,7 @@ public sealed partial class MainWindow
     {
         direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts,
-        round3 = Round3Evidence(),
+        round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = CountMaterialBitmaps(Root), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = CountStaleCoverSources(Root), glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
         dpiScale = Root.XamlRoot?.RasterizationScale,
         foregroundSource = "existing SessionPresentation and WorkspaceViewModel"
@@ -215,6 +217,12 @@ public sealed partial class MainWindow
                 case "motion": materialPolicy!.ReducedMotion = root.GetProperty("value").GetBoolean(); ApplyMaterialPolicy(); break;
                 case "gallery": ShowGallery(); break;
                 case "states": ShowSessionStateFixtures(); break;
+                case "glass": var glassValue = root.GetProperty("value").GetString() ?? ""; if (glassValue is "on" or "off") requestedGlass = glassValue == "on"; gallery?.TestCommand(glassValue); break;
+                case "accent": SetTestAccent(root.GetProperty("value").GetString() ?? ""); break;
+                case "galleryNew": gallery?.Dispose(); gallery = null; ShowGallery(); break;
+                case "hide": SetVisualWindowVisible(false); AppWindow.Hide(); break;
+                case "show": AppWindow.Show(); Activate(); SetVisualWindowVisible(true); break;
+                case "replay": await MaterialReplayAsync(root.GetProperty("value")); break;
                 case "galleryStep": gallery?.StepPattern(root.GetProperty("value").GetDouble()); break;
                 case "search": await ViewModel.SetQueryAsync(ViewModel.Query with { Text = root.GetProperty("value").GetString() ?? "" }); break;
                 case "filter": libraryPage.ShowVisualFilter(); break;
