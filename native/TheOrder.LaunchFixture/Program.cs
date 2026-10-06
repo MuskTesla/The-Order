@@ -10,21 +10,38 @@ internal static class Program
         if (args.Length < 3) return;
         var root = Path.GetFullPath(args[0]); var mode = args[1]; var name = args[2];
         if (!File.Exists(Path.Combine(root, ".the-order-launch-fixture"))) return;
+        // Keep this synthetic process tree deterministic on desktops with legacy
+        // global UI hooks/AppInit extensions. This is process-local, not a machine
+        // setting or a production launch policy. Read back rather than assume success.
+        uint disableExtensionPoints = 1;
+        if (!SetProcessMitigationPolicy(6, ref disableExtensionPoints, 4)
+            || !GetProcessMitigationPolicy(GetCurrentProcess(), 6, out var applied, 4) || applied != 1)
+            throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error(), "Synthetic fixture extension-point isolation failed.");
         var stopFile = Path.Combine(root, name + ".stop");
         File.WriteAllText(Path.Combine(root, name + ".json"), JsonSerializer.Serialize(new
-        { pid = Environment.ProcessId, cwd = Environment.CurrentDirectory, arguments = args.Skip(3).ToArray(), commandLine = System.Runtime.InteropServices.Marshal.PtrToStringUni(GetCommandLine()), mode, started = DateTimeOffset.UtcNow }));
+        { pid = Environment.ProcessId, cwd = Environment.CurrentDirectory, arguments = args.Skip(3).ToArray(), commandLine = System.Runtime.InteropServices.Marshal.PtrToStringUni(GetCommandLine()), mode, started = DateTimeOffset.UtcNow, extensionPointsDisabled = applied == 1 }));
         if (mode == "empty") return;
         if (mode == "gap-helper") { Spawn("child_game.exe", "game", name + "-game"); return; }
         if (mode is "launcher" or "chain" or "helper" or "multiple" or "quick-launcher")
         {
-            Thread.Sleep(600); // Lets the bounded observer establish this parent's identity.
+            bool observedHandoff = mode == "launcher" && args.Skip(3).Contains("--observed-handoff");
+            if (observedHandoff)
+            {
+                if (!WaitForObservation("parent")) return;
+            }
+            else Thread.Sleep(600);
             if (mode == "chain") Spawn("helper.exe", "helper", name + "-helper");
             else
             {
                 Spawn("child_game.exe", mode == "quick-launcher" ? "quick" : "game", name + "-game");
                 if (mode == "multiple") Spawn("second_game.exe", "game", name + "-other");
             }
-            Thread.Sleep(700); return;
+            // The confirmed-handoff tests control this scenario's premise: the
+            // real observer must bind the live child before the parent exits.
+            // Other fixture modes still exercise the original bounded/limited paths.
+            if (observedHandoff) WaitForObservation("child");
+            else Thread.Sleep(700);
+            return;
         }
         System.Windows.Forms.Application.EnableVisualStyles();
         using var form = new Form { Text = "The Order · synthetic process " + name, Width = 420, Height = 220 };
@@ -46,7 +63,26 @@ internal static class Program
             start.ArgumentList.Add(root); start.ArgumentList.Add(childMode); start.ArgumentList.Add(childName);
             using var child = Process.Start(start);
         }
+        bool WaitForObservation(string stage)
+        {
+            var ready = Path.Combine(root, name + "." + stage + "-observed");
+            var deadline = Stopwatch.StartNew();
+            while (!File.Exists(ready))
+            {
+                if (File.Exists(stopFile) || deadline.Elapsed >= TimeSpan.FromSeconds(15)) return false;
+                Thread.Sleep(10); // Poll a concrete test-protocol condition, not a launch delay.
+            }
+            return true;
+        }
     }
     [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "GetCommandLineW")]
     private static extern IntPtr GetCommandLine();
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool SetProcessMitigationPolicy(int policy, ref uint flags, nuint size);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool GetProcessMitigationPolicy(IntPtr process, int policy, out uint flags, nuint size);
 }

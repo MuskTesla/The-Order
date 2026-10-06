@@ -5,6 +5,7 @@ using TheOrder.Application;
 using TheOrder.Domain;
 using TheOrder.Platform.Windows;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace TheOrder.Tests;
 
@@ -12,7 +13,7 @@ namespace TheOrder.Tests;
 public sealed class LaunchProcessCollection;
 
 [Collection("Launch processes")]
-public sealed class LaunchTests
+public sealed class LaunchTests(ITestOutputHelper output)
 {
     [Fact]
     public async Task RealDirectProcessPreservesArgumentArrayCwdIdentityAndNoPlayData()
@@ -49,10 +50,10 @@ public sealed class LaunchTests
     [InlineData("quick-launcher", ProcessTrackingState.RunningLimited)]
     public async Task ActualWindowsLauncherPatternsHaveBoundedSafeOutcomes(string mode, ProcessTrackingState expected)
     {
-        await using var f = new LaunchFixture();
+        await using var f = new LaunchFixture(observedHandoff: mode == "launcher");
         f.Set(mode);
         var events = new List<ProcessEvent>(); f.Service.ProcessChanged += e => { lock (events) events.Add(e); };
-        await f.Approve(); var started = await f.Service.LaunchAsync("g");
+        await f.Approve(); f.Observation?.Requested(); var started = await f.Service.LaunchAsync("g");
         Assert.True(started.ProcessCreated);
         await f.Wait(() => expected == ProcessTrackingState.RunningLimited
             ? f.Service.Status.Tracking == expected
@@ -61,6 +62,12 @@ public sealed class LaunchTests
         {
             Assert.Contains(events, e => e.Kind == ProcessEventKind.ProcessHandoff);
             Assert.EndsWith("child_game.exe", f.Service.Status.Current!.ImagePath, StringComparison.OrdinalIgnoreCase);
+            if (f.Observation is not null)
+            {
+                Assert.Equal(LaunchOutcome.AlreadyRunning, (await f.Service.LaunchAsync("g")).Outcome);
+                f.Observation.Completed(f.Service.Status);
+                output.WriteLine(JsonSerializer.Serialize(new { mode, timeline = f.Observation.Timeline, status = f.Service.Status }));
+            }
         }
         else
         {
@@ -254,7 +261,8 @@ internal sealed class LaunchFixture : IAsyncDisposable
     public WindowsGameProcesses Platform { get; }
     public IsolatedLaunchPositionStore Store { get; }
     public GameLaunchService Service { get; }
-    public LaunchFixture()
+    public LaunchFixtureObservation? Observation { get; }
+    public LaunchFixture(bool observedHandoff = false)
     {
         Game = Path.Combine(Profile.Root, "日本語 游戏 [synthetic]"); Directory.CreateDirectory(Game);
         Reports = Path.Combine(Profile.Root, "observations"); Directory.CreateDirectory(Reports);
@@ -266,10 +274,12 @@ internal sealed class LaunchFixture : IAsyncDisposable
             File.Copy(Path.Combine(source, "TheOrder.LaunchFixture.exe"), Path.Combine(Game, name + ".exe"));
         Library = new(new(new(Guid.NewGuid(), Guid.NewGuid(), "g"), [], "i"));
         Platform = new(Identity); Store = new(new(Profile.Root));
-        Service = new(Library, Identity, Platform, Store, new() { HandoffWindow = TimeSpan.FromSeconds(2), InitialTreeWindow = TimeSpan.FromSeconds(4), CandidateSettle = TimeSpan.FromMilliseconds(300) });
+        Observation = observedHandoff ? new(Platform, Reports) : null;
+        Service = new(Library, Identity, (IGameProcessPlatform?)Observation ?? Platform, Store, new() { HandoffWindow = TimeSpan.FromSeconds(2), InitialTreeWindow = TimeSpan.FromSeconds(4), CandidateSettle = TimeSpan.FromMilliseconds(300) });
+        if (Observation is not null) Service.ProcessChanged += Observation.ProcessChanged;
     }
     public void Set(string mode, string[]? arguments = null) => Library.Entry = Library.Entry with
-    { Installations = [new("i", Game, Exe, [Reports, mode, "run", .. arguments ?? []])] };
+    { Installations = [new("i", Game, Exe, [Reports, mode, "run", .. Observation is not null && mode == "launcher" ? new[] { "--observed-handoff" } : [], .. arguments ?? []])] };
     public async Task Approve()
     {
         var prepared = await Service.PrepareAsync("g", null); Assert.NotNull(prepared.Snapshot);

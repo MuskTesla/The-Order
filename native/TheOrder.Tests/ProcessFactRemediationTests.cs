@@ -68,12 +68,12 @@ public sealed class ProcessFactRemediationTests(ITestOutputHelper output)
     [Fact]
     public async Task HandoffFinalExitUsesChildTimeAndShutdownDoesNotAddExit()
     {
-        await using var f = new LaunchFixture(); f.Set("launcher"); await f.Approve();
+        await using var f = new LaunchFixture(observedHandoff: true); f.Set("launcher"); await f.Approve();
         var events = new ConcurrentQueue<ProcessEvent>(); f.Service.ProcessChanged += events.Enqueue;
-        var started = await f.Service.LaunchAsync("g");
+        f.Observation!.Requested(); var started = await f.Service.LaunchAsync("g");
         using var parent = f.Platform.Attach(started.Initial!)!;
         await Wait(() => f.Service.Status.Tracking == ProcessTrackingState.RunningLimited || f.Service.Status.Current is { } current && current != started.Initial);
-        Assert.True(f.Service.Status.Tracking == ProcessTrackingState.RunningConfirmed, JsonSerializer.Serialize(f.Service.Status));
+        Assert.True(f.Service.Status.Tracking == ProcessTrackingState.RunningConfirmed, JsonSerializer.Serialize(new { status = f.Service.Status, timeline = f.Observation.Timeline }));
         using var child = f.Platform.Attach(f.Service.Status.Current!)!;
         Assert.DoesNotContain(events, e => e.Kind == ProcessEventKind.ProcessExited);
         await f.Stop(); await Wait(() => f.Service.Status.Tracking == ProcessTrackingState.Exited);
@@ -148,22 +148,34 @@ public sealed class ProcessFactRemediationTests(ITestOutputHelper output)
     public async Task RepeatedRealHandoffReleasesProcessJobSnapshotAndObserverHandles()
     {
         var counts = new List<int>();
+        var native = new List<NativeLaunchHandleSnapshot>();
+        var before = NativeLaunchHandleSnapshot.Capture();
+        NativeLaunchHandleSnapshot.VerifyProbe();
         for (int round = 0; round < 10; round++)
         {
-            await using (var f = new LaunchFixture())
+            await using (var f = new LaunchFixture(observedHandoff: true))
             {
-                f.Set("launcher"); await f.Approve(); var started = await f.Service.LaunchAsync("g");
-                await Wait(() => f.Service.Status.Tracking == ProcessTrackingState.RunningLimited || f.Service.Status.Current is { } child && child != started.Initial);
-                Assert.True(f.Service.Status.Tracking == ProcessTrackingState.RunningConfirmed, JsonSerializer.Serialize(new { round, status = f.Service.Status }));
+                f.Set("launcher"); await f.Approve(); f.Observation!.Requested(); var started = await f.Service.LaunchAsync("g");
+                try { await Wait(() => f.Service.Status.Tracking == ProcessTrackingState.RunningLimited || f.Service.Status.Current is { } child && child != started.Initial); }
+                catch { output.WriteLine(JsonSerializer.Serialize(new { round, status = f.Service.Status, timeline = f.Observation.Timeline, membership = f.Observation.Membership })); throw; }
+                Assert.True(f.Service.Status.Tracking == ProcessTrackingState.RunningConfirmed, JsonSerializer.Serialize(new { round, status = f.Service.Status, timeline = f.Observation.Timeline, membership = f.Observation.Membership }));
                 await f.Service.DisposeAsync(); // Includes closing both non-killing job leases.
+                Assert.Equal(0, f.Observation.OpenObservers);
+                Assert.Equal(0, f.Observation.OpenScopes);
                 using var game = Process.GetProcessById(f.Service.Status.Current!.Pid); Assert.False(game.HasExited);
+                output.WriteLine(JsonSerializer.Serialize(new { scenario = "handoff-boundary", round, timeline = f.Observation.Timeline, observers = f.Observation.OpenObservers, scopes = f.Observation.OpenScopes, childStillAlive = !game.HasExited }));
                 await f.Stop();
             }
-            GC.Collect(); GC.WaitForPendingFinalizers();
             using var self = Process.GetCurrentProcess(); counts.Add(self.HandleCount);
+            native.Add(NativeLaunchHandleSnapshot.Capture());
+            // Process/job leases must close explicitly, without relying on GC.
+            Assert.Equal(before.Process, native[^1].Process);
+            Assert.Equal(before.Job, native[^1].Job);
         }
-        output.WriteLine(JsonSerializer.Serialize(new { scenario = "resource-audit", rounds = counts.Count, handles = counts }));
-        Assert.True(counts[^1] <= counts[2] + 6, string.Join(",", counts));
+        output.WriteLine(JsonSerializer.Serialize(new { scenario = "resource-audit", rounds = counts.Count, handles = counts, native }));
+        // Toolhelp snapshots are Section handles. Compare every mature boundary;
+        // whole-testhost Thread/Event growth is runtime scheduling, not ownership.
+        Assert.All(native.Skip(1), value => Assert.Equal(native[0].Section, value.Section));
     }
 
     private sealed class ExternalPlatform(ProcessPresence presence) : IGameProcessPlatform
