@@ -46,4 +46,10 @@ public sealed class MaterialResourceTests
                 Assert.DoesNotContain("Accent", Assert.Single(brushes, e => e.Attribute(x+"Key")?.Value == key).Attribute("Color")!.Value);
         }
     }
+    [Fact] public void PersonalStatusFactDoesNotChangeColorWithInteractionAccent()
+    {
+        var doc = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "material-fixtures", "DetailsPage.xaml"));
+        var status = Assert.Single(doc.Descendants(), e => e.Attribute("AutomationProperties.AutomationId")?.Value == "DetailPersonalStatus");
+        Assert.Equal("{ThemeResource TextSecondaryBrush}", status.Attribute("Foreground")!.Value);
+    }
 }

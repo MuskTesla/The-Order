@@ -46,7 +46,7 @@
        <views:CoverPresenter SourceKey="{x:Bind ViewModel.Draft.Source.CoverKey, Mode=OneWay}" MinimumEdge="512"/>
       </Border>
       <StackPanel x:Name="IdentityFacts" Grid.Row="1" Grid.Column="1" Spacing="8">
-       <TextBlock Text="{x:Bind StatusLabel(ViewModel.Draft.Status), Mode=OneWay}" Foreground="{ThemeResource AccentBrush}" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="DetailPersonalStatus"/>
+       <TextBlock Text="{x:Bind StatusLabel(ViewModel.Draft.Status), Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="DetailPersonalStatus"/>
        <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
        <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
        <TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
