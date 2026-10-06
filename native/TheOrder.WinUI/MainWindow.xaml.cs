@@ -101,7 +101,8 @@ public sealed partial class MainWindow : Window
         var value = SessionPresentation.From(Sessions.Session, Sessions.Library, Sessions.CanMutate && !commandsBlocked);
         LifecycleNotice.IsOpen = lifecycleMessage is not null; LifecycleNotice.Message = lifecycleMessage ?? "";
         SessionTitle.Text = value.Title; SessionState.Text = Sessions.Error ?? (Sessions.Ready ? value.State : "正在恢复上次会话…");
-        SessionDuration.Text = value.Duration + "  " + value.History;
+        SessionDuration.Text = value.Duration; SessionHistory.Text = value.History;
+        SessionHistory.Visibility = string.IsNullOrEmpty(value.History) ? Visibility.Collapsed : Visibility.Visible;
         PauseTiming.IsEnabled = value.CanPause; ResumeTiming.IsEnabled = value.CanResume;
         UpdateSessionChrome(value);
         if (visualFixtureTimer is not null && round3TimerOverride is not null) { SessionDuration.Text = round3TimerOverride; SessionDuration.Visibility = Visibility.Visible; }
