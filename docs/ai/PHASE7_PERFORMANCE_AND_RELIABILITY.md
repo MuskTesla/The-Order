@@ -15,6 +15,7 @@
 | `605addda17aed378e7c99de128ceaa4424b05748` | 新消费者等待 abandoned image work 排空后续接、UI driver 释放 Process owner |
 | `d3ed15c32fb444bdde4f943d34c9c26dbe58f3f2` | 最终实际候选；增加 Test XAML failure stage/HResult/stack 诊断 |
 | `1126b1f9971c54f534539921dd220928903257bd` | 仅测试：loopback listener shutdown 的 ObjectDisposedException 与 pending accept 回归 |
+| `9ff60402236fa0e38efbd4515223edec4d043d30` | 仅harness：补测同一安装原生Session追加，真实SessionEngine+native store，纯合成process adapters |
 
 最后生产行为修复在 605；d3ed 增加 Test-only 诊断；1126 只改测试，生产 C# 与 d3ed 相同。最终验收文档提交单独绑定，不能冒称候选内嵌事后生成的提交号。
 
@@ -104,6 +105,16 @@ mixed50k一次checkpoint总分配约4.866GB，GC回收后不等于永久驻留�
 
 55s checkpoint使用真实Session事务：1warm+3measured，四次推进累计仅220秒，同revision重放不重复累加，count不增；historical floor/exactly-once不变。history-append-import只是新增带历史的entry，不冒称既有owned Session append。active Session端到端另由完整Session/Windows fixtures验证。
 
+收尾另补齐 **同一安装的原生Session追加**，`native-appends-final/native-session-append-results.json`：真实SessionEngine的Prepare/Confirm/admission/start/原子持久化，filesystem/process/clock/tokens均为纯合成适配器，无OS game process。每规模1warmup+3measured；Stop Observing及合成进程结束/正常observer排空在计时之外，下一轮继续原single-owned admission，不绕过reservation。四次追加分别只增一条Session/一次count；total playtime增量0；最终合成观察资源0。源码9ff、`append-harness-binding.json`绑定补测binary；`append-code-binding.json`确认五个共享程序集5763方法与d3ed候选、1126全量一致，tracked source相同，原两个2h结果仍有效。
+
+| 历史 | Native append median / p95，ms | min / max，ms | count / time delta |
+|---:|---:|---:|---:|
+| 1k | 404.6 / 534.1 | 354.8 / 534.1 | +4 / 0s |
+| 10k | 1452.7 / 1461.2 | 1416.0 / 1461.2 | +4 / 0s |
+| 50k mixed | 4467.6 / 4807.1 | 4403.5 / 4807.1 | +4 / 0s |
+
+Supplement publish为0warning/error；相关targeted94/0/0（Performance22/SessionCore39/Persistence30/Validation3）。未重跑已完成1763全量：这次只增benchmark/checker，生产Application/Platform/Presentation/WinUI源和method bodies均不变。补测初次clock接口/nullable/percentile类型编译错误，以及把long-poll fixture停止观察当作monitor已排空而被AlreadyRunning拒绝的失败均保留；修正fixture按现有生命周期有界排空，count/time/assertions/admission不放宽。
+
 ## 最终连续两小时验收
 
 `soak-605addd`为10k headless Application/Presentation/media混合负载；每4秒paced十次query、十二张image、details/library导航、obsolete/new query，preferences每60轮、backup每225轮（约15–16分钟）。`ui-soak-gate/10000-0`为同一实际WinUI进程的10k负载；每4秒scroll/select、details每3轮、Grid/List每12轮、Hide/Show+SessionCheckpoint每20轮。两项均使用完成初始化后的单调负载时钟，各自连续120分钟，没有把旧partial拼接。
@@ -142,7 +153,7 @@ OSwatcher在UI初始化后约2分钟开始，不包括最早启动阶段。长�
 
 ## 阈值、测试、发布身份
 
-`check-performance-results.py`已在全部完成后运行并PASS：硬预算decoded64MiB/512、decode2、work/waiter256、deriveddisk128MiB、errors/stale/finalbacklog0；actualrealized/surfaces≤256；2hminimum；maturehandles增长headless≤32/UI≤64、private增长≤256MiB、USER/GDI≤4；OSwatcher正常PROCESS_EXITED。105项latency参考为本机measuredp95×2+合理floor（100–5000ms），保留全部outlier。`acceptance/thresholds.json`供未来独立复测；初次生成不是对旧latencybaseline的独立证明。
+`check-performance-results.py`已在全部完成后运行并PASS：硬预算decoded64MiB/512、decode2、work/waiter256、deriveddisk128MiB、errors/stale/finalbacklog0；actualrealized/surfaces≤256；2hminimum；maturehandles增长headless≤32/UI≤64、private增长≤256MiB、USER/GDI≤4；OSwatcher正常PROCESS_EXITED。原检查28682项；补入native追加accounting后 **28697 checks /0 failures**。108项latency参考为本机measuredp95×2+合理floor（100–5000ms），保留全部outlier。`acceptance-append/thresholds.json`供未来独立复测，原`acceptance`不覆盖；初次生成不是对旧latencybaseline的独立证明。
 
 locked restore、Debug/Release solution build成功，两配置各0warnings/errors；publish成功。最终 **Debug1763/0/0（3m47s）**，**Release完整confirmation1763/0/0（3m36s）**。原1734项逐名称保留、新增29（PerformanceHardening22、MediaNetworkStress3、ProfileValidationPerformance3、ProfileWriterRecovery1）。TRX见`iteration-4/debug-final.trx` /`release-confirmation.trx`；`test-name-preservation-final.json`、冻结`test-binaries-final4-*`及`*-final4-binding.json`保留。targeted首次失败不删除。
 
@@ -162,4 +173,4 @@ locked restore、Debug/Release solution build成功，两配置各0warnings/erro
 
 日志不按frame/scrollitem/cachehit输出；显式Testfixture按aggregateprogress/JSON记录，关键异常保留可诊断stack/stage。普通生产路径未新增完整用户payload/token/remotecredential日志，测试没有真实credential/用户数据。dump可能含unit-test假凭据，不声称artifact无任何credentialstring；本轮不是完整SecurityGate。没有Production mutation，真实库字节未作新hash核验。宿主DPI、真实traymenu、sleep/reboot、真实游戏两小时、跨机器/断电/ETWfilehandles/GPU资源为未验证边界。
 
-最终 `validation-audit.json`绑定源码/PDB、candidate、测试、输入、规模结果、两小时结果、原始失败、阈值的SHA256。验收文档commit由 `checkpoint-receipt.json`绑定；相对candidate d3ed，验收HEAD的native差异仅有1126测试修复，受测app仍为d3ed、shared行为605。工作区收尾提交后干净，不推送。**READY FOR PHASE 7.1 INDEPENDENT GATE**；暂停，未进入Phase7.2。
+`validation-audit.json`绑定原完整资源/回归证据；`append-validation-audit.json`补充追加binary/结果/94targeted/检查器和108项阈值的SHA256。最终验收文档commit由 `checkpoint-receipt.json`绑定；相对candidate d3ed，native差异只有1126测试fixture修复、9ff补测harness与Python checker，五个生产共享程序集和WinUI源码未变。受测app仍为d3ed、shared行为605。工作区收尾提交后干净，不推送。**READY FOR PHASE 7.1 INDEPENDENT GATE**；暂停，未进入Phase7.2。

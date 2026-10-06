@@ -16,6 +16,7 @@ python native/scripts/generate-performance-covers.py --output .artifacts/native-
 ./.artifacts/native-phase1/tools/dotnet/dotnet.exe publish native/TheOrder.Performance/TheOrder.Performance.csproj -c Release --no-restore -o .artifacts/native-phase7-1/harness
 ./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll bench D:/Projects/The-Order/.artifacts/native-phase7-1/new-bench D:/Projects/The-Order/.artifacts/native-phase7-1/covers
 ./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll session-checkpoints D:/Projects/The-Order/.artifacts/native-phase7-1/new-checkpoints D:/Projects/The-Order/.artifacts/native-phase7-1/covers
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll session-appends D:/Projects/The-Order/.artifacts/native-phase7-1/new-appends D:/Projects/The-Order/.artifacts/native-phase7-1/covers
 ./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll media D:/Projects/The-Order/.artifacts/native-phase7-1/new-media D:/Projects/The-Order/.artifacts/native-phase7-1/covers
 ./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll soak D:/Projects/The-Order/.artifacts/native-phase7-1/new-soak D:/Projects/The-Order/.artifacts/native-phase7-1/covers 120
 ```
@@ -35,10 +36,10 @@ Published WinUI 必须指定 `-p:NativeProductionCandidate=true`，这里仍只�
 实际 UI 的持续负载还应独立启动 `watch-performance-resources.ps1`，传入已核对的 Test 进程 PID、Candidate 和 Output 绝对路径。它按 executable path + creation generation 验证目标，每次关闭采样 handle，正常进程结束写入 PROCESS_EXITED；不枚举真实 Production 或其他应用。检查器示例（这些目录须先由各 workload 完成，不能以短测冒充两小时）：
 
 ```powershell
-python native/scripts/check-performance-results.py --bench .artifacts/native-phase7-1/bench-605addd --checkpoints .artifacts/native-phase7-1/checkpoint-605addd --media .artifacts/native-phase7-1/media-605addd --ui .artifacts/native-phase7-1/ui-gate --soak .artifacts/native-phase7-1/soak-605addd --ui-soak .artifacts/native-phase7-1/ui-soak-gate/10000-0 --ui-resources .artifacts/native-phase7-1/ui-soak-gate-os --output .artifacts/native-phase7-1/acceptance
+python native/scripts/check-performance-results.py --bench .artifacts/native-phase7-1/bench-605addd --checkpoints .artifacts/native-phase7-1/checkpoint-605addd --appends .artifacts/native-phase7-1/native-appends-final --media .artifacts/native-phase7-1/media-605addd --ui .artifacts/native-phase7-1/ui-gate --soak .artifacts/native-phase7-1/soak-605addd --ui-soak .artifacts/native-phase7-1/ui-soak-gate/10000-0 --ui-resources .artifacts/native-phase7-1/ui-soak-gate-os --output .artifacts/native-phase7-1/acceptance-append
 ```
 
-完成后 `acceptance/thresholds.json` 是本机数据分布参考，`--thresholds <该文件>` 用于后续独立复测。首次生成阈值的运行只验证硬资源、accounting、媒体错误路径与持续负载条件；不能称为对既有 latency baseline 的独立回归证明。startup 的冷缓存定义、样本量和慢样本必须一并报告。
+完成后 `acceptance-append/thresholds.json` 是本机数据分布参考，含原生Session追加；`--thresholds <该文件>` 用于后续独立复测。首次生成阈值的运行只验证硬资源、accounting、媒体错误路径与持续负载条件；不能称为对既有 latency baseline 的独立回归证明。startup 的冷缓存定义、样本量和慢样本必须一并报告。`session-appends` 使用真实SessionEngine与native持久化、纯合成filesystem/process/clock/token适配器；每规模1 warmup +3 measured，cleanup不计入追加耗时，正常single-owned admission保持，不启动OS游戏进程。
 
 ## WinUI Phase 6.2：历史宿主阻断记录（后续独立 Gate 已通过）
 

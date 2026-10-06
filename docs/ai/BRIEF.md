@@ -7,6 +7,7 @@
 - Phase 7.1 生产修复包括线性完整JSON数组校验、64MiB/512 decoded cache、256 work/waiter、两路decode、共享取消与新消费者续接、零布局recycled cover立即作废、不完整PNG拒绝。最后行为修复605addd；最终Test诊断candidate d3ed15c；1126b1f只修loopback测试shutdown。schema、Session accounting、launch/matching不变；五个共享程序集5763方法与tracked source通过二进制核对。
 - **READY FOR PHASE 7.1 INDEPENDENT GATE**。最终Debug/Release各1763/0/0、原1734项全部保留，新增29项；locked restore、两配置build/publish成功。最终headless和actualWinUI各连续7200秒以上、正常exit0，硬资源/accounting/错图/排空检查PASS。自检B0/M0/m0/OBS9；首次recognition/handoff/host-child/COM失败保留且未宣称根因解决。详见 [Phase 7.1质量记录](PHASE7_PERFORMANCE_AND_RELIABILITY.md)，命令见 [DEVELOPMENT](../../DEVELOPMENT.md)。
 - 新 published candidate 为独立 artifact，不自动替换日用 binary；本阶段结束等待 independent Gate，不开始 Phase 7.2 / Liquid Glass、SQLite、public release 或远端推送。
+- 收尾补测 `9ff6040` 的同一安装原生Session追加（真实SessionEngine+native store，纯合成process adapters）：1k/10k/50k median约405/1453/4468ms，三组四次追加均count+4、time+0、资源排空，94项targeted通过。与d3ed候选5763个共享方法一致，生产代码未改、两小时证据不作废；含补测的检查器28697项PASS，108项本机latency参考见`acceptance-append/thresholds.json`。
 
 ## WinUI Phase 6.2：历史宿主阻断记录（后续独立 Gate 已通过）
 
