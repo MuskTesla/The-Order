@@ -15,7 +15,7 @@ using TheOrder.Presentation;
 
 namespace TheOrder.Performance;
 
-public static class Program
+public static partial class Program
 {
     public const string Date = "2026-01-01T00:00:00.000Z";
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
@@ -39,6 +39,7 @@ public static class Program
             if (args[0] == "soak") await Soak(output, covers, args.Length > 3 ? double.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 120);
             else if (args[0] == "generate") { foreach (int n in libraryCounts) Generate(Path.Combine(output, "library-" + n), n, 0, covers); }
             else if (args[0] == "session-checkpoints") await SessionCheckpoints(output, covers);
+            else if (args[0] == "session-appends") await SessionAppends(output, covers);
             else if (args[0] == "media") await Media(output, covers);
             else await Benchmarks(output, covers);
             return 0;
