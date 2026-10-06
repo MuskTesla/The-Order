@@ -15,6 +15,7 @@ public sealed partial class MainWindow
     private MaterialPolicy? materialPolicy;
     private RefractionGallery? gallery;
     private bool requestedGlass;
+    private bool visualWindowVisible = true;
     private bool galleryVisible, visualStopped, fixtureBusy;
     private string direction = "B", fixtureNonce = "";
     private string visualScreen = "VisualGallery";
@@ -87,8 +88,9 @@ public sealed partial class MainWindow
     {
         if (visualStopped || materialPolicy is null) return;
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
-        gallery?.SetAdvanced(materialPolicy.EffectsAllowed && App.Instance?.WindowHidden != true);
-        gallery?.SetMotionAllowed(materialPolicy.MotionAllowed && App.Instance?.WindowHidden != true);
+        var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
+        gallery?.SetAdvanced(materialPolicy.EffectsAllowed && visible);
+        gallery?.SetMotionAllowed(materialPolicy.MotionAllowed && visible);
         if (!materialPolicy.MotionAllowed && Root.XamlRoot is not null)
         {
             var visual = ElementCompositionPreview.GetElementVisual(PageContent);
@@ -98,8 +100,8 @@ public sealed partial class MainWindow
 
     internal void SetVisualWindowVisible(bool visible)
     {
-        gallery?.SetAdvanced(visible && materialPolicy?.EffectsAllowed == true);
-        gallery?.SetMotionAllowed(visible && materialPolicy?.MotionAllowed == true);
+        visualWindowVisible = visible;
+        ApplyMaterialPolicy();
     }
 
     private void UpdateSessionChrome(SessionPresentation presentation)
