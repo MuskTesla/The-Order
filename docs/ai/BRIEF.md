@@ -1,6 +1,14 @@
 # The Order：当前实现与评审交接
 
-## WinUI Phase 6.2：PRODUCTION USE PAUSED（环境阻断，未完成验收）
+## WinUI Phase 7.1：自检完成，等待 independent Gate
+
+- 当前 Phase 6 独立 Gate 为 **PASS FOR DAILY NATIVE USE / PHASE 7**，受测代码 `7a3a739a3a758216419e8d5c0273a74e8e15561c`；证据 `.artifacts/native-phase6-2-independent-gate/gate-audit.json`。下方 Phase 6.2 paused 段落是 host handoff 前的历史记录，不能当成当前结论。
+- Phase 7.1 从干净 `4292bf1de29d8e2d2d6509c554b26cb1e8679f77` 开始，确认相对受测代码只有文档差异。真实 Production 是当前 authoritative user store，本轮完全不访问 native Production / Electron profile 或真实 credential；只用新建 Test profiles、原创 synthetic covers 和合成 history。
+- Phase 7.1 生产修复包括线性完整JSON数组校验、64MiB/512 decoded cache、256 work/waiter、两路decode、共享取消与新消费者续接、零布局recycled cover立即作废、不完整PNG拒绝。最后行为修复605addd；最终Test诊断candidate d3ed15c；1126b1f只修loopback测试shutdown。schema、Session accounting、launch/matching不变；五个共享程序集5763方法与tracked source通过二进制核对。
+- **READY FOR PHASE 7.1 INDEPENDENT GATE**。最终Debug/Release各1763/0/0、原1734项全部保留，新增29项；locked restore、两配置build/publish成功。最终headless和actualWinUI各连续7200秒以上、正常exit0，硬资源/accounting/错图/排空检查PASS。自检B0/M0/m0/OBS9；首次recognition/handoff/host-child/COM失败保留且未宣称根因解决。详见 [Phase 7.1质量记录](PHASE7_PERFORMANCE_AND_RELIABILITY.md)，命令见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+- 新 published candidate 为独立 artifact，不自动替换日用 binary；本阶段结束等待 independent Gate，不开始 Phase 7.2 / Liquid Glass、SQLite、public release 或远端推送。
+
+## WinUI Phase 6.2：历史宿主阻断记录（后续独立 Gate 已通过）
 
 - 基线 `ba37df62dbda23020dd1b85684b42953f999b430`、`codex/winui-phase5` 和干净工作区已核对。Phase 6.1 independent Gate 的 PASS 与六项 observations 保留，不把历史 handoff 波动称为已解决。
 - 本轮明确授权最小真实 Production 验收，接入显式 `--allow-production-profile` / runner 开关，代码 checkpoint `7a3a739a3a758216419e8d5c0273a74e8e15561c`。默认拒绝正式根、fixture/其他 kind 不接受授权；guard、schema、Session/accounting 均未修改。新增 9 项授权回归，Debug/Release 全量各 1734/0/0；candidate 和程序集哈希/MVID 见 `.artifacts/native-phase6-2/candidate-identity.json`。

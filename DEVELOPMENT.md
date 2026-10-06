@@ -1,6 +1,46 @@
 # 开发与维护
 
-## WinUI Phase 6.2：PRODUCTION USE PAUSED（环境阻断）
+## WinUI Phase 7.1：自检完成，等待 independent Gate
+
+Phase 6 独立 Gate 已为 **PASS FOR DAILY NATIVE USE / PHASE 7**（`.artifacts/native-phase6-2-independent-gate/gate-audit.json`，受测代码 `7a3a739a3a758216419e8d5c0273a74e8e15561c`）。此前宿主虚拟化阻断已由 host handoff 与独立证据接续；下方历史段落不代表当前 Production 状态。真实 Production 现在是用户 authoritative store，Phase 7 不读取/复制/压力测试该目录，不访问 Electron 资料或真实 credential。
+
+Phase 7.1自检已完成：Debug/Release完整各1763/0/0，locked restore/build/publish通过，两个最终连续两小时负载正常结束，资源检查PASS；B0/M0/m0/OBS9，首次失败与未知根因仍保留。**READY FOR PHASE 7.1 INDEPENDENT GATE**。详细方法、源码 checkpoint、容量边界、测量与完整soak见 [PHASE7_PERFORMANCE_AND_RELIABILITY](docs/ai/PHASE7_PERFORMANCE_AND_RELIABILITY.md)。不进入 Phase 7.2 / Liquid Glass，不做 schema、SQLite、业务语义或正式程序替换。
+
+### 重现 Phase 7.1 隔离工作负载
+
+从仓库根执行，固定 SDK，不运行默认正式入口。每次重测用新的 artifact 子目录；生成目录和 cover 文件不提交。
+
+```powershell
+python native/scripts/generate-performance-covers.py --output .artifacts/native-phase7-1/covers --count 10000 --seed 7101
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe restore native/TheOrder.slnx --locked-mode
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe publish native/TheOrder.Performance/TheOrder.Performance.csproj -c Release --no-restore -o .artifacts/native-phase7-1/harness
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll bench D:/Projects/The-Order/.artifacts/native-phase7-1/new-bench D:/Projects/The-Order/.artifacts/native-phase7-1/covers
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll session-checkpoints D:/Projects/The-Order/.artifacts/native-phase7-1/new-checkpoints D:/Projects/The-Order/.artifacts/native-phase7-1/covers
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll media D:/Projects/The-Order/.artifacts/native-phase7-1/new-media D:/Projects/The-Order/.artifacts/native-phase7-1/covers
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll soak D:/Projects/The-Order/.artifacts/native-phase7-1/new-soak D:/Projects/The-Order/.artifacts/native-phase7-1/covers 120
+```
+
+除 soak 时长外，后两个可选参数是 entry count CSV / history count CSV；默认 `1000,5000,10000` / `1000,10000,50000`，seed 可由 `THE_ORDER_PERF_SEED` 指定。50k 默认 mixed history 的组成必须在结果中声明；full native 50k 超过既有 writer 容量，不能偷偷放宽合同。
+
+Published WinUI 必须指定 `-p:NativeProductionCandidate=true`，这里仍只生成新的 artifact candidate。随后使用 `native/scripts/run-performance-ui.ps1`，明确传入 Candidate/Profiles/Covers/Output 四个绝对 artifact 路径；它设置 **Test** kind、禁用 raw fixture/online scenario、保存并恢复本次环境变量。先用 `generate` 模式建立相应 Test profile。默认 1k/5k/10k × (cold-ish + 5 warm)；`-Counts 10000 -Samples 0 -Rounds 0 -Minutes 120 -PaceMs 4000` 驱动同一实际 WinUI 进程两小时。真实托盘菜单和宿主 DPI/power 不由该 fixture 操作。
+
+```powershell
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:NativeProductionCandidate=true -o .artifacts/native-phase7-1/new-publish/win-x64
+./.artifacts/native-phase1/tools/dotnet/dotnet.exe .artifacts/native-phase7-1/harness/TheOrder.Performance.dll generate D:/Projects/The-Order/.artifacts/native-phase7-1/new-ui-profiles D:/Projects/The-Order/.artifacts/native-phase7-1/covers
+./native/scripts/run-performance-ui.ps1 -Candidate D:/Projects/The-Order/.artifacts/native-phase7-1/new-publish/win-x64/TheOrder.WinUI.exe -Profiles D:/Projects/The-Order/.artifacts/native-phase7-1/new-ui-profiles -Covers D:/Projects/The-Order/.artifacts/native-phase7-1/covers -Output D:/Projects/The-Order/.artifacts/native-phase7-1/new-ui -Rounds 360
+```
+
+`write-performance-binding.ps1` 对冻结 artifact EXE/DLL 保存 SHA256/MVID、PDB 与当前源码校验；回执的 checkpoint 才是二进制身份。新 harness 的 environment 同时保存运行 binary 的 informational version、MVID、SHA256 与 runtime repository HEAD，后者不能替代二进制身份。运行中的 host 必须来自冻结 publish 目录；继续构建时可指定独立 OutputPath，避免重写正在使用的 DLL。`check-performance-results.py` 检查完整 bench/checkpoints/media/ui/soak 输出，初次生成机器局部阈值，后续通过 `--thresholds` 比较；全量日志、失败、慢样本均保留。
+
+实际 UI 的持续负载还应独立启动 `watch-performance-resources.ps1`，传入已核对的 Test 进程 PID、Candidate 和 Output 绝对路径。它按 executable path + creation generation 验证目标，每次关闭采样 handle，正常进程结束写入 PROCESS_EXITED；不枚举真实 Production 或其他应用。检查器示例（这些目录须先由各 workload 完成，不能以短测冒充两小时）：
+
+```powershell
+python native/scripts/check-performance-results.py --bench .artifacts/native-phase7-1/bench-605addd --checkpoints .artifacts/native-phase7-1/checkpoint-605addd --media .artifacts/native-phase7-1/media-605addd --ui .artifacts/native-phase7-1/ui-gate --soak .artifacts/native-phase7-1/soak-605addd --ui-soak .artifacts/native-phase7-1/ui-soak-gate/10000-0 --ui-resources .artifacts/native-phase7-1/ui-soak-gate-os --output .artifacts/native-phase7-1/acceptance
+```
+
+完成后 `acceptance/thresholds.json` 是本机数据分布参考，`--thresholds <该文件>` 用于后续独立复测。首次生成阈值的运行只验证硬资源、accounting、媒体错误路径与持续负载条件；不能称为对既有 latency baseline 的独立回归证明。startup 的冷缓存定义、样本量和慢样本必须一并报告。
+
+## WinUI Phase 6.2：历史宿主阻断记录（后续独立 Gate 已通过）
 
 Phase 6.1 checkpoint `ba37df62dbda23020dd1b85684b42953f999b430` 已独立 **PASS FOR PHASE 6.2**，证据 `.artifacts/native-phase6-1-provenance-regate/gate-audit.json`。该 Gate 实跑 Release 1724/1/0；新增 OBS6 为真实 handoff fixture 一次 RunningLimited，单独复跑通过，未建立与 profile provenance 的因果关系；原五项 observation 保留。
 
