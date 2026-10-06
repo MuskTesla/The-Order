@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bench", type=Path, required=True)
     parser.add_argument("--checkpoints", type=Path, required=True)
+    parser.add_argument("--appends", type=Path)
     parser.add_argument("--media", type=Path, required=True)
     parser.add_argument("--ui", type=Path, required=True)
     parser.add_argument("--soak", type=Path, required=True)
@@ -47,6 +48,14 @@ def main():
     for dataset in load(args.checkpoints / "checkpoint-results.json"):
         latency(f"checkpoint-{dataset['history']}", dataset["measurement"]["p95"], 2000)
         check(f"checkpoint-{dataset['history']}/accounting", int(not(dataset["countUnchanged"] and dataset["exactlyOnce"])), 0)
+
+    if args.appends:
+        for dataset in load(args.appends / "native-session-append-results.json"):
+            n = dataset["history"]
+            latency(f"native-append-{n}", dataset["measurement"]["p95"], 2000)
+            accounting = dataset["accounting"]
+            for field, expected in [("appended", 4), ("countDelta", 4), ("secondsDelta", 0), ("syntheticProcessStarts", 4), ("retainedSyntheticHandles", 0)]:
+                check(f"native-append-{n}/{field}", int(accounting[field] != expected), 0)
 
     media_summary = []
     edges = load(args.media / "edge-results.json")
