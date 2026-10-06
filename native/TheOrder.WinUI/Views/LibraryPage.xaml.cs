@@ -129,8 +129,20 @@ public sealed partial class LibraryPage : Page, IImageHost
         BatchEditButton.Visibility = Visible(!narrow);
         ReloadButton.Visibility = Visibility.Collapsed;
         SelectionMore.Visibility = Visible(narrow);
-        // Popup height is constrained independently so its action row never scrolls.
-        FilterPanel.MaxHeight = Math.Max(180, Math.Min(520, XamlRoot?.Size.Height - 110 ?? 520));
+        if (FilterFlyout.IsOpen) ConstrainFilterHeight();
+    }
+    private void OnFilterOpening(object? sender, object e) => ConstrainFilterHeight();
+    private void ConstrainFilterHeight()
+    {
+        if (XamlRoot?.Content is not UIElement root) return;
+        var anchor = FilterButton.TransformToVisual(root).TransformPoint(new Windows.Foundation.Point());
+        var below = XamlRoot.Size.Height - anchor.Y - FilterButton.ActualHeight - 36;
+        var above = anchor.Y - 36;
+        var useAbove = below < 180 && above > below;
+        FilterFlyout.Placement = useAbove ? Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.TopEdgeAlignedRight : Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight;
+        // A finite constraint is required: MaxHeight alone leaves the star row
+        // measured as content in a popup and can push the fixed footer offscreen.
+        FilterPanel.Height = FilterPanel.MaxHeight = Math.Clamp(useAbove ? above : below, 128, 520);
     }
     internal void ShowVisualFilter() => FilterFlyout.ShowAt(FilterButton);
     internal void HideVisualFilter() => FilterFlyout.Hide();
