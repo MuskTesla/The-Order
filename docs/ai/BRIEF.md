@@ -1,5 +1,14 @@
 # The Order：当前实现与评审交接
 
+## Phase 7.2A：独立视觉候选，未合并
+
+- 视觉源码仅在 managed worktree `C:/Users/MUSK/.codex/worktrees/winui-phase7-visual/The-Order`、分支 `codex/winui-phase7-visual`。基线为已提交 `14a96a1fc793b7fba231ab3b8fd1da607c3e86c5`；没有复制主工作区尚未提交的 memory diagnostics、fixed replay、plateau 或 checker 修改。
+- 主工作区 Phase 7.1 **memory MAJOR 1 保持开放**；384-item 最终候选和 workload 已冻结，正式 2h soak 尚未在本轮执行。下面 Phase 7.1 段落是早期自检记录，不代表当前 memory Gate 已通过。
+- 视觉候选采用「轻盈悬浮收藏库」方向：共同 token、收敛工具栏、较大封面、对齐列表、作品优先详情、底部事实驱动的会话区域。业务、持久化、Session accounting、匹配与 image/cache/CoverPresenter ownership 合同不变。
+- 实时折射仅在显式 **Test + Diagnostics + VISUAL_TEST=1** 材质实验室；应用内部背景、公开 Composition API、18 个有界采样带。正常导航无实验室。不是桌面采样或 production-ready optical shader。
+- 构建、profile、cache、screenshots 和测试输出均属于视觉 worktree。视觉审阅与 memory Gate 必须分别通过后才考虑合并；不自动提交原工作区、推送或替换日用程序。
+- 实际证据、A/B 选择及尚未覆盖边界见 [Phase 7.2A 视觉审阅](PHASE7_2A_VISUAL_REVIEW.md)。启动方式见 [DEVELOPMENT](../../DEVELOPMENT.md)。
+
 ## WinUI Phase 7.1：自检完成，等待 independent Gate
 
 - 当前 Phase 6 独立 Gate 为 **PASS FOR DAILY NATIVE USE / PHASE 7**，受测代码 `7a3a739a3a758216419e8d5c0273a74e8e15561c`；证据 `.artifacts/native-phase6-2-independent-gate/gate-audit.json`。下方 Phase 6.2 paused 段落是 host handoff 前的历史记录，不能当成当前结论。

@@ -1,17 +1,36 @@
 <Page x:Class="TheOrder.WinUI.Views.SettingsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <ScrollViewer><StackPanel Padding="{StaticResource PagePadding}" Spacing="20" MaxWidth="760" HorizontalAlignment="Left">
-  <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}"/>
-  <ComboBox x:Name="ThemeChoice" Header="外观主题" Width="260" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="ThemeChoice"><ComboBoxItem Content="跟随系统"/><ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/></ComboBox>
-  <ComboBox x:Name="LayoutChoice" Header="书架视图" Width="260" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="LayoutChoice"><ComboBoxItem Content="网格"/><ComboBoxItem Content="列表"/></ComboBox>
-  <TextBlock Text="在线目录 · NextMoe" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-  <PasswordBox x:Name="ApiCredential" Header="当前资料的 API 密钥" PasswordRevealMode="Hidden" MaxLength="4096" Width="360" AutomationProperties.AutomationId="OnlineCredential"/>
-  <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="保存密钥" Click="OnSaveCredential"/><Button Content="移除密钥" Click="OnClearCredential"/><Button Content="测试连接" Click="OnTestConnection"/></StackPanel>
-  <TextBlock Text="{x:Bind Online.CredentialMessage, Mode=OneWay}" TextWrapping="Wrap"/>
-  <TextBlock Text="{x:Bind Online.ConnectionMessage, Mode=OneWay}" TextWrapping="Wrap"/>
-  <TextBlock Text="当前原生资料目录" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-  <TextBlock Text="{x:Bind ViewModel.DataDirectory}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="DataDirectory"/>
-  <TextBlock Text="书架修改通过完整事务保存；外观、排序和常用筛选独立保存。不同资料目录的数据和密钥相互隔离，不会自动导入旧 Electron 资料。" Style="{StaticResource SecondaryTextStyle}"/>
-  <TextBlock Text="当前临时搜索条件不会自动成为常用筛选。" Style="{StaticResource SecondaryTextStyle}"/>
-  <TextBlock Text="The Order · 原生候选" Style="{StaticResource SecondaryTextStyle}"/>
- </StackPanel></ScrollViewer>
+ <ScrollViewer HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+  <StackPanel Padding="{StaticResource PagePadding}" Spacing="24" MaxWidth="920" HorizontalAlignment="Stretch">
+   <TextBlock Text="设置" Style="{StaticResource PageTitleStyle}"/>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="24">
+    <StackPanel Spacing="16">
+     <TextBlock Text="外观与浏览" Style="{StaticResource SectionTitleStyle}"/>
+     <StackPanel Spacing="16">
+      <ComboBox x:Name="ThemeChoice" Header="外观主题" MaxWidth="360" HorizontalAlignment="Stretch" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="ThemeChoice" AutomationProperties.Name="外观主题"><ComboBoxItem Content="跟随系统"/><ComboBoxItem Content="浅色"/><ComboBoxItem Content="深色"/></ComboBox>
+      <ComboBox x:Name="LayoutChoice" Header="书架视图" MaxWidth="360" HorizontalAlignment="Stretch" SelectionChanged="OnAppearance" AutomationProperties.AutomationId="LayoutChoice" AutomationProperties.Name="书架默认视图"><ComboBoxItem Content="网格"/><ComboBoxItem Content="列表"/></ComboBox>
+     </StackPanel>
+     <TextBlock Text="当前临时搜索条件不会自动成为常用筛选。" Style="{StaticResource SecondaryTextStyle}"/>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="24">
+    <StackPanel Spacing="16">
+     <TextBlock Text="在线目录 · NextMoe" Style="{StaticResource SectionTitleStyle}"/>
+     <PasswordBox x:Name="ApiCredential" Header="当前资料的 API 密钥" PasswordRevealMode="Hidden" MaxLength="4096" MaxWidth="480" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="OnlineCredential" AutomationProperties.Name="当前资料的在线目录 API 密钥"/>
+     <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="128" ItemHeight="44" MaximumRowsOrColumns="3">
+      <Button Content="保存密钥" Click="OnSaveCredential"/><Button Content="移除密钥" Click="OnClearCredential"/><Button Content="测试连接" Click="OnTestConnection"/>
+     </VariableSizedWrapGrid>
+     <TextBlock Text="{x:Bind Online.CredentialMessage, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+     <TextBlock Text="{x:Bind Online.ConnectionMessage, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="24">
+    <StackPanel Spacing="12">
+     <TextBlock Text="当前原生资料目录" Style="{StaticResource SectionTitleStyle}"/>
+     <TextBlock Text="{x:Bind ViewModel.DataDirectory}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="DataDirectory"/>
+     <TextBlock Text="书架修改通过完整事务保存；外观、排序和常用筛选独立保存。不同资料目录的数据和密钥相互隔离，不会自动导入旧 Electron 资料。" Style="{StaticResource SecondaryTextStyle}"/>
+    </StackPanel>
+   </Border>
+   <TextBlock Text="The Order · 原生候选" Style="{StaticResource MetadataTextStyle}"/>
+  </StackPanel>
+ </ScrollViewer>
 </Page>

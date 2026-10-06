@@ -1,31 +1,50 @@
 <Page x:Class="TheOrder.WinUI.Views.RecognitionPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:p="using:TheOrder.Presentation" xmlns:local="using:TheOrder.WinUI.Views">
- <Grid Padding="{StaticResource PagePadding}" RowSpacing="10">
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="16">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-  <StackPanel><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="高分是建议。作品、版本和本地来源一致后，再确认关联。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
-  <VariableSizedWrapGrid Grid.Row="1" Orientation="Horizontal" ItemWidth="180" ItemHeight="62" MaximumRowsOrColumns="6">
-   <Button Content="只补缺失资料" Click="OnMissing" AutomationProperties.AutomationId="RecognizeMissing"/>
-   <Button Content="取消本轮识别" Click="OnCancel" AutomationProperties.AutomationId="RecognitionCancel"/>
-   <ToggleSwitch Header="在线补充" IsOn="{x:Bind ViewModel.UseOnline, Mode=TwoWay}" OnContent="启用" OffContent="仅本地" AutomationProperties.AutomationId="RecognitionOnline"/>
-   <ToggleSwitch Header="程序版本线索（可选）" IsOn="{x:Bind ViewModel.IncludePe, Mode=TwoWay}" OnContent="读取有界资源" OffContent="只用文件名" AutomationProperties.AutomationId="RecognitionPe"/>
-  </VariableSizedWrapGrid>
-  <StackPanel Grid.Row="2" Spacing="4"><TextBlock Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionProgress"/><TextBlock Text="{x:Bind ViewModel.Message, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionMessage"/><TextBlock Text="{x:Bind ViewModel.PersistenceError, Mode=OneWay}" TextWrapping="Wrap" Foreground="{ThemeResource SystemFillColorCautionBrush}"/></StackPanel>
-  <Grid Grid.Row="3" ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="250"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-   <ListView x:Name="ReviewList" ItemsSource="{x:Bind ViewModel.Reviews, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedReviewItem, Mode=OneWay}" SelectionMode="Single" SelectionChanged="OnReview" AutomationProperties.AutomationId="RecognitionReviews">
-    <ListView.ItemTemplate><DataTemplate x:DataType="p:RecognitionReviewCard"><StackPanel Padding="6" Spacing="6"><TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind Status}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/><TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap" MaxLines="3" Style="{StaticResource SecondaryTextStyle}"/></StackPanel></DataTemplate></ListView.ItemTemplate>
-   </ListView>
-   <ScrollViewer x:Name="ReviewDetails" Grid.Column="1"><StackPanel Spacing="10">
-    <TextBlock Text="{x:Bind ViewModel.SelectedTitle, Mode=OneWay}" Style="{ThemeResource SubtitleTextBlockStyle}" TextWrapping="Wrap"/>
-    <TextBlock Text="{x:Bind ViewModel.SelectedMessage, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionSelectedState"/>
-    <TextBlock Text="{x:Bind ViewModel.LocalFacts, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="RecognitionLocalFacts"/>
-    <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="重新识别" Click="OnRerun" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionRerun"/><Button Content="忽略本次建议" Click="OnIgnore" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionIgnore"/><Button Content="打开本地详情" Click="OnLocalDetails" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"/></StackPanel>
-    <ListView ItemsSource="{x:Bind ViewModel.Candidates, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedCandidateItem, Mode=OneWay}" SelectionMode="Single" SelectionChanged="OnCandidate" AutomationProperties.AutomationId="RecognitionCandidates">
-     <ListView.ItemTemplate><DataTemplate x:DataType="p:RecognitionCandidateCard"><StackPanel Padding="6" Spacing="5"><TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Evidence}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind Conflicts}" TextWrapping="Wrap" Foreground="{ThemeResource SystemFillColorCautionBrush}"/><Button Content="查看候选详情" Tag="{x:Bind Id}" Click="OnRemoteDetails"/></StackPanel></DataTemplate></ListView.ItemTemplate>
+  <VisualStateManager.VisualStateGroups><VisualStateGroup>
+   <VisualState x:Name="ReviewWide"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100"/></VisualState.StateTriggers></VisualState>
+   <VisualState x:Name="ReviewNarrow"><VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0"/></VisualState.StateTriggers><VisualState.Setters>
+    <Setter Target="ReviewSurface.(Grid.ColumnSpan)" Value="2"/><Setter Target="ReviewDetailSurface.(Grid.Row)" Value="1"/><Setter Target="ReviewDetailSurface.(Grid.Column)" Value="0"/><Setter Target="ReviewDetailSurface.(Grid.ColumnSpan)" Value="2"/>
+    <Setter Target="ReviewListRow.Height" Value="2*"/><Setter Target="ReviewDetailRow.Height" Value="3*"/><Setter Target="ReviewLayout.RowSpacing" Value="16"/>
+    <Setter Target="IgnoreReviewButton.(Grid.Row)" Value="1"/><Setter Target="IgnoreReviewButton.(Grid.Column)" Value="0"/><Setter Target="OpenLocalDetailButton.(Grid.Row)" Value="2"/><Setter Target="OpenLocalDetailButton.(Grid.Column)" Value="0"/><Setter Target="ReviewActions.RowSpacing" Value="8"/>
+    <Setter Target="ManualApplyButton.(Grid.Row)" Value="1"/><Setter Target="ManualApplyButton.(Grid.Column)" Value="0"/><Setter Target="ManualApplyButton.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualIdBox.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualActions.RowSpacing" Value="8"/>
+   </VisualState.Setters></VisualState>
+  </VisualStateGroup></VisualStateManager.VisualStateGroups>
+  <StackPanel Spacing="8"><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="高分是建议。作品、版本和本地来源一致后，再确认关联。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
+  <Border Grid.Row="1" Style="{StaticResource ToolbarSurfaceStyle}" Padding="16">
+   <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="184" ItemHeight="68" MaximumRowsOrColumns="6">
+    <Button Content="只补缺失资料" Click="OnMissing" AutomationProperties.AutomationId="RecognizeMissing"/>
+    <Button Content="取消本轮识别" Click="OnCancel" AutomationProperties.AutomationId="RecognitionCancel"/>
+    <ToggleSwitch Header="在线补充" IsOn="{x:Bind ViewModel.UseOnline, Mode=TwoWay}" OnContent="启用" OffContent="仅本地" AutomationProperties.AutomationId="RecognitionOnline" AutomationProperties.Name="识别时使用在线补充"/>
+    <ToggleSwitch Header="程序版本线索（可选）" IsOn="{x:Bind ViewModel.IncludePe, Mode=TwoWay}" OnContent="读取有界资源" OffContent="只用文件名" AutomationProperties.AutomationId="RecognitionPe" AutomationProperties.Name="识别时读取程序版本线索"/>
+   </VariableSizedWrapGrid>
+  </Border>
+  <StackPanel Grid.Row="2" Spacing="8"><TextBlock Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionProgress"/><TextBlock Text="{x:Bind ViewModel.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionMessage" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="{x:Bind ViewModel.PersistenceError, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" Foreground="{ThemeResource WarningTextBrush}" AutomationProperties.LiveSetting="Polite"/></StackPanel>
+  <Grid x:Name="ReviewLayout" Grid.Row="3" ColumnSpacing="24"><Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition x:Name="ReviewListRow" Height="*"/><RowDefinition x:Name="ReviewDetailRow" Height="0"/></Grid.RowDefinitions>
+   <Border x:Name="ReviewSurface" Style="{StaticResource SurfaceStyle}" Padding="12">
+    <ListView x:Name="ReviewList" ItemsSource="{x:Bind ViewModel.Reviews, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedReviewItem, Mode=OneWay}" SelectionMode="Single" SelectionChanged="OnReview" AutomationProperties.AutomationId="RecognitionReviews" AutomationProperties.Name="需要核对的作品关联">
+     <ListView.ItemTemplate><DataTemplate x:DataType="p:RecognitionReviewCard"><StackPanel Padding="8" Spacing="8"><TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" Style="{StaticResource CardTitleStyle}"/><TextBlock Text="{x:Bind Status}" Style="{StaticResource BodyTextStyle}"/><TextBlock Text="{x:Bind Summary}" TextWrapping="Wrap" MaxLines="3" Style="{StaticResource SecondaryTextStyle}"/></StackPanel></DataTemplate></ListView.ItemTemplate>
     </ListView>
-    <Button Content="确认应用所选候选" Click="OnApply" IsEnabled="{x:Bind ViewModel.CanApply, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="RecognitionApply"/>
-    <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Header="手动关联 · 目录作品编号" Text="{x:Bind ViewModel.ManualId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="先核对目标作品与版本" MaxLength="20" AutomationProperties.AutomationId="RecognitionManualId"/><Button Grid.Column="1" Content="确认手动关联" VerticalAlignment="Bottom" Click="OnManual" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionManualApply"/></Grid>
-    <local:CoverPresenter SourceKey="{x:Bind ViewModel.RemoteCoverKey, Mode=OneWay}" Width="140" Height="190" HorizontalAlignment="Left"/>
-    <TextBlock Text="{x:Bind ViewModel.RemoteFacts, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="RecognitionRemoteFacts"/>
-   </StackPanel></ScrollViewer>
+   </Border>
+   <Border x:Name="ReviewDetailSurface" Grid.Column="1" Style="{StaticResource SurfaceStyle}" Padding="20">
+    <ScrollViewer x:Name="ReviewDetails" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="16">
+     <TextBlock Text="{x:Bind ViewModel.SelectedTitle, Mode=OneWay}" Style="{StaticResource SectionTitleStyle}" TextWrapping="Wrap"/>
+     <TextBlock Text="{x:Bind ViewModel.SelectedMessage, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionSelectedState" AutomationProperties.LiveSetting="Polite"/>
+     <TextBlock Text="{x:Bind ViewModel.LocalFacts, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="RecognitionLocalFacts"/>
+     <Grid x:Name="ReviewActions" ColumnSpacing="8" HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Button Content="重新识别" Click="OnRerun" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionRerun"/><Button x:Name="IgnoreReviewButton" Grid.Column="1" Content="忽略本次建议" Click="OnIgnore" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionIgnore"/><Button x:Name="OpenLocalDetailButton" Grid.Column="2" Content="打开本地详情" Click="OnLocalDetails" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}"/>
+     </Grid>
+     <ListView ItemsSource="{x:Bind ViewModel.Candidates, Mode=OneWay}" SelectedItem="{x:Bind ViewModel.SelectedCandidateItem, Mode=OneWay}" SelectionMode="Single" SelectionChanged="OnCandidate" AutomationProperties.AutomationId="RecognitionCandidates" AutomationProperties.Name="待核对的目录作品候选">
+      <ListView.ItemTemplate><DataTemplate x:DataType="p:RecognitionCandidateCard"><StackPanel Padding="12" Spacing="8"><TextBlock Text="{x:Bind Title}" TextWrapping="Wrap" Style="{StaticResource CardTitleStyle}"/><TextBlock Text="{x:Bind Summary}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Evidence}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}"/><TextBlock Text="{x:Bind Conflicts}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" Foreground="{ThemeResource WarningTextBrush}"/><Button Content="查看候选详情" Tag="{x:Bind Id}" Click="OnRemoteDetails"/></StackPanel></DataTemplate></ListView.ItemTemplate>
+     </ListView>
+     <Button Content="确认应用所选候选" Click="OnApply" IsEnabled="{x:Bind ViewModel.CanApply, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="RecognitionApply"/>
+     <Grid x:Name="ManualActions" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <TextBox x:Name="ManualIdBox" Header="手动关联 · 目录作品编号" Text="{x:Bind ViewModel.ManualId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="先核对目标作品与版本" MaxLength="20" AutomationProperties.AutomationId="RecognitionManualId" AutomationProperties.Name="手动关联的目录作品编号"/><Button x:Name="ManualApplyButton" Grid.Column="1" Content="确认手动关联" VerticalAlignment="Bottom" Click="OnManual" IsEnabled="{x:Bind ViewModel.HasSelection, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionManualApply"/>
+     </Grid>
+     <local:CoverPresenter SourceKey="{x:Bind ViewModel.RemoteCoverKey, Mode=OneWay}" Width="140" Height="190" HorizontalAlignment="Left"/>
+     <TextBlock Text="{x:Bind ViewModel.RemoteFacts, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="RecognitionRemoteFacts"/>
+    </StackPanel></ScrollViewer>
+   </Border>
   </Grid>
  </Grid>
 </Page>

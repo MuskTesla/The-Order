@@ -30,7 +30,7 @@ public sealed partial class InstallationsPage : Page
         try
         {
             if (Selected is not { } row) return;
-            var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = "移除安装关系？", Content = "只从书架移除此安装记录。不会删除文件、目录或卸载游戏。", PrimaryButtonText = "移除关系", CloseButtonText = "保留", DefaultButton = ContentDialogButton.Close };
+            var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = "移除安装关系？", Content = "只从书架移除此安装记录。不会删除文件、目录或卸载游戏。", PrimaryButtonText = "移除关系", CloseButtonText = "保留", DefaultButton = ContentDialogButton.Close };
             if (await dialog.ShowAsync() == ContentDialogResult.Primary) await ViewModel.RemoveAsync(row);
         }
         catch (Exception) { Workspace.ReportUnexpected(); }

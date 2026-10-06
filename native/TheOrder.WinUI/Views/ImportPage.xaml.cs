@@ -23,7 +23,7 @@ public sealed partial class ImportPage : Page
         try
         {
             var selected = CandidateList.SelectedItems.OfType<ScanCandidate>().ToImmutableArray(); if (selected.IsEmpty) return;
-            var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = $"导入 {selected.Length} 个候选？", Content = "将一次保存到当前隔离书架。重复目录会跳过，不会复制、执行或删除游戏文件。", PrimaryButtonText = "确认导入", CloseButtonText = "返回核对", DefaultButton = ContentDialogButton.Close };
+            var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = $"导入 {selected.Length} 个候选？", Content = "将一次保存到当前隔离书架。重复目录会跳过，不会复制、执行或删除游戏文件。", PrimaryButtonText = "确认导入", CloseButtonText = "返回核对", DefaultButton = ContentDialogButton.Close };
             if (await dialog.ShowAsync() == ContentDialogResult.Primary) await ViewModel.ImportAsync(selected);
         }
         catch (Exception) { Workspace.ReportUnexpected(); }

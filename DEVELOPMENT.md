@@ -1,5 +1,22 @@
 # 开发与维护
 
+## Phase 7.2A 独立视觉审阅
+
+从 `C:/Users/MUSK/.codex/worktrees/winui-phase7-visual/The-Order` 工作。主开发目录及 Phase 7.1 frozen candidate 不用于视觉构建。固定 SDK 与 Electron 合成测试 runtime 均已复制到视觉 worktree 的独立生成目录；没有升级依赖。
+
+```powershell
+# 可交互候选：始终指定当前视觉 worktree 的 Test profile，无 production 授权参数
+./native/scripts/run-visual-review.ps1 -Candidate review -Direction B
+# 同一候选的小范围 A 试作；先正常退出 B 再执行
+./native/scripts/run-visual-review.ps1 -Candidate review -Direction A
+```
+
+只有显式 Test + diagnostics + VISUAL_TEST 入口提供材质实验室和合成会话状态展示。`visual-command.ps1` 是这个入口的有界测试控制协议：只接受页面、主题、布局、resize、search、material/motion、gallery 和 exit 等白名单操作；没有任意命令、游戏启动或正式资料操作。诊断文件不作为生产设置。
+
+启动脚本在创建子进程后恢复调用者环境。`-TestProfile empty`、`installations`、`readonly`分别是独立空库、两份非可执行文本安装与未来Session格式的raw兼容fixture；最后一种不经过authoritative Native store，也不启用材质实验室/命令timer。不要把这些变体作为正式profile或游戏启动验收。等待窗口初始化后再发送Test控制，初始化会忽略旧nonce。
+
+候选、合成素材和运行证据位于 `.artifacts/phase7-2a/`，不提交。直接双击 EXE 不等价于隔离审阅，请使用上述入口。完整视觉决策及验证边界见 [Phase 7.2A记录](docs/ai/PHASE7_2A_VISUAL_REVIEW.md)。下方 Phase 7.1 自检是历史记录，当前 memory MAJOR 尚未关闭。
+
 ## WinUI Phase 7.1：自检完成，等待 independent Gate
 
 Phase 6 独立 Gate 已为 **PASS FOR DAILY NATIVE USE / PHASE 7**（`.artifacts/native-phase6-2-independent-gate/gate-audit.json`，受测代码 `7a3a739a3a758216419e8d5c0273a74e8e15561c`）。此前宿主虚拟化阻断已由 host handoff 与独立证据接续；下方历史段落不代表当前 Production 状态。真实 Production 现在是用户 authoritative store，Phase 7 不读取/复制/压力测试该目录，不访问 Electron 资料或真实 credential。

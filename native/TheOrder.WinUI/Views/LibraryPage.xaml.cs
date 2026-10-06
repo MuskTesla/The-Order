@@ -41,6 +41,14 @@ public sealed partial class LibraryPage : Page, IImageHost
         Synchronize();
     }
     public Visibility Visible(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
+    internal void ApplyDirection(bool compact)
+    {
+        LibraryCanvas.Padding = compact ? new Thickness(24, 16, 24, 16) : new Thickness(32, 24, 32, 24);
+        LibraryCanvas.RowSpacing = 0;
+        ToolbarSurface.Padding = compact ? new Thickness(8, 8, 8, 8) : new Thickness(12);
+        ToolbarSurface.CornerRadius = new CornerRadius(compact ? 0 : 12);
+        ToolbarSurface.BorderThickness = compact ? new Thickness(0, 0, 0, 1) : new Thickness(1);
+    }
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         GameGrid.SelectedItems.Clear(); GameList.SelectedItems.Clear();
@@ -52,6 +60,7 @@ public sealed partial class LibraryPage : Page, IImageHost
     {
         if (e.PropertyName == nameof(WorkspaceViewModel.SelectionVersion)) { GameGrid.SelectedItems.Clear(); GameList.SelectedItems.Clear(); }
         if (e.PropertyName is nameof(WorkspaceViewModel.Items) or nameof(WorkspaceViewModel.Layout) or nameof(WorkspaceViewModel.Query)) Synchronize();
+        UpdateSelectionChrome();
     }
     private static string Value(ComboBox box, string fallback = "all") => (box.SelectedItem as ComboBoxItem)?.Tag as string ?? fallback;
     private static void Select(ComboBox box, string value) => box.SelectedItem = box.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (i.Tag as string ?? "") == value);
@@ -68,14 +77,85 @@ public sealed partial class LibraryPage : Page, IImageHost
         if (grid) { GameList.ItemsSource = null; if (!ReferenceEquals(GameGrid.ItemsSource, ViewModel.Items)) GameGrid.ItemsSource = ViewModel.Items; }
         else { GameGrid.ItemsSource = null; if (!ReferenceEquals(GameList.ItemsSource, ViewModel.Items)) GameList.ItemsSource = ViewModel.Items; }
         synchronizing = false;
+        UpdateBrowsingChrome();
+        UpdateSelectionChrome();
+    }
+    private void UpdateBrowsingChrome()
+    {
+        GridModeButton.IsChecked = ViewModel.Layout == "grid";
+        ListModeButton.IsChecked = ViewModel.Layout == "list";
+        var query = ViewModel.Query;
+        var filters = new List<string>();
+        if (query.View != "all") filters.Add((ViewChoice.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? query.View);
+        if (query.Status != "all") filters.Add(StatusNames.Display(query.Status));
+        if (query.Favorites) filters.Add("只看收藏");
+        if (!string.IsNullOrWhiteSpace(query.Category)) filters.Add("分类：" + query.Category);
+        if (!string.IsNullOrWhiteSpace(query.Tag)) filters.Add("标签：" + query.Tag);
+        if (!string.IsNullOrWhiteSpace(query.MinRating)) filters.Add((MinimumChoice.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? query.MinRating);
+        ActiveFilterText.Text = string.Join(" · ", filters);
+        ToolTipService.SetToolTip(ActiveFilterText, ActiveFilterText.Text);
+        ActiveFilterRegion.Visibility = Visible(filters.Count > 0);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(FilterButton, filters.Count == 0 ? "展开作品筛选" : $"展开作品筛选，当前 {filters.Count} 项条件");
+    }
+    private void OnItemSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSelectionChrome();
+    private void UpdateSelectionChrome()
+    {
+        if (SelectionCountText is null || GameGrid is null || GameList is null) return;
+        var count = Active.SelectedItems.Count;
+        SelectionCountText.Text = count == 0 ? "选择作品以查看详情或批量管理" : $"已选择 {count} 部作品";
+        OpenDetailsButton.IsEnabled = count > 0;
+        RecognizeSelectedButton.IsEnabled = count > 0;
+        BatchEditButton.IsEnabled = count > 0 && ViewModel.CanEdit;
+    }
+    private void OnLibrarySizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (ToolbarGrid is null || ToolbarControls is null || SelectionContext is null) return;
+        var available = Math.Max(0, e.NewSize.Width - LibraryCanvas.Padding.Left - LibraryCanvas.Padding.Right);
+        var stacked = available < 780;
+        ToolbarGrid.RowSpacing = stacked ? 10 : 0;
+        Grid.SetRow(ToolbarControls, stacked ? 1 : 0);
+        Grid.SetColumn(ToolbarControls, stacked ? 0 : 1);
+        Grid.SetColumnSpan(ToolbarControls, stacked ? 2 : 1);
+        ToolbarControls.HorizontalAlignment = HorizontalAlignment.Left;
+        var narrow = available < 520;
+        ToolbarControls.RowSpacing = narrow ? 8 : 0;
+        ToolbarControls.ColumnDefinitions[2].Width = new GridLength(narrow ? 0 : 88);
+        ToolbarControls.ColumnDefinitions[3].Width = new GridLength(narrow ? 0 : 78);
+        Grid.SetRow(LayoutControls, narrow ? 1 : 0);
+        Grid.SetColumn(LayoutControls, narrow ? 0 : 2);
+        Grid.SetRow(FilterButton, narrow ? 1 : 0);
+        Grid.SetColumn(FilterButton, narrow ? 1 : 3);
+        FilterButton.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+        var contextStacked = available < 680;
+        SelectionContext.RowSpacing = contextStacked ? 8 : 0;
+        Grid.SetRow(ContextActions, contextStacked ? 1 : 0);
+        Grid.SetColumn(ContextActions, contextStacked ? 0 : 1);
+        Grid.SetColumnSpan(ContextActions, contextStacked ? 2 : 1);
+        ContextActions.HorizontalAlignment = HorizontalAlignment.Left;
+        var compactActions = available < 430;
+        ContextActions.RowSpacing = compactActions ? 8 : 0;
+        Grid.SetRow(BatchEditButton, compactActions ? 1 : 0);
+        Grid.SetColumn(BatchEditButton, compactActions ? 0 : 2);
+        Grid.SetRow(ReloadButton, compactActions ? 1 : 0);
+        Grid.SetColumn(ReloadButton, compactActions ? 1 : 3);
+    }
+    private void OnListRowSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is not Grid row || row.ColumnDefinitions.Count != 5) return;
+        var rating = e.NewSize.Width >= 600;
+        var installations = e.NewSize.Width >= 740;
+        row.ColumnDefinitions[3].Width = new GridLength(rating ? 76 : 0);
+        row.ColumnDefinitions[4].Width = new GridLength(installations ? 80 : 0);
+        if (row.FindName("RowRating") is UIElement ratingElement) ratingElement.Visibility = Visible(rating);
+        if (row.FindName("RowInstallations") is UIElement installationElement) installationElement.Visibility = Visible(installations);
     }
     private Task ApplyQuery() => synchronizing ? Task.CompletedTask : ViewModel.SetQueryAsync(new(SearchBox.Text, Value(ViewChoice), Value(StatusChoice), FavoriteFilter.IsChecked == true,
         CategoryFilter.Text, TagFilter.Text, Value(MinimumChoice, ""), Value(SortChoice, "added")));
     private async void OnSearch(object sender, TextChangedEventArgs e) => await ApplyQuery();
     private async void OnFilter(object sender, SelectionChangedEventArgs e) => await ApplyQuery();
     private async void OnFavoriteFilter(object sender, RoutedEventArgs e) => await ApplyQuery();
-    private async void OnGrid(object sender, RoutedEventArgs e) => await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, "grid");
-    private async void OnList(object sender, RoutedEventArgs e) => await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, "list");
+    private async void OnGrid(object sender, RoutedEventArgs e) { await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, "grid"); UpdateBrowsingChrome(); }
+    private async void OnList(object sender, RoutedEventArgs e) { await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, "list"); UpdateBrowsingChrome(); }
     private async void OnReload(object sender, RoutedEventArgs e) { if (ResolveUnsaved is null || await ResolveUnsaved()) await ViewModel.ReloadAsync(); }
     private async Task OpenSelected() { if (Active.SelectedItem is GameSummary item && OpenDetails is not null) await OpenDetails(item.Id); }
     private async void OnOpen(object sender, RoutedEventArgs e) => await OpenSelected();
@@ -85,8 +165,9 @@ public sealed partial class LibraryPage : Page, IImageHost
     private async void OnSavedFilter(object sender, SelectionChangedEventArgs e) { if (SavedChoice.SelectedItem is SavedFilter saved) await ViewModel.SetQueryAsync(saved.Query); }
     private async void OnSaveFilter(object sender, RoutedEventArgs e)
     {
+        FilterFlyout.Hide();
         var name = new TextBox { Header = "名称", PlaceholderText = "例如：周末想玩的作品", MaxLength = 80 };
-        var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = "保存当前筛选", Content = name, PrimaryButtonText = "保存", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Primary };
+        var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = "保存当前筛选", Content = name, PrimaryButtonText = "保存", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Primary };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary) await ViewModel.SaveFilterAsync(name.Text);
     }
     private async void OnBatch(object sender, RoutedEventArgs e)
@@ -95,13 +176,13 @@ public sealed partial class LibraryPage : Page, IImageHost
         {
         var ids = Active.SelectedItems.Cast<GameSummary>().Select(i => i.Id).ToImmutableArray();
         if (ids.Length is < 1 or > 1000)
-        { await new ContentDialog { XamlRoot = XamlRoot, Title = "请选择作品", Content = "批量修改支持 1 至 1000 个条目。可使用卡片勾选框多选。", CloseButtonText = "知道了" }.ShowAsync(); return; }
+        { await new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = "请选择作品", Content = "批量修改支持 1 至 1000 个条目。可使用卡片勾选框多选。", CloseButtonText = "知道了" }.ShowAsync(); return; }
         var status = new ComboBox { Header = "游玩状态", ItemsSource = new[] { "保持不变", "未开始", "在玩", "已完成", "搁置", "放弃" }, SelectedIndex = 0 };
         var favorite = new ComboBox { Header = "收藏", ItemsSource = new[] { "保持不变", "收藏", "取消收藏" }, SelectedIndex = 0 };
         var categories = new TextBox { Header = "分类（逗号或换行分隔）" }; var tags = new TextBox { Header = "个人标签（逗号或换行分隔）" };
         var remove = new CheckBox { Content = "移除这些分类和标签（默认追加）" };
         var panel = new StackPanel { Spacing = 12 }; foreach (var element in new UIElement[] { status, favorite, categories, tags, remove }) panel.Children.Add(element);
-        var dialog = new ContentDialog { XamlRoot = XamlRoot, Title = $"批量修改 {ids.Length} 部作品", Content = panel, PrimaryButtonText = "保存一次修改", CloseButtonText = "取消" };
+        var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = $"批量修改 {ids.Length} 部作品", Content = panel, PrimaryButtonText = "保存一次修改", CloseButtonText = "取消" };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
              await ViewModel.ApplyBatchAsync(ids, PreferenceValidation.Statuses[status.SelectedIndex], new[] { "keep", "yes", "no" }[favorite.SelectedIndex], categories.Text, tags.Text, remove.IsChecked == true);
         }

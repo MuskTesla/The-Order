@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
         detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
         importPage = new(files, workspace) { ChooseFolder = PickFolder };
         installationsPage = new(files, workspace) { ChooseFolder = PickFolder, ChooseExecutable = () => PickFile(".exe") };
+        InitializeVisualSystem(configuration);
         workspace.ThemeChanged += ApplyTheme; workspace.PropertyChanged += OnState;
         ApplyTheme(); ShowPage();
         launchTimer.Tick += OnLaunchRefresh; launchTimer.Start();
@@ -102,6 +103,7 @@ public sealed partial class MainWindow : Window
         SessionTitle.Text = value.Title; SessionState.Text = Sessions.Error ?? (Sessions.Ready ? value.State : "正在恢复上次会话…");
         SessionDuration.Text = value.Duration + "  " + value.History;
         PauseTiming.IsEnabled = value.CanPause; ResumeTiming.IsEnabled = value.CanResume;
+        UpdateSessionChrome(value);
         App.Instance?.RefreshTray(value);
     }
     private void OnState(object? sender, PropertyChangedEventArgs e)
@@ -121,6 +123,7 @@ public sealed partial class MainWindow : Window
         Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : ViewModel.Page == WorkspacePage.Recognition ? RecognitionNavigation : LibraryNavigation;
         Navigation.IsBackEnabled = ViewModel.Page != WorkspacePage.Library;
         synchronizing = false;
+        AnimatePage();
     }
     private async Task Navigate(WorkspacePage page, string? id = null)
     {
@@ -133,12 +136,14 @@ public sealed partial class MainWindow : Window
     }
     private async void OnNavigationInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
+        if (args.InvokedItemContainer is NavigationViewItem { Tag: "visual-gallery" }) { ShowGallery(); return; }
+        if (args.InvokedItemContainer is NavigationViewItem { Tag: "visual-states" }) { ShowSessionStateFixtures(); return; }
         if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate((item.Tag as string) switch { "settings" => WorkspacePage.Settings, "online" => WorkspacePage.Online, "recognition" => WorkspacePage.Recognition, _ => WorkspacePage.Library });
     }
     private async void OnBack(NavigationView sender, NavigationViewBackRequestedEventArgs args) => await Navigate(WorkspacePage.Library);
     private async Task<UnsavedChoice> ChooseUnsaved()
     {
-        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = "保留尚未保存的修改？", Content = "离开前可以保存修改，或放弃草稿。", PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
+        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = "保留尚未保存的修改？", Content = "离开前可以保存修改，或放弃草稿。", PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
         return await dialog.ShowAsync() switch { ContentDialogResult.Primary => UnsavedChoice.Save, ContentDialogResult.Secondary => UnsavedChoice.Discard, _ => UnsavedChoice.Stay };
     }
     public async Task<bool> ResolveUnsavedAsync() => !navigating && await ResolveInstallationDraft() && await ViewModel.ResolveUnsavedAsync(ChooseUnsaved);
@@ -146,7 +151,7 @@ public sealed partial class MainWindow : Window
     {
         await files.WaitForMutationAsync();
         if (files.Draft is null) return true;
-        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = "保留安装草稿？", Content = "安装路径和参数尚未保存。", PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
+        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = "保留安装草稿？", Content = "安装路径和参数尚未保存。", PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
         var choice = await dialog.ShowAsync();
         if (choice == ContentDialogResult.Secondary) { files.CancelDraft(); return true; }
         if (choice == ContentDialogResult.Primary) { await files.SaveAsync(); return files.Draft is null; }
@@ -159,11 +164,16 @@ public sealed partial class MainWindow : Window
         foreach (var extension in extensions) picker.FileTypeFilter.Add(extension);
         return (await picker.PickSingleFileAsync())?.Path;
     }
-    private void ApplyTheme() => Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
+    private void ApplyTheme()
+    {
+        Root.RequestedTheme = ViewModel.Theme switch { NativeTheme.Light => ElementTheme.Light, NativeTheme.Dark => ElementTheme.Dark, _ => ElementTheme.Default };
+        ApplyMaterialPolicy();
+    }
     public void CancelOnlineRequests() => online.Leave();
     private void OnLaunchRefresh(object? sender, object e) { Launch.Refresh(); RefreshSession(); }
     public async ValueTask StopAsync()
     {
+        DisposeVisualSystem();
         onlineFixture?.ReleaseCandidate();
         launchTimer.Stop(); launchTimer.Tick -= OnLaunchRefresh;
         await Launch.DisposeAsync();
@@ -204,6 +214,7 @@ public sealed partial class MainWindow : Window
         var snapshot = new
         {
             schema = 1, timestamp = DateTimeOffset.UtcNow, processId = Environment.ProcessId,
+            visual = VisualEvidence(),
             launch = new { outcome = Launch.Runtime.Outcome.ToString(), tracking = Launch.Runtime.Tracking.ToString(), game = Launch.Runtime.Snapshot?.Game.GameId,
                 operation = Launch.Runtime.Snapshot?.OperationId, generation = Launch.Runtime.Snapshot?.Generation, initialPid = Launch.Runtime.Initial?.Pid,
                 currentPid = Launch.Runtime.Current?.Pid, creationTime = Launch.Runtime.Current?.CreationFileTime.ToString(System.Globalization.CultureInfo.InvariantCulture), created = Launch.Runtime.ProcessCreated,
@@ -221,7 +232,7 @@ public sealed partial class MainWindow : Window
             lifecycle = new { ready = Sessions.Ready, closing = Sessions.Closing, activations = Program.Activations, tray = App.Instance?.TrayAvailable, hidden = App.Instance?.WindowHidden },
             checkpoint = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion,
             itemCount = ViewModel.Items.Count, totalCount = ViewModel.TotalCount, viewMode = ViewModel.Layout,
-            theme = Root.ActualTheme.ToString(), readOnly = ViewModel.IsReadOnly, state, page = ViewModel.Page.ToString(),
+            theme = Root.ActualTheme.ToString(), readOnly = ViewModel.IsReadOnly, state, page = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
             viewport = libraryPage.RuntimeViewport(), workingSetBytes = process.WorkingSet64, privateBytes = process.PrivateMemorySize64,
             processCpuMs = process.TotalProcessorTime.TotalMilliseconds, processHandles = process.HandleCount,
             dirty = ViewModel.IsDirty, saving = ViewModel.IsSaving, detailsLoading = ViewModel.IsDetailsLoading,

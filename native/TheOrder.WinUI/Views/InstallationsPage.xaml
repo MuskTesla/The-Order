@@ -1,23 +1,29 @@
 <Page x:Class="TheOrder.WinUI.Views.InstallationsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:p="using:TheOrder.Presentation">
- <Grid Padding="28" RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <TextBlock Text="本地安装" Style="{StaticResource PageTitleStyle}"/>
-  <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.InstallationMessage, Mode=OneWay}" TextWrapping="Wrap" AutomationProperties.AutomationId="InstallationNotice"/>
-  <ScrollViewer Grid.Row="2"><StackPanel Spacing="14">
-   <ListView x:Name="InstallationList" ItemsSource="{x:Bind ViewModel.Installations.Rows, Mode=OneWay}" MaxHeight="230" SelectionMode="Single" AutomationProperties.AutomationId="Installations"><ListView.ItemTemplate><DataTemplate x:DataType="app:InstallationRow"><StackPanel Padding="8" Spacing="4"><TextBlock Text="{x:Bind Installation.Folder}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind StatusText}"/><TextBlock Text="{x:Bind Installation.Executable}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind PreferredText}"/></StackPanel></DataTemplate></ListView.ItemTemplate></ListView>
-   <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="添加安装" Click="OnAdd" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="编辑所选" Click="OnEdit" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="设为首选" Click="OnPrefer" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="移除安装关系" Click="OnRemove" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/></StackPanel>
-   <ContentControl HorizontalContentAlignment="Stretch" Visibility="{x:Bind Show(ViewModel.HasDraft), Mode=OneWay}" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"><StackPanel Spacing="10">
-    <TextBox Header="安装目录" Text="{x:Bind ViewModel.Draft.Folder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationFolder"/>
-    <Button Content="选择安装文件夹" Click="OnFolder"/>
-    <TextBox Header="启动程序（不启动）" Text="{x:Bind ViewModel.Draft.Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationExecutable"/>
-    <Button Content="选择 exe" Click="OnExecutable"/>
-    <TextBox Header="工作目录 · 留空沿用 exe 所在目录" Text="{x:Bind ViewModel.Draft.WorkingDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationWorkingDirectory"/>
-    <Button Content="选择工作目录" Click="OnWorking"/>
-    <TextBlock Text="启动参数 · 每个输入框是一项参数，空格无需额外引号" TextWrapping="Wrap"/>
-    <ItemsControl ItemsSource="{x:Bind ViewModel.Draft.Arguments, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="p:ArgumentDraft"><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="8192"/><Button Grid.Column="1" Content="移除此参数" Tag="{x:Bind}" Click="OnRemoveArgument"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-    <Button Content="添加参数" Click="OnArgument"/>
-    <CheckBox Content="设为首选安装" IsChecked="{x:Bind ViewModel.Draft.Preferred, Mode=TwoWay}"/>
-    <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="保存安装" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation"/><Button Content="取消草稿" Click="OnCancel"/></StackPanel>
-   </StackPanel></ContentControl>
+  <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.InstallationMessage, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="InstallationNotice" AutomationProperties.LiveSetting="Polite"/>
+  <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"><StackPanel Spacing="24" MaxWidth="1040" HorizontalAlignment="Stretch">
+   <Border Style="{StaticResource SurfaceStyle}" Padding="24"><StackPanel Spacing="16">
+    <TextBlock Text="已关联的安装" Style="{StaticResource SectionTitleStyle}"/>
+    <ListView x:Name="InstallationList" ItemsSource="{x:Bind ViewModel.Installations.Rows, Mode=OneWay}" MaxHeight="230" SelectionMode="Single" AutomationProperties.AutomationId="Installations" AutomationProperties.Name="当前作品的本地安装"><ListView.ItemTemplate><DataTemplate x:DataType="app:InstallationRow"><StackPanel Padding="12" Spacing="8"><TextBlock Text="{x:Bind Installation.Folder}" Style="{StaticResource CardTitleStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind StatusText}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Installation.Executable}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind PreferredText}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListView.ItemTemplate></ListView>
+    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="152" ItemHeight="44" MaximumRowsOrColumns="4"><Button Content="添加安装" Click="OnAdd" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="编辑所选" Click="OnEdit" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="设为首选" Click="OnPrefer" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="移除安装关系" Click="OnRemove" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/></VariableSizedWrapGrid>
+   </StackPanel></Border>
+   <ContentControl HorizontalContentAlignment="Stretch" Visibility="{x:Bind Show(ViewModel.HasDraft), Mode=OneWay}" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}">
+    <Border Style="{StaticResource SurfaceStyle}" Padding="24"><StackPanel Spacing="16">
+     <TextBlock Text="安装资料" Style="{StaticResource SectionTitleStyle}"/>
+     <TextBox Header="安装目录" Text="{x:Bind ViewModel.Draft.Folder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationFolder" AutomationProperties.Name="安装目录"/>
+     <Button Content="选择安装文件夹" Click="OnFolder"/>
+     <TextBox Header="启动程序（不启动）" Text="{x:Bind ViewModel.Draft.Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationExecutable" AutomationProperties.Name="安装的启动程序路径"/>
+     <Button Content="选择 exe" Click="OnExecutable"/>
+     <TextBox Header="工作目录 · 留空沿用 exe 所在目录" Text="{x:Bind ViewModel.Draft.WorkingDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationWorkingDirectory" AutomationProperties.Name="启动工作目录，可留空"/>
+     <Button Content="选择工作目录" Click="OnWorking"/>
+     <TextBlock Text="启动参数 · 每个输入框是一项参数，空格无需额外引号" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+     <ItemsControl ItemsSource="{x:Bind ViewModel.Draft.Arguments, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="p:ArgumentDraft"><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="8192" AutomationProperties.Name="单项启动参数"/><Button Grid.Column="1" Content="移除此参数" Tag="{x:Bind}" Click="OnRemoveArgument"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+     <Button Content="添加参数" Click="OnArgument"/>
+     <CheckBox Content="设为首选安装" IsChecked="{x:Bind ViewModel.Draft.Preferred, Mode=TwoWay}"/>
+     <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="保存安装" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation"/><Button Content="取消草稿" Click="OnCancel"/></StackPanel>
+    </StackPanel></Border>
+   </ContentControl>
   </StackPanel></ScrollViewer>
  </Grid>
 </Page>

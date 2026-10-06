@@ -15,7 +15,18 @@ public partial class App : Microsoft.UI.Xaml.Application
     private bool exiting, allowClose;
     public bool TrayAvailable => tray?.Available == true;
     public bool WindowHidden => windowLifetime.Hidden;
-    public App() { Instance = this; InitializeComponent(); }
+    public App()
+    {
+        Instance = this;
+        if (Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") == "1" && Program.Profile?.Manifest.ProfileKind == TheOrder.Application.NativeProfileKind.Test)
+            UnhandledException += (_, error) => TraceVisualFailure(error.Exception);
+        InitializeComponent();
+    }
+    private static void TraceVisualFailure(Exception exception)
+    {
+        if (Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") != "1" || Program.Profile?.Manifest.ProfileKind != TheOrder.Application.NativeProfileKind.Test) return;
+        try { if (Program.Profile.Configuration(false).DataDirectory is { } directory) File.WriteAllText(Path.Combine(directory, "visual-fatal.txt"), exception.ToString()); } catch { }
+    }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         host = Composition.Create();
@@ -26,7 +37,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             close.Cancel = true;
             if (exiting) return;
             windowLifetime.TrayAvailable = TrayAvailable;
-            if (windowLifetime.CloseToTray()) { host.Window.AppWindow.Hide(); _ = CheckpointHiddenAsync(); }
+            if (windowLifetime.CloseToTray()) { host.Window.SetVisualWindowVisible(false); host.Window.AppWindow.Hide(); _ = CheckpointHiddenAsync(); }
             else host.Window.ShowLifecycleError(windowLifetime.Error!);
         };
         host.Window.Closed += (_, _) => { tray?.Dispose(); tray = null; host = null; Instance = null; };
@@ -52,7 +63,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         window?.DispatcherQueue.TryEnqueue(() =>
         {
             if (host is null || allowClose) return;
-            windowLifetime.Show(); window.AppWindow.Show();
+            windowLifetime.Show(); window.AppWindow.Show(); window.SetVisualWindowVisible(true);
             if (window.AppWindow.Presenter is OverlappedPresenter presenter && presenter.State == OverlappedPresenterState.Minimized) presenter.Restore();
             window.Activate();
         });

@@ -31,6 +31,11 @@ public sealed partial class DetailsPage : Page, IImageHost
     private async void OnLaunchInstallation(object sender, SelectionChangedEventArgs e)
     { try { if (LaunchInstallation.SelectedItem is LaunchInstallationItem item) await Launch.SelectAsync(item.Id); } catch { ViewModel.ReportUnexpected(); } }
     private void OnCancelLaunch(object sender, RoutedEventArgs e) => Launch.Cancel();
+    private void OnDetailsSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Reflow the existing controls; drafts, launch state and image ownership stay in place.
+        VisualStateManager.GoToState(this, e.NewSize.Width < 720 ? "DetailsNarrow" : "DetailsWide", false);
+    }
     public string DirtyText(bool dirty) => dirty ? "有尚未保存的修改" : "当前资料已保存";
     private async void OnSave(object sender, RoutedEventArgs e) => await ViewModel.SaveAsync();
     private async void OnCancel(object sender, RoutedEventArgs e)
