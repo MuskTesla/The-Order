@@ -99,7 +99,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         EventSubscriptionCount = (effectsSubscribed ? 1 : 0) + (animationsSubscribed ? 1 : 0) +
             (contrastSubscribed ? 1 : 0) + (capabilitySubscribed ? 1 : 0),
         CleanupFailures = cleanupFailures,
-        OwnedDeviceCount = 0,
+        OwnedDeviceCount = optical is null ? 0 : 1,
+        Optical = OpticalEvidence,
         XamlPatternElementCount = PatternLayer.Children.Count,
         TimerCount = 0,
         PerpetualAnimationCount = 0,
@@ -108,21 +109,22 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         SystemMotionAllowed = systemMotionAllowed,
         AllocationCycles = allocationCycles,
         PatternPosition = patternPosition,
-        AdvancedActive = lens is not null,
+        AdvancedActive = MaterialActive,
         Failure = failure,
         FailurePhase = failurePhase,
         FailureHResult = failureHResult,
         NotificationWarnings = notificationWarnings.Values.ToArray(),
         NotificationRoute = "Available events and existing owner policy refresh; no new timer",
-        Source = "live app-internal CompositionVisualSurface",
-        Model = "affine RGB dispersion approximation; radial corners; quiet 1:1 center; one opaque source",
+        Source = UsesOptical ? "Gallery-only high-resolution snapshot and finite shader translation" : "live app-internal CompositionVisualSurface",
+        Model = UsesOptical ? "bounded per-pixel curved bevel; one sample per channel; no blur" : "affine RGB dispersion approximation; radial corners; quiet 1:1 center; one opaque source",
         Comparison = ComparisonMode.SelectedIndex, Background = BackgroundMode.SelectedIndex,
         Optics = new { CurrentOptics.Refraction, CurrentOptics.Dispersion, CurrentOptics.EdgeWidth, CurrentOptics.Highlight },
         PendingGalleryCovers = pendingCovers.Count, GalleryCoverFailures = coverFailures,
-        GalleryCoverImages = coverImages.Count, AdditionalCaptureCount = 0,
+        GalleryCoverImages = coverImages.Count, AdditionalCaptureCount = snapshotCount,
+        Direct3DTextureCount = optical?.Ready == true ? 3 : 0,
         Geometry = GeometryEvidence(),
-        Requested = advancedAllowed, Actual = lens is null ? "Solid" : "Advanced",
-        FallbackReason = lens is not null ? null : failure ?? (!loaded ? "Unloaded" : !ownerAllowed ? "OwnerPolicyOrHidden" : !advancedAllowed ? "Disabled" : testPolicy != "normal" ? testPolicy : "CapabilityUnavailable"),
+        Requested = advancedAllowed, Actual = MaterialActive ? "Advanced" : "Solid",
+        FallbackReason = MaterialActive ? null : failure ?? (!loaded ? "Unloaded" : !ownerAllowed ? "OwnerPolicyOrHidden" : !advancedAllowed ? "Disabled" : testPolicy != "normal" ? testPolicy : "CapabilityUnavailable"),
         UpdateCount = updatesReleased + (lens?.UpdateCount ?? 0), SourceUpdateCount = sourceUpdates,
         RetainedFailedResources = failedRelease?.RemainingResources ?? 0,
         PendingCallbackCount = refreshQueued ? 1 : 0, TestPolicy = testPolicy, Interaction = interaction
@@ -161,6 +163,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     {
         if (disposed || !initialized) return;
         patternPosition = Math.Clamp(position, 0, 100); sourceUpdates++;
+        StopOpticalMotion();
         try
         {
             var visual = ElementCompositionPreview.GetElementVisual(PatternLayer);
@@ -168,6 +171,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             finiteMotionUntil = 0;
             visual.Offset = new Vector3((float)(-patternPosition * 1.2), (float)(-patternPosition * .16), 0);
             SyncPatternSlider();
+            DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
         }
         catch (Exception e) { SetCompositionFailure(e, "motion.stepPattern"); }
         UpdateState();
@@ -176,9 +180,26 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private void BuildPattern()
     {
         ClearCoverImages(); PatternLayer.Children.Clear();
+        PatternLayer.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, 1300, 660) };
         appliedBackgroundMode = BackgroundMode.SelectedIndex;
+        snapshotGeneration++; snapshotDirty = true;
+        StopOpticalMotion(); OpticalPanel.Visibility = Visibility.Collapsed;
         PatternSource.Background = new SolidColorBrush(appliedBackgroundMode == 4 ? Color.FromArgb(255, 31, 36, 43) : Color.FromArgb(255, 237, 239, 240));
+        PatternLayer.Background = PatternSource.Background;
         if (appliedBackgroundMode is 3 or 4) return;
+        if (appliedBackgroundMode is 6 or 7)
+        {
+            var reference = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE");
+            if (string.IsNullOrEmpty(reference) || !Path.GetFullPath(reference).Contains(Path.DirectorySeparatorChar + ".artifacts" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Explicit isolated artwork directory required");
+            var file = Path.Combine(Path.GetDirectoryName(reference)!, appliedBackgroundMode == 6 ? "steam-1230140.jpg" : "steam-1094820.jpg");
+            if (!File.Exists(file)) throw new InvalidDataException("Test artwork missing");
+            var image = new Image { Width = 1300, Height = 1950, Stretch = Stretch.Fill };
+            image.ImageOpened += OnCoverOpened; image.ImageFailed += OnCoverFailed;
+            coverImages.Add(image); pendingCovers.Add(image); image.Source = new BitmapImage(new Uri(file));
+            Canvas.SetLeft(image, 0); Canvas.SetTop(image, -430); PatternLayer.Children.Add(image);
+            return;
+        }
         if (appliedBackgroundMode == 5)
         {
             var path = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE");
@@ -244,8 +265,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         }
     }
 
-    private void OnCoverOpened(object sender, RoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); }
-    private void OnCoverFailed(object sender, ExceptionRoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); coverFailures++; }
+    private void OnCoverOpened(object sender, RoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); CaptureOpticalSource(); }
+    private void OnCoverFailed(object sender, ExceptionRoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); coverFailures++; SetCompositionFailure(new InvalidDataException("Gallery image decode failed"), "gallery.imageDecode"); UpdateState(); }
     private void ClearCoverImages() { foreach (var image in coverImages) { image.ImageOpened -= OnCoverOpened; image.ImageFailed -= OnCoverFailed; image.Source = null; } coverImages.Clear(); pendingCovers.Clear(); }
 
     private void AddBlock(double x, double y, double width, double height, Color color)
@@ -387,6 +408,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private void RefreshMaterial()
     {
         if (!initialized || disposed) return;
+        StrengthSlider.IsEnabled = DispersionSlider.IsEnabled = EdgeSlider.IsEnabled = HighlightSlider.IsEnabled = !UsesOptical;
+        DispersionSwitch.IsEnabled = UsesOptical;
         if (loaded && ownerAllowed && advancedAllowed && failure is null && testPolicy == "normal")
         {
             AttachSettings();
@@ -410,6 +433,12 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         }
         try
         {
+            if (UsesOptical)
+            {
+                UpdateOptical(); SetStablePalette(true); LensHighlight.Visibility = Visibility.Collapsed;
+                UpdateState(); return;
+            }
+            if (optical is not null) ReleaseOptical();
             if (lens is null)
             {
                 lens = new RefractionLens(PatternSource, LensHost, failInitialization);
@@ -417,6 +446,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             }
             lens.Update(CurrentOptics);
             LensHighlight.Opacity = CurrentOptics.Highlight;
+            LensHighlight.Visibility = Visibility.Visible;
             SetStablePalette(true);
         }
         catch (Exception e)
@@ -469,6 +499,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
 
     private void ReleaseMaterial()
     {
+        ReleaseOptical();
         try { ElementCompositionPreview.GetElementVisual(PatternLayer).StopAnimation("Offset"); } catch (Exception) { }
         finiteMotionUntil = 0;
         if (lens is not null) { updatesReleased += lens.UpdateCount; lens.Dispose(); cleanupFailures += lens.CleanupFailures; if (lens.RemainingResources != 0) { failedRelease = lens; failure = "NativeReleaseFailed"; } lens = null; }
@@ -493,6 +524,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private void StopFiniteMotion(bool restoreStart)
     {
         var active = finiteMotionUntil > Stopwatch.GetTimestamp();
+        StopOpticalMotion();
         var visual = ElementCompositionPreview.GetElementVisual(PatternLayer);
         visual.StopAnimation("Offset");
         finiteMotionUntil = 0;
@@ -503,6 +535,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             visual.Offset = finiteMotionStart;
             patternPosition = finiteMotionStartPosition;
             SyncPatternSlider();
+            DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
         }
     }
 
@@ -512,12 +545,13 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         try
         {
             var settings = ReadSettings();
-            if (failure is not null && lens is not null) { ReleaseMaterial(); SetStablePalette(false); }
+            if (failure is not null && MaterialActive) { ReleaseMaterial(); SetStablePalette(false); }
             var caption = "安静中心 · 透明圆角边缘";
             if (StableCaption.Text != caption) StableCaption.Text = caption;
             var state = lens is null
                 ? $"稳定实色降级 · 原型资源 0 · {failure ?? (settings.HighContrast == true ? "高对比度" : settings.AdvancedEffects == false ? "系统已关闭透明效果" : "原型未启用") }"
                 : $"{(CurrentOptics.Dispersion > 0 ? "折射＋RGB 色散近似" : "仅折射")} · 一个实时背景源 · 推荐色散 0.75／诊断 2 · 背景位置 {patternPosition:0}";
+            if (optical is not null) state = $"{(ComparisonMode.SelectedIndex == 3 ? "候选 1 · 圆润厚玻璃" : "候选 2 · 日常玻璃")} · 曲面采样 · {(dispersionEnabled ? "色散开" : "色散关")} · Gallery 快照背景 · {(snapshotBusy ? "更新中" : "静止时不绘制")}";
             if (MaterialState.Text != state) MaterialState.Text = state;
         }
         catch (Exception exception) { RecordFailure("presentation.state", exception); ReleaseMaterial(); }
@@ -551,11 +585,17 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             case "a": ComparisonMode.SelectedIndex = 0; break;
             case "b": ComparisonMode.SelectedIndex = 1; break;
             case "c": ComparisonMode.SelectedIndex = 2; break;
+            case "candidate1": ComparisonMode.SelectedIndex = 3; break;
+            case "candidate2": ComparisonMode.SelectedIndex = 4; break;
+            case "dispersionOff": DispersionSwitch.IsOn = false; break;
+            case "dispersionOn": DispersionSwitch.IsOn = true; break;
             case "recommended": OnRecommended(this, new RoutedEventArgs()); break;
             case "diagnostic": DispersionSlider.Value = 2; break;
             case "text": BackgroundMode.SelectedIndex = 0; break;
             case "grid": BackgroundMode.SelectedIndex = 1; break;
             case "covers": BackgroundMode.SelectedIndex = 2; break;
+            case "artLight": BackgroundMode.SelectedIndex = 6; break;
+            case "artDark": BackgroundMode.SelectedIndex = 7; break;
             case "reference": BackgroundMode.SelectedIndex = 5; break;
             case "slowMotion": PlayPatternMotion(3); break;
             case "fastMotion": PlayPatternMotion(.75); break;
@@ -575,7 +615,13 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         RefreshMaterial();
     }
     private void OnReviewChanged(object sender, SelectionChangedEventArgs e) { if (initialized && !syncingReview) RefreshMaterial(); }
-    private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e) { if (!initialized || syncingReview || appliedBackgroundMode == BackgroundMode.SelectedIndex) return; BuildPattern(); StepPattern(0); RefreshMaterial(); }
+    private void OnDispersionChanged(object sender, RoutedEventArgs e) { dispersionEnabled = DispersionSwitch.IsOn; if (initialized) RefreshMaterial(); }
+    private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!initialized || syncingReview || appliedBackgroundMode == BackgroundMode.SelectedIndex) return;
+        try { BuildPattern(); StepPattern(0); RefreshMaterial(); }
+        catch (Exception exception) { SetCompositionFailure(exception, "gallery.background"); UpdateState(); }
+    }
     private void OnRecommended(object sender, RoutedEventArgs e)
     {
         if (!initialized) return; syncingReview = true;
@@ -621,6 +667,11 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         }
         try
         {
+            if (UsesOptical && optical?.Ready == true)
+            {
+                finiteMotionStartPosition = patternPosition;
+                StartOpticalMotion(seconds); UpdateState(); return;
+            }
             var visual = ElementCompositionPreview.GetElementVisual(PatternLayer);
             var startOffset = visual.Offset;
             finiteMotionStart = startOffset;
@@ -629,9 +680,10 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             SyncPatternSlider();
             visual.StopAnimation("Offset");
             using var animation = visual.Compositor.CreateVector3KeyFrameAnimation();
+            using var easing = visual.Compositor.CreateLinearEasingFunction();
             animation.InsertKeyFrame(0, startOffset);
-            animation.InsertKeyFrame(.5f, new Vector3(-120, -16, 0));
-            animation.InsertKeyFrame(1, Vector3.Zero);
+            animation.InsertKeyFrame(.5f, new Vector3(-120, -16, 0), easing);
+            animation.InsertKeyFrame(1, Vector3.Zero, easing);
             animation.Duration = TimeSpan.FromSeconds(seconds);
             animation.IterationBehavior = AnimationIterationBehavior.Count;
             animation.IterationCount = 1;
@@ -655,6 +707,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         DetachCapabilities();
         ReleaseMaterial();
         failedRelease?.Dispose();
+        failedOpticalRelease?.Dispose();
         ClearCoverImages();
     }
 }

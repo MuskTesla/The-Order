@@ -56,4 +56,13 @@
   <Target Name="PublishMaterialEffectMetadata" AfterTargets="ComputeFilesToPublish">
     <ItemGroup><ResolvedFileToPublish Include="$(IntermediateOutputPath)material-native/TheOrder.MaterialEffects.dll"><RelativePath>TheOrder.MaterialEffects.dll</RelativePath><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></ResolvedFileToPublish></ItemGroup>
   </Target>
+  <Target Name="BuildOpticalMaterial" BeforeTargets="CoreCompile">
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../scripts/build-optical-material.ps1&quot; -Source &quot;$(MSBuildProjectDirectory)/Materials/Native/OpticalRenderer.cpp&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)/$(IntermediateOutputPath)material-native&quot; -Packages &quot;$(NuGetPackageRoot).&quot;" />
+  </Target>
+  <Target Name="CopyOpticalMaterial" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)material-native/TheOrder.OpticalMaterial.dll" DestinationFolder="$(TargetDir)" />
+  </Target>
+  <Target Name="PublishOpticalMaterial" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup><ResolvedFileToPublish Include="$(IntermediateOutputPath)material-native/TheOrder.OpticalMaterial.dll"><RelativePath>TheOrder.OpticalMaterial.dll</RelativePath><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></ResolvedFileToPublish></ItemGroup>
+  </Target>
 </Project>

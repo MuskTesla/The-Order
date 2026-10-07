@@ -7,13 +7,16 @@
    <StackPanel Spacing="6">
     <TextBlock Text="材质实验室" Style="{StaticResource PageTitleStyle}"/>
     <TextBlock Text="安静中心 · 圆润边缘 · 背景驱动色散" Style="{StaticResource SectionTitleStyle}"/>
-    <TextBlock Text="比较仅折射与 RGB 色散近似。文字与图标独立于采样；不使用系统 Accent 染色。" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
+    <TextBlock Text="同场景比较原材质与两种曲面采样候选。前景独立；高级材质仅限 Test。" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
    </StackPanel>
    <Border Style="{StaticResource SurfaceStyle}" Padding="0" CornerRadius="20">
     <Grid x:Name="Stage" Height="280" SizeChanged="OnStageSizeChanged">
      <Grid x:Name="PatternSource" Background="#FFE8EDF0">
-      <Canvas x:Name="PatternLayer" Width="1300" Height="660" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+      <Grid x:Name="PatternCapture" Width="1300" Height="660" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid.Clip><RectangleGeometry Rect="0,0,1300,660"/></Grid.Clip>
+       <Canvas x:Name="PatternLayer" Width="1300" Height="660" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+      </Grid>
      </Grid>
+     <SwapChainPanel x:Name="OpticalPanel" IsHitTestVisible="False" Visibility="Collapsed"/>
      <Border x:Name="LensFrame" Width="320" Height="180" CornerRadius="24" PointerEntered="OnLensHover" PointerExited="OnLensExit" PointerPressed="OnLensPress" PointerReleased="OnLensRelease" BorderThickness="1" BorderBrush="{ThemeResource StrokeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
       <Grid>
        <Grid x:Name="LensHost" IsHitTestVisible="False"/>
@@ -37,9 +40,9 @@
    <Border Style="{StaticResource ToolbarSurfaceStyle}">
     <StackPanel Spacing="14">
      <StackPanel x:Name="ReviewModes" Orientation="Horizontal" Spacing="12">
-      <ComboBox x:Name="ComparisonMode" Header="同场景对照" SelectedIndex="2" SelectionChanged="OnReviewChanged" AutomationProperties.AutomationId="GalleryComparison" MinWidth="190"><ComboBoxItem Content="A · 稳定材质"/><ComboBoxItem Content="B · 仅折射"/><ComboBoxItem Content="C · 折射＋色散"/></ComboBox>
-      <ComboBox x:Name="BackgroundMode" Header="背景来源" SelectedIndex="0" SelectionChanged="OnBackgroundChanged" AutomationProperties.AutomationId="GalleryBackground" MinWidth="190"><ComboBoxItem Content="黑白文字与线条"/><ComboBoxItem Content="细网格"/><ComboBoxItem Content="实际 Test 封面图片"/><ComboBoxItem Content="平滑浅色"/><ComboBoxItem Content="平滑深色"/><ComboBoxItem Content="用户参考图 · 封面区域"/></ComboBox>
-      <Button Content="推荐参数" Click="OnRecommended" VerticalAlignment="Bottom" AutomationProperties.AutomationId="GalleryRecommended"/>
+      <ComboBox x:Name="ComparisonMode" Header="同场景对照" SelectedIndex="2" SelectionChanged="OnReviewChanged" AutomationProperties.AutomationId="GalleryComparison" MinWidth="190"><ComboBoxItem Content="A · 稳定材质"/><ComboBoxItem Content="B · 仅折射"/><ComboBoxItem Content="Baseline · 原色散"/><ComboBoxItem Content="候选 1 · 圆润厚玻璃"/><ComboBoxItem Content="候选 2 · 日常玻璃"/></ComboBox>
+      <ComboBox x:Name="BackgroundMode" Header="背景来源" SelectedIndex="0" SelectionChanged="OnBackgroundChanged" AutomationProperties.AutomationId="GalleryBackground" MinWidth="190"><ComboBoxItem Content="黑白文字与线条"/><ComboBoxItem Content="细网格"/><ComboBoxItem Content="实际 Test 封面图片"/><ComboBoxItem Content="平滑浅色"/><ComboBoxItem Content="平滑深色"/><ComboBoxItem Content="用户参考图 · 封面区域"/><ComboBoxItem Content="ATRI · 明亮封面"/><ComboBoxItem Content="徒花异谭 · 深色封面"/></ComboBox>
+      <ToggleSwitch x:Name="DispersionSwitch" Header="候选色散" IsOn="True" Toggled="OnDispersionChanged" AutomationProperties.AutomationId="GalleryDispersion"/><Button Content="推荐参数" Click="OnRecommended" VerticalAlignment="Bottom" AutomationProperties.AutomationId="GalleryRecommended"/>
      </StackPanel>
      <StackPanel x:Name="ControlActions" Orientation="Horizontal" Spacing="12">
       <ToggleSwitch x:Name="AdvancedSwitch" Header="高级材质 · Test" IsOn="False" Toggled="OnAdvancedToggled" AutomationProperties.Name="启用实时内部背景折射原型"/>
@@ -57,7 +60,7 @@
     </StackPanel>
    </Border>
    <TextBlock x:Name="MaterialState" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="GalleryMaterialState"/>
-   <TextBlock Text="一份实时内部背景，三通道差异采样与连续圆角遮罩。属于色散近似，不是物理精确光谱或 iOS 原生实现；不采样桌面。Test 封面为已有合成素材，非正式用户库。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+   <TextBlock Text="Baseline 使用内部 Composition 背景；新候选使用本页背景的原分辨率快照及有限移动，不代表书架实时采样。公开 Direct3D 曲面近似，不是 Apple 私有算法。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>
 </UserControl>
