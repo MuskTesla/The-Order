@@ -16,6 +16,7 @@
     <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />
     <None Include="../fixtures/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
       <Compile Include="../TheOrder.WinUI/Materials/MaterialResources.cs" Link="Materials/MaterialResources.cs" />
+    <Compile Include="../TheOrder.WinUI/Materials/LensOptics.cs" Link="Materials/LensOptics.cs" />
     <None Include="../TheOrder.WinUI/Resources/DesignTokens.xaml" Link="material-fixtures/DesignTokens.xaml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../TheOrder.WinUI/Views/DetailsPage.xaml" Link="material-fixtures/DetailsPage.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -47,4 +47,13 @@
       </ResolvedFileToPublish>
     </ItemGroup>
   </Target>
+  <Target Name="BuildMaterialEffectMetadata" BeforeTargets="CoreCompile">
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../scripts/build-material-effects.ps1&quot; -Source &quot;$(MSBuildProjectDirectory)/Materials/Native/ChannelEffects.cpp&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)/$(IntermediateOutputPath)material-native&quot;" />
+  </Target>
+  <Target Name="CopyMaterialEffectMetadata" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)material-native/TheOrder.MaterialEffects.dll" DestinationFolder="$(TargetDir)" />
+  </Target>
+  <Target Name="PublishMaterialEffectMetadata" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup><ResolvedFileToPublish Include="$(IntermediateOutputPath)material-native/TheOrder.MaterialEffects.dll"><RelativePath>TheOrder.MaterialEffects.dll</RelativePath><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></ResolvedFileToPublish></ItemGroup>
+  </Target>
 </Project>

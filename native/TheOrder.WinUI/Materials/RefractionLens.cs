@@ -7,27 +7,30 @@ using Windows.UI;
 
 namespace TheOrder.WinUI.Materials;
 
-// Test-only continuous alpha transition between two live affine samples.
-// Quiet 1:1 center, magnified edge, one rounded perimeter. Cross-fade can soften
-// fine lines; this is an approximation, not a displacement shader. Source trees
-// exclude the output and stable foreground. No timer or capture loop.
+// Test-only affine RGB dispersion approximation over ONE opaque live source.
+// Continuous edge opacity: four straight sections + four radial corner sections.
+// Center is 1:1, foreground excluded. No device, timer, second capture or shader loop.
 internal sealed class RefractionLens : IDisposable
 {
     private readonly FrameworkElement source, host;
     private readonly MaterialResources resources = new();
     private CompositionVisualSurface? surface, maskSurface;
     private ContainerVisual? root, maskRoot;
-    private CompositionSurfaceBrush? centerBrush, edgeBrush;
+    private CompositionSurfaceBrush? centerBrush, redBrush, greenBrush, blueBrush;
+    private CompositionMaskBrush? masked;
+    private CompositionEffectBrush? dispersed;
     private CompositionRoundedRectangleGeometry? perimeter;
     private readonly List<SpriteVisual> maskVisuals = [];
+    private readonly List<CompositionGradientBrush> gradients = [];
     private bool disposed;
-    private (float W, float H, float SW, float SH, float X, float Y, float Strength)? last;
+    private (float W, float H, float SW, float SH, float X, float Y, LensOptics Optics)? last;
     internal long UpdateCount { get; private set; }
     internal int CleanupFailures => resources.CleanupFailures;
     internal int RemainingResources => resources.Remaining;
     internal int SurfaceCount => disposed ? 0 : 2;
-    internal int BrushCount => disposed ? 0 : 8;
-    internal int VisualCount => disposed ? 0 : 8;
+    internal int BrushCount => disposed ? 0 : 15;
+    internal int VisualCount => disposed ? 0 : 12;
+    internal int EffectFactoryCount => disposed ? 0 : 1;
     internal int ClipCount => disposed ? 0 : 1;
     internal int GeometryCount => disposed ? 0 : 1;
 
@@ -41,66 +44,94 @@ internal sealed class RefractionLens : IDisposable
             surface.SourceVisual = ElementCompositionPreview.GetElementVisual(source);
             if (failAfterSource) throw new InvalidOperationException("Test partial material initialization failure");
             maskRoot = resources.Own(c.CreateContainerVisual());
-            for (var i = 0; i < 4; i++)
+            for (var i = 0; i < 8; i++)
             {
-                var gradient = resources.Own(c.CreateLinearGradientBrush());
-                gradient.StartPoint = Vector2.Zero;
-                gradient.EndPoint = i < 2 ? Vector2.UnitX : Vector2.UnitY;
-                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(0, Color.FromArgb(255, 255, 255, 255))));
-                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(.12f, Color.FromArgb(255, 255, 255, 255))));
-                gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(1, Color.FromArgb(0, 255, 255, 255))));
-                if (i is 1 or 3) (gradient.StartPoint, gradient.EndPoint) = (gradient.EndPoint, gradient.StartPoint);
+                CompositionGradientBrush gradient;
+                if (i < 4)
+                {
+                    var linear = resources.Own(c.CreateLinearGradientBrush());
+                    linear.StartPoint = Vector2.Zero; linear.EndPoint = i < 2 ? Vector2.UnitX : Vector2.UnitY;
+                    if (i is 1 or 3) (linear.StartPoint, linear.EndPoint) = (linear.EndPoint, linear.StartPoint);
+                    gradient = linear;
+                }
+                else
+                {
+                    var radial = resources.Own(c.CreateRadialGradientBrush());
+                    radial.EllipseCenter = i == 4 ? new(1, 1) : i == 5 ? new(0, 1) : i == 6 ? new(1, 0) : Vector2.Zero;
+                    radial.GradientOriginOffset = Vector2.Zero; radial.EllipseRadius = Vector2.One;
+                    gradient = radial;
+                }
+                for (var j = 0; j <= 6; j++)
+                    gradient.ColorStops.Add(resources.Own(c.CreateColorGradientStop(j / 6f,
+                        Color.FromArgb((byte)Math.Round(255 * LensOptics.EdgeOpacity(i < 4 ? j / 6f : 1 - j / 6f)), 255, 255, 255))));
+                gradients.Add(gradient);
                 var v = resources.Own(c.CreateSpriteVisual()); v.Brush = gradient;
                 maskVisuals.Add(v); maskRoot.Children.InsertAtTop(v);
             }
             maskSurface = resources.Own(c.CreateVisualSurface()); maskSurface.SourceVisual = maskRoot;
             centerBrush = resources.Own(c.CreateSurfaceBrush(surface));
-            edgeBrush = resources.Own(c.CreateSurfaceBrush(surface));
-            foreach (var brush in new[] { centerBrush, edgeBrush })
+            redBrush = resources.Own(c.CreateSurfaceBrush(surface));
+            greenBrush = resources.Own(c.CreateSurfaceBrush(surface));
+            blueBrush = resources.Own(c.CreateSurfaceBrush(surface));
+            foreach (var brush in new[] { centerBrush, redBrush, greenBrush, blueBrush })
             {
                 brush.Stretch = CompositionStretch.None;
                 brush.HorizontalAlignmentRatio = 0; brush.VerticalAlignmentRatio = 0;
                 brush.BitmapInterpolationMode = CompositionBitmapInterpolationMode.Linear;
             }
             var mask = resources.Own(c.CreateSurfaceBrush(maskSurface)); mask.Stretch = CompositionStretch.Fill;
-            var masked = resources.Own(c.CreateMaskBrush()); masked.Source = edgeBrush; masked.Mask = mask;
+            var factory = resources.Own(ChannelEffect.CreateFactory(c));
+            dispersed = resources.Own(factory.CreateBrush());
+            dispersed.SetSourceParameter("red", redBrush); dispersed.SetSourceParameter("green", greenBrush); dispersed.SetSourceParameter("blue", blueBrush);
+            masked = resources.Own(c.CreateMaskBrush()); masked.Source = greenBrush; masked.Mask = mask;
             root = resources.Own(c.CreateContainerVisual());
             perimeter = resources.Own(c.CreateRoundedRectangleGeometry());
-            perimeter.CornerRadius = new Vector2(19);
+            perimeter.CornerRadius = new Vector2(23);
             root.Clip = resources.Own(c.CreateGeometricClip(perimeter));
             var center = resources.Own(c.CreateSpriteVisual()); center.Brush = centerBrush;
             var edge = resources.Own(c.CreateSpriteVisual()); edge.Brush = masked;
             root.Children.InsertAtBottom(center); root.Children.InsertAtTop(edge);
             ElementCompositionPreview.SetElementChildVisual(host, root);
-            Update(1);
+            Update(LensOptics.Recommended);
         }
         catch { Dispose(); throw; }
     }
 
-    internal void Update(double strength)
+    internal void Update(LensOptics optics)
     {
         if (disposed || root is null || surface is null || maskRoot is null || maskSurface is null) return;
         var w = (float)host.ActualWidth; var h = (float)host.ActualHeight;
         var sw = (float)source.ActualWidth; var sh = (float)source.ActualHeight;
         if (w <= 0 || h <= 0 || sw <= 0 || sh <= 0) return;
         var p = host.TransformToVisual(source).TransformPoint(new Point());
-        var current = (w, h, sw, sh, (float)p.X, (float)p.Y, (float)Math.Clamp(strength, 0, 1.5));
+        optics = optics.Bounded();
+        var current = (w, h, sw, sh, (float)p.X, (float)p.Y, optics);
         if (last == current) return;
         last = current; UpdateCount++;
         root.Size = maskRoot.Size = new(w, h); perimeter!.Size = root.Size;
         surface.SourceSize = new(sw, sh); surface.SourceOffset = Vector2.Zero;
         maskSurface.SourceSize = root.Size;
-        var edgeWidth = Math.Min(24, Math.Min(w, h) / 3);
-        for (var i = 0; i < 4; i++)
+        const float radius = 23;
+        var edgeWidth = Math.Min(optics.EdgeWidth, Math.Min(w, h) / 3);
+        for (var i = 0; i < 8; i++)
         {
-            maskVisuals[i].Size = i < 2 ? new(edgeWidth, h) : new(w, edgeWidth);
-            maskVisuals[i].Offset = i == 1 ? new(w - edgeWidth, 0, 0) : i == 3 ? new(0, h - edgeWidth, 0) : Vector3.Zero;
+            maskVisuals[i].Size = i < 2 ? new(edgeWidth, h - 2 * radius) : i < 4 ? new(w - 2 * radius, edgeWidth) : new(radius, radius);
+            maskVisuals[i].Offset = i switch {
+                0 => new(0, radius, 0), 1 => new(w - edgeWidth, radius, 0),
+                2 => new(radius, 0, 0), 3 => new(radius, h - edgeWidth, 0),
+                4 => Vector3.Zero, 5 => new(w - radius, 0, 0),
+                6 => new(0, h - radius, 0), _ => new(w - radius, h - radius, 0) };
+            if (i >= 4) for (var j = 0; j <= 6; j++) gradients[i].ColorStops[j].Offset = 1 - edgeWidth / radius + edgeWidth / radius * j / 6;
         }
         foreach (SpriteVisual child in root.Children) child.Size = root.Size;
         centerBrush!.TransformMatrix = Matrix3x2.CreateTranslation(-(float)p.X, -(float)p.Y);
-        var magnification = 1 + current.Item7 * .026f;
-        edgeBrush!.TransformMatrix = new(magnification, 0, 0, magnification,
-            w / 2 - magnification * ((float)p.X + w / 2), h / 2 - magnification * ((float)p.Y + h / 2));
+        SetSample(redBrush!, 1); SetSample(greenBrush!, 0); SetSample(blueBrush!, -1);
+        masked!.Source = optics.Dispersion > 0 ? dispersed : greenBrush;
+        void SetSample(CompositionSurfaceBrush brush, int channel)
+        {
+            var x = optics.Scale(w / 2, channel); var y = optics.Scale(h / 2, channel);
+            brush.TransformMatrix = new(x, 0, 0, y, w / 2 - x * ((float)p.X + w / 2), h / 2 - y * ((float)p.Y + h / 2));
+        }
     }
 
     public void Dispose()
@@ -115,7 +146,8 @@ internal sealed class RefractionLens : IDisposable
         if (resources.Remaining == 0)
         {
             surface = maskSurface = null; root = maskRoot = null;
-            centerBrush = edgeBrush = null; perimeter = null; maskVisuals.Clear();
+            centerBrush = redBrush = greenBrush = blueBrush = null; masked = null; dispersed = null;
+            perimeter = null; maskVisuals.Clear(); gradients.Clear();
         }
     }
 }

@@ -7,8 +7,10 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
 using Windows.UI.ViewManagement;
+using Path = System.IO.Path;
 
 namespace TheOrder.WinUI.Materials;
 
@@ -54,6 +56,14 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private long finiteMotionUntil;
     private Color? appliedBackground;
     private Color? appliedForeground;
+    private readonly List<Image> coverImages = [];
+    private readonly HashSet<Image> pendingCovers = [];
+    private int coverFailures;
+    private int appliedBackgroundMode = -1;
+    private bool syncingReview;
+    private LensOptics CurrentOptics => new LensOptics((float)StrengthSlider.Value,
+        ComparisonMode.SelectedIndex == 2 ? (float)DispersionSlider.Value : 0,
+        (float)EdgeSlider.Value, (float)HighlightSlider.Value).Bounded();
 
     public RefractionGallery() : this(true) { }
     public RefractionGallery(bool advancedAllowed = true, bool requested = false)
@@ -85,6 +95,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         VisualCount = lens?.VisualCount ?? 0,
         ClipCount = lens?.ClipCount ?? 0,
         GeometryCount = lens?.GeometryCount ?? 0,
+        EffectFactoryCount = lens?.EffectFactoryCount ?? 0,
         EventSubscriptionCount = (effectsSubscribed ? 1 : 0) + (animationsSubscribed ? 1 : 0) +
             (contrastSubscribed ? 1 : 0) + (capabilitySubscribed ? 1 : 0),
         CleanupFailures = cleanupFailures,
@@ -104,13 +115,27 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         NotificationWarnings = notificationWarnings.Values.ToArray(),
         NotificationRoute = "Available events and existing owner policy refresh; no new timer",
         Source = "live app-internal CompositionVisualSurface",
-        Model = "continuous opacity-masked affine edge; quiet 1:1 center",
+        Model = "affine RGB dispersion approximation; radial corners; quiet 1:1 center; one opaque source",
+        Comparison = ComparisonMode.SelectedIndex, Background = BackgroundMode.SelectedIndex,
+        Optics = new { CurrentOptics.Refraction, CurrentOptics.Dispersion, CurrentOptics.EdgeWidth, CurrentOptics.Highlight },
+        PendingGalleryCovers = pendingCovers.Count, GalleryCoverFailures = coverFailures,
+        GalleryCoverImages = coverImages.Count, AdditionalCaptureCount = 0,
+        Geometry = GeometryEvidence(),
         Requested = advancedAllowed, Actual = lens is null ? "Solid" : "Advanced",
         FallbackReason = lens is not null ? null : failure ?? (!loaded ? "Unloaded" : !ownerAllowed ? "OwnerPolicyOrHidden" : !advancedAllowed ? "Disabled" : testPolicy != "normal" ? testPolicy : "CapabilityUnavailable"),
         UpdateCount = updatesReleased + (lens?.UpdateCount ?? 0), SourceUpdateCount = sourceUpdates,
         RetainedFailedResources = failedRelease?.RemainingResources ?? 0,
         PendingCallbackCount = refreshQueued ? 1 : 0, TestPolicy = testPolicy, Interaction = interaction
     };
+
+    private object? GeometryEvidence()
+    {
+        if (!loaded || disposed) return null;
+        var p = LensHost.TransformToVisual(Stage).TransformPoint(new Windows.Foundation.Point());
+        return new { StageWidth = Stage.ActualWidth, StageHeight = Stage.ActualHeight,
+            LensWidth = LensHost.ActualWidth, LensHeight = LensHost.ActualHeight, LensX = p.X, LensY = p.Y,
+            RasterizationScale = XamlRoot?.RasterizationScale, CenterSampling = "1:1; spectral effect excluded", SourceOpaque = true };
+    }
 
     internal void SetAdvanced(bool allowed)
     {
@@ -150,6 +175,50 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
 
     private void BuildPattern()
     {
+        ClearCoverImages(); PatternLayer.Children.Clear();
+        appliedBackgroundMode = BackgroundMode.SelectedIndex;
+        PatternSource.Background = new SolidColorBrush(appliedBackgroundMode == 4 ? Color.FromArgb(255, 31, 36, 43) : Color.FromArgb(255, 237, 239, 240));
+        if (appliedBackgroundMode is 3 or 4) return;
+        if (appliedBackgroundMode == 5)
+        {
+            var path = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE");
+            if (string.IsNullOrEmpty(path) || !Path.GetFullPath(path).Contains(Path.DirectorySeparatorChar + ".artifacts" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+                throw new InvalidOperationException("Explicit isolated reference image required");
+            // Original user-supplied pixels, positioned/clipped by XAML, not edited.
+            var image = new Image { Width = 1300, Height = 2826, Stretch = Stretch.Fill };
+            image.ImageOpened += OnCoverOpened; image.ImageFailed += OnCoverFailed;
+            coverImages.Add(image); pendingCovers.Add(image); image.Source = new BitmapImage(new Uri(path));
+            Canvas.SetLeft(image, -65); Canvas.SetTop(image, -866); PatternLayer.Children.Add(image);
+            return;
+        }
+        if (appliedBackgroundMode == 2)
+        {
+            var directory = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_COVERS");
+            if (string.IsNullOrEmpty(directory) || !Path.GetFullPath(directory).Contains(Path.DirectorySeparatorChar + ".artifacts" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Explicit Test cover directory required");
+            foreach (var n in new[] { 0, 3, 6, 9, 12, 15 })
+            {
+                var file = Path.Combine(directory, $"cover-{n:D5}.jpg");
+                if (!File.Exists(file)) throw new InvalidDataException("Frozen Test cover missing");
+                var image = new Image { Width = 200, Height = 300, Stretch = Stretch.UniformToFill };
+                image.ImageOpened += OnCoverOpened; image.ImageFailed += OnCoverFailed;
+                coverImages.Add(image); pendingCovers.Add(image);
+                image.Source = new BitmapImage(new Uri(file));
+                Canvas.SetLeft(image, 24 + coverImages.Count * 215 - 215); Canvas.SetTop(image, -10);
+                PatternLayer.Children.Add(image);
+            }
+            return;
+        }
+        if (appliedBackgroundMode == 0)
+        {
+            for (var row = 0; row < 8; row++)
+            {
+                var text = new TextBlock { Text = "GLASS  光学边缘  ガラス  0123456789  —  The Order", FontSize = row % 2 == 0 ? 24 : 16, Foreground = new SolidColorBrush(Color.FromArgb(255, 20, 22, 25)), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+                Canvas.SetLeft(text, 10 + row % 2 * 30); Canvas.SetTop(text, 14 + row * 46); PatternLayer.Children.Add(text);
+            }
+            for (var i = 0; i < 18; i++) AddBlock(18 + i * 61, 0, i % 2 == 0 ? 2 : 1, 660, Color.FromArgb(255, 24, 26, 29));
+            return;
+        }
         for (var row = 0; row < 11; row++)
         for (var column = 0; column < 22; column++)
         {
@@ -174,6 +243,10 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             Canvas.SetTop(line, 18 + i * 48); PatternLayer.Children.Add(line);
         }
     }
+
+    private void OnCoverOpened(object sender, RoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); }
+    private void OnCoverFailed(object sender, ExceptionRoutedEventArgs e) { if (sender is Image image) pendingCovers.Remove(image); coverFailures++; }
+    private void ClearCoverImages() { foreach (var image in coverImages) { image.ImageOpened -= OnCoverOpened; image.ImageFailed -= OnCoverFailed; image.Source = null; } coverImages.Clear(); pendingCovers.Clear(); }
 
     private void AddBlock(double x, double y, double width, double height, Color color)
     {
@@ -325,7 +398,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         var settings = ReadSettings();
         var composition = capabilities;
         var supported = composition is null ? null : Probe("query.compositionCapabilities", composition.AreEffectsSupported);
-        var permitted = testPolicy == "normal" && loaded && ownerAllowed && advancedAllowed && failure is null && settings.AdvancedEffects == true &&
+        var permitted = ComparisonMode.SelectedIndex != 0 && testPolicy == "normal" && loaded && ownerAllowed && advancedAllowed && failure is null && settings.AdvancedEffects == true &&
             settings.HighContrast == false && supported == true;
         if (!permitted)
         {
@@ -342,7 +415,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
                 lens = new RefractionLens(PatternSource, LensHost, failInitialization);
                 allocationCycles++;
             }
-            lens.Update(StrengthSlider.Value * (interaction == "pressed" ? .6 : interaction == "hover" ? 1.15 : 1));
+            lens.Update(CurrentOptics);
+            LensHighlight.Opacity = CurrentOptics.Highlight;
             SetStablePalette(true);
         }
         catch (Exception e)
@@ -360,7 +434,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private void SetStablePalette(bool transparent)
     {
         var dark = ActualTheme == ElementTheme.Dark;
-        var background = dark ? Color.FromArgb(transparent ? (byte)212 : (byte)255, 32, 36, 39) : Color.FromArgb(transparent ? (byte)200 : (byte)255, 250, 251, 251);
+        var background = dark ? Color.FromArgb(transparent ? (byte)24 : (byte)255, 32, 36, 39) : Color.FromArgb(transparent ? (byte)24 : (byte)255, 250, 251, 251);
         var foregroundColor = dark ? Color.FromArgb(255, 243, 244, 245) : Color.FromArgb(255, 27, 32, 35);
         try
         {
@@ -380,6 +454,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         try
         {
             StableForeground.Background = new SolidColorBrush(background);
+            StableTextPanel.Background = new SolidColorBrush(dark ? Color.FromArgb(255, 32, 36, 39) : Color.FromArgb(255, 250, 251, 251));
+            LensHighlight.Visibility = transparent ? Visibility.Visible : Visibility.Collapsed;
             var foreground = new SolidColorBrush(foregroundColor);
             StableIcon.Foreground = foreground;
             StableTitle.Foreground = foreground;
@@ -437,17 +513,30 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         {
             var settings = ReadSettings();
             if (failure is not null && lens is not null) { ReleaseMaterial(); SetStablePalette(false); }
-            var caption = lens is null ? "实色降级 / solid fallback" : "实时内部像素位移 / live internal source";
+            var caption = "安静中心 · 透明圆角边缘";
             if (StableCaption.Text != caption) StableCaption.Text = caption;
             var state = lens is null
                 ? $"稳定实色降级 · 原型资源 0 · {failure ?? (settings.HighContrast == true ? "高对比度" : settings.AdvancedEffects == false ? "系统已关闭透明效果" : "原型未启用") }"
-                : $"实时内部背景折射 · 1 个背景表面 + 1 个连续边缘遮罩 · 背景位置 {patternPosition:0} · 仅手动短演示";
+                : $"{(CurrentOptics.Dispersion > 0 ? "折射＋RGB 色散近似" : "仅折射")} · 一个实时背景源 · 推荐色散 0.75／诊断 2 · 背景位置 {patternPosition:0}";
             if (MaterialState.Text != state) MaterialState.Text = state;
         }
         catch (Exception exception) { RecordFailure("presentation.state", exception); ReleaseMaterial(); }
     }
 
-    private void OnStageSizeChanged(object sender, SizeChangedEventArgs e) { if (!initialized) return; LensFrame.Width = Math.Min(320, Math.Max(180, e.NewSize.Width - 32)); ControlActions.Orientation = e.NewSize.Width < 700 ? Orientation.Vertical : Orientation.Horizontal; var narrow = e.NewSize.Width < 500; Grid.SetColumn(LensSliderPanel, narrow ? 0 : 1); Grid.SetColumn(StrengthSliderPanel, narrow ? 0 : 2); Grid.SetRow(LensSliderPanel, narrow ? 1 : 0); Grid.SetRow(StrengthSliderPanel, narrow ? 2 : 0); RefreshMaterial(); }
+    private void OnStageSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!initialized) return;
+        LensFrame.Width = Math.Min(320, Math.Max(180, e.NewSize.Width - 32));
+        PatternSource.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, e.NewSize.Width, e.NewSize.Height) };
+        var limit = Math.Max(0, Math.Min(100, (e.NewSize.Width - LensFrame.Width - 4) / 2));
+        LensSlider.Minimum = -limit; LensSlider.Maximum = limit; LensSlider.Value = Math.Clamp(LensSlider.Value, -limit, limit);
+        ControlActions.Orientation = ReviewModes.Orientation = e.NewSize.Width < 700 ? Orientation.Vertical : Orientation.Horizontal;
+        var narrow = e.NewSize.Width < 500;
+        var panels = new FrameworkElement[] { PatternSlider.Parent as FrameworkElement ?? PatternSlider, LensSliderPanel, StrengthSliderPanel, DispersionSliderPanel, EdgeSliderPanel, HighlightSliderPanel };
+        for (var i = 1; i < panels.Length; i++) { Grid.SetColumn(panels[i], narrow ? 0 : i % 3); Grid.SetRow(panels[i], narrow ? i : i / 3); }
+        while (SlidersLayout.RowDefinitions.Count < 6) SlidersLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        RefreshMaterial();
+    }
     private void OnGalleryThemeChanged(FrameworkElement sender, object e) => RefreshMaterial();
     private void SetInteraction(string value) { if (interaction == value) return; interaction = value; RefreshMaterial(); }
     private void OnLensHover(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => SetInteraction("hover");
@@ -459,6 +548,19 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         switch (value) {
             case "on": AdvancedSwitch.IsOn = true; break;
             case "off": AdvancedSwitch.IsOn = false; break;
+            case "a": ComparisonMode.SelectedIndex = 0; break;
+            case "b": ComparisonMode.SelectedIndex = 1; break;
+            case "c": ComparisonMode.SelectedIndex = 2; break;
+            case "recommended": OnRecommended(this, new RoutedEventArgs()); break;
+            case "diagnostic": DispersionSlider.Value = 2; break;
+            case "text": BackgroundMode.SelectedIndex = 0; break;
+            case "grid": BackgroundMode.SelectedIndex = 1; break;
+            case "covers": BackgroundMode.SelectedIndex = 2; break;
+            case "reference": BackgroundMode.SelectedIndex = 5; break;
+            case "slowMotion": PlayPatternMotion(3); break;
+            case "fastMotion": PlayPatternMotion(.75); break;
+            case "plainLight": BackgroundMode.SelectedIndex = 3; break;
+            case "plainDark": BackgroundMode.SelectedIndex = 4; break;
             case "fault": SetCompositionFailure(new InvalidOperationException("TestDeviceLost"), "Test.DeviceLost"); break;
             case "replace": ReleaseMaterial(); BuildPatternReplacement(); break;
             case "initFailure": ReleaseMaterial(); failInitialization = true; break;
@@ -470,6 +572,15 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             case "hover": case "pressed": SetInteraction(value); break;
             default: throw new InvalidDataException("Unknown material Test seam");
         }
+        RefreshMaterial();
+    }
+    private void OnReviewChanged(object sender, SelectionChangedEventArgs e) { if (initialized && !syncingReview) RefreshMaterial(); }
+    private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e) { if (!initialized || syncingReview || appliedBackgroundMode == BackgroundMode.SelectedIndex) return; BuildPattern(); StepPattern(0); RefreshMaterial(); }
+    private void OnRecommended(object sender, RoutedEventArgs e)
+    {
+        if (!initialized) return; syncingReview = true;
+        try { var p = LensOptics.Recommended; StrengthSlider.Value = p.Refraction; DispersionSlider.Value = p.Dispersion; EdgeSlider.Value = p.EdgeWidth; HighlightSlider.Value = p.Highlight; }
+        finally { syncingReview = false; }
         RefreshMaterial();
     }
     private void BuildPatternReplacement() { PatternLayer.Children.Clear(); BuildPattern(); StepPattern(0); }
@@ -489,13 +600,15 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         LensFrame.RenderTransform = new TranslateTransform { X = e.NewValue };
         RefreshMaterial();
     }
-    private void OnStrengthChanged(object sender, RangeBaseValueChangedEventArgs e) { if (initialized) RefreshMaterial(); }
+    private void OnStrengthChanged(object sender, RangeBaseValueChangedEventArgs e) { if (initialized && !syncingReview) RefreshMaterial(); }
     private void OnResetPattern(object sender, RoutedEventArgs e)
     {
         StepPattern(0);
         LensSlider.Value = 0;
     }
     private void OnMovePattern(object sender, RoutedEventArgs e)
+        => PlayPatternMotion(3);
+    private void PlayPatternMotion(double seconds)
     {
         if (!initialized || disposed) return;
         var settings = ReadSettings();
@@ -519,12 +632,12 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             animation.InsertKeyFrame(0, startOffset);
             animation.InsertKeyFrame(.5f, new Vector3(-120, -16, 0));
             animation.InsertKeyFrame(1, Vector3.Zero);
-            animation.Duration = TimeSpan.FromSeconds(3);
+            animation.Duration = TimeSpan.FromSeconds(seconds);
             animation.IterationBehavior = AnimationIterationBehavior.Count;
             animation.IterationCount = 1;
             visual.Offset = Vector3.Zero;
             visual.StartAnimation("Offset", animation);
-            finiteMotionUntil = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 3;
+            finiteMotionUntil = Stopwatch.GetTimestamp() + (long)(Stopwatch.Frequency * seconds);
         }
         catch (Exception e2) { SetCompositionFailure(e2, "motion.start"); }
         UpdateState();
@@ -542,5 +655,6 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         DetachCapabilities();
         ReleaseMaterial();
         failedRelease?.Dispose();
+        ClearCoverImages();
     }
 }

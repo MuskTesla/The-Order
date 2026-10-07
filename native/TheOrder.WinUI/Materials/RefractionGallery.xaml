@@ -6,35 +6,43 @@
   <StackPanel Padding="28,24" Spacing="20" MaxWidth="1100" HorizontalAlignment="Stretch">
    <StackPanel Spacing="6">
     <TextBlock Text="材质实验室" Style="{StaticResource PageTitleStyle}"/>
-    <TextBlock Text="实时内部背景 · 几何折射原型" Style="{StaticResource SectionTitleStyle}"/>
-    <TextBlock Text="固定文字与图标位于采样层之上。拖动背景或透镜位置，可直接观察细线与色块在边缘的位移。" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
+    <TextBlock Text="安静中心 · 圆润边缘 · 背景驱动色散" Style="{StaticResource SectionTitleStyle}"/>
+    <TextBlock Text="比较仅折射与 RGB 色散近似。文字与图标独立于采样；不使用系统 Accent 染色。" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
    </StackPanel>
    <Border Style="{StaticResource SurfaceStyle}" Padding="0" CornerRadius="20">
     <Grid x:Name="Stage" Height="280" SizeChanged="OnStageSizeChanged">
      <Grid x:Name="PatternSource" Background="#FFE8EDF0">
       <Canvas x:Name="PatternLayer" Width="1300" Height="660" HorizontalAlignment="Left" VerticalAlignment="Top"/>
      </Grid>
-     <Border x:Name="LensFrame" Width="320" Height="180" CornerRadius="20" PointerEntered="OnLensHover" PointerExited="OnLensExit" PointerPressed="OnLensPress" PointerReleased="OnLensRelease" BorderThickness="1" BorderBrush="{ThemeResource StrokeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+     <Border x:Name="LensFrame" Width="320" Height="180" CornerRadius="24" PointerEntered="OnLensHover" PointerExited="OnLensExit" PointerPressed="OnLensPress" PointerReleased="OnLensRelease" BorderThickness="1" BorderBrush="{ThemeResource StrokeBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
       <Grid>
        <Grid x:Name="LensHost" IsHitTestVisible="False"/>
-       <Border x:Name="StableForeground" Background="#C8FFFFFF" CornerRadius="19" Padding="24">
+       <Border x:Name="StableForeground" Background="#18FFFFFF" CornerRadius="23" Padding="24">
+        <Border x:Name="StableTextPanel" CornerRadius="12" Padding="12,8" VerticalAlignment="Center">
         <StackPanel VerticalAlignment="Center" Spacing="8">
          <StackPanel Orientation="Horizontal" Spacing="8">
           <PathIcon x:Name="StableIcon" Width="18" Height="18" Data="F0 M 2,1 H 14 V 17 H 2 Z M 4,3 V 15 H 12 V 3 Z M 5,5 H 11 V 6 H 5 Z M 5,8 H 11 V 9 H 5 Z M 5,11 H 9 V 12 H 5 Z" Foreground="#FF183A45" AutomationProperties.AccessibilityView="Raw"/>
           <TextBlock x:Name="StableTitle" Text="文字保持稳定" FontSize="18" FontWeight="SemiBold" Foreground="#FF183A45"/>
          </StackPanel>
          <TextBlock x:Name="StableBody" Text="The Order · 内容优先" FontSize="14" Foreground="#FF294852"/>
-         <TextBlock x:Name="StableCaption" Text="真实像素位移 / live internal source" FontSize="12" Foreground="#FF35515B" TextWrapping="Wrap"/>
+         <TextBlock x:Name="StableCaption" Text="安静中心 · 透明圆角边缘" FontSize="12" Foreground="#FF35515B" TextWrapping="Wrap"/>
         </StackPanel>
+        </Border>
        </Border>
+       <Border x:Name="LensHighlight" CornerRadius="23" BorderThickness="1" IsHitTestVisible="False" Opacity="0.45"><Border.BorderBrush><LinearGradientBrush StartPoint="0,0" EndPoint="0.7,1"><GradientStop Offset="0" Color="#CCFFFFFF"/><GradientStop Offset="0.35" Color="#20FFFFFF"/><GradientStop Offset="0.7" Color="#08FFFFFF"/><GradientStop Offset="1" Color="#30202629"/></LinearGradientBrush></Border.BorderBrush></Border>
       </Grid>
      </Border>
     </Grid>
    </Border>
    <Border Style="{StaticResource ToolbarSurfaceStyle}">
     <StackPanel Spacing="14">
+     <StackPanel x:Name="ReviewModes" Orientation="Horizontal" Spacing="12">
+      <ComboBox x:Name="ComparisonMode" Header="同场景对照" SelectedIndex="2" SelectionChanged="OnReviewChanged" AutomationProperties.AutomationId="GalleryComparison" MinWidth="190"><ComboBoxItem Content="A · 稳定材质"/><ComboBoxItem Content="B · 仅折射"/><ComboBoxItem Content="C · 折射＋色散"/></ComboBox>
+      <ComboBox x:Name="BackgroundMode" Header="背景来源" SelectedIndex="0" SelectionChanged="OnBackgroundChanged" AutomationProperties.AutomationId="GalleryBackground" MinWidth="190"><ComboBoxItem Content="黑白文字与线条"/><ComboBoxItem Content="细网格"/><ComboBoxItem Content="实际 Test 封面图片"/><ComboBoxItem Content="平滑浅色"/><ComboBoxItem Content="平滑深色"/><ComboBoxItem Content="用户参考图 · 封面区域"/></ComboBox>
+      <Button Content="推荐参数" Click="OnRecommended" VerticalAlignment="Bottom" AutomationProperties.AutomationId="GalleryRecommended"/>
+     </StackPanel>
      <StackPanel x:Name="ControlActions" Orientation="Horizontal" Spacing="12">
-      <ToggleSwitch x:Name="AdvancedSwitch" Header="实时折射原型" IsOn="True" Toggled="OnAdvancedToggled" AutomationProperties.Name="启用实时内部背景折射原型"/>
+      <ToggleSwitch x:Name="AdvancedSwitch" Header="高级材质 · Test" IsOn="False" Toggled="OnAdvancedToggled" AutomationProperties.Name="启用实时内部背景折射原型"/>
       <Button Content="演示一次背景移动" Click="OnMovePattern" AutomationProperties.AutomationId="GalleryMovePattern"/>
       <Button Content="恢复起点" Click="OnResetPattern" AutomationProperties.AutomationId="GalleryResetPattern"/>
      </StackPanel>
@@ -42,11 +50,14 @@
       <StackPanel Spacing="4"><TextBlock Text="背景位置" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="PatternSlider" Minimum="0" Maximum="100" Value="0" ValueChanged="OnPatternChanged" AutomationProperties.Name="背景位置"/></StackPanel>
       <StackPanel x:Name="LensSliderPanel" Grid.Column="1" Spacing="4"><TextBlock Text="透镜位置" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="LensSlider" Minimum="-100" Maximum="100" Value="0" ValueChanged="OnLensChanged" AutomationProperties.Name="透镜位置"/></StackPanel>
       <StackPanel x:Name="StrengthSliderPanel" Grid.Column="2" Spacing="4"><TextBlock Text="折射强度" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="StrengthSlider" Minimum="0" Maximum="1.5" Value="1" ValueChanged="OnStrengthChanged" AutomationProperties.Name="折射强度"/></StackPanel>
+      <StackPanel x:Name="DispersionSliderPanel" Grid.Row="1" Spacing="4"><TextBlock Text="色散 · 推荐 0.75／诊断 2" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="DispersionSlider" Minimum="0" Maximum="2" Value="0.75" ValueChanged="OnStrengthChanged" AutomationProperties.Name="色散强度"/></StackPanel>
+      <StackPanel x:Name="EdgeSliderPanel" Grid.Row="1" Grid.Column="1" Spacing="4"><TextBlock Text="边缘宽度（DIP）" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="EdgeSlider" Minimum="8" Maximum="22" Value="18" ValueChanged="OnStrengthChanged" AutomationProperties.Name="边缘影响宽度"/></StackPanel>
+      <StackPanel x:Name="HighlightSliderPanel" Grid.Row="1" Grid.Column="2" Spacing="4"><TextBlock Text="独立中性高光" Style="{StaticResource SecondaryTextStyle}"/><Slider x:Name="HighlightSlider" Minimum="0" Maximum="1" Value="0.45" ValueChanged="OnStrengthChanged" AutomationProperties.Name="高光强度"/></StackPanel>
      </Grid>
     </StackPanel>
    </Border>
    <TextBlock x:Name="MaterialState" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="GalleryMaterialState"/>
-   <TextBlock Text="背景来源：应用内实时棋盘格、细线与色块。连续遮罩混合中心与边缘两次实时采样；细线可能柔化，不是光学位移着色器，也不采样系统桌面。此处仅用于独立视觉候选的开发验证。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+   <TextBlock Text="一份实时内部背景，三通道差异采样与连续圆角遮罩。属于色散近似，不是物理精确光谱或 iOS 原生实现；不采样桌面。Test 封面为已有合成素材，非正式用户库。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>
 </UserControl>
