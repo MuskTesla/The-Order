@@ -1,5 +1,17 @@
 # The Order：当前实现与评审交接
 
+## 当前：Phase 7 Finalization 工程候选冻结，RC Gate 阻断（2026-10-08）
+
+独立工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`。工程源码 **91b98d6**，tag `codex/phase7-rc-engineering-frozen-20261008`，635文件self-contained x64便携包 `.artifacts/phase7-finalization/frozen-rc/win-x64`；这是 **RC GATE BLOCKED** 的工程冻结，不是Phase7完成或发布批准。
+
+新增可选、身份绑定、原子写入的 `native-material-v1.json`，旧 `native-ui.json` 契约不变；保存Advanced意图不能授权普通入口，高级功能仍仅限显式受控Test。普通入口不依赖SDK/helper/seed，关闭诊断与Test展示；包内包含运行时、VC DLL、资源、索引和许可，并提供有界脱敏生命周期日志。用户认可的C1、图片/虚拟化、提前释放及14d8ede publication竞态修复保留。
+
+Debug/Release publish、349/349相关回归和原生光学fixture通过。唯一完整native Release首跑1807/1810，3项因独立工作区缺Electron失败；复用已安装测试运行时后只补跑这3项，3/3通过，未改测试/期望、未重跑全套。设置保存重启、旧原生程序集兼容、真实旧候选浏览、便携移除/重装、同根合成快照恢复及最终包本机启动完成。
+
+新OFF短验硬正确性通过：专属owner/在途任务归零、无OFF绘制、冷Standard不加载光学DLL、正常退出0、库hash不变；但两组静置Private中位数增量 **92.79/106.67MiB** 超过运行前64MiB门槛，保留为FAIL，不推定泄漏或归因Advanced。另缺干净Windows部署和真实OS主题/无障碍/缩放/结束会话证据；用户确认无现成隔离Windows环境，未改变宿主设置。完整范围、候选身份及Phase8准备见 [Phase7 Finalization](PHASE7_FINALIZATION.md)。下面Phase7.2 PASS仅为历史开发集成范围。
+
+Phase6原生Production bootstrap及6.2日用Gate已通过。Phase8 **不执行Electron→WinUI迁移**，只准备现有原生快照、版本兼容、受控日用、回退和正式发布验收；本轮未进入Phase8、未访问Production、未替换或推送。
+
 ## 当前：Phase 7.2 最终集成验收与候选冻结（2026-10-08）
 
 **PASS — DEVELOPMENT INTEGRATION ACCEPTANCE / TEST CANDIDATE FROZEN。** 应用源码 `14d8ede1b2240f30b153aee9f919bbd123385f48`，工作区和分支沿用下面本地集成记录。完整 native Release 回归 **1793/1793，0失败/0跳过**；修复后 Debug/Release publish 通过。首轮1792测试的两项失败保留：识别队列 idle 在最终结果发布前完成的实际竞态已用确定性红/绿测试修复；220项 Electron oracle 重新生成，仅更新旧源码哈希，全部用例与期望不变。

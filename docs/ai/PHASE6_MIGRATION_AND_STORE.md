@@ -1,6 +1,6 @@
 > **SUPERSEDED — 2026-10-05**
 >
-> 本设计基于已失效的产品假设：需要无损保留重要 Electron 正式用户数据。用户已明确不要求保留、迁移或回滚这些资料。本文件仅保留历史；不得据此实施 migration engine。当前规范：[Phase 6 Production Profile Bootstrap](PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。Phase 6.1 仅隔离环境初始化 native store，6.2 经后续明确授权才创建真实 profile。
+> 本设计基于已失效的产品假设：需要无损保留重要 Electron 正式用户数据。用户已明确不要求保留、迁移或回滚这些资料。本文件仅保留历史；不得据此实施 migration engine。当前规范：[Phase 6 Production Profile Bootstrap](PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md)。Phase 6原生Production初始化与6.2日用Gate已通过；原先「6.2尚待创建」为历史规划。Phase8不执行Electron→WinUI迁移，只准备现有原生快照、版本兼容、受控日用、回退和正式发布验收，见 [Phase7 Finalization](PHASE7_FINALIZATION.md)。
 
 # Phase 6.0 — Formal Migration / Authoritative Store Design Gate
 

@@ -1,5 +1,25 @@
 # 开发与维护
 
+## Phase 7 Finalization：独立便携工程候选（RC GATE BLOCKED）
+
+工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；应用源码91b98d6，工程tag `codex/phase7-rc-engineering-frozen-20261008`。包在 `.artifacts/phase7-finalization/frozen-rc/win-x64`，ZIP及同提交源码归档在其上一级。先核对 `files.json` / `archive-identity.json`；解压必须保留整个目录。包内.NET10.0.12、WindowsAppSDK2.5.1、x64 VC14.50.35710、PRI/XBF、索引和许可已齐备；不依赖SDK、源码、helper、合成seed或covers。
+
+```powershell
+# 普通入口：Windows自带PowerShell5.1也已实测启动。默认空Test资料，Standard。
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-finalization/frozen-rc/win-x64/launch-test.ps1' -Wait
+# 或解压后双击Start-Test.cmd；默认资料%LOCALAPPDATA%/TheOrder-RC/Test。
+# 独立诊断入口仍有250ms诊断，因此不作为普通体验或发行资源证据。
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-finalization/frozen-rc/win-x64/launch-test.ps1' -Diagnostics -Wait
+# 仅显式受控Test授权Advanced；默认不选择/启用它。
+# 同一入口可另加-ControlledAdvanced，再在设置中手动选择。
+```
+
+另用绝对 `-DataDirectory` 选择Test目录；入口在任何读取前拒绝Electron/native Production根，已有非Test资料拒绝打开。普通入口清除继承的Test/诊断变量，保存Advanced或Auto仍实际为Standard。设置独立文件 `native-material-v1.json` 不改变严格的旧UI schema；Opaque是「关闭透明效果」内部值。关闭×隐藏到托盘，真正退出仍走既有写入/草稿/Session收尾流程。日志 `native-runtime.log` 最多64KiB，不记录密钥、用户内容、路径或异常消息。
+
+重建：按锁文件restore；`dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true --no-restore -o ABSOLUTE_FRESH_PUBLISH`；随后 `native/scripts/package-native-rc.ps1 -PublishedDirectory ABSOLUTE_FRESH_PUBLISH -OutputDirectory ABSOLUTE_FRESH_WORKTREE_ARTIFACT`，必须使用新的.artifacts目录，不覆盖候选。构建需要开发SDK/VS，候选运行不需要。依赖开发机的合成体验入口与独立包入口不是同一种部署承诺。
+
+新资源协议保留量FAIL及干净Windows/真实OS矩阵缺口阻断RC，**不允许Production使用或发布**。普通源码与旧冻结候选仍可回退查看；不要reset其他工作区。工程结果、回退范围及Phase8准备见 [PHASE7_FINALIZATION](docs/ai/PHASE7_FINALIZATION.md)。
+
 ## Phase 7.2 已冻结 Test 候选（2026-10-08）
 
 本机最终验收应用源码 `14d8ede`，557文件Release候选 `.artifacts/local-development-integration/frozen-phase7-2-final/win-x64`。完整native 1793/1793、修复后Debug/Release及普通交互/诊断释放短验通过。历史资源协议FAIL和已获批有限开发集成例外原样保留；不允许默认高级材质或正式发布。

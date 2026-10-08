@@ -27,3 +27,51 @@
 ## 已知环境缺口
 
 初始未发现可用WindowsSandbox/虚拟机入口；用户确认没有现成隔离Windows环境。不得启用宿主组件或修改个性化/辅助功能。继续独立工程及本机隔离Profile验证；干净机启动、实际系统矩阵、Narrator及VM结束会话不能被本机或Test注入替代。本轮预期保留这些RC阻断，除非后续出现真实可用环境。
+
+## 最终工程结果：RC GATE BLOCKED
+
+应用源码 `91b98d6d6b3740434ba5c28b4c0630adeb85cbab`，本地tag `codex/phase7-rc-engineering-frozen-20261008`。最终635文件包由干净源码重新publish；其源码、zip、manifest均有SHA256，完整解压后635/635重验一致。源代码归档同步提供；没有修改原冻结557文件包，原包557/557哈希重验一致。最终文档提交在应用提交之后，不代表另一个应用版本。
+
+| 剩余项 | 结果与边界 |
+|---|---|
+| 独立部署 | 完成self-contained目录式x64包、app-local VC/.NET/WinUI、许可/元数据、完整性检查、WindowsPowerShell5.1入口、有界日志。本机普通权限在中文/空格非开发目录实际运行；runtime modules来自包。干净Windows无SDK验证缺失 |
+| 设置 | 完成MaterialPreference/MaterialPreferencesStore与UI异步保存；optional v1 companion绑定ProfileId/StoreId，旧native-ui v1不变；missing/default、4模式重启、未知/损坏/未来schema、失败写入、取消与排队释放回归。普通入口Advanced意图重启后仍Standard、无光学DLL |
+| OFF隔离 | 两组各8预热+48正式Library↔Details，2段各24/相同3秒节奏和30秒静置；OFF scene/draw/frost不变，专属资源0、创建/退休平衡、image pending/导航/详情/过期封面0；隐藏/恢复完成、exit0、库hash不变。保留量判据FAIL |
+| 主题/无障碍 | 当前宿主Windows11 26300、实际200% XamlRoot scale。新包Light/List、Dark空状态、中文名称编辑/保存/读回实机证据；HC订阅仍报告0x80070490，仅通知失败，直接状态读取known、已有Session owner refresh轮询仍有效，没有新增轮询。真实OS变更/100%及150%/文字缩放/Narrator/VM注销未完成，不用注入替代 |
+| Upgrade/rollback | 旧冻结native程序集哈希匹配，实际旧候选读取新companion后可浏览384合成条目；旧版写Light/List/name，新UI实际读回；新UI保存条目后旧程序集解码读回。便携移除程序不改94个资料文件和外部合成游戏占位；换安装路径重装读回保存条目。闭合Test profile全文件快照核验94项、同物理根恢复演练成功，不声称真实用户资料恢复 |
+| 回归 | Debug/Release publish PASS；349/349相关；C1/native光学fixture PASS。完整native仅首跑一次：1807PASS/3FAIL，全部为缺Electron文件的环境失败；复用已安装测试runtime仅补3项，3/3PASS。没有删/跳过/改弱测试。最终干净提交重build与普通启动另验；源代码哈希与测试前工作树一致，二进制元数据/哈希已重新绑定 |
+
+### RC资源协议结果（MiB）
+
+运行前协议独立副本 `.artifacts/phase7-finalization/frozen-resource-protocol.md`；SHA256 `9D485CC0CE659F4547A4E293417BE41622FBCF11BA369075480F569B929FD0CD`，与驱动run identity完全一致。没有根据结果调整64MiB。峰值是对应操作段外部1Hz采样最大值；静置为每30秒静置末15秒Private中位数（冷Standard两窗14/15样本，Advanced→Standard两窗15/14样本）。预热值是冻结驱动的warmup边界单点，不冒称中位数。
+
+| 组 | 预热Private | 段1峰值 | 静置1中位 | 段2峰值 | 静置2中位 | 峰值2−1 | 静置2−1 | 静置2−预热 | 结果 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 冷Standard |386.49|572.23|440.61|606.39|533.40|34.17|92.79|146.91|FAIL：两项保留量>64 |
+| Advanced→Standard |463.69|588.29|397.61|578.02|504.27|−10.27|106.67|40.58|FAIL：静置差>64 |
+
+两组均1147×802DIP、XamlRoot scale2、Dark/Grid/Library顶端、相同seed与24个固定GameId，采样最大间隔1.045秒；正常边界可见但inactive，两组一致，未采集遮挡图或GPU物理分配，不能推断完整的前台硬件场景。handles静置中位1272→1259/1247→1245，无累积。GC committed静置84.21→85.98/80.10→81.85MiB，最近GC heap74.25→65.67/67.27→65.54MiB；不与Private窗口统计强行拼成精确原生账目。没有证据把92.79/106.67MiB归因于已释放的C1 owner，亦不能凭owner0宣告整体资源PASS。共有增长不能被ON−OFF抵消；保留为未闭合的RC保留量风险，不宣称应用泄漏或修复。
+
+观测限制：保护停止线中的系统可用内存未接入连续sampler（只实测Private与命令响应停止）；事后宿主13GiB空闲不能补证明整段RAM保护。没有ETW/GPU Committed/AllocationBase/原生分配栈采集，不能定位共同Private增长实际owner。协议两组完成总504.793秒；首轮约128秒被主动打断为INTERRUPTED（与完整suite合成窗口重叠），不能当FAIL/PASS；原始驱动错误保留，sampler实际有输出，早先“没有记录”的观察已在补充说明纠正。连同完整suite3分31秒全额保守计入及数秒光学fixture，预算少于15分钟；没有追加资源长测。
+
+最后额外WindowsPowerShell5.1启动成功；Computer Use随后两次list_windows超时，应用Responding=true。这个额外退出交互记INTERRUPTED；核验本任务Test进程代次、无待写tmp及已提交文件后关闭/终止，库/设置哈希未变。它不覆盖此前正常退出证据，也不证明UI卡死。所有本任务进程已结束，未创建ETW会话。最终冻结普通包已在此之前完成两次真实菜单退出与保存重启；观察器未保留其数值exit code，不能补写0。资源两组exit0是独立证据。
+
+低扰动不等于零诊断：`MainWindow.Visual.cs` 的命令回执仍调用 `OnDiagnostics`，并将 runtime JSON 写入应用进程内的 `RuntimeState.Text`（`MainWindow.xaml.cs`）；发生在有限命令完成边界，不是250ms轮询。普通入口未启用该Test命令路径。没有对象持有或因果对照证据，不能把Private增长归因于这段文字更新，也不能外推本次fixture数据为普通路径的精确资源表现。保留这一观测差异。
+
+### RC Gate分类与最小剩余工作
+
+**A — RC阻断**：①冷Standard和ON→OFF共同保留量FAIL，实际超过运行前风险门槛，已有数据不足以闭合容量/原生保留类别，不扩大旧开发例外；下一次只针对相同段/静置边界做一次有限的原生committed区域分类，判断增加的是可复用容量还是活分配，保持本次FAIL。②用户确认无干净Windows环境；最小剩余是在专用VM/账户核验无SDK启动、原生升级、真实accent/HC/transparency/motion/100-150-200%DPI/文字/Narrator及可恢复注销。不能以开发机成功替代，也不能宣布Phase7Complete。
+
+**B — 可接受的现有限制**：Advanced仍仅显式受控Test，两个已认可位置/稳定作品背景，Standard默认；不能用于正式启用/发布。app-local运行时需随未来包维护；optional材质设置不被旧版UI显示、不会自动成为旧版第五模式；回退旧版仍使用其会话默认。品牌/游戏图片权利不随AGPL转让，许可已保留，工程包不授予公开分发。NotificationWarning本身不是已证实状态读取缺陷，实际OS动态验证仍属于A。
+
+**C — 后续改进**：在A闭合以后扩大硬件、长文本和辅助技术组合覆盖；非关键视觉精修不在本轮实施。旧GA1和有限开发集成例外不改写，不因本轮FAIL撤销其既有适用范围。
+
+没有merge/push/Production替换；原主、视觉、Claude、审查和集成工作区分支/HEAD/状态及已记录文件hash保留。视觉工作区首次比较的false仅为collapsed目录与--untracked-files=all展开格式差异，按原格式重比完全一致；原候选首次检查误用path字段亦已纠正，最终557/557一致。完整原始记录/错误不被擦除。
+
+## Phase8交接准备（仅准备，未授权执行）
+
+Phase6.2已通过原生日用Gate；**不做Electron迁移**。先闭合上面A，再获用户明确受控真实资料授权：关闭原生实例，核验当前manifest/writer/应用版本、独占lease已释放，复制整个原生资料根（library、native-ui/material、operation/recovery及其backup、app-managed图片、加密凭据等）到受保护快照，保存逐文件hash；不解密、输出或带入源码。日志与含私密字段的snapshot只存用户授权位置。
+
+程序回退：保留旧程序完整目录与其哈希，关闭新程序后更换程序目录即可，先读现有资料；本轮v1 optional companion和实际修改的library/native-ui由14d8ede旧原生代码成功读回，但不授权以后未知schema/writer降级。资料恢复：只有显式同意丢弃快照后修改才恢复，目标必须是原绑定物理根，禁止删根重建、跨ProfileId搬运或静默覆盖；本轮94项同根合成恢复是范围有限的演练。程序回退与资料恢复不得混同。
+
+真实日用试用只在专用授权范围，先Standard、不启动未经授权游戏；比较已承诺保存、重启、锁定、托盘退出、Session恢复与错误提示。发现读只/identity不符、提交警告、设置损坏、退出丢写入、资源保护越线或能力降级无法解释即停止保存现场；不reset/重迁移/自动恢复。正式替换、切换Production、高级默认启用、公开分发与推送分别需要明确授权。当前RC Gate仍BLOCKED，本轮到此暂停。
