@@ -6,7 +6,8 @@ Roles (user, 2026-10-08):
 - **GPT is the independent engineering reviewer.**
 - Merge, push, release, Production data and the installed app stay out of scope.
 
-> **Gate:** revision 2 has **not** been approved (R1 in 01 §3). No Shell/Library implementation has started.
+> **Update 2026-10-08:** R1–R6 were approved and both slices are implemented; see `06_IMPLEMENTATION_RESULTS.md`.
+> Where this plan differs from the approval, the approval wins. In particular, R5 removes the in-app Exit entirely (× closes to the tray; the tray menu exits).
 > Everything in §2 is a plan.
 
 ## 1. Baseline and identities
@@ -29,7 +30,7 @@ Each step builds, keeps the existing tests green and is reviewable on its own.
    - Mica; extended title bar with AutoSuggestBox; NavigationView with default thresholds; content-on-Mica layer.
    - Session chip + flyout replacing `SessionSurface`. It binds the same `SessionPresentation`, `PauseTiming` /
      `ResumeTiming` and `LifecycleNotice`.
-   - Exit moves into the navigation footer (same `OnExitApp`).
+   - ~~Exit moves into the navigation footer~~ (superseded by R5: no in-app Exit; × closes to the tray, the tray menu exits).
    - Floating vs inline notices. Test diagnostics drawer.
 4. **Library header**, filter chips and a restyled filter flyout. Same `LibraryQuery` fields and values.
 5. **Grid.**

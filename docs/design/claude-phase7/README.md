@@ -10,6 +10,7 @@ Revision 2 replaces revision 1 after the Product Owner's review on 2026-10-08. R
 | [03_MATERIAL_AND_DESIGN_SYSTEM.md](03_MATERIAL_AND_DESIGN_SYSTEM.md) | Tokens → Fluent resources, Windows accent, Liquid Glass variants and placement, quality modes, accessibility |
 | [04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md](04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md) | Identities, slice plan (gated), acceptance, dependencies, GPT review prompts |
 | [05_GLASS_ENGINEERING_REPORT.md](05_GLASS_ENGINEERING_REPORT.md) | 连续玻璃 / 完全清透: change, verification, attempt history, integration |
+| [06_IMPLEMENTATION_RESULTS.md](06_IMPLEMENTATION_RESULTS.md) | Approved R1–R6 as implemented: identities, glass placements, deviations, verification, limitations, GPT review prompt |
 
 ## Previews
 
