@@ -1,5 +1,24 @@
 # 开发与维护
 
+## 当前本地开发集成 · 隔离 Test 体验（2026-10-08）
+
+工作区 `D:/Projects/The-Order-worktrees/codex-claude-ui-integration`，分支 `codex/claude-ui-integration`，可运行源码 `aa7dd7f`。只在这个工作区操作；主开发、原视觉、Claude、审查工作区和冻结候选保留不变。用户已批准有限资源例外，完成开发集成；不代表资源协议全部通过或正式发布获准。
+
+```powershell
+# 普通体验：新建独立 Test profile，标准材质默认开启，高级材质默认关闭。
+# 不运行 250 ms JSON 诊断文字更新；在设置中可手动选择 Auto/高级优先。
+& 'D:/Projects/The-Order-worktrees/codex-claude-ui-integration/native/scripts/run-integrated-ui.ps1'
+
+# 独立诊断入口：同一二进制，新 Test profile，显式开启现有诊断与受限 fixture。
+& 'D:/Projects/The-Order-worktrees/codex-claude-ui-integration/native/scripts/run-integrated-ui-diagnostics.ps1'
+```
+
+本机入口已准备 Release 候选 `.artifacts/local-development-integration/candidate-release/win-x64`、profile-helper、Test seed 与原始合成 covers。每次生成独立身份，拒绝已存在的 Run；可以加 `-Wait` 等待正常退出并记录 exit/hash。两入口清除子进程继承的实验变量并恢复调用者环境，显式 Test，fixtureProfile=0，不复制凭据。合成图片仅在真实 Test manifest + 显式 covers 路径下启用，与诊断开关解耦；Production/Development 不选该图片传输。
+
+右上角 × 隐藏到托盘，真正退出用托盘菜单。入口不扫描真实游戏、不运行游戏、不访问正式资料；请不要直接运行未指定 Test 环境的 EXE。材质设置只对本次会话有效。历史诊断入口与冻结协议未改；新诊断开关不改变那些历史 FAIL。
+
+Debug/Release 构建、294 项相关回归、native optical 及两个新入口短验已完成；无需为体验重跑 GA1/RC1。构建使用锁定 SDK 10.0.401 / 现有依赖，未升级或安装。后续构建仍按本文件的原生构建流程，输出到本工作区新候选目录，不覆盖冻结候选或正式程序。集成/回退映射与准确证据范围见 [审查第11节](docs/design/claude-phase7/07_INDEPENDENT_REVIEW.md)。下方早期说明是历史记录。
+
 ## Phase 7.1 closure / Phase 7.2A Round 3（2026-10-07）
 
 Phase 7.1 已正式 **PASS — PHASE 7.1 MEMORY MAJOR CLOSED / B0/M0/m0 / PASS FOR PHASE 7.2**。主工作区 closure 见 `D:/Projects/The-Order/docs/ai/PHASE7_PERFORMANCE_AND_RELIABILITY.md`；原 memory 诊断源码不复制进视觉分支。anonymous owner、global bitmap/GPU/COM、约3MiB residual、storage scaling、Level3独立验证均为 OBS，不再阻塞视觉工作。

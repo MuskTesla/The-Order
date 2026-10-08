@@ -1,5 +1,17 @@
 # The Order：当前实现与评审交接
 
+## 当前：Claude UI 本地开发集成（2026-10-08）
+
+用户已批准有限资源例外，完成开发集成；不代表资源协议全部通过或正式发布获准。当前工作区 `D:/Projects/The-Order-worktrees/codex-claude-ui-integration`、分支 `codex/claude-ui-integration`；可运行源码 checkpoint `aa7dd7f`。没有移动主开发、GPT 视觉、Claude 或独立审查工作区的分支，也没有处理其未提交修改。
+
+从主开发提交 `14a96a1` 继承已提交视觉依赖至 `ad59c6e`，逐文件提取必要的同设备背景源、提前释放与光学回归依赖（`3da3997`），再按依赖顺序集成 Claude 的真实改动及 `95b0ad7` 修复（本地 `1acae7f`）。**未整体引入 `7d74e24`，该复制提交不是当前分支祖先。** 旧 Toolbar 捕获实现和历史调查驱动不属于本次集成；原工作区和历史证据全部保留。
+
+已认可的 Fluent 方向、Windows Accent、普通点击 Details、多选/Shift 范围、关闭隐藏到托盘及正确退出流程保留。两处作品玻璃为 Library「继续游玩」Continuous 和 Details 标题 Clear；C1、同设备 Gallery 背景源、提前释放、过期背景/安全降级/异步离开/退出封锁/失败 owner 保留均未撤回。默认 **Standard**，高级效果手动 opt-in；普通隔离入口默认关闭诊断 timer/JSON 文字。Auto / Advanced / Standard / Transparency Off 保留，设置仍仅本次会话有效。
+
+集成候选 Debug/Release 构建、294/294 相关回归、native optical 回归通过；普通入口实机设置、两处材质、Details 返回、托盘正常退出及独立诊断入口短验通过，两个 Test 库前后校验值不变。不是新资源协议 PASS，没有再次执行长测。历史热端点与 RC1 三项 Private FAIL、low Advanced PASS、GA1 旧候选范围和未知归因完整保留；只豁免 Private 代理 FAIL 对本次隔离开发集成的硬性前置，其余释放/正确性/降级/数据要求不豁免。
+
+体验命令见 [DEVELOPMENT](../../DEVELOPMENT.md)；集成依赖、回退位置和限制见 [独立审查第11节](../design/claude-phase7/07_INDEPENDENT_REVIEW.md)。新候选、哈希、截图和日志在本工作区 `.artifacts/local-development-integration/`。下面各阶段段落保留为历史，不表示当前实现仍停在旧 Gallery-only 或固定灰绿方向。没有 Production 访问、正式替换、默认高级材质启用或远程推送授权。
+
 ## Phase 7.1 closure / Phase 7.2A Round 3（2026-10-07）
 
 Phase 7.1 已正式 **PASS — PHASE 7.1 MEMORY MAJOR CLOSED / B0/M0/m0 / PASS FOR PHASE 7.2**。主工作区 closure 见 `D:/Projects/The-Order/docs/ai/PHASE7_PERFORMANCE_AND_RELIABILITY.md`；原 memory 诊断源码不复制进视觉分支。anonymous owner、global bitmap/GPU/COM、约3MiB residual、storage scaling、Level3独立验证均为 OBS，不再阻塞视觉工作。
