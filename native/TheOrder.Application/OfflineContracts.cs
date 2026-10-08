@@ -17,7 +17,23 @@ public sealed record GameSummary(string Id, string Name, string Status, double? 
     public string RatingText => Rating is null ? "未评分" : $"{Rating:0.#} 分";
     public string FavoriteText => Favorite ? "♥ 收藏" : "";
     public string Subtitle => $"{StatusText} · {RatingText} · {InstallationCount} 个安装";
+    // Read-only projection of the stored LibraryEntry.LastPlayedAt; never inferred from other fields.
+    public string? LastPlayedAt { get; init; }
+    public bool HasPlayHistory { get; init; }
+    public string LastPlayedText => LastPlayedNames.Display(LastPlayedAt, HasPlayHistory, DateTimeOffset.Now);
     public override string ToString() => Name;
+}
+public static class LastPlayedNames
+{
+    // 从未游玩: no stored time and no history. 时间未知: history exists but the time is missing or unreadable.
+    public static string Display(string? value, bool hasHistory, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return hasHistory ? "时间未知" : "从未游玩";
+        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at)) return "时间未知";
+        var local = at.ToOffset(now.Offset); var days = (now.Date - local.Date).Days;
+        return days switch { < 0 => local.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), 0 => "今天 " + local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), 1 => "昨天", < 7 => $"{days} 天前",
+            _ => local.ToString(local.Year == now.Year ? "M月d日" : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) };
+    }
 }
 public static class StatusNames
 {

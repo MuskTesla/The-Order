@@ -123,6 +123,16 @@ struct GallerySource {
   if(sigma>0){auto props=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_NONE,D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_PREMULTIPLIED),96*dpiScale,96*dpiScale);
    Check(context->CreateBitmapFromWicBitmap(converter.Get(),&props,&image));}
   else Check(context->CreateBitmapFromWicBitmap(converter.Get(),nullptr,&image));
+  Place(std::move(image),x,y,w,h,fill,sigma);
+ }
+ // Already-decoded premultiplied BGRA (the app's image pipeline output); no file access.
+ void Pixels(const BYTE* data,UINT pw,UINT ph,float x,float y,float w,float h,bool fill,float sigma) {
+  if(!drawing||!data||pw==0||ph==0||frameImages.size()>=6)throw E_INVALIDARG;
+  auto props=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_NONE,D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_PREMULTIPLIED),96*dpiScale,96*dpiScale);
+  ComPtr<ID2D1Bitmap1> image;Check(context->CreateBitmap(D2D1::SizeU(pw,ph),data,pw*4,&props,&image));
+  Place(std::move(image),x,y,w,h,fill,sigma);
+ }
+ void Place(ComPtr<ID2D1Bitmap1> image,float x,float y,float w,float h,bool fill,float sigma) {
   const auto size=image->GetSize();auto src=D2D1::RectF(0,0,size.width,size.height);
   if(fill) {
    const auto ratio=w/h,actual=size.width/size.height;

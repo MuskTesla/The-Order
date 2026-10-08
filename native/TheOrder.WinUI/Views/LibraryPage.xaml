@@ -1,70 +1,145 @@
 <Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:views="using:TheOrder.WinUI.Views">
  <Page.Resources>
-  <Style x:Key="CollectionRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}"><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style>
+  <Style x:Key="CardContainerStyle" TargetType="GridViewItem" BasedOn="{StaticResource DefaultGridViewItemStyle}"><Setter Property="Margin" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/></Style>
+  <Style x:Key="CollectionRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="MinHeight" Value="56"/><Setter Property="Padding" Value="12,0,12,0"/></Style>
+  <!-- One shared context menu; items are rebuilt for the target card and the current mode. -->
+  <MenuFlyout x:Key="CardMenu" Opening="OnCardMenuOpening"/>
   <DataTemplate x:Key="CardTemplate" x:DataType="app:GameSummary">
-   <Border Width="188" Height="290" Margin="6" Style="{StaticResource SurfaceStyle}"><Grid Padding="8" RowSpacing="10"><Grid.RowDefinitions><RowDefinition Height="204"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><Grid><FontIcon Glyph="&#xE8F1;" FontSize="24" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.AccessibilityView="Raw"/><views:CoverPresenter SourceKey="{x:Bind CoverKey}"/></Grid></Border>
-    <Grid Grid.Row="1" Padding="4,0,4,0" RowSpacing="4"><Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-     <TextBlock Text="{x:Bind Name}" Style="{StaticResource CardTitleStyle}" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Name}"/>
-     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{x:Bind StatusText}" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="1" Text="{x:Bind FavoriteText}" Style="{StaticResource MetadataTextStyle}" Foreground="{ThemeResource AccentBrush}"/></Grid>
+   <Border Margin="6" Padding="6,6,6,10" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1" CornerRadius="8" ContextFlyout="{StaticResource CardMenu}"
+           AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
+    <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="40"/><RowDefinition Height="16"/></Grid.RowDefinitions>
+     <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+      <Grid>
+       <FontIcon Glyph="&#xE8F1;" FontSize="24" Foreground="{ThemeResource TextTertiaryBrush}" AutomationProperties.AccessibilityView="Raw"/>
+       <views:CoverPresenter SourceKey="{x:Bind CoverKey}"/>
+       <Border Visibility="{x:Bind views:LibraryFormat.Wishlist(InstallationCount)}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" Padding="6,1,6,2" CornerRadius="4" Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}">
+        <TextBlock Text="愿望单" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextPrimaryBrush}"/>
+       </Border>
+      </Grid>
+     </Border>
+     <TextBlock Grid.Row="1" Margin="4,0" Text="{x:Bind Name}" Style="{StaticResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextPrimaryBrush}" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Name}"/>
+     <Grid Grid.Row="2" Margin="4,0" ColumnSpacing="6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <TextBlock Text="{x:Bind views:LibraryFormat.CardMeta(StatusText, Rating)}" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+      <FontIcon Grid.Column="1" Glyph="&#xEB52;" FontSize="12" Foreground="{ThemeResource AccentBrush}" Visibility="{x:Bind views:LibraryFormat.Show(Favorite)}" AutomationProperties.Name="收藏"/>
+     </Grid>
     </Grid>
-   </Grid></Border>
+   </Border>
   </DataTemplate>
   <DataTemplate x:Key="RowTemplate" x:DataType="app:GameSummary">
-   <Grid Padding="12,8" ColumnSpacing="16" SizeChanged="OnListRowSizeChanged"><Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/><ColumnDefinition Width="76"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
-    <Border Height="64" Width="48" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><Grid><FontIcon Glyph="&#xE8F1;" FontSize="18" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.AccessibilityView="Raw"/><views:CoverPresenter SourceKey="{x:Bind CoverKey}"/></Grid></Border>
-    <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" Style="{StaticResource CardTitleStyle}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Name}"/><TextBlock Text="{x:Bind Labels}" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis"/></StackPanel>
-    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center"><TextBlock Text="{x:Bind StatusText}" Style="{StaticResource BodyTextStyle}"/><TextBlock Text="{x:Bind FavoriteText}" Style="{StaticResource MetadataTextStyle}" Foreground="{ThemeResource AccentBrush}"/></StackPanel>
-    <TextBlock x:Name="RowRating" Grid.Column="3" Text="{x:Bind RatingText}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
-    <StackPanel x:Name="RowInstallations" Grid.Column="4" Spacing="3" VerticalAlignment="Center"><TextBlock Text="{x:Bind InstallationCount}" Style="{StaticResource BodyTextStyle}"/><TextBlock Text="本地安装" Style="{StaticResource MetadataTextStyle}"/></StackPanel>
+   <Grid MinHeight="56" ColumnSpacing="12" Background="Transparent" SizeChanged="OnListRowSizeChanged" ContextFlyout="{StaticResource CardMenu}" AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/><ColumnDefinition Width="92"/><ColumnDefinition Width="56"/><ColumnDefinition Width="88"/><ColumnDefinition Width="96"/><ColumnDefinition Width="60"/></Grid.ColumnDefinitions>
+    <Border Width="30" Height="40" CornerRadius="3" Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center"><Grid><FontIcon Glyph="&#xE8F1;" FontSize="12" Foreground="{ThemeResource TextTertiaryBrush}" AutomationProperties.AccessibilityView="Raw"/><views:CoverPresenter SourceKey="{x:Bind CoverKey}"/></Grid></Border>
+    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center"><TextBlock Text="{x:Bind Name}" Style="{StaticResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTipService.ToolTip="{x:Bind Name}"/><TextBlock Text="{x:Bind views:LibraryFormat.RowSubtitle(Labels, InstallationCount, Favorite)}" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/></StackPanel>
+    <TextBlock Grid.Column="2" Text="{x:Bind StatusText}" Style="{StaticResource BodyTextStyle}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
+    <TextBlock x:Name="RowRating" Grid.Column="3" Text="{x:Bind views:LibraryFormat.Rating(Rating)}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
+    <TextBlock x:Name="RowPlaytime" Grid.Column="4" Text="{x:Bind views:LibraryFormat.PlayTime(PlaySeconds)}" FontFamily="Cascadia Mono" FontSize="12" Foreground="{ThemeResource TextSecondaryBrush}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
+    <TextBlock x:Name="RowLastPlayed" Grid.Column="5" Text="{x:Bind LastPlayedText}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+    <TextBlock x:Name="RowInstallations" Grid.Column="6" Text="{x:Bind InstallationCount}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="NoWrap" VerticalAlignment="Center"/>
    </Grid>
   </DataTemplate>
  </Page.Resources>
- <Grid x:Name="LibraryCanvas" Padding="{StaticResource PagePadding}" RowSpacing="0" SizeChanged="OnLibrarySizeChanged">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Grid ColumnSpacing="16" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <StackPanel Spacing="4"><TextBlock Text="书架" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="{x:Bind ViewModel.CountText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="LibraryStatus"/></StackPanel>
-   <Button x:Name="ImportButton" Grid.Column="1" Content="导入目录" Click="OnImport" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="OpenImport" AutomationProperties.Name="导入本地游戏目录"/>
+ <Grid x:Name="LibraryCanvas" SizeChanged="OnLibrarySizeChanged" KeyDown="OnPageKeyDown">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <!-- Header: title + count, then sort · filter · view · select · import (labels collapse below 900). -->
+  <Grid x:Name="HeaderRow" Padding="32,16,24,8" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+    <TextBlock Text="书架" Style="{StaticResource TitleTextBlockStyle}"/>
+    <TextBlock x:Name="CountText" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Bottom" Margin="0,0,0,6" AutomationProperties.AutomationId="LibraryStatus"/>
+   </StackPanel>
+   <StackPanel x:Name="HeaderCommands" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+    <DropDownButton x:Name="SortButton" AutomationProperties.AutomationId="LibrarySort" AutomationProperties.Name="作品排序">
+     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE8CB;" FontSize="14"/><TextBlock x:Name="SortLabel" Text="最近添加"/></StackPanel>
+     <DropDownButton.Flyout>
+      <MenuFlyout x:Name="SortMenu" Placement="BottomEdgeAlignedRight">
+       <RadioMenuFlyoutItem Text="最近添加" Tag="added" GroupName="Sort" Click="OnSortItem"/><RadioMenuFlyoutItem Text="最近游玩" Tag="recent" GroupName="Sort" Click="OnSortItem"/>
+       <RadioMenuFlyoutItem Text="名称" Tag="name" GroupName="Sort" Click="OnSortItem"/><RadioMenuFlyoutItem Text="我的评分" Tag="rating" GroupName="Sort" Click="OnSortItem"/>
+       <RadioMenuFlyoutItem Text="游玩时长" Tag="playtime" GroupName="Sort" Click="OnSortItem"/>
+      </MenuFlyout>
+     </DropDownButton.Flyout>
+    </DropDownButton>
+    <Button x:Name="FilterButton" AutomationProperties.AutomationId="LibraryFilters" AutomationProperties.Name="展开作品筛选">
+     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE71C;" FontSize="14"/><TextBlock x:Name="FilterLabel" Text="筛选"/><InfoBadge x:Name="FilterBadge" Visibility="Collapsed" Value="0" Style="{ThemeResource AttentionValueInfoBadgeStyle}"/></StackPanel>
+     <Button.Flyout><Flyout x:Name="FilterFlyout" Placement="BottomEdgeAlignedRight" Opening="OnFilterOpening">
+      <Grid x:Name="FilterPanel" Width="300" Height="520" MaxHeight="520" RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <ScrollViewer x:Name="FilterBody" AutomationProperties.AutomationId="FilterBody" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="12" Padding="0,0,12,0">
+        <TextBlock Text="筛选作品" Style="{StaticResource SubtitleTextBlockStyle}"/>
+        <ComboBox x:Name="ViewChoice" Header="作品范围" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="LibraryView" AutomationProperties.Name="作品范围"><ComboBoxItem Content="全部作品" Tag="all"/><ComboBoxItem Content="本地游戏" Tag="local"/><ComboBoxItem Content="愿望单" Tag="wishlist"/><ComboBoxItem Content="缺资料" Tag="unmatched"/><ComboBoxItem Content="待设启动程序" Tag="unconfigured"/></ComboBox>
+        <ComboBox x:Name="StatusChoice" Header="游玩状态" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="StatusFilter" AutomationProperties.Name="按游玩状态筛选"><ComboBoxItem Content="全部状态" Tag="all"/><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
+        <TextBox x:Name="CategoryFilter" Header="分类" PlaceholderText="输入完整分类名称" TextChanged="OnFilterText" AutomationProperties.AutomationId="CategoryFilter" AutomationProperties.Name="按完整分类名称筛选"/>
+        <TextBox x:Name="TagFilter" Header="个人标签" PlaceholderText="输入完整标签名称" TextChanged="OnFilterText" AutomationProperties.AutomationId="TagFilter" AutomationProperties.Name="按完整个人标签筛选"/>
+        <ComboBox x:Name="MinimumChoice" Header="个人评分" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="RatingFilter" AutomationProperties.Name="按个人评分筛选"><ComboBoxItem Content="全部评分" Tag=""/><ComboBoxItem Content="已评分" Tag="0"/><ComboBoxItem Content="评分 ≥ 6" Tag="6"/><ComboBoxItem Content="评分 ≥ 8" Tag="8"/></ComboBox>
+        <CheckBox x:Name="FavoriteFilter" Content="只看收藏" Checked="OnFavoriteFilter" Unchecked="OnFavoriteFilter" AutomationProperties.AutomationId="FavoriteFilter"/>
+        <Border Height="1" Background="{ThemeResource DividerBrush}" Margin="0,4"/>
+        <ComboBox x:Name="SavedChoice" Header="常用筛选" PlaceholderText="选择保存的筛选" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.SavedFilters, Mode=OneWay}" DisplayMemberPath="Name" SelectionChanged="OnSavedFilter" AutomationProperties.AutomationId="SavedFilters" AutomationProperties.Name="应用常用筛选"/>
+       </StackPanel></ScrollViewer>
+       <StackPanel x:Name="FilterFooter" Grid.Row="1" Orientation="Horizontal" Spacing="8"><Button Content="完成" Style="{StaticResource AccentButtonStyle}" Click="OnFinishFilter" AutomationProperties.AutomationId="FinishFilter" AutomationProperties.Name="完成筛选，条件已即时应用"/><Button Content="保存筛选" Click="OnSaveFilter" IsEnabled="{x:Bind ViewModel.CanManageFilters, Mode=OneWay}" AutomationProperties.Name="保存当前筛选条件"/><Button Content="清除条件" Click="OnClear" AutomationProperties.Name="清除全部筛选条件"/></StackPanel>
+      </Grid>
+     </Flyout></Button.Flyout>
+    </Button>
+    <StackPanel Orientation="Horizontal" Spacing="2">
+     <ToggleButton x:Name="GridModeButton" Width="40" Click="OnGrid" AutomationProperties.AutomationId="GridMode" AutomationProperties.Name="网格视图" ToolTipService.ToolTip="网格视图"><FontIcon Glyph="&#xF0E2;" FontSize="14"/></ToggleButton>
+     <ToggleButton x:Name="ListModeButton" Width="40" Click="OnList" AutomationProperties.AutomationId="ListMode" AutomationProperties.Name="列表视图" ToolTipService.ToolTip="列表视图"><FontIcon Glyph="&#xE8FD;" FontSize="14"/></ToggleButton>
+    </StackPanel>
+    <ToggleButton x:Name="SelectButton" Click="OnSelectToggle" AutomationProperties.AutomationId="SelectionMode" AutomationProperties.Name="选择作品" ToolTipService.ToolTip="选择作品（Ctrl+单击）">
+     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE762;" FontSize="14"/><TextBlock x:Name="SelectLabel" Text="选择"/></StackPanel>
+    </ToggleButton>
+    <Button x:Name="ImportButton" Click="OnImport" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="OpenImport" AutomationProperties.Name="导入本地游戏目录">
+     <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE8B5;" FontSize="14"/><TextBlock x:Name="ImportLabel" Text="导入"/></StackPanel>
+    </Button>
+    <Button x:Name="LibraryMore" Width="40" Style="{StaticResource SubtleButtonStyle}" AutomationProperties.Name="更多书架操作" AutomationProperties.AutomationId="LibraryMore"><FontIcon Glyph="&#xE712;" FontSize="14"/>
+     <Button.Flyout><MenuFlyout Placement="BottomEdgeAlignedRight"><MenuFlyoutItem x:Name="MoreSelect" Text="选择作品" Click="OnMoreSelect" Visibility="Collapsed"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE762;"/></MenuFlyoutItem.Icon></MenuFlyoutItem><MenuFlyoutItem x:Name="MoreImport" Text="导入目录" Click="OnImport" Visibility="Collapsed" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B5;"/></MenuFlyoutItem.Icon></MenuFlyoutItem><MenuFlyoutItem Text="重新读取书架" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72C;"/></MenuFlyoutItem.Icon></MenuFlyoutItem></MenuFlyout></Button.Flyout>
+    </Button>
+   </StackPanel>
   </Grid>
-  <Border x:Name="ToolbarSurface" Grid.Row="1" Style="{StaticResource ToolbarSurfaceStyle}" Padding="12" Margin="0,0,0,12">
-   <Grid x:Name="ToolbarGrid" ColumnSpacing="12" RowSpacing="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBox x:Name="SearchBox" PlaceholderText="搜索作品、原名或标签" TextChanged="OnSearch" MinHeight="36" VerticalAlignment="Center" AutomationProperties.AutomationId="LibrarySearch" AutomationProperties.Name="搜索书架，支持名称、原名、标签、开发商及安装目录"/>
-    <Grid x:Name="ToolbarControls" Grid.Column="1" ColumnSpacing="8" RowSpacing="8" VerticalAlignment="Center"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="88"/><ColumnDefinition Width="78"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
-     <StackPanel x:Name="LayoutControls" Grid.Column="0" Orientation="Horizontal" Spacing="4"><ToggleButton x:Name="GridModeButton" Width="40" Height="36" Click="OnGrid" AutomationProperties.AutomationId="GridMode" AutomationProperties.Name="网格视图" ToolTipService.ToolTip="网格视图"><FontIcon Glyph="&#xE80A;" FontSize="16"/></ToggleButton><ToggleButton x:Name="ListModeButton" Width="40" Height="36" Click="OnList" AutomationProperties.AutomationId="ListMode" AutomationProperties.Name="列表视图" ToolTipService.ToolTip="列表视图"><FontIcon Glyph="&#xE8FD;" FontSize="16"/></ToggleButton></StackPanel>
-     <Button x:Name="FilterButton" Grid.Column="1" MinHeight="36" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LibraryFilters" AutomationProperties.Name="展开作品筛选">
-      <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE71C;" FontSize="14"/><TextBlock Text="筛选"/></StackPanel>
-      <Button.Flyout><Flyout x:Name="FilterFlyout" Placement="BottomEdgeAlignedRight" Opening="OnFilterOpening"><Grid x:Name="FilterPanel" Width="300" Height="520" MaxHeight="520" RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><ScrollViewer x:Name="FilterBody" AutomationProperties.AutomationId="FilterBody" VerticalScrollBarVisibility="Auto"><StackPanel Spacing="12">
-       <TextBlock Text="筛选作品" Style="{StaticResource SectionTitleStyle}"/>
-     <ComboBox x:Name="ViewChoice" Header="作品范围" MinHeight="36" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="LibraryView" AutomationProperties.Name="作品范围"><ComboBoxItem Content="全部作品" Tag="all"/><ComboBoxItem Content="本地游戏" Tag="local"/><ComboBoxItem Content="愿望单" Tag="wishlist"/><ComboBoxItem Content="缺资料" Tag="unmatched"/><ComboBoxItem Content="待设启动程序" Tag="unconfigured"/></ComboBox>
-     <ComboBox x:Name="SortChoice" Header="排序" MinHeight="36" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="LibrarySort" AutomationProperties.Name="作品排序"><ComboBoxItem Content="最近添加" Tag="added"/><ComboBoxItem Content="最近游玩" Tag="recent"/><ComboBoxItem Content="名称排序" Tag="name"/><ComboBoxItem Content="我的评分" Tag="rating"/><ComboBoxItem Content="游玩时长" Tag="playtime"/></ComboBox>
-
-       <ComboBox x:Name="StatusChoice" Header="游玩状态" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="StatusFilter" AutomationProperties.Name="按游玩状态筛选"><ComboBoxItem Content="全部状态" Tag="all"/><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
-       <TextBox x:Name="CategoryFilter" Header="分类" PlaceholderText="输入完整分类名称" TextChanged="OnSearch" AutomationProperties.AutomationId="CategoryFilter" AutomationProperties.Name="按完整分类名称筛选"/>
-       <TextBox x:Name="TagFilter" Header="个人标签" PlaceholderText="输入完整标签名称" TextChanged="OnSearch" AutomationProperties.AutomationId="TagFilter" AutomationProperties.Name="按完整个人标签筛选"/>
-       <ComboBox x:Name="MinimumChoice" Header="个人评分" HorizontalAlignment="Stretch" SelectionChanged="OnFilter" AutomationProperties.AutomationId="RatingFilter" AutomationProperties.Name="按个人评分筛选"><ComboBoxItem Content="全部评分" Tag=""/><ComboBoxItem Content="已评分" Tag="0"/><ComboBoxItem Content="评分 ≥ 6" Tag="6"/><ComboBoxItem Content="评分 ≥ 8" Tag="8"/></ComboBox>
-       <CheckBox x:Name="FavoriteFilter" Content="只看收藏" Checked="OnFavoriteFilter" Unchecked="OnFavoriteFilter" AutomationProperties.AutomationId="FavoriteFilter"/>
-       <Border Height="1" Background="{ThemeResource StrokeBrush}" Margin="0,4"/>
-       <ComboBox x:Name="SavedChoice" Header="常用筛选" PlaceholderText="选择保存的筛选" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.SavedFilters, Mode=OneWay}" DisplayMemberPath="Name" SelectionChanged="OnSavedFilter" AutomationProperties.AutomationId="SavedFilters" AutomationProperties.Name="应用常用筛选"/>
-       </StackPanel></ScrollViewer><StackPanel x:Name="FilterFooter" Grid.Row="1" Orientation="Horizontal" Spacing="8"><Button Content="完成" Click="OnFinishFilter" AutomationProperties.AutomationId="FinishFilter" AutomationProperties.Name="完成筛选，条件已即时应用"/><Button Content="保存筛选" Click="OnSaveFilter" IsEnabled="{x:Bind ViewModel.CanManageFilters, Mode=OneWay}" AutomationProperties.Name="保存当前筛选条件"/><Button Content="清除条件" Click="OnClear" AutomationProperties.Name="清除全部筛选条件"/></StackPanel>
-      </Grid></Flyout></Button.Flyout>
-     </Button>
-     <Button x:Name="LibraryMore" Grid.Column="2" Width="36" AutomationProperties.Name="更多书架操作" AutomationProperties.AutomationId="LibraryMore"><FontIcon Glyph="&#xE712;"/><Button.Flyout><MenuFlyout><MenuFlyoutItem Text="导入目录" Click="OnImport" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"/><MenuFlyoutItem Text="重新读取书架" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}"/></MenuFlyout></Button.Flyout></Button>
-    </Grid>
+  <!-- Active conditions: one chip each (× removes it) + 清除全部. Present only while filters are active. -->
+  <Grid x:Name="ActiveFilterRegion" Grid.Row="1" Visibility="Collapsed" Padding="32,0,24,8" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="FilterChips" Orientation="Horizontal" Spacing="8" AutomationProperties.AutomationId="ActiveFilterSummary" AutomationProperties.Name="当前筛选条件"/>
+   </ScrollViewer>
+   <HyperlinkButton Grid.Column="1" Content="清除全部" Click="OnClear" AutomationProperties.Name="清除全部筛选条件"/>
+  </Grid>
+  <!-- Selection mode bar (replaces the header actions while selecting). -->
+  <Grid x:Name="SelectionContext" Grid.Row="2" Visibility="Collapsed" Margin="24,0,24,8" Padding="12,6" ColumnSpacing="8" CornerRadius="8" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+   <TextBlock x:Name="SelectionCountText" Text="已选择 0 项" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" AutomationProperties.AutomationId="LibrarySelectionCount" AutomationProperties.LiveSetting="Polite"/>
+   <StackPanel x:Name="ContextActions" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
+    <Button x:Name="SelectAllButton" Style="{StaticResource SubtleButtonStyle}" Click="OnSelectAll" AutomationProperties.AutomationId="SelectAll"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE8B3;" FontSize="14"/><TextBlock Text="全选"/></StackPanel></Button>
+    <Button x:Name="RecognizeSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRecognize" IsEnabled="False" AutomationProperties.AutomationId="RecognizeSelected"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE721;" FontSize="14"/><TextBlock Text="识别所选"/></StackPanel></Button>
+    <Button x:Name="BatchEditButton" Style="{StaticResource SubtleButtonStyle}" Click="OnBatch" IsEnabled="False" AutomationProperties.AutomationId="BatchEdit"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE70F;" FontSize="14"/><TextBlock Text="批量编辑"/></StackPanel></Button>
+    <TextBlock x:Name="SelectionHint" Text="Shift+单击选择范围 · Esc 退出" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+   </StackPanel>
+   <Button Grid.Column="2" Content="完成" Click="OnSelectionDone" AutomationProperties.AutomationId="SelectionDone" AutomationProperties.Name="完成选择"/>
+  </Grid>
+  <Grid x:Name="BooksViewport" Grid.Row="3">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+   <ProgressBar Grid.RowSpan="2" IsIndeterminate="True" Height="2" VerticalAlignment="Top" Canvas.ZIndex="1" Visibility="{x:Bind Visible(ViewModel.IsSearching), Mode=OneWay}" AutomationProperties.Name="正在更新书架"/>
+   <!-- List header (sticky; outside the scrolling list). Header buttons apply the existing sort keys. -->
+   <Grid x:Name="ListHeader" Visibility="Collapsed" Height="36" Margin="24,0,24,0" Padding="12,0,28,0" ColumnSpacing="12" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/><ColumnDefinition Width="92"/><ColumnDefinition Width="56"/><ColumnDefinition Width="88"/><ColumnDefinition Width="96"/><ColumnDefinition Width="60"/></Grid.ColumnDefinitions>
+    <HyperlinkButton Grid.Column="1" Tag="name" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.Name="按名称排序"><TextBlock x:Name="HeaderName" Text="名称" Style="{StaticResource CaptionTextBlockStyle}"/></HyperlinkButton>
+    <TextBlock Grid.Column="2" Text="状态" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center"/>
+    <HyperlinkButton x:Name="HeaderRatingButton" Grid.Column="3" Tag="rating" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.Name="按评分排序"><TextBlock x:Name="HeaderRating" Text="评分" Style="{StaticResource CaptionTextBlockStyle}"/></HyperlinkButton>
+    <HyperlinkButton x:Name="HeaderPlaytimeButton" Grid.Column="4" Tag="playtime" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.Name="按游玩时长排序"><TextBlock x:Name="HeaderPlaytime" Text="游玩时长" Style="{StaticResource CaptionTextBlockStyle}"/></HyperlinkButton>
+    <HyperlinkButton x:Name="HeaderLastPlayedButton" Grid.Column="5" Tag="recent" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" AutomationProperties.Name="按最近游玩排序"><TextBlock x:Name="HeaderLastPlayed" Text="最近游玩" Style="{StaticResource CaptionTextBlockStyle}"/></HyperlinkButton>
+    <TextBlock x:Name="HeaderInstallations" Grid.Column="6" Text="安装" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center"/>
    </Grid>
-  </Border>
-  <Grid x:Name="ActiveFilterRegion" Grid.Row="2" Visibility="Collapsed" ColumnSpacing="8" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE71C;" FontSize="12" Foreground="{ThemeResource AccentBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ActiveFilterText" Grid.Column="1" Style="{StaticResource SecondaryTextStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" AutomationProperties.AutomationId="ActiveFilterSummary"/><Button Grid.Column="2" Content="清除" Click="OnClear" AutomationProperties.Name="清除全部筛选条件" MinHeight="32"/></Grid>
-  <Grid x:Name="SelectionContext" Grid.Row="3" ColumnSpacing="12" RowSpacing="8" Margin="0,0,0,12" Visibility="Collapsed"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-   <TextBlock x:Name="SelectionCountText" Text="选择作品以查看详情或批量管理" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.AutomationId="LibrarySelectionCount"/>
-   <Grid x:Name="ContextActions" Grid.Column="1" ColumnSpacing="8" RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="OpenDetailsButton" Content="查看详情" Click="OnOpen" IsEnabled="False" AutomationProperties.AutomationId="OpenDetails"/><Button x:Name="RecognizeSelectedButton" Grid.Column="1" Content="识别所选" Click="OnRecognize" IsEnabled="False" AutomationProperties.AutomationId="RecognizeSelected"/><Button x:Name="BatchEditButton" Grid.Column="2" Content="批量编辑" Click="OnBatch" IsEnabled="False" AutomationProperties.AutomationId="BatchEdit"/><Button x:Name="ReloadButton" Grid.Column="3" Width="36" Click="OnReload" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="ReloadLibrary" AutomationProperties.Name="重新读取书架" ToolTipService.ToolTip="重新读取书架"><FontIcon Glyph="&#xE72C;" FontSize="14"/></Button><Button x:Name="SelectionMore" Grid.Column="4" Width="36" Visibility="Collapsed" AutomationProperties.Name="所选作品的更多操作"><FontIcon Glyph="&#xE712;"/><Button.Flyout><MenuFlyout><MenuFlyoutItem Text="识别所选" Click="OnRecognize"/><MenuFlyoutItem Text="批量编辑" Click="OnBatch" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"/></MenuFlyout></Button.Flyout></Button></Grid>
+   <!-- Bounded viewport; ItemsWrapGrid / ItemsStackPanel stay virtualized; the inactive source remains null. -->
+   <GridView x:Name="GameGrid" Grid.Row="1" Padding="18,0,18,24" SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnItemClick" ItemTemplate="{StaticResource CardTemplate}" ItemContainerStyle="{StaticResource CardContainerStyle}"
+             PreviewKeyDown="OnItemsPreviewKey" SelectionChanged="OnItemSelectionChanged" ContainerContentChanging="OnContainerChanging" SizeChanged="OnGridSizeChanged"
+             AutomationProperties.AutomationId="LibraryGrid" AutomationProperties.Name="游戏网格">
+    <GridView.ItemsPanel><ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" Loaded="OnWrapGridLoaded"/></ItemsPanelTemplate></GridView.ItemsPanel>
+   </GridView>
+   <ListView x:Name="GameList" Grid.Row="1" Visibility="Collapsed" Padding="24,0,24,24" SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnItemClick" ItemTemplate="{StaticResource RowTemplate}" ItemContainerStyle="{StaticResource CollectionRowStyle}"
+             PreviewKeyDown="OnItemsPreviewKey" SelectionChanged="OnItemSelectionChanged" ContainerContentChanging="OnContainerChanging" SizeChanged="OnListSizeChanged"
+             AutomationProperties.AutomationId="LibraryList" AutomationProperties.Name="游戏列表"/>
+   <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="360" Spacing="12" Visibility="{x:Bind Visible(ViewModel.IsEmpty), Mode=OneWay}" AutomationProperties.AutomationId="LibraryEmpty">
+    <FontIcon Glyph="&#xE8F1;" FontSize="32" Foreground="{ThemeResource TextTertiaryBrush}"/>
+    <TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}" TextAlignment="Center" Style="{StaticResource SecondaryTextStyle}"/>
+    <Button x:Name="EmptyImport" Content="导入目录" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Center" Click="OnImport" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}"/>
+    <Button x:Name="EmptyClear" Content="清除筛选" HorizontalAlignment="Center" Click="OnClear"/>
+   </StackPanel>
+   <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="正在加载书架"/>
   </Grid>
-  <!-- Bounded viewport; default ItemsWrapGrid / ItemsStackPanel; inactive source remains null. -->
-  <Grid Grid.Row="4">
-   <ProgressBar IsIndeterminate="True" Height="2" VerticalAlignment="Top" Canvas.ZIndex="1" Visibility="{x:Bind Visible(ViewModel.IsSearching), Mode=OneWay}" AutomationProperties.Name="正在更新书架"/>
-   <GridView x:Name="GameGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource CardTemplate}" DoubleTapped="OnDoubleTapped" KeyDown="OnItemsKey" SelectionChanged="OnItemSelectionChanged" ContainerContentChanging="OnContainerChanging" AutomationProperties.AutomationId="LibraryGrid" AutomationProperties.Name="游戏网格"/>
-   <ListView x:Name="GameList" Visibility="Collapsed" SelectionMode="Multiple" ItemTemplate="{StaticResource RowTemplate}" ItemContainerStyle="{StaticResource CollectionRowStyle}" DoubleTapped="OnDoubleTapped" KeyDown="OnItemsKey" SelectionChanged="OnItemSelectionChanged" ContainerContentChanging="OnContainerChanging" AutomationProperties.AutomationId="LibraryList" AutomationProperties.Name="游戏列表"/>
-   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="320" Spacing="12" Visibility="{x:Bind Visible(ViewModel.IsEmpty), Mode=OneWay}"><FontIcon Glyph="&#xE8F1;" FontSize="32" Foreground="{ThemeResource TextSecondaryBrush}"/><TextBlock Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}" TextAlignment="Center" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
-   <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="正在加载书架"/>
-  </Grid>
-  <TextBlock Grid.Row="5" x:Name="DiagnosticsText" Visibility="Collapsed" FontSize="11" AutomationProperties.AutomationId="VirtualizationProbe"/>
+  <TextBlock Grid.Row="4" x:Name="DiagnosticsText" Visibility="Collapsed" FontSize="11" Margin="24,0" AutomationProperties.AutomationId="VirtualizationProbe"/>
  </Grid>
 </Page>

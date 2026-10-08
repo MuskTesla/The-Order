@@ -156,6 +156,16 @@ void ContinuousTests(void* handle) {
  Require(OpticalSceneImageBlur(handle,L"X:\\missing.png",0,0,8,8,TRUE,0)==E_INVALIDARG,"Zero sigma accepted");
  Require(FAILED(OpticalSceneImageBlur(handle,L"X:\\missing.png",0,0,8,8,TRUE,4)),"Missing blurred image did not fail");
  Check(OpticalSceneEnd(handle));Require(r->scene.frameEffects.empty()&&r->scene.frameImages.empty(),"Scene effects retained after EndDraw");
+ // Pixel-buffer artwork (app image pipeline output): exact sharp placement, validation, blurred path.
+ std::vector<BYTE> art(4*4*4);for(size_t i=0;i<art.size();i+=4){art[i]=0x20;art[i+1]=0x80;art[i+2]=0xe0;art[i+3]=0xff;}
+ Check(OpticalSceneBegin(handle,32,32,1,0xff000000));
+ Require(OpticalScenePixels(handle,art.data(),4,4,static_cast<UINT>(art.size())-4,0,0,32,32,TRUE,0)==E_INVALIDARG,"Short pixel buffer accepted");
+ Require(OpticalScenePixels(handle,art.data(),4,4,static_cast<UINT>(art.size()),0,0,32,32,TRUE,-1)==E_INVALIDARG,"Negative sigma accepted");
+ Check(OpticalScenePixels(handle,art.data(),4,4,static_cast<UINT>(art.size()),0,0,32,32,TRUE,0));Check(OpticalSceneEnd(handle));
+ auto placed=ReadTexture(r,r->sourceTexture.Get());Require(placed[(16*32+16)*4+0]==0x20&&placed[(16*32+16)*4+1]==0x80&&placed[(16*32+16)*4+2]==0xe0,"Pixel artwork not placed exactly");
+ Check(OpticalSceneBegin(handle,32,32,1,0xff000000));Check(OpticalScenePixels(handle,art.data(),4,4,static_cast<UINT>(art.size()),0,0,32,32,TRUE,6));Check(OpticalSceneEnd(handle));
+ auto soft=ReadTexture(r,r->sourceTexture.Get());Require(std::abs(soft[(16*32+16)*4+1]-0x80)<=2,"Blurred uniform artwork changed colour");
+ Require(r->scene.frameEffects.empty()&&r->scene.frameImages.empty(),"Pixel scene resources retained after EndDraw");
 }
 // 完全清透 (fully clear continuous glass). Same frozen thresholds as rev2, declared before the first run:
 // outside unchanged, no inner boundary on a uniform field (<= 3), rim/body detail ratio <= 2, luminance bounds.

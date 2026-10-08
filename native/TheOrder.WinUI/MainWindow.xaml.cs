@@ -47,15 +47,18 @@ public sealed partial class MainWindow : Window
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT") is not null;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
+        // Fluent shell: content extends into the caption area and the TitleBar control is the drag region.
+        ExtendsContentIntoTitleBar = true; SetTitleBar(AppTitleBar);
+        AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
         Navigation.IsEnabled = false;
-        libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import) };
+        libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import), QuickLaunch = QuickLaunchAsync };
         detailsPage = new(workspace, images, launch) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         onlinePage = new(online, images);
         recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };
         libraryPage.RecognizeSelected = async ids => { if (await ResolveUnsavedAsync()) { await recognition.StartAsync(ids, RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
         detailsPage.Recognize = async () => { if (workspace.SelectedId is { } id && await ResolveUnsavedAsync()) { await recognition.StartAsync([id], RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
-        settingsPage = new(workspace, online);
+        settingsPage = new(workspace, online) { ChangeMaterialMode = SetMaterialMode };
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) await online.RefreshEntryAsync(id); };
         detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
         importPage = new(files, workspace) { ChooseFolder = PickFolder };
@@ -63,6 +66,7 @@ public sealed partial class MainWindow : Window
         InitializeVisualSystem(configuration);
         workspace.ThemeChanged += ApplyTheme; workspace.PropertyChanged += OnState;
         ApplyTheme(); ShowPage();
+        InitializeShellInput(configuration.Diagnostics);
         launchTimer.Tick += OnLaunchRefresh; launchTimer.Start();
         if (configuration.Diagnostics)
         {
@@ -86,7 +90,7 @@ public sealed partial class MainWindow : Window
     private async Task Initialize()
     {
         try { await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); }
-        catch (Exception) { lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
+        catch (Exception exception) { App.TraceVisualFailure(exception); lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
         RefreshSession();
     }
     public void SetCommandsBlocked(bool value) { commandsBlocked = value; RefreshSession(); }
@@ -94,14 +98,14 @@ public sealed partial class MainWindow : Window
     public void CancelBackgroundRequests() { online.Leave(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); }
     private async void OnPauseTiming(object sender, RoutedEventArgs e) { try { await Sessions.PauseAsync(); } catch { ShowLifecycleError("暂停计时未完成，请重试。"); } RefreshSession(); }
     private async void OnResumeTiming(object sender, RoutedEventArgs e) { try { await Sessions.ResumeAsync(); } catch { ShowLifecycleError("恢复计时未完成，请重试。"); } RefreshSession(); }
-    private async void OnExitApp(object sender, RoutedEventArgs e) { if (App.Instance is { } app) await app.RequestExitAsync(); }
     private void RefreshSession()
     {
         Navigation.IsEnabled = Sessions.Ready && !Sessions.Closing && !commandsBlocked;
         var value = SessionPresentation.From(Sessions.Session, Sessions.Library, Sessions.CanMutate && !commandsBlocked);
         LifecycleNotice.IsOpen = lifecycleMessage is not null; LifecycleNotice.Message = lifecycleMessage ?? "";
         SessionTitle.Text = value.Title; SessionState.Text = Sessions.Error ?? (Sessions.Ready ? value.State : "正在恢复上次会话…");
-        SessionDuration.Text = value.Duration; SessionHistory.Text = value.History;
+        SessionDuration.Text = value.Duration; SessionFlyoutDuration.Text = value.Duration; SessionHistory.Text = value.History;
+        SessionChipTitle.Text = Sessions.Session?.Session is null ? (Sessions.Error is not null ? "会话异常" : "正在恢复会话") : value.Title;
         SessionHistory.Visibility = string.IsNullOrEmpty(value.History) ? Visibility.Collapsed : Visibility.Visible;
         PauseTiming.IsEnabled = value.CanPause; ResumeTiming.IsEnabled = value.CanResume;
         UpdateSessionChrome(value);
@@ -122,10 +126,14 @@ public sealed partial class MainWindow : Window
     {
         synchronizing = true;
         LeaveGallery();
+        // Swapchain owners release while still in the live tree (proven early-release order).
+        if (ViewModel.Page != WorkspacePage.Library) libraryPage.ReleaseStageBeforeLeave();
+        if (ViewModel.Page != WorkspacePage.Details) detailsPage.ReleaseStageBeforeLeave();
         PageContent.Content = ViewModel.Page switch { WorkspacePage.Recognition => recognitionPage, WorkspacePage.Online => onlinePage, WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
         Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : ViewModel.Page == WorkspacePage.Recognition ? RecognitionNavigation : LibraryNavigation;
-        Navigation.IsBackEnabled = ViewModel.Page != WorkspacePage.Library;
+        AppTitleBar.IsBackButtonEnabled = ViewModel.Page != WorkspacePage.Library;
         synchronizing = false;
+        SynchronizeTitleSearch();
         AnimatePage();
     }
     private async Task Navigate(WorkspacePage page, string? id = null)
@@ -143,7 +151,8 @@ public sealed partial class MainWindow : Window
         if (args.InvokedItemContainer is NavigationViewItem { Tag: "visual-states" }) { ShowSessionStateFixtures(); return; }
         if (!synchronizing && args.InvokedItemContainer is NavigationViewItem item) await Navigate((item.Tag as string) switch { "settings" => WorkspacePage.Settings, "online" => WorkspacePage.Online, "recognition" => WorkspacePage.Recognition, _ => WorkspacePage.Library });
     }
-    private async void OnBack(NavigationView sender, NavigationViewBackRequestedEventArgs args) => await Navigate(WorkspacePage.Library);
+    private async void OnTitleBack(TitleBar sender, object args) => await GoBackAsync();
+    private Task GoBackAsync() => ViewModel.Page == WorkspacePage.Library ? Task.CompletedTask : Navigate(WorkspacePage.Library);
     private async Task<UnsavedChoice> ChooseUnsaved()
     {
         var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = "保留尚未保存的修改？", Content = "离开前可以保存修改，或放弃草稿。", PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃草稿", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
@@ -177,6 +186,7 @@ public sealed partial class MainWindow : Window
     public async ValueTask StopAsync()
     {
         DisposeVisualSystem();
+        DisposeShellInput();
         onlineFixture?.ReleaseCandidate();
         launchTimer.Stop(); launchTimer.Tick -= OnLaunchRefresh;
         await Launch.DisposeAsync();

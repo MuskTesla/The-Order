@@ -31,6 +31,10 @@ public sealed partial class DetailsPage : Page, IImageHost
     private async void OnLaunchInstallation(object sender, SelectionChangedEventArgs e)
     { try { if (LaunchInstallation.SelectedItem is LaunchInstallationItem item) await Launch.SelectAsync(item.Id); } catch { ViewModel.ReportUnexpected(); } }
     private void OnCancelLaunch(object sender, RoutedEventArgs e) => Launch.Cancel();
+    // Stage 2 replaces these with the 完全清透 hero stage; the window already routes policy and early release here.
+    internal void SetStagePolicy(bool effectsAllowed, bool highContrast, MaterialMode mode) { }
+    internal void ReleaseStageBeforeLeave() { }
+    internal object StageEvidence => new { placement = "Details hero", implemented = false };
     private void OnDetailsSizeChanged(object sender, SizeChangedEventArgs e)
     {
         // Reflow the existing controls; drafts, launch state and image ownership stay in place.

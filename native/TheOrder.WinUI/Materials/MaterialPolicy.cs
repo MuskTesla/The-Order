@@ -34,6 +34,8 @@ internal sealed class MaterialPolicy : IDisposable
     private int disposed;
 
     internal bool ForceSolid { get; set; }
+    // 设置 › 材质效果 › 关闭透明效果 (session-scoped app choice); behaves like the system Transparency Off.
+    internal bool AppOpaque { get; set; }
     internal bool ReducedMotion { get; set; }
     internal bool EffectsAllowed => ReadState().EffectsAllowed;
     internal bool MotionAllowed => ReadState().MotionAllowed;
@@ -107,7 +109,7 @@ internal sealed class MaterialPolicy : IDisposable
         var energy = Probe("query.energySaver", () => PowerManager.EnergySaverStatus);
         var remote = Probe("query.remoteSession", () => GetSystemMetrics(0x1000) != 0);
         var energyAllowed = energy is EnergySaverStatus.Off or EnergySaverStatus.Disabled;
-        var effects = !materialFault && ownedBrushes.Length == 4 && !ForceSolid && contrast == false &&
+        var effects = !materialFault && ownedBrushes.Length == 4 && !ForceSolid && !AppOpaque && contrast == false &&
             advanced == true && supported == true && energyAllowed && remote == false;
         // A material/device/power failure must not manufacture a Reduce Motion state.
         var motion = !ReducedMotion && animations == true;
@@ -228,6 +230,7 @@ internal sealed class MaterialPolicy : IDisposable
             highContrast = state.HighContrast,
             highContrastSource = "Windows AccessibilitySettings",
             forcedSolid = ForceSolid,
+            appOpaque = AppOpaque,
             reducedMotion = ReducedMotion,
             remote = state.Remote,
             energySaver = state.EnergySaver,

@@ -39,7 +39,7 @@ public sealed class WindowLifetime
     public string? Error { get; private set; }
     public bool CloseToTray()
     {
-        if (!TrayAvailable) { Error = "托盘不可用，窗口保持打开；请使用「退出 The Order」退出。"; return false; }
+        if (!TrayAvailable) { Error = "托盘不可用：关闭窗口会按正常流程退出 The Order，先处理草稿并保存游玩记录。"; return false; }
         Hidden = true; return true;
     }
     public void Show() => Hidden = false;

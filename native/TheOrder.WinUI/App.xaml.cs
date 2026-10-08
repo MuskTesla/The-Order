@@ -22,7 +22,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             UnhandledException += (_, error) => TraceVisualFailure(error.Exception);
         InitializeComponent();
     }
-    private static void TraceVisualFailure(Exception exception)
+    internal static void TraceVisualFailure(Exception exception)
     {
         if (Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") != "1" || Program.Profile?.Manifest.ProfileKind != TheOrder.Application.NativeProfileKind.Test) return;
         try { if (Program.Profile.Configuration(false).DataDirectory is { } directory) File.WriteAllText(Path.Combine(directory, "visual-fatal.txt"), exception.ToString()); } catch { }
@@ -38,7 +38,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             if (exiting) return;
             windowLifetime.TrayAvailable = TrayAvailable;
             if (windowLifetime.CloseToTray()) { host.Window.SetVisualWindowVisible(false); host.Window.AppWindow.Hide(); _ = CheckpointHiddenAsync(); }
-            else host.Window.ShowLifecycleError(windowLifetime.Error!);
+            // No tray means no way back to a hidden window. × then takes the same orderly
+            // exit as the tray menu (drafts, Session finalization, cleanup) and can be cancelled.
+            else { host.Window.ShowLifecycleError(windowLifetime.Error!); _ = RequestExitAsync(); }
         };
         host.Window.Closed += (_, _) => { tray?.Dispose(); tray = null; host = null; Instance = null; };
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(host.Window);
@@ -55,7 +57,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     }
     private async Task CheckpointHiddenAsync()
     { try { if (host is { } owner) await owner.Sessions.CheckpointAsync(); } catch { RequestActivation(); host?.Window.ShowLifecycleError("游玩记录暂未保存，请检查后重试。"); } }
-    private void TrayUnavailable() { RequestActivation(); host?.Window.ShowLifecycleError("托盘不可用，关闭窗口将保持可访问；可使用「退出 The Order」。"); }
+    private void TrayUnavailable() { RequestActivation(); host?.Window.ShowLifecycleError("托盘不可用：关闭窗口会按正常流程退出 The Order，先处理草稿并保存游玩记录。"); }
     internal void RefreshTray(SessionPresentation value) => tray?.Update(value.Title, value.State, value.CanPause, value.CanResume);
     internal void RequestActivation()
     {

@@ -13,6 +13,19 @@
     </StackPanel>
    </Border>
    <Border Style="{StaticResource SurfaceStyle}" Padding="24">
+    <StackPanel Spacing="12">
+     <TextBlock Text="材质效果" Style="{StaticResource SectionTitleStyle}"/>
+     <RadioButtons x:Name="MaterialChoice" Header="作品封面上的玻璃" SelectionChanged="OnMaterialMode" AutomationProperties.AutomationId="MaterialChoice">
+      <RadioButton Content="自动（推荐）：背景稳定时使用玻璃，出错后本次改用标准材质" Tag="Auto"/>
+      <RadioButton Content="高级优先：背景稳定时使用玻璃，出错后在下次变化时重试" Tag="Advanced"/>
+      <RadioButton Content="标准：使用 Windows 亚克力材质" Tag="Standard"/>
+      <RadioButton Content="关闭透明效果：使用不透明背景" Tag="Opaque"/>
+     </RadioButtons>
+     <TextBlock x:Name="MaterialState" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="MaterialState" AutomationProperties.LiveSetting="Polite"/>
+     <TextBlock Text="此选项只在本次运行中生效。系统的透明效果、节电模式、远程桌面与高对比度设置始终优先。" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="24">
     <StackPanel Spacing="16">
      <TextBlock Text="在线目录 · NextMoe" Style="{StaticResource SectionTitleStyle}"/>
      <PasswordBox x:Name="ApiCredential" Header="当前资料的 API 密钥" PasswordRevealMode="Hidden" MaxLength="4096" MaxWidth="480" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="OnlineCredential" AutomationProperties.Name="当前资料的在线目录 API 密钥"/>

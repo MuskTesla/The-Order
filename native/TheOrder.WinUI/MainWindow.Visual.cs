@@ -56,39 +56,37 @@ public sealed partial class MainWindow
             var states = new NavigationViewItem { Content = "会话状态 · Test", Tag = "visual-states", Icon = new SymbolIcon(Symbol.Play) };
             Navigation.FooterMenuItems.Add(states);
         }
-        if (direction == "A")
-        {
-            NavigationSurface.Margin = new Thickness(0);
-            NavigationSurface.CornerRadius = new CornerRadius(0);
-            NavigationSurface.BorderThickness = new Thickness(0);
-            Navigation.OpenPaneLength = 176;
-            libraryPage.ApplyDirection(true);
-        }
-        UpdateNavigationSpacing();
+        UpdateNavigationChrome();
         ApplyMaterialPolicy();
     }
 
-    private void OnNavigationDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args) => UpdateNavigationSpacing();
-    private void UpdateNavigationSpacing()
+    // NavigationView Auto: expanded ≥1008, compact ≥641, minimal below. The pane toggle lives in the TitleBar.
+    private void OnNavigationDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args) => UpdateNavigationChrome();
+    private void UpdateNavigationChrome()
     {
-        if (PageContent is not null)
-            PageContent.Margin = Navigation.DisplayMode == NavigationViewDisplayMode.Minimal ? new Thickness(0, 36, 0, 0) : new Thickness(0);
+        if (ContentLayer is null) return;
+        var minimal = Navigation.DisplayMode == NavigationViewDisplayMode.Minimal;
+        // Minimal mode has no pane edge, so the content layer drops its top-left radius and side stroke.
+        ContentLayer.CornerRadius = minimal ? new CornerRadius(0) : new CornerRadius(8, 0, 0, 0);
+        ContentLayer.BorderThickness = minimal ? new Thickness(0, 1, 0, 0) : new Thickness(1, 1, 0, 0);
     }
-
-    private void OnShellSizeChanged(object sender, SizeChangedEventArgs args)
-    {
-        if (Navigation is null) return;
-        Navigation.PaneDisplayMode = args.NewSize.Width < 740 ? NavigationViewPaneDisplayMode.LeftMinimal : NavigationViewPaneDisplayMode.Auto;
-        if (args.NewSize.Width < 740) Navigation.IsPaneOpen = false;
-        UpdateNavigationSpacing();
-    }
+    private void OnPaneToggle(TitleBar sender, object args) => Navigation.IsPaneOpen = !Navigation.IsPaneOpen;
+    private void OnShellSizeChanged(object sender, SizeChangedEventArgs args) => TitleSearch.MinWidth = args.NewSize.Width < 641 ? 120 : 200;
 
     private void StartVisualFixture(object sender, RoutedEventArgs e) => visualFixtureTimer?.Start();
     private void ApplyMaterialPolicy()
     {
         if (visualStopped || materialPolicy is null) return;
+        materialPolicy.AppOpaque = materialMode == Views.MaterialMode.Opaque;
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
         var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
+        // Mica is the window backdrop; system/app transparency rules replace it with the solid canvas.
+        ApplyBackdrop(materialPolicy.EffectsAllowed);
+        // Hidden windows hold no glass renderer: stages drop to their XAML layers and release swapchains.
+        var stageAllowed = materialPolicy.EffectsAllowed && visible;
+        libraryPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, materialMode);
+        detailsPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, materialMode);
+        settingsPage.ShowMaterialState(materialMode, materialPolicy.EffectsAllowed, materialPolicy.HighContrast);
         gallery?.SetAdvanced(materialPolicy.EffectsAllowed && visible);
         gallery?.SetMotionAllowed(materialPolicy.MotionAllowed && visible);
         if (!materialPolicy.MotionAllowed && Root.XamlRoot is not null)
@@ -117,7 +115,10 @@ public sealed partial class MainWindow
         PauseTiming.Visibility = presentation.CanPause ? Visibility.Visible : Visibility.Collapsed;
         ResumeTiming.Visibility = presentation.CanResume ? Visibility.Visible : Visibility.Collapsed;
         // The icon expresses session facts; personal library status never controls it.
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SessionSurface, "游玩会话：" + SessionState.Text);
+        // The title-bar indicator replaces the old session bar; it appears only when there is a session fact to show.
+        SessionSurface.Visibility = Sessions.Session?.Session is not null || Sessions.Error is not null || !Sessions.Ready ? Visibility.Visible : Visibility.Collapsed;
+        SessionDetails.Visibility = Sessions.Session?.Session?.Native?.GameId is not null ? Visibility.Visible : Visibility.Collapsed;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SessionSurface, "游玩会话：" + SessionChipTitle.Text + "，" + SessionState.Text);
         ApplyMaterialPolicy();
     }
 
@@ -174,6 +175,7 @@ public sealed partial class MainWindow
     {
         if (visualFixtureTimer is null || visualStopped) return;
         gallery ??= new(materialPolicy?.EffectsAllowed == true, requestedGlass);
+        libraryPage.ReleaseStageBeforeLeave(); detailsPage.ReleaseStageBeforeLeave();
         PageContent.Content = gallery; galleryVisible = true;
         visualScreen = "VisualGallery";
         ApplyMaterialPolicy();
@@ -184,7 +186,8 @@ public sealed partial class MainWindow
     private object VisualEvidence() => new
     {
         direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
-        material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts,
+        material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
+        stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence }, shell = ShellEvidence(),
         round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
         treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
         glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
@@ -244,7 +247,13 @@ public sealed partial class MainWindow
                 case "dialog": ShowRound3Dialog(); break;
                 case "closeDialog": round3Dialog?.Hide(); break;
                 case "timer": round3TimerOverride = root.GetProperty("value").GetString() ?? ""; break;
-                case "focusSearch": libraryPage.FocusVisualSearch(); break;
+                case "focusSearch": TitleSearch.Focus(FocusState.Keyboard); break;
+                case "materialMode":
+                    if (!Enum.TryParse<Views.MaterialMode>(root.GetProperty("value").GetString(), out var mode) || !Enum.IsDefined(mode)) throw new InvalidDataException("Unknown material mode.");
+                    SetMaterialMode(mode); break;
+                case "scroll": libraryPage.ScrollTest(root.GetProperty("value").GetDouble()); break;
+                case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
+                case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;
                 case "probe": break;
                 case "treeProbeFault":
                     _ = bitmapTreeProbe.Read(() => throw new System.Runtime.InteropServices.COMException("Test tree read failure", unchecked((int)0x80004005)));
@@ -266,6 +275,7 @@ public sealed partial class MainWindow
     private void DisposeVisualSystem()
     {
         visualStopped = true;
+        libraryPage.ReleaseStageBeforeLeave(); detailsPage.ReleaseStageBeforeLeave();
         Root.Loaded -= StartVisualFixture;
         if (visualFixtureTimer is not null) { visualFixtureTimer.Stop(); visualFixtureTimer.Tick -= OnVisualFixture; }
         gallery?.Dispose(); gallery = null;
@@ -305,6 +315,7 @@ public sealed partial class MainWindow
             stack.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SurfaceStyle"], Padding = new Thickness(16), Child = body });
         }
         LeaveGallery();
+        libraryPage.ReleaseStageBeforeLeave(); detailsPage.ReleaseStageBeforeLeave();
         PageContent.Content = new ScrollViewer { Content = stack, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         galleryVisible = true; visualScreen = "SessionStateFixtures";
     }

@@ -245,6 +245,11 @@ extern "C" __declspec(dllexport) HRESULT OpticalSceneImageBlur(void* h,const wch
  if(!h||!path||!std::isfinite(sigma)||sigma<=0||sigma>64)return E_INVALIDARG;
  return Guard([&]{static_cast<Renderer*>(h)->scene.Image(path,x,y,w,height,fill!=FALSE,sigma);});
 }
+// Artwork stage: premultiplied BGRA pixels already decoded by the app's image pipeline.
+extern "C" __declspec(dllexport) HRESULT OpticalScenePixels(void* h,const BYTE* data,UINT pw,UINT ph,UINT length,float x,float y,float w,float height,BOOL fill,float sigma) noexcept {
+ if(!h||!data||pw==0||ph==0||pw>8192||ph>8192||static_cast<UINT64>(pw)*ph*4!=length||!std::isfinite(sigma)||sigma<0||sigma>64)return E_INVALIDARG;
+ return Guard([&]{static_cast<Renderer*>(h)->scene.Pixels(data,pw,ph,x,y,w,height,fill!=FALSE,sigma);});
+}
 extern "C" __declspec(dllexport) HRESULT OpticalSceneEnd(void* h) noexcept {
  if(!h)return E_INVALIDARG;return static_cast<Renderer*>(h)->scene.End();
 }

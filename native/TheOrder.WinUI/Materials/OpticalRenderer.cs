@@ -34,6 +34,8 @@ internal sealed class OpticalRenderer : IDisposable
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
     private static extern int OpticalSceneImageBlur(IntPtr handle, string path, float x, float y, float w, float h, int fill, float sigma);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalScenePixels(IntPtr handle, byte[] data, uint w, uint h, uint length, float x, float y, float width, float height, int fill, float sigma);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalSceneEnd(IntPtr handle);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalSceneDiagnostics(IntPtr handle, [Out] ulong[] values);
@@ -99,6 +101,34 @@ internal sealed class OpticalRenderer : IDisposable
         var milliseconds = Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
         DrawCpuMilliseconds += milliseconds; MaxDrawCpuMilliseconds = Math.Max(MaxDrawCpuMilliseconds, milliseconds);
         Draws++; BufferBytes = (long)width * height * 8;
+    }
+    // Artwork stage: one revision per cover/size/theme change. The ambient band is the app's own decoded
+    // cover pixels (never a capture), filled and blurred on the renderer's device, then a polarity scrim.
+    internal void RenderArtwork(TheOrder.Application.RasterPixels art, double widthDip, double heightDip, double scale, float sigma, uint background, uint scrim)
+    {
+        ObjectDisposedException.ThrowIf(!Active, this);
+        if (Environment.CurrentManagedThreadId != thread) throw new InvalidOperationException("Owning UI thread required");
+        if (!double.IsFinite(scale) || scale <= 0 || scale > 6 || !double.IsFinite(widthDip) || !double.IsFinite(heightDip) || widthDip < 1 || heightDip < 1 || widthDip * scale > 8192 || heightDip * scale > 8192)
+            throw new ArgumentOutOfRangeException(nameof(scale));
+        var width = checked((uint)Math.Ceiling(widthDip * scale));
+        var height = checked((uint)Math.Ceiling(heightDip * scale));
+        var begin = Stopwatch.GetTimestamp();
+        Marshal.ThrowExceptionForHR(OpticalSceneBegin(handle, width, height, (float)scale, background));
+        var ended = false;
+        try
+        {
+            Marshal.ThrowExceptionForHR(OpticalScenePixels(handle, art.Bgra, checked((uint)art.Width), checked((uint)art.Height), checked((uint)art.Bgra.Length),
+                0, 0, (float)widthDip, (float)heightDip, 1, sigma));
+            if ((scrim >> 24) != 0) Marshal.ThrowExceptionForHR(OpticalSceneRect(handle, 0, 0, (float)widthDip, (float)heightDip, scrim));
+            var result = OpticalSceneEnd(handle); ended = true;
+            Marshal.ThrowExceptionForHR(result);
+            SourceBytes = (long)width * height * 4; SceneUpdates++;
+        }
+        finally
+        {
+            if (!ended) _ = OpticalSceneEnd(handle);
+            SceneCpuMilliseconds += Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
+        }
     }
     internal void RenderScene(GalleryScene scene, double scale)
     {
