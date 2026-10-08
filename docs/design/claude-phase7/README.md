@@ -1,23 +1,20 @@
-# The Order · Phase 7 design package (Claude)
+# The Order · Phase 7 design package (Claude) — revision 2
+
+Revision 2 replaces revision 1 after the Product Owner's review on 2026-10-08. Revision 1 is kept in `rev1/` and
+`previews/rev1-*.html` (git tag `claude-design-rev1`); none of it is an active requirement.
 
 | Doc | Content |
 |---|---|
-| [01_CREATIVE_DIRECTION.md](01_CREATIVE_DIRECTION.md) | Evidence-based audit, three concepts, recommendation (Direction B), decisions awaiting the Product Owner |
-| [02_UI_LAYOUT_SPECIFICATION.md](02_UI_LAYOUT_SPECIFICATION.md) | Shell, Library grid/list, inspector, Details, other workflows, responsive and keyboard rules |
-| [03_MATERIAL_AND_DESIGN_SYSTEM.md](03_MATERIAL_AND_DESIGN_SYSTEM.md) | Tokens, type, motion, surface roles, lens optics and parameter mapping, quality modes, accessibility |
-| [04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md](04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md) | Baseline identity, vertical-slice plan, contracts, acceptance criteria, dependencies, GPT review prompts (Chinese) |
-| [05_GLASS_ENGINEERING_REPORT.md](05_GLASS_ENGINEERING_REPORT.md) | Frosted lens body: change, verification, measurements, integration instructions |
+| [01_CREATIVE_DIRECTION.md](01_CREATIVE_DIRECTION.md) | Causes of the three mismatches, revised direction, decisions awaiting the Product Owner |
+| [02_UI_LAYOUT_SPECIFICATION.md](02_UI_LAYOUT_SPECIFICATION.md) | Fluent shell, Library header/grid/list, click-to-Details and selection mode, return path, Details, other pages |
+| [03_MATERIAL_AND_DESIGN_SYSTEM.md](03_MATERIAL_AND_DESIGN_SYSTEM.md) | Tokens → Fluent resources, Windows accent, Liquid Glass variants and placement, quality modes, accessibility |
+| [04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md](04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md) | Identities, slice plan (gated), acceptance, dependencies, GPT review prompts |
+| [05_GLASS_ENGINEERING_REPORT.md](05_GLASS_ENGINEERING_REPORT.md) | 连续玻璃 / 完全清透: change, verification, attempt history, integration |
 
 ## Previews
 
-The previews are concept mockups (browser HTML/SVG), not WinUI.
-
-- Open `previews/concepts.html?c=A|B|C` or
-  `previews/direction-b.html?view=grid|list|details|settings|filter|modes&theme=light|dark` directly in a browser.
-  Resize the window to see the responsive classes.
-- Rendered PNGs and actual WinUI runtime captures are collected in `../../../.artifacts/claude-design/review.html`.
-  `.artifacts` is local and not committed.
+- **Review page:** `../../../.artifacts/claude-design/review.html`. It contains WinUI runtime material boards and
+  accent captures, plus concept mockups. Every item is labelled as mockup or runtime.
+- **Live mockups:** `previews/direction-r2.html?view=grid|list|details|flow|accent|modes|settings&theme=light|dark&accent=blue|purple|orange`.
+  Accent colours in mockups are labelled examples; the product reads Windows theme resources.
 - `previews/render.ps1` re-renders PNGs with headless Edge using a throwaway profile.
-
-Covers in previews are procedurally generated originals. Runtime captures use the original synthetic Test covers and
-the user-authorised local reference image only.

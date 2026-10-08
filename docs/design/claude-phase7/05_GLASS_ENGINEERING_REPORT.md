@@ -1,110 +1,157 @@
-# 05 · Liquid Glass Engineering Report — frosted lens body
+# 05 · Liquid Glass Engineering Report — revision 2
 
-Status: **LIQUID GLASS CHANGE READY FOR INTEGRATION REVIEW** (Test-only, Gallery-scoped).
-This is not a resource-gate PASS, not GA1-equivalent, and not integrated into Library or Details.
+Status: **MATERIAL CHANGES READY FOR INTEGRATION REVIEW** — Test-only, Gallery-scoped. This is not a resource-gate
+PASS, not GA1-equivalent, and not integrated into Library or Details.
 
-## 1. Problem and hypothesis
+## 1. Problem and hypotheses
 
-- **Observed limitation:** C1 can only put text on glass by placing an opaque XAML card inside the lens.
-  - Gallery: "文字保持稳定" card. v9 filter: opaque panel inside a 23-DIP ring.
-  - Visually this becomes "a frame around a card" (v9 capture; Gallery C1 captures). The ring reads as a bezel, and
-    the material does not belong to the content it holds.
-- **Capability required by the design:** the artwork-stage plate (01 §4, 03 §4) must carry a title and a launch
-  button directly on glass over arbitrary cover art, with guaranteed contrast.
-- **Hypothesis:** a second, blurred copy of the same app-owned scene, produced once per scene revision, blended into
-  a rounded interior field under a bounded tint, gives:
-  - legible text on glass for any artwork, with contrast bounded by tint alpha;
-  - C1's clear refracting rim unchanged;
-  - no per-frame cost beyond one extra texture read inside the lens;
-  - exact C1 output when disabled.
+- **Observed (user review + runtime):** revision 1 read as two components — a clear refracting rim around a frosted
+  insert. C1 itself needs an opaque XAML text card.
+- **Hypothesis A (连续玻璃).** The two-component reading has two sources:
+  1. a change of optical regime inside the lens (sharp vs blurred);
+  2. non-optical XAML layers (stroke, highlight, text card).
 
-## 2. Change (commit `f18d609`, parent baseline snapshot `7d74e24`)
+  So: drive every property from one distance field over one source; replace the uniform 80 % tint with a per-pixel,
+  luminance-adaptive tint (contrast bound without a backing panel); let the shader draw the only edge.
+- **Hypothesis B (完全清透, requested by the Product Owner).** The same material over the sharp refracted scene is
+  coherent as clear glass. It suits defocused backdrops; sharp, busy backdrops behind text are a placement issue,
+  handled in 03 §4.2.
 
-| File | Change |
+## 2. Changes
+
+Commits on `claude/design-phase7`:
+
+| Commit | Content |
 |---|---|
-| `Materials/Native/OpticalRenderer.cpp` | cbuffer 80 → 96 B: `raster.y` = frost amount, new `frostTint`; `t1` frost texture; rounded body field blend (skipped when amount = 0); `OpticalDrawEx(…, count 20\|24, background)` with range validation; legacy `OpticalDraw`/`Background` copy 20 floats into a zeroed 24 buffer (no over-read); `OpticalSceneFrost(σ)` (σ ≤ 0 retires); `OpticalFrostDiagnostics`; frost invalidated by `SceneBegin` and `Upload`; a frost draw without a valid copy fails closed (`E_UNEXPECTED`). |
-| `Materials/Native/GallerySource.h` | Scene target is drawable (`CANNOT_DRAW` removed) so it can be an effect input; one D2D Gaussian effect (border HARD, QUALITY) per device context; frost target wraps the renderer-owned texture; input detached after each pass; `dxguid.lib` pragma. |
-| `Materials/OpticalRenderer.cs` | P/Invoke for the new exports; `Draw` accepts 20 or 24 constants; `Frost(σ)`; `FrostEvidence`. |
-| `Materials/RefractionGallery.Optical.cs` | 24 constants; frost applied after each scene revision or toggle (never per frame); tint per theme (α .80); evidence fields. |
-| `Materials/RefractionGallery.xaml(.cs)` | Test-only `FrostSwitch` (`GalleryFrost`), `frostOn`/`frostOff` test commands; the stable text panel goes transparent only while frost is active and HC is off. |
-| `fixtures/optical-source-regression.cpp`, `fixtures/accepted-c1-shader.h` | GPU readback tests (below). The header is a frozen verbatim copy of the accepted C1 shader extracted from `7d74e24`. |
+| `7d74e24` | Baseline snapshot — **never integrate** |
+| `f18d609` | Revision 1 frost capability (history; also the base the next commit builds on) |
+| `1369f99` | Revision 1 docs (superseded) |
+| `09465c2` | **Continuous glass + fully clear** (this report) |
+| docs commit | Revision 2 design package |
 
-Diff: 8 files, +298 / −25.
+`09465c2` (8 files, +231/−38):
 
-Patch for integration: `.artifacts/phase7-2b/claude-frost/patch/0001-feat-material-frosted-stage-plate-body-with-clear-C1.patch`
-(SHA256 `52d02ac4…3679e3`).
+- **`OpticalRenderer.cpp`**
+  - cbuffer 112 B; `material` float4 (enable, luminance bound, polarity, edge density); `raster.z` = clear flag.
+  - Continuous branch: blurred copy (or the sharp sample when clear) → C1 refraction and dispersion → linear-light
+    adaptive tint `k = max(minAlpha, need)` → edge density `pow(1−t,3)·w` → C1 specular.
+  - `OpticalDrawEx` accepts 20/24/28 constants; validates ranges, polarity ±1, clear ∈ {0,1}, clear only with the
+    material enabled, and rev1/rev2 exclusivity.
+  - A blurred-copy request without a valid copy fails closed (clear needs none).
+  - New `OpticalSceneImageBlur` export.
+- **`GallerySource.h`**
+  - Blurred scene images use one D2D Gaussian effect per draw, held until `EndDraw`.
+  - Blurred inputs are created at the scene DPI.
+- **`OpticalRenderer.cs`:** P/Invoke and primitive kind 3.
+- **`GalleryScene.cs`:** scenes 8/9, the Details-hero composition (ambient cover σ 18 + scrim + sharp poster outside
+  the lens).
+- **Gallery `.xaml` / `.cs`**
+  - Body-mode selector: C1 / rev1 / 连续玻璃 / 完全清透. Test commands `frostOff`, `frostOn`, `continuous`, `clear`,
+    `ambientCover`, `ambientReference`.
+  - In continuous and clear modes the text panels go transparent, the XAML highlight collapses, and the frame stroke
+    becomes transparent **without changing `BorderThickness`**.
+  - The theme stroke brush is restored from `DesignTokens` when leaving those modes.
+- **`fixtures/optical-source-regression.cpp`:** continuity, regime, contrast, validation and resource tests for both
+  variants.
 
-**Not changed:** C1 constants and profiles, the shader math before the frost branch, the same-device D2D/DirectWrite/WIC
-source, the early swapchain release (`ReleaseBeforeLeave`), MaterialPolicy, Library/Toolbar/v9 paths, business,
-store, CoverPresenter/cache, virtualization.
+**Unchanged:**
+- the C1 shader path (bit-exact) and C1 constants;
+- the same-device D2D/DirectWrite/WIC source and the early swapchain release;
+- `MaterialPolicy`, Library/Toolbar/v9 code, business code, store, CoverPresenter/cache and virtualization.
 
 ## 3. Verification
 
-| Check | Result | Evidence |
-|---|---|---|
-| Native GPU regression (existing 132 + 160 readbacks) | PASS | `claude-frost/native-regression/` (rebuilt and run by `native/scripts/test-optical-source.ps1`) |
-| Frost off = accepted C1, bit-exact (256×128 offscreen, C1 reference profile), with and without the frost copy bound | PASS | same |
-| Clear rim pixels identical to C1 when frost on; body = blur·.2 + tint·.8 within 2.5/255; blur is mean-preserving (≤ 3 %) and variance < 50 % | PASS | same |
-| 17 passes reuse 1 texture; Begin / Upload / resize invalidate; stale frost draw fails closed; bad count / range / σ rejected; σ = 0 retires all frost resources; re-entry; balanced owner incl. failed-detach retry | PASS | same |
-| WinUI Debug build | 0 warnings / 0 errors | `claude-frost/build-debug.log` |
-| Targeted managed tests (LensOptics, MaterialResource, PresentationRemediation, MaterialTreeProbe — same filter as TC1) | 47/47 | `claude-frost/tests/targeted.trx` |
-| Release publish (`NativeProductionCandidate=true`, same command as prior candidates) | OK | `claude-frost/publish-release.log` |
-| Runtime: frost-off vs **frozen GA1 candidate** (accepted C1, Optical DLL `A116AA7C…`), same states (Dark/Light × synthetic covers / authorised reference / plain), stage region | mean 0.000, p99 0, max ≤ 6 (JPEG noise) in all 6 states | `claude-frost/pixel-comparison.json` |
-| Runtime: frost-on vs frost-off outside the lens (+16 px margin) | max 0 in all 6 states | same |
-| Runtime text contrast on frosted body | 7.98–15.5:1 measured; analytic floor 7.59:1 for any art | `claude-frost/contrast.json` |
-| Lifecycle (13 rows, criteria frozen first in `criteria.md`): idle, scene revision, disable, policy solid → restore, resize, leave/re-enter Gallery, hide/show, frost off | all rows meet criteria | `runs/frost-b/lifecycle.jsonl` |
-| Exits | normal exit requested; process gone; Test library hash unchanged (frost-a, frost-b, baseline-ga1, audit-a) | `runs/*/exit.json` |
-| Frozen GA1 candidate directory untouched by the baseline run | identical file list / size / mtime before and after | `ga1-dir-before.txt`, `ga1-dir-after.txt` |
+### Native GPU regression (`native/scripts/test-optical-source.ps1`)
 
-Measured costs, which are not a performance claim:
+All PASS, log `claude-glass-r2/native-regression.log`:
 
-- One frost texture equal to the scene source size. The Gallery's 2600×1320 test scene is 13.7 MB.
-- Frost pass CPU submission time 2.0–5.6 ms per scene revision (GPU execution time not measured).
-- Per frame: +1 texture read inside the body.
-- Idle: no draws and no passes over 12 s.
+- existing 132 + 160 exact readbacks;
+- rev1 suite;
+- 连续玻璃 / 完全清透 off == accepted C1, bit-exact;
+- outside the lens unchanged;
+- no inner boundary on a uniform field (max adjacent delta 1 ≤ 3);
+- rim/body detail ratio — 连续玻璃 2.33 / 1.27 within the 2× limit; rev1 is 10×;
+- contrast bound over 7 extreme backdrops × 2 polarities: lift ≥ 0.411 luminance (9.2:1), deepen ≤ 0.082 (7.9:1);
+- validation;
+- blurred scene effects released at `EndDraw`.
 
-Workload time used: about 14 of 45 minutes (four short runs). No ETW, GA1 repeat or long run.
+### Builds and managed tests
 
-Iteration recorded: run `frost-a` showed a square-cornered frosted rectangle inside the rounded plate. Cause: bevel
-(30) > corner radius (23), so the plate's inner iso-line is square. The body therefore received its own rounded field,
-the native tests were re-run and the candidate republished. `frost-a` captures are kept as the counter-example.
+- WinUI Debug: 0 warnings / 0 errors.
+- Targeted tests (LensOptics, MaterialResource, PresentationRemediation, MaterialTreeProbe): 47/47.
+- Release publish OK.
+
+### Runtime (WinUI, isolated Test profiles, 1160×820 DIP, 200 % DPI)
+
+- **C1 mode vs frozen GA1 candidate**, stage region, captured right after rev2 states: mean 0.000, p99 0,
+  max ≤ 6 (JPEG noise). `pixel-comparison-r3.json`.
+- **连续玻璃 / 完全清透 vs C1 outside the lens** (+16 px margin), 16 states each: max 1/255.
+- **Lifecycle** (criteria frozen in `claude-glass-r2/criteria.md` before each run):
+  - Revision 2: 16 of 17 rows pass. The **idle-12s row FAILED as defined** (+2 draws). A follow-up with criteria
+    written before it ran shows A = B = C over 24 s (no idle work). The +2 was the mode switch settling later than the
+    400-ms probe delay.
+  - 完全清透: all rows pass — blurred copy retired on switch; no idle work over 24 s; renderer released on hide/leave;
+    recovery on show/re-entry.
+- **Exits:** every run exited normally with the Test library hash unchanged. Exit codes are unreadable from a handle
+  opened after start.
+
+### Evidence
+
+- Boards: `.artifacts/claude-design/r2/runtime/glass-{normal,enlarged}-{Light,Dark}.png`.
+- Raw captures: `claude-glass-r2/runs/r3-matrix/capture/*`.
+
+### Attempt history
+
+Kept, not overwritten:
+
+1. Rim/body criterion failed at edge density .35 (2.67 > 2.53). The decomposition showed edge shading, not
+   background regime; density reduced to .20 and re-run with the criterion unchanged → PASS.
+2. `r2-matrix-attempt1-ambient-dpi-bug`: blurred ambient art covered only ~2/3 of the scene (effect DPI mismatch).
+   Fixed: blurred inputs are created at the scene DPI.
+3. `r2-matrix-b-attempt2-lens-extent-bug`: after a rev2 visit, C1 differed from GA1 in the ring (p99 13). Cause:
+   changing `BorderThickness` resized `LensHost`, and the event-driven draw used stale extents. Fixed by toggling the
+   stroke brush only; C1 is GA1-identical again.
+4. `r2-matrix-c-attempt3-request-race`: transient file race in my control helper; bounded retry added.
+
+### Measured cost
+
+Not a performance claim:
+- 连续玻璃: one blur pass per scene revision (CPU submit 2–6 ms; GPU time not measured) and one texture of
+  source size (13.7 MB at the Gallery's 2600×1320; ~1.5–3 MB at hero size).
+- 完全清透: no extra texture and no pass.
+- Per frame: ≤ 3 extra texture reads in the lens.
+
+New workload used this revision: about 22 minutes (matrix runs including failed attempts, lifecycle and follow-ups,
+accent captures). Cumulative for the assignment: about 36 of the 45-minute budget.
 
 ## 4. Candidate identity
 
-`.artifacts/phase7-2b/claude-frost/candidate/win-x64/` (my worktree):
+`.artifacts/phase7-2b/claude-glass-r2/candidate-d/win-x64/`:
 
-- `TheOrder.WinUI.dll` `12E05738…87A3`
-- `TheOrder.OpticalMaterial.dll` `D76807BC…23F1`
-- `TheOrder.WinUI.exe` `DAA442FE…267F`
+- `TheOrder.WinUI.dll` `82962F0A…A928`
+- `TheOrder.OpticalMaterial.dll` `DE94C803…C19B`
+- `TheOrder.WinUI.exe` `DAF7FF55…1542`
 
-Launch only via `claude-frost/launch.ps1` (fresh Test profile via the existing helper; Advanced OFF; frost OFF by
-default). Then use `command.ps1 -Action gallery`, `glass candidate1`, `glass on`, `glass frostOn`.
+Launch only through `claude-glass-r2/launch.ps1` (fresh Test profile; advanced OFF by default). Then:
+`command.ps1 -Action gallery` · `glass candidate1` · `glass on` · `glass continuous|clear` ·
+`glass ambientCover|ambientReference|covers|reference|text|grid|plainLight|plainDark`.
 
-## 5. Integration instructions — exclude the baseline snapshot
+## 5. Integration instructions
 
-- Apply only commit `f18d609` (or the `.patch`) on top of the authoritative working tree. Its parent `7d74e24` is a byte
-  copy of that tree and must not be imported.
-- Pre-check: the 7 touched files' baseline blob ids must match the authoritative files.
-  - `OpticalRenderer.cpp` `354e97c0`
-  - `GallerySource.h` `d9d6fecd`
-  - `OpticalRenderer.cs` `a8ada049`
-  - `RefractionGallery.Optical.cs` `6c5ad09a`
-  - `RefractionGallery.xaml` `0d04db30`
-  - `RefractionGallery.xaml.cs` `51532606`
-  - `optical-source-regression.cpp` `a87af9b0`
+Apply `0001-…frosted…` and `0003-…continuous-glass…` from `claude-glass-r2/patch/` (SHA256 `47ac4e9f…`,
+`a7ec9a93…`) onto the authoritative tree. Do **not** apply the baseline snapshot `7d74e24`. Patch `0002` is
+superseded revision-1 docs.
 
-  If the authoritative files changed, rebase the patch and re-run §3.
+- Revision 1 stays selectable as a Test-only comparison mode, as the Product Owner asked. It may be removed before
+  productization with a follow-up patch; the C1 bit-exact tests do not depend on it.
+- Pre-check that the authoritative blob ids match the baseline before applying. If they changed, rebase and re-run §3.
 
-## 6. Not done / limitations
+## 6. Limitations
 
-- No ETW allocation-retirement evidence for the frost texture; ownership is shown only by native counters and
-  readback tests.
-- The stage application (ambient cover scene from decoded cover pixels at stage size, plus an ambient blur step) is
-  **not implemented**. Today the Gallery draws images by file path at 1300×660 DIP.
-  - Required for Library/Details: `OpticalSceneImageBgra(handle, pixels, w, h, x, y, w, h, fill)` fed from the
-    existing image pipeline, and an ambient-blur option.
-  - Scope this with the vertical slice; it is a presentation-layer dependency, not a business change.
-- Real device loss, other GPUs/drivers, 100/150 % DPI, Narrator and HC switching at runtime were not exercised in this
-  round. The policy and fault paths are the existing ones.
-- Exit codes were not readable (process handle opened after start); normal exit was requested and the process was
-  confirmed gone.
+- Product integration is not done: the hero stage from decoded cover pixels at hero size, the polarity computation
+  (03 §4.3), and the hero lifecycle owner in Details. These belong to slice 2 and need user approval.
+- No ETW allocation-retirement evidence for the new paths; ownership is shown by native counters, readback tests and
+  lifecycle probes.
+- Live Windows accent change at runtime is not verified (03 §3). Changing the machine accent was not authorized; the
+  Test seam simulates it.
+- Not exercised: real device loss, other GPUs/drivers, 100/150 % DPI, Narrator, live HC switching.
