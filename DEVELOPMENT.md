@@ -2,14 +2,14 @@
 
 ## Phase 7 Finalization：独立便携工程候选（RC GATE BLOCKED）
 
-工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；应用源码91b98d6，工程tag `codex/phase7-rc-engineering-frozen-20261008`。包在 `.artifacts/phase7-finalization/frozen-rc/win-x64`，ZIP及同提交源码归档在其上一级。先核对 `files.json` / `archive-identity.json`；解压必须保留整个目录。包内.NET10.0.12、WindowsAppSDK2.5.1、x64 VC14.50.35710、PRI/XBF、索引和许可已齐备；不依赖SDK、源码、helper、合成seed或covers。
+工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；当前应用源码 **f62860cd7b42dd92ca55887655e1e7a605127374**，新工程tag `codex/phase7-closure-engineering-frozen-20261008`。新包在 `.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64`，ZIP与同提交源码归档在其上一级；旧91b98d6候选／tag保留不变。先核对 `files.json` / `archive-identity.json`；解压必须保留整个目录。包内.NET10.0.12、WindowsAppSDK2.5.1、x64 VC14.50.35710、PRI/XBF、索引和许可已齐备；不依赖SDK、源码、helper、合成seed或covers。本机空profile medium权限的无seed/helper启动、app-local modules与635/635文件核验通过，未代替无SDK干净Windows。
 
 ```powershell
 # 普通入口：Windows自带PowerShell5.1也已实测启动。默认空Test资料，Standard。
-& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-finalization/frozen-rc/win-x64/launch-test.ps1' -Wait
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64/launch-test.ps1' -Wait
 # 或解压后双击Start-Test.cmd；默认资料%LOCALAPPDATA%/TheOrder-RC/Test。
 # 独立诊断入口仍有250ms诊断，因此不作为普通体验或发行资源证据。
-& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-finalization/frozen-rc/win-x64/launch-test.ps1' -Diagnostics -Wait
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64/launch-test.ps1' -Diagnostics -Wait
 # 仅显式受控Test授权Advanced；默认不选择/启用它。
 # 同一入口可另加-ControlledAdvanced，再在设置中手动选择。
 ```
@@ -18,7 +18,9 @@
 
 重建：按锁文件restore；`dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true --no-restore -o ABSOLUTE_FRESH_PUBLISH`；随后 `native/scripts/package-native-rc.ps1 -PublishedDirectory ABSOLUTE_FRESH_PUBLISH -OutputDirectory ABSOLUTE_FRESH_WORKTREE_ARTIFACT`，必须使用新的.artifacts目录，不覆盖候选。构建需要开发SDK/VS，候选运行不需要。依赖开发机的合成体验入口与独立包入口不是同一种部署承诺。
 
-新资源协议保留量FAIL及干净Windows/真实OS矩阵缺口阻断RC，**不允许Production使用或发布**。普通源码与旧冻结候选仍可回退查看；不要reset其他工作区。工程结果、回退范围及Phase8准备见 [PHASE7_FINALIZATION](docs/ai/PHASE7_FINALIZATION.md)。
+最终clean f628 Debug／Release publish、90相关与完整native Release1813/1813回归通过。三项Electron合成密钥互操作对照在完整suite实际通过；测试工具使用本地 `node_modules/electron/dist/electron.exe`，不得把缺依赖当PASS或把Electron加进发行包。重复display surface分配修复后，两轮正常候选四组按原冻结384条／2×24／30秒静置／64MiB门槛与原分析器全部PASS，旧FAIL不改写。source／ZIP／manifest／执行DLL绑定，OpticalMaterial.dll与旧工程包字节相同。
+
+真实HC／动画／透明／System主题／144%文字及CJK窄窗子集已验；实际keyboard／Narrator／accent／100/150%DPI与HWND视觉仍因Computer Use kernel-assets os error3 **BLOCKED_TOOL**。host默认HC方案名仍与原空字符串不同，其余采得flags／颜色／动画及registry文字／透明／appTheme精确恢复。干净Windows与真实宿主结束会话另留独立环境；**RC仍BLOCKED，不允许Production使用或发布**。可恢复检查点 `.artifacts/phase7-closure-20261008/checkpoint.md`，完整矩阵／前后对照／hash与回退见 [PHASE7_FINALIZATION](docs/ai/PHASE7_FINALIZATION.md) 及同目录report.md。普通源码与旧冻结候选可回退查看，不reset其他工作区。
 
 ## Phase 7.2 已冻结 Test 候选（2026-10-08）
 

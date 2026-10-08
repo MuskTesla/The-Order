@@ -1,14 +1,16 @@
 # The Order：当前实现与评审交接
 
-## 当前：Phase 7 Finalization 工程候选冻结，RC Gate 阻断（2026-10-08）
+## 当前：Phase 7 Full Closure，资源与工程通过，RC Gate 仍阻断（2026-10-08）
 
-独立工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`。工程源码 **91b98d6**，tag `codex/phase7-rc-engineering-frozen-20261008`，635文件self-contained x64便携包 `.artifacts/phase7-finalization/frozen-rc/win-x64`；这是 **RC GATE BLOCKED** 的工程冻结，不是Phase7完成或发布批准。
+独立工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`。接管HEAD `a6ee5635e9fe5ed33d249b8568fdc9a4688a75d9`、tracked clean；新应用源码 **f62860cd7b42dd92ca55887655e1e7a605127374**。新635文件self-contained x64包 `.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64`，程序ZIP／源码archive／manifest逐hash绑定；旧91b98d6包635/635复核未变。**RC GATE BLOCKED**，不是Phase7完成或发布批准。
 
-新增可选、身份绑定、原子写入的 `native-material-v1.json`，旧 `native-ui.json` 契约不变；保存Advanced意图不能授权普通入口，高级功能仍仅限显式受控Test。普通入口不依赖SDK/helper/seed，关闭诊断与Test展示；包内包含运行时、VC DLL、资源、索引和许可，并提供有界脱敏生命周期日志。用户认可的C1、图片/虚拟化、提前释放及14d8ede publication竞态修复保留。
+固定decoded buffers在cache命中后仍重复新建显示WriteableBitmap并复制像素，因果对照3273→80次创建、1.882GB→49.5MB复制；已用按pipeline隔离的弱decoded引用身份复用display surface，未改64MiB decoded预算、清晰度、虚拟化、过期保护或C1。没有查明全部历史native retaining owners，不声称永久泄漏归因。真实HC试验发现不可用Fluent颜色的红色sentinel，改用系统contrast palette；WinRT 0x80070490警告仍保留，已用实际Win32 settings/color/theme事件补通知路径，无新timer，真实OS变化／C1退休通过。光学DLL与91b98d6逐字节相同。
 
-Debug/Release publish、349/349相关回归和原生光学fixture通过。唯一完整native Release首跑1807/1810，3项因独立工作区缺Electron失败；复用已安装测试运行时后只补跑这3项，3/3通过，未改测试/期望、未重跑全套。设置保存重启、旧原生程序集兼容、真实旧候选浏览、便携移除/重装、同根合成快照恢复及最终包本机启动完成。
+最终clean f628 Debug／Release publish、90/90受影响回归与 **完整native Release1813/1813，0fail／0skip**通过，包含三项真实Electron合成密钥／profile envelope对照；Electron只是本地测试工具，不进入发行包。材质optional v1 companion、原native-ui schema、原子备份及串行保存不变；普通入口即使保存Advanced意图仍生效Standard、无250ms诊断。本机medium token初始化／保存／单实例、换路径重装、程序移除不删资料、快照新增修改默认拒绝及显式合成同根15文件精确恢复通过；实际14d8ede旧程序集能读新f628编辑的384合成资料。
 
-新OFF短验硬正确性通过：专属owner/在途任务归零、无OFF绘制、冷Standard不加载光学DLL、正常退出0、库hash不变；但两组静置Private中位数增量 **92.79/106.67MiB** 超过运行前64MiB门槛，保留为FAIL，不推定泄漏或归因Advanced。另缺干净Windows部署和真实OS主题/无障碍/缩放/结束会话证据；用户确认无现成隔离Windows环境，未改变宿主设置。完整范围、候选身份及Phase8准备见 [Phase7 Finalization](PHASE7_FINALIZATION.md)。下面Phase7.2 PASS仅为历史开发集成范围。
+两轮正常最终候选、共四组冷Standard／Advanced→Standard，按原384条／固定24ID／8warmup＋2×24同节奏往返／30秒静置与未改64MiB协议、原分析器全部 **PASS**：静置2−1为4.00／2.98／−4.72／−0.50MiB；相对预热38.71／47.72／41.96／54.14，重复段峰差≤11.71。每静置窗口15个1Hz样本、RAM／磁盘连续保护，owner／texture／pending0、无OFF绘制、hide/show、exit0、库hash不变。历史92.79／106.67FAIL、重叠无效实验、旧32MiB代理FAIL与有限开发例外完整保留；不扩大为历史全协议或全部硬件PASS。
+
+实际HC／动画／透明关闭与恢复、Root.ActualTheme Light/Dark、文字1→1.44→1、长CJK窄窗及live XAML peers子集通过。host的文字／透明／appTheme值和类型精确恢复，HC flags126／31色／动画恢复；SPI默认HC方案名从空被Windows规范化为高对比黑色，精确名称恢复尚未完成。Computer Use node_repl导入前kernel-assets os error3阻断真实HWND、accent、100/150%DPI、完整物理键盘／Narrator；这属于**平台工具阻断，不是干净环境依赖或PASS**。真正无SDK Windows／独立非管理员账户／真实系统结束会话仍待隔离验证。详见 [Phase7 Finalization](PHASE7_FINALIZATION.md) 与本机 `.artifacts/phase7-closure-20261008/report.md`／checkpoint.md。下面Phase7.2 PASS仅为历史开发集成范围。
 
 Phase6原生Production bootstrap及6.2日用Gate已通过。Phase8 **不执行Electron→WinUI迁移**，只准备现有原生快照、版本兼容、受控日用、回退和正式发布验收；本轮未进入Phase8、未访问Production、未替换或推送。
 
