@@ -10,9 +10,12 @@ if(!$vs){throw 'Installed x64 C++ Build Tools required'}
 $vcvars=Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
 [IO.Directory]::CreateDirectory($outputPath)|Out-Null
 $dll=Join-Path $outputPath 'TheOrder.OpticalMaterial.dll'
-if((Test-Path -LiteralPath $dll) -and (Get-Item -LiteralPath $dll).LastWriteTimeUtc -gt (Get-Item -LiteralPath $sourcePath).LastWriteTimeUtc){return}
+$sourceTime=(Get-Item -LiteralPath $sourcePath).LastWriteTimeUtc
+$header=Join-Path (Split-Path $sourcePath) 'GallerySource.h'
+if(Test-Path -LiteralPath $header){$sourceTime=@($sourceTime,(Get-Item -LiteralPath $header).LastWriteTimeUtc)|Sort-Object -Descending|Select-Object -First 1}
+if((Test-Path -LiteralPath $dll) -and (Get-Item -LiteralPath $dll).LastWriteTimeUtc -gt $sourceTime){return}
 $batch=Join-Path $outputPath 'compile-optical.cmd'
-$command='cl /nologo /std:c++17 /EHsc /MD /O2 /W4 /WX /LD /I"{0}" "{1}" /Fo"{2}\OpticalRenderer.obj" /Fe"{3}" /link d3d11.lib dxgi.lib d3dcompiler.lib /IMPLIB:"{2}\TheOrder.OpticalMaterial.lib"' -f $include,$sourcePath,$outputPath,$dll
+$command='cl /nologo /utf-8 /std:c++17 /EHsc /MD /O2 /W4 /WX /LD /I"{0}" "{1}" /Fo"{2}\OpticalRenderer.obj" /Fe"{3}" /link d3d11.lib dxgi.lib d3dcompiler.lib d2d1.lib dwrite.lib windowscodecs.lib ole32.lib /IMPLIB:"{2}\TheOrder.OpticalMaterial.lib"' -f $include,$sourcePath,$outputPath,$dll
 $lines=@('@echo off',('call "{0}" >nul' -f $vcvars),'if errorlevel 1 exit /b %errorlevel%',$command,'exit /b %errorlevel%')
 [IO.File]::WriteAllLines($batch,$lines,[Text.Encoding]::Default)
 & cmd.exe /d /c $batch

@@ -5,7 +5,7 @@ using WinRT;
 
 namespace TheOrder.WinUI.Materials;
 
-// UI-thread owner. One hardware device, one immutable source, two swapchain buffers.
+// UI-thread owner. One hardware device, one reusable source, two swapchain buffers.
 // No desktop/window capture, background thread, periodic timer or idle rendering.
 internal sealed class OpticalRenderer : IDisposable
 {
@@ -16,8 +16,48 @@ internal sealed class OpticalRenderer : IDisposable
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalDraw(IntPtr handle, uint w, uint h, float[] parameters);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalDrawBackground(IntPtr handle, uint w, uint h, float[] parameters);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalSceneBegin(IntPtr handle, uint w, uint h, float scale, uint color);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalSceneRect(IntPtr handle, float x, float y, float w, float h, uint color);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+    private static extern int OpticalSceneText(IntPtr handle, string text, float x, float y, float size, uint color, uint weight);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+    private static extern int OpticalSceneImage(IntPtr handle, string path, float x, float y, float w, float h, int fill);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalSceneEnd(IntPtr handle);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalSceneDiagnostics(IntPtr handle, [Out] ulong[] values);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalDestroy(IntPtr handle);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalDiagnostics([Out] ulong[] counts, [Out] ulong[] rows, uint capacity, out uint count);
+    internal static object Diagnostics()
+    {
+        var counts = new ulong[6]; var rows = new ulong[160];
+        var hr = OpticalDiagnostics(counts, rows, (uint)rows.Length, out var count);
+        return new { HResult = hr, RenderersCreated = counts[0], RenderersDestroyed = counts[1],
+            Uploads = counts[2], SourceTexturesCreated = counts[3], SwapchainsCreated = counts[4], BufferResizes = counts[5],
+            Adapters = Enumerable.Range(0, checked((int)count)).Select(i => new {
+                LuidLow = rows[i*10], LuidHigh = rows[i*10+1], Flags = rows[i*10+2], Index = rows[i*10+3],
+                LocalHResult = rows[i*10+4], LocalUsage = rows[i*10+5], LocalBudget = rows[i*10+6],
+                NonLocalHResult = rows[i*10+7], NonLocalUsage = rows[i*10+8], NonLocalBudget = rows[i*10+9] }).ToArray() };
+    }
     private IntPtr handle;
+    private readonly int thread = Environment.CurrentManagedThreadId;
+    internal long SceneUpdates { get; private set; }
+    internal double SceneCpuMilliseconds { get; private set; }
+    internal object SceneEvidence
+    {
+        get
+        {
+            var v = new ulong[7];
+            var hr = Active ? OpticalSceneDiagnostics(handle, v) : 0;
+            return new { HResult = hr, Completed = v[0], ImagesDrawn = v[1], TextsDrawn = v[2], TargetsCreated = v[3],
+                Drawing = v[4], TemporaryImages = v[5], DeviceContexts = v[6], SceneCpuMilliseconds };
+        }
+    }
     internal long Draws { get; private set; }
     internal long Uploads { get; private set; }
     internal long SourceBytes { get; private set; }
@@ -37,15 +77,51 @@ internal sealed class OpticalRenderer : IDisposable
         Marshal.ThrowExceptionForHR(OpticalUpload(handle, pixels, checked((uint)width), checked((uint)height), checked((uint)pixels.Length)));
         SourceBytes = pixels.LongLength; Uploads++;
     }
-    internal void Draw(int width, int height, float[] parameters)
+    internal void Draw(int width, int height, float[] parameters, bool backgroundOnly = false)
     {
         ObjectDisposedException.ThrowIf(!Active, this);
         if (parameters.Length != 20 || parameters.Any(x => !float.IsFinite(x))) throw new ArgumentException("Finite optical constants required");
         var begin = Stopwatch.GetTimestamp();
-        Marshal.ThrowExceptionForHR(OpticalDraw(handle, checked((uint)width), checked((uint)height), parameters));
+        Marshal.ThrowExceptionForHR(backgroundOnly
+            ? OpticalDrawBackground(handle, checked((uint)width), checked((uint)height), parameters)
+            : OpticalDraw(handle, checked((uint)width), checked((uint)height), parameters));
         var milliseconds = Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
         DrawCpuMilliseconds += milliseconds; MaxDrawCpuMilliseconds = Math.Max(MaxDrawCpuMilliseconds, milliseconds);
         Draws++; BufferBytes = (long)width * height * 8;
+    }
+    internal void RenderScene(GalleryScene scene, double scale)
+    {
+        ObjectDisposedException.ThrowIf(!Active, this);
+        if (Environment.CurrentManagedThreadId != thread) throw new InvalidOperationException("Owning UI thread required");
+        if (!double.IsFinite(scale) || scale <= 0 || scale > 6 || scene.Primitives.Count > 300)
+            throw new ArgumentOutOfRangeException(nameof(scale));
+        var width = checked((uint)Math.Ceiling(GalleryScene.Width * scale));
+        var height = checked((uint)Math.Ceiling(GalleryScene.Height * scale));
+        var begin = Stopwatch.GetTimestamp();
+        Marshal.ThrowExceptionForHR(OpticalSceneBegin(handle, width, height, (float)scale, scene.Background));
+        var ended = false;
+        try
+        {
+            foreach (var item in scene.Primitives)
+            {
+                var hr = item.Kind switch
+                {
+                    0 => OpticalSceneRect(handle, item.X, item.Y, item.Width, item.Height, item.Color),
+                    1 => OpticalSceneText(handle, item.Content!, item.X, item.Y, item.Width, item.Color, checked((uint)item.Option)),
+                    2 => OpticalSceneImage(handle, item.Content!, item.X, item.Y, item.Width, item.Height, item.Option),
+                    _ => throw new InvalidDataException("Unknown Gallery primitive")
+                };
+                Marshal.ThrowExceptionForHR(hr);
+            }
+            var result = OpticalSceneEnd(handle); ended = true;
+            Marshal.ThrowExceptionForHR(result);
+            SourceBytes = (long)width * height * 4; SceneUpdates++;
+        }
+        finally
+        {
+            if (!ended) _ = OpticalSceneEnd(handle); // pair Begin even when decoding/drawing failed; owner then fails closed.
+            SceneCpuMilliseconds += Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
+        }
     }
     public void Dispose()
     {

@@ -60,7 +60,7 @@
     </StackPanel>
    </Border>
    <TextBlock x:Name="MaterialState" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="GalleryMaterialState"/>
-   <TextBlock Text="Baseline 使用内部 Composition 背景；新候选使用本页背景的原分辨率快照及有限移动，不代表书架实时采样。公开 Direct3D 曲面近似，不是 Apple 私有算法。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+   <TextBlock Text="候选使用本页原分辨率背景和有限移动，具体来源见材质状态；不代表书架实时采样。公开 Direct3D 曲面近似，不是 Apple 私有算法。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>
 </UserControl>

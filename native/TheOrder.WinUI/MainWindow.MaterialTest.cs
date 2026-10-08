@@ -8,6 +8,7 @@ namespace TheOrder.WinUI;
 
 public sealed partial class MainWindow
 {
+    private readonly Materials.MaterialTreeProbe bitmapTreeProbe = new(), staleTreeProbe = new();
     private string testAccent = "system";
     private string systemAccentAtStart = "UNAVAILABLE";
     private void ReadSystemAccentOnce()

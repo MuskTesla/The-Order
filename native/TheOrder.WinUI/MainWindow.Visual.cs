@@ -163,6 +163,13 @@ public sealed partial class MainWindow
         visual.StartAnimation("Opacity", animation);
     }
 
+    // Called before PageContent is replaced so the Gallery releases its native
+    // owner while still in the live tree. No-op unless the Test Gallery is shown.
+    private void LeaveGallery()
+    {
+        if (gallery is not null && ReferenceEquals(PageContent.Content, gallery)) gallery.ReleaseBeforeLeave();
+    }
+
     private void ShowGallery()
     {
         if (visualFixtureTimer is null || visualStopped) return;
@@ -172,11 +179,15 @@ public sealed partial class MainWindow
         ApplyMaterialPolicy();
     }
 
+    private bool SkipCaptureTreeProbe => visualFixtureTimer is not null &&
+        Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_CAPTURE_SKIP_TREE_PROBE") == "1";
     private object VisualEvidence() => new
     {
         direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts,
-        round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = CountMaterialBitmaps(Root), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = CountStaleCoverSources(Root), glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
+        round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
+        treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
+        glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
         dpiScale = Root.XamlRoot?.RasterizationScale,
         foregroundSource = "existing SessionPresentation and WorkspaceViewModel"
@@ -235,6 +246,9 @@ public sealed partial class MainWindow
                 case "timer": round3TimerOverride = root.GetProperty("value").GetString() ?? ""; break;
                 case "focusSearch": libraryPage.FocusVisualSearch(); break;
                 case "probe": break;
+                case "treeProbeFault":
+                    _ = bitmapTreeProbe.Read(() => throw new System.Runtime.InteropServices.COMException("Test tree read failure", unchecked((int)0x80004005)));
+                    break;
                 case "exit": if (App.Instance is { } app) await app.RequestExitAsync(); return;
                 default: throw new InvalidDataException("Unsupported visual fixture action.");
             }
@@ -290,6 +304,7 @@ public sealed partial class MainWindow
             body.Children.Add(line); body.Children.Add(Text(presentation.Duration, "MetadataTextStyle"));
             stack.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SurfaceStyle"], Padding = new Thickness(16), Child = body });
         }
+        LeaveGallery();
         PageContent.Content = new ScrollViewer { Content = stack, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         galleryVisible = true; visualScreen = "SessionStateFixtures";
     }

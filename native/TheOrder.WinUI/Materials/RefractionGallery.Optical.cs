@@ -11,7 +11,23 @@ namespace TheOrder.WinUI.Materials;
 public sealed partial class RefractionGallery
 {
     private OpticalRenderer? optical;
+    private readonly bool ownedSceneEnabled = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND") == "Test" &&
+        Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") == "1" &&
+        Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_SOURCE") == "owned-scene";
+    private GalleryScene? scene;
+    private bool scenePattern, sceneOpticalActive;
+    private long sceneUpdatesReleased;
+    private bool UsesOwnedScene => ownedSceneEnabled && UsesOptical;
     private OpticalRenderer? failedOpticalRelease;
+    private RenderTargetBitmap? snapshotBitmap;
+    private bool snapshotRetiring;
+    private static long snapshotObjectsCreated, snapshotObjectsReleased;
+    private long snapshotsDiscarded, snapshotRaceChecks;
+    // Explicit Test-command isolation only. Normal material uses stage 5.
+    private int captureStage = 5;
+    private bool captureIsolation;
+    private long backgroundBuilds, renderRequests, renderCompletions, pixelsRequests, pixelsCompletions, pixelCopies;
+    private int capturePeak, livePixelBuffers;
     private bool snapshotBusy, snapshotDirty = true, renderingSubscribed, dispersionEnabled = true;
     private int snapshotGeneration;
     private long snapshotCount, opticalDrawsReleased, opticalUploadsReleased;
@@ -23,11 +39,23 @@ public sealed partial class RefractionGallery
     private long frameIntervals;
     private readonly float[] opticalConstants = new float[20];
     private bool UsesOptical => ComparisonMode.SelectedIndex is 3 or 4;
-    private bool MaterialActive => lens is not null || optical?.Ready == true;
+    private bool MaterialActive => lens is not null || (optical?.Ready == true && (!UsesOwnedScene || sceneOpticalActive));
     private OpticalProfile Profile => ComparisonMode.SelectedIndex == 3 ? OpticalProfile.Reference : OpticalProfile.Daily;
     private object OpticalEvidence => new
     {
-        Active = optical?.Ready == true, SnapshotPending = snapshotBusy, SnapshotDirty = snapshotDirty,
+        ProcessGraphics = OpticalRenderer.Diagnostics(),
+        Isolation = new { Enabled = captureIsolation, Stage = captureStage, BackgroundBuilds = backgroundBuilds,
+            RenderRequests = renderRequests, RenderCompletions = renderCompletions,
+            PixelsRequests = pixelsRequests, PixelsCompletions = pixelsCompletions, PixelCopies = pixelCopies,
+            InFlightPeak = capturePeak, LivePixelBuffers = livePixelBuffers,
+            Qpc = Stopwatch.GetTimestamp(), QpcFrequency = Stopwatch.Frequency },
+        Active = MaterialActive, SnapshotPending = snapshotBusy, SnapshotDirty = snapshotDirty,
+        SourcePath = UsesOwnedScene ? "owned-scene" : "xaml-capture", Scene = optical?.SceneEvidence,
+        EquivalentSceneUpdates = sceneUpdatesReleased + (optical?.SceneUpdates ?? 0),
+        BackgroundDeviceRetained = UsesOwnedScene && !sceneOpticalActive && optical is not null,
+        CachedSnapshotCount = snapshotBitmap is null ? 0 : 1, SnapshotRetiring = snapshotRetiring,
+        SnapshotObjectsCreated = snapshotObjectsCreated, SnapshotObjectsReleased = snapshotObjectsReleased,
+        SnapshotsDiscarded = snapshotsDiscarded, SnapshotRaceChecks = snapshotRaceChecks,
         SnapshotCount = snapshotCount, SourceTextureBytes = optical?.SourceBytes ?? 0,
         SnapshotWidth = snapshotWidth, SnapshotHeight = snapshotHeight, SnapshotScale = snapshotScale,
         SwapchainBufferBytes = optical?.BufferBytes ?? 0, DeviceCount = optical is null ? 0 : 1,
@@ -40,12 +68,13 @@ public sealed partial class RefractionGallery
         FrameIntervalMaxMs = frameIntervalMax,
         Profile.BevelWidth, Profile.Depth, Dispersion = dispersionEnabled ? Profile.Dispersion : 0, Profile.Gloss,
         RetainedFailedDevice = failedOpticalRelease is null ? 0 : 1,
-        Source = "Gallery-only XAML background snapshot at rasterization scale; finite shader translation; foreground excluded",
+        Source = UsesOwnedScene ? "Gallery-owned Direct2D/DirectWrite/WIC scene on same-device D3D surface; every revision rendered; foreground excluded" : "Gallery-only XAML background snapshot at rasterization scale; finite shader translation; foreground excluded",
         Passes = 1, TextureReadsOutside = 1, TextureReadsLensMaximum = 4, BlurPasses = 0
     };
 
     private void UpdateOptical()
     {
+        if (UsesOwnedScene) { UpdateOwnedScene(true); return; }
         if (snapshotScale != 0 && snapshotScale != XamlRoot.RasterizationScale && !snapshotDirty) { snapshotGeneration++; snapshotDirty = true; }
         if (lens is not null) ReleaseMaterial();
         if (optical is null)
@@ -60,44 +89,87 @@ public sealed partial class RefractionGallery
 
     private async void CaptureOpticalSource()
     {
-        if (snapshotBusy || !snapshotDirty || optical is null || pendingCovers.Count != 0 || !loaded || disposed) return;
+        if (UsesOwnedScene) return;
+        if (captureIsolation && captureStage < 2) return;
+        if (snapshotBusy || snapshotRetiring || !snapshotDirty || optical is null || pendingCovers.Count != 0 || !loaded || disposed) return;
         snapshotBusy = true;
+        capturePeak = 1;
         var generation = snapshotGeneration;
         var owner = optical;
         RenderTargetBitmap? bitmap = null;
         try
         {
-            bitmap = new RenderTargetBitmap();
+            if (snapshotBitmap is null) { snapshotBitmap = new RenderTargetBitmap(); snapshotObjectsCreated++; }
+            bitmap = snapshotBitmap;
             // Capture a fixed parent: Canvas render bounds alone include overflow.
             // PatternCapture never contains OpticalPanel or LensFrame.
             Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(PatternLayer).Offset = Vector3.Zero;
+            renderRequests++;
             await bitmap.RenderAsync(PatternCapture);
+            renderCompletions++;
+            if (captureIsolation && captureStage == 2)
+            {
+                if (disposed || !loaded || generation != snapshotGeneration || optical != owner) { snapshotsDiscarded++; return; }
+                if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0) throw new InvalidDataException("Empty isolated Gallery snapshot");
+                snapshotWidth = bitmap.PixelWidth; snapshotHeight = bitmap.PixelHeight;
+                snapshotScale = XamlRoot.RasterizationScale;
+                snapshotDirty = false; snapshotCount++; return;
+            }
+            pixelsRequests++;
             var buffer = await bitmap.GetPixelsAsync();
+            pixelsCompletions++; livePixelBuffers++;
             try
             {
-                if (disposed || !loaded || generation != snapshotGeneration || optical != owner) return;
+                if (disposed || !loaded || generation != snapshotGeneration || optical != owner) { snapshotsDiscarded++; return; }
                 if (bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0) throw new InvalidDataException("Empty Gallery snapshot");
-                owner.Upload(buffer.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
+                var pixels = buffer.ToArray(); pixelCopies++;
+                if (!captureIsolation || captureStage >= 4) owner.Upload(pixels, bitmap.PixelWidth, bitmap.PixelHeight);
                 snapshotWidth = bitmap.PixelWidth; snapshotHeight = bitmap.PixelHeight;
                 snapshotScale = XamlRoot.RasterizationScale;
                 snapshotDirty = false; snapshotCount++;
                 DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
                 UpdateState();
             }
-            finally { ((IWinRTObject)buffer).NativeObject.Dispose(); }
+            finally { ((IWinRTObject)buffer).NativeObject.Dispose(); livePixelBuffers--; }
         }
         catch (Exception exception) { if (!disposed && generation == snapshotGeneration) SetCompositionFailure(exception, "optical.snapshot"); }
         finally
         {
-            if (bitmap is not null) ((IWinRTObject)bitmap).NativeObject.Dispose();
             snapshotBusy = false;
+            if (snapshotRetiring) RetireSnapshot();
             if (!disposed && loaded && snapshotDirty && optical is not null && generation != snapshotGeneration)
                 DispatcherQueue.TryEnqueue(CaptureOpticalSource);
         }
     }
 
+    private void RetireSnapshot()
+    {
+        snapshotRetiring = true;
+        // RenderAsync/GetPixelsAsync still own the bitmap until their finally.
+        // A stale generation cannot upload to the new renderer; it retires here
+        // before the single queued latest capture may allocate another bitmap.
+        if (snapshotBusy) return;
+        if (snapshotBitmap is null) { snapshotRetiring = false; return; }
+        try
+        {
+            ((IWinRTObject)snapshotBitmap).NativeObject.Dispose();
+            snapshotBitmap = null; snapshotRetiring = false; snapshotObjectsReleased++;
+        }
+        catch (Exception exception) { cleanupFailures++; RecordFailure("optical.snapshot.detach", exception); }
+    }
+
+    private void TestReleasePendingSnapshot()
+    {
+        if (!UsesOptical || optical?.Ready != true || snapshotBusy) throw new InvalidOperationException("Ready optical owner required for snapshot race");
+        BackgroundMode.SelectedIndex = BackgroundMode.SelectedIndex == 0 ? 1 : 0;
+        if (!snapshotBusy) throw new InvalidOperationException("Snapshot race did not enter an in-flight capture");
+        snapshotRaceChecks++;
+        ReleaseOptical(); // Old capture finishes/discards before the latest owner captures.
+    }
+
     private void DrawOptical(float offsetX, float offsetY)
     {
+        if (captureIsolation && captureStage < 5) return;
         if (snapshotDirty || optical?.Ready != true || !loaded || disposed || Stage.ActualWidth <= 0 || Stage.ActualHeight <= 0) return;
         var scale = (float)(XamlRoot?.RasterizationScale ?? 1);
         var p = LensHost.TransformToVisual(Stage).TransformPoint(new Windows.Foundation.Point());
@@ -109,8 +181,15 @@ public sealed partial class RefractionGallery
         c[8] = 23; c[9] = model.BevelWidth; c[10] = model.Depth; c[11] = dispersionEnabled ? model.Dispersion : 0;
         c[12] = model.Gloss; c[13] = ActualTheme == ElementTheme.Dark ? 1 : 0;
         c[14] = offsetX; c[15] = offsetY; c[16] = scale;
-        optical.Draw((int)Math.Ceiling(c[0] * scale), (int)Math.Ceiling(c[1] * scale), c);
+        optical.Draw((int)Math.Ceiling(c[0] * scale), (int)Math.Ceiling(c[1] * scale), c, UsesOwnedScene && !sceneOpticalActive);
         OpticalPanel.Visibility = Visibility.Visible;
+    }
+
+    private void SetCaptureIsolation(int stage)
+    {
+        if (stage is < 0 or > 5 || snapshotBusy || advancedAllowed)
+            throw new InvalidOperationException("Capture isolation requires disabled, drained Test Gallery");
+        captureIsolation = true; captureStage = stage;
     }
 
     private void StartOpticalMotion(double seconds)
@@ -144,15 +223,41 @@ public sealed partial class RefractionGallery
     }
     private void ReleaseOptical()
     {
-        StopOpticalMotion(); snapshotGeneration++; snapshotDirty = true;
+        StopOpticalMotion(); snapshotGeneration++; snapshotDirty = true; sceneOpticalActive = false;
         OpticalPanel.Visibility = Visibility.Collapsed;
         if (optical is not null)
         {
             opticalDrawsReleased += optical.Draws; opticalUploadsReleased += optical.Uploads;
+            sceneUpdatesReleased += optical.SceneUpdates;
             opticalCpuReleased += optical.DrawCpuMilliseconds; opticalMaxCpuReleased = Math.Max(opticalMaxCpuReleased, optical.MaxDrawCpuMilliseconds);
             try { optical.Dispose(); }
             catch (Exception exception) { cleanupFailures++; failedOpticalRelease = optical; RecordFailure("optical.detach", exception); }
             optical = null;
         }
+        RetireSnapshot();
+    }
+
+    private void UpdateOwnedScene(bool effect)
+    {
+        if (!loaded || disposed || !ownerAllowed) return;
+        sceneOpticalActive = effect;
+        var scale = XamlRoot.RasterizationScale;
+        if (optical is null)
+        {
+            optical = new OpticalRenderer(OpticalPanel); allocationCycles++; snapshotDirty = true;
+            if (failInitialization) throw new InvalidOperationException("Test partial optical initialization failure");
+        }
+        if (snapshotScale != scale) snapshotDirty = true;
+        if (snapshotDirty)
+        {
+            scene ??= GalleryScene.Create(BackgroundMode.SelectedIndex,
+                Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE"),
+                Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_COVERS"));
+            optical.RenderScene(scene, scale);
+            snapshotWidth = (int)Math.Ceiling(GalleryScene.Width * scale);
+            snapshotHeight = (int)Math.Ceiling(GalleryScene.Height * scale);
+            snapshotScale = scale; snapshotDirty = false;
+        }
+        DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
     }
 }

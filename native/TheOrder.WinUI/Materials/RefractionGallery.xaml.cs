@@ -79,6 +79,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             accessibility = new AccessibilitySettings();
         }
         catch (Exception exception) { RecordFailure(phase, exception); }
+        if (ownedSceneEnabled) ComparisonMode.SelectedIndex = 3;
         BuildPattern();
         initialized = true;
         Loaded += OnLoaded;
@@ -115,7 +116,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         FailureHResult = failureHResult,
         NotificationWarnings = notificationWarnings.Values.ToArray(),
         NotificationRoute = "Available events and existing owner policy refresh; no new timer",
-        Source = UsesOptical ? "Gallery-only high-resolution snapshot and finite shader translation" : "live app-internal CompositionVisualSurface",
+        Source = UsesOwnedScene ? "Gallery-owned dynamic scene; no arbitrary XAML capture" : UsesOptical ? "Gallery-only high-resolution snapshot and finite shader translation" : "live app-internal CompositionVisualSurface",
         Model = UsesOptical ? "bounded per-pixel curved bevel; one sample per channel; no blur" : "affine RGB dispersion approximation; radial corners; quiet 1:1 center; one opaque source",
         Comparison = ComparisonMode.SelectedIndex, Background = BackgroundMode.SelectedIndex,
         Optics = new { CurrentOptics.Refraction, CurrentOptics.Dispersion, CurrentOptics.EdgeWidth, CurrentOptics.Highlight },
@@ -179,6 +180,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
 
     private void BuildPattern()
     {
+        backgroundBuilds++;
         ClearCoverImages(); PatternLayer.Children.Clear();
         PatternLayer.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, 1300, 660) };
         appliedBackgroundMode = BackgroundMode.SelectedIndex;
@@ -186,6 +188,16 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         StopOpticalMotion(); OpticalPanel.Visibility = Visibility.Collapsed;
         PatternSource.Background = new SolidColorBrush(appliedBackgroundMode == 4 ? Color.FromArgb(255, 31, 36, 43) : Color.FromArgb(255, 237, 239, 240));
         PatternLayer.Background = PatternSource.Background;
+        scenePattern = UsesOwnedScene;
+        PatternSource.Visibility = scenePattern ? Visibility.Collapsed : Visibility.Visible;
+        scene = null;
+        if (scenePattern)
+        {
+            scene = GalleryScene.Create(appliedBackgroundMode,
+                Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE"),
+                Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_COVERS"));
+            return;
+        }
         if (appliedBackgroundMode is 3 or 4) return;
         if (appliedBackgroundMode is 6 or 7)
         {
@@ -281,6 +293,17 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         loaded = true;
         ActualThemeChanged += OnGalleryThemeChanged;
         RefreshMaterial();
+    }
+
+    // The owner is about to replace this Gallery. Release while it is still in the
+    // live tree: a SwapChainPanel detached after Unloaded keeps presenting its last
+    // swapchain buffers until it is rendered again (TC1 swap-before evidence).
+    internal void ReleaseBeforeLeave()
+    {
+        if (disposed || !loaded) return;
+        loaded = false; callbackGeneration++; refreshQueued = false;
+        ReleaseMaterial();
+        UpdateState();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -425,7 +448,13 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             settings.HighContrast == false && supported == true;
         if (!permitted)
         {
-            ReleaseMaterial();
+            var keepScene = UsesOwnedScene && loaded && ownerAllowed && failure is null;
+            ReleaseMaterial(keepScene);
+            if (keepScene)
+            {
+                try { UpdateOwnedScene(false); }
+                catch (Exception exception) { RecordFailure("scene.background", exception); ReleaseMaterial(); }
+            }
             DetachSettings(); DetachCapabilities();
             SetStablePalette(false);
             UpdateState();
@@ -497,9 +526,10 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         catch (Exception exception) { RecordFailure("presentation.stablePalette", exception); }
     }
 
-    private void ReleaseMaterial()
+    private void ReleaseMaterial(bool keepScene = false)
     {
-        ReleaseOptical();
+        if (keepScene) { StopOpticalMotion(); sceneOpticalActive = false; }
+        else ReleaseOptical();
         try { ElementCompositionPreview.GetElementVisual(PatternLayer).StopAnimation("Offset"); } catch (Exception) { }
         finiteMotionUntil = 0;
         if (lens is not null) { updatesReleased += lens.UpdateCount; lens.Dispose(); cleanupFailures += lens.CleanupFailures; if (lens.RemainingResources != 0) { failedRelease = lens; failure = "NativeReleaseFailed"; } lens = null; }
@@ -551,7 +581,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             var state = lens is null
                 ? $"稳定实色降级 · 原型资源 0 · {failure ?? (settings.HighContrast == true ? "高对比度" : settings.AdvancedEffects == false ? "系统已关闭透明效果" : "原型未启用") }"
                 : $"{(CurrentOptics.Dispersion > 0 ? "折射＋RGB 色散近似" : "仅折射")} · 一个实时背景源 · 推荐色散 0.75／诊断 2 · 背景位置 {patternPosition:0}";
-            if (optical is not null) state = $"{(ComparisonMode.SelectedIndex == 3 ? "候选 1 · 圆润厚玻璃" : "候选 2 · 日常玻璃")} · 曲面采样 · {(dispersionEnabled ? "色散开" : "色散关")} · Gallery 快照背景 · {(snapshotBusy ? "更新中" : "静止时不绘制")}";
+            if (optical is not null) state = $"{(MaterialActive ? ComparisonMode.SelectedIndex == 3 ? "候选 1 · 圆润厚玻璃" : "候选 2 · 日常玻璃" : "高级材质关闭")} · {(UsesOwnedScene ? "Gallery 自有动态背景" : "Gallery 快照背景")} · {(dispersionEnabled ? "色散开" : "色散关")} · {(snapshotBusy ? "更新中" : "静止时不绘制")}";
             if (MaterialState.Text != state) MaterialState.Text = state;
         }
         catch (Exception exception) { RecordFailure("presentation.state", exception); ReleaseMaterial(); }
@@ -579,6 +609,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private void OnLensRelease(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => SetInteraction("hover");
     internal void TestCommand(string value)
     {
+        if (value.Length == 9 && value.StartsWith("captureS", StringComparison.Ordinal) && value[8] is >= '0' and <= '5')
+        { SetCaptureIsolation(value[8] - '0'); return; }
         switch (value) {
             case "on": AdvancedSwitch.IsOn = true; break;
             case "off": AdvancedSwitch.IsOn = false; break;
@@ -604,6 +636,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             case "fault": SetCompositionFailure(new InvalidOperationException("TestDeviceLost"), "Test.DeviceLost"); break;
             case "replace": ReleaseMaterial(); BuildPatternReplacement(); break;
             case "initFailure": ReleaseMaterial(); failInitialization = true; break;
+            case "releasePendingSnapshot": TestReleasePendingSnapshot(); break;
             case "cancelUpdate": QueueRefresh(); callbackGeneration++; refreshQueued = false; testPolicy = "unknown"; break;
             case "disposeQueued": QueueRefresh(); Dispose(); return;
             case "largeText": StableTitle.FontSize = 27; StableBody.FontSize = 21; StableCaption.FontSize = 18; break;
@@ -614,7 +647,12 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         }
         RefreshMaterial();
     }
-    private void OnReviewChanged(object sender, SelectionChangedEventArgs e) { if (initialized && !syncingReview) RefreshMaterial(); }
+    private void OnReviewChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!initialized || syncingReview) return;
+        try { if (scenePattern != UsesOwnedScene) { ReleaseMaterial(); BuildPattern(); } RefreshMaterial(); }
+        catch (Exception exception) { SetCompositionFailure(exception, "scene.switch"); }
+    }
     private void OnDispersionChanged(object sender, RoutedEventArgs e) { dispersionEnabled = DispersionSwitch.IsOn; if (initialized) RefreshMaterial(); }
     private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -709,5 +747,6 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         failedRelease?.Dispose();
         failedOpticalRelease?.Dispose();
         ClearCoverImages();
+        scene = null;
     }
 }

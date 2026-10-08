@@ -121,6 +121,7 @@ public sealed partial class MainWindow : Window
     private void ShowPage()
     {
         synchronizing = true;
+        LeaveGallery();
         PageContent.Content = ViewModel.Page switch { WorkspacePage.Recognition => recognitionPage, WorkspacePage.Online => onlinePage, WorkspacePage.Details => detailsPage, WorkspacePage.Settings => settingsPage, WorkspacePage.Import => importPage, WorkspacePage.Installations => installationsPage, _ => libraryPage };
         Navigation.SelectedItem = ViewModel.Page == WorkspacePage.Settings ? SettingsNavigation : ViewModel.Page == WorkspacePage.Online ? OnlineNavigation : ViewModel.Page == WorkspacePage.Recognition ? RecognitionNavigation : LibraryNavigation;
         Navigation.IsBackEnabled = ViewModel.Page != WorkspacePage.Library;
