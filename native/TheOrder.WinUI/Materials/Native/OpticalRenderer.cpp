@@ -27,8 +27,9 @@ cbuffer Parameters : register(b0) {
  float4 lens;       // center DIP, half extent DIP
  float4 optics;     // corner radius, bevel width, optical depth, dispersion DIP
  float4 lighting;   // gloss, dark, background translation DIP
- float4 raster;     // scale, frost amount (0 keeps the accepted C1 output), reserved
- float4 frostTint;  // stage-plate body tint rgb, tint alpha
+ float4 raster;     // scale, rev1 frost amount (0 keeps the accepted C1 output), fully clear (1 with material.x), reserved
+ float4 frostTint;  // stage-plate body tint rgb, tint alpha (rev2: minimum tint)
+ float4 material;   // rev2 continuous glass: enable, luminance bound, polarity (+1 lift/-1 deepen), edge density
 };
 Texture2D sourceImage : register(t0);
 Texture2D frostImage : register(t1); // same-scene Gaussian copy; bound only while valid
@@ -74,6 +75,24 @@ float4 PS(Vertex input) : SV_TARGET {
    float sdb=length(max(qb,0))+min(max(qb.x,qb.y),0)-rb;
    float body=(1-smoothstep(-6,6,sdb))*raster.y;
    color=lerp(color,lerp(ReadFrost(coord),frostTint.rgb,frostTint.a),body);
+ }
+ // Continuous glass (rev2): one material across rim and body. The whole lens sees the same
+ // blurred scene through the same refraction and dispersion; tint is luminance-adaptive in
+ // linear light, so contrast is bounded per pixel without a uniform backing panel; the rim
+ // reads as thicker glass through a density term from the same distance field.
+ // raster.z = 1 selects the fully clear variant: the same material over the sharp refracted sample.
+ if(material.x>0) {
+   float3 c=color;
+   if(raster.z<=0) { c=ReadFrost(coord); if(spectral>.001) { c.r=ReadFrost(coord+normal*spectral).r; c.b=ReadFrost(coord-normal*spectral).b; } }
+   const float3 luma=float3(.2126,.7152,.0722);
+   float3 lin=pow(max(c,0),2.2), tintLin=pow(frostTint.rgb,2.2);
+   float y=dot(lin,luma), yt=dot(tintLin,luma);
+   float need=material.z>0 ? (y<material.y ? (material.y-y)/max(yt-y,1e-4) : 0)
+                           : (y>material.y ? (y-material.y)/max(y-yt,1e-4) : 0);
+   float k=max(frostTint.a,saturate(need));
+   float edge=pow(1-t,3)*material.w;
+   lin=lerp(lerp(lin,tintLin,k),float3(1,1,1),edge*.35);
+   color=pow(lin,1/2.2)*material.x+color*(1-material.x);
  }
  float incidence=dot(normal,normalize(float2(-.55,-.83)));
  float bright=pow(saturate(incidence),3);
@@ -133,7 +152,7 @@ struct Renderer {
   const auto background=std::string(shader)+"\nfloat4 BackgroundPS(Vertex input):SV_TARGET { return float4(Read(input.uv*viewSource.xy),1); }";
   Check(D3DCompile(background.c_str(),background.size(),"TheOrderGalleryBackground",nullptr,nullptr,"BackgroundPS","ps_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&ps,&error));
   Check(device->CreatePixelShader(ps->GetBufferPointer(),ps->GetBufferSize(),nullptr,&backgroundPixel));
-  D3D11_BUFFER_DESC buffer={};buffer.ByteWidth=96;buffer.Usage=D3D11_USAGE_DEFAULT;buffer.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
+  D3D11_BUFFER_DESC buffer={};buffer.ByteWidth=112;buffer.Usage=D3D11_USAGE_DEFAULT;buffer.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
   Check(device->CreateBuffer(&buffer,nullptr,&constants));
   D3D11_SAMPLER_DESC sample={};sample.Filter=D3D11_FILTER_MIN_MAG_MIP_LINEAR;
   sample.AddressU=sample.AddressV=sample.AddressW=D3D11_TEXTURE_ADDRESS_CLAMP;sample.MaxLOD=D3D11_FLOAT32_MAX;
@@ -167,12 +186,17 @@ extern "C" __declspec(dllexport) HRESULT OpticalUpload(void* handle,const BYTE* 
  });
 }
 static HRESULT Draw(void* handle,UINT width,UINT height,const float* input,UINT count,bool background) noexcept {
- if(!handle||!input||(count!=20&&count!=24)||width==0||height==0||width>8192||height>8192)return E_INVALIDARG;
- float p[24]={};std::memcpy(p,input,count*sizeof(float)); // legacy 20-float callers get frost amount 0
+ if(!handle||!input||(count!=20&&count!=24&&count!=28)||width==0||height==0||width>8192||height>8192)return E_INVALIDARG;
+ float p[28]={};std::memcpy(p,input,count*sizeof(float)); // legacy 20/24-float callers keep later fields 0
  if(!(p[17]>=0&&p[17]<=1)||!(p[23]>=0&&p[23]<=1))return E_INVALIDARG;
+ // rev2: enable/bound/edge in [0,1], polarity exactly +/-1 when enabled; rev1 and rev2 are exclusive.
+ if(!(p[24]>=0&&p[24]<=1)||!(p[25]>=0&&p[25]<=1)||!(p[27]>=0&&p[27]<=1)||(p[24]>0&&(p[26]!=1&&p[26]!=-1))||(p[24]>0&&p[17]>0))return E_INVALIDARG;
+ // Fully clear (c[18] = 1) is a variant of the continuous material only; it needs no blurred copy.
+ const bool clear=p[18]!=0;
+ if((p[18]!=0&&p[18]!=1)||(clear&&p[24]<=0))return E_INVALIDARG;
  return Guard([&] {auto r=static_cast<Renderer*>(handle);if(!r->source)throw E_UNEXPECTED;
  // A frost request without this revision's blurred copy fails closed; the owner falls back.
- if(!background&&p[17]>0&&!r->frostValid)throw E_UNEXPECTED;
+ if(!background&&(p[17]>0||(p[24]>0&&!clear))&&!r->frostValid)throw E_UNEXPECTED;
  r->Resize(width,height);
  ComPtr<IDXGISwapChain2> scaled;Check(r->chain.As(&scaled));
  DXGI_MATRIX_3X2_F matrix={1/p[16],0,0,1/p[16],0,0};Check(scaled->SetMatrixTransform(&matrix));
@@ -216,6 +240,10 @@ extern "C" __declspec(dllexport) HRESULT OpticalSceneText(void* h,const wchar_t*
 }
 extern "C" __declspec(dllexport) HRESULT OpticalSceneImage(void* h,const wchar_t* path,float x,float y,float w,float height,BOOL fill) noexcept {
  if(!h||!path)return E_INVALIDARG;return Guard([&]{static_cast<Renderer*>(h)->scene.Image(path,x,y,w,height,fill!=FALSE);});
+}
+extern "C" __declspec(dllexport) HRESULT OpticalSceneImageBlur(void* h,const wchar_t* path,float x,float y,float w,float height,BOOL fill,float sigma) noexcept {
+ if(!h||!path||!std::isfinite(sigma)||sigma<=0||sigma>64)return E_INVALIDARG;
+ return Guard([&]{static_cast<Renderer*>(h)->scene.Image(path,x,y,w,height,fill!=FALSE,sigma);});
 }
 extern "C" __declspec(dllexport) HRESULT OpticalSceneEnd(void* h) noexcept {
  if(!h)return E_INVALIDARG;return static_cast<Renderer*>(h)->scene.End();

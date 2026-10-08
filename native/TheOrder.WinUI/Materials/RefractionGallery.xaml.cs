@@ -56,7 +56,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private long finiteMotionUntil;
     private Color? appliedBackground;
     private Color? appliedForeground;
-    private bool? appliedFrostPanel;
+    private int? appliedBodyState;
     private readonly List<Image> coverImages = [];
     private readonly HashSet<Image> pendingCovers = [];
     private int coverFailures;
@@ -199,7 +199,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
                 Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_COVERS"));
             return;
         }
-        if (appliedBackgroundMode is 3 or 4) return;
+        if (appliedBackgroundMode is 3 or 4 or 8 or 9) return; // 8/9 are owned-scene only
         if (appliedBackgroundMode is 6 or 7)
         {
             var reference = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE");
@@ -510,15 +510,21 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             background = Color.FromArgb(255, 240, 245, 246);
         }
         // With an active frosted body the tinted glass carries the text; otherwise keep the solid reading panel.
-        var frostPanel = transparent && FrostActive && ReadSettings().HighContrast != true;
+        var frostPanel = transparent && (FrostActive || ClearActive) && ReadSettings().HighContrast != true;
+        // rev2 continuous glass: the shader draws the only edge; no XAML stroke, highlight or backing layer.
+        var bodyState = frostPanel ? bodyMode : 0;
         if (appliedBackground.HasValue && appliedBackground.Value.Equals(background) &&
-            appliedForeground.HasValue && appliedForeground.Value.Equals(foregroundColor) && appliedFrostPanel == frostPanel) return;
+            appliedForeground.HasValue && appliedForeground.Value.Equals(foregroundColor) && appliedBodyState == bodyState) return;
         try
         {
             StableForeground.Background = new SolidColorBrush(frostPanel ? Color.FromArgb(0, 0, 0, 0) : background);
             StableTextPanel.Background = new SolidColorBrush(frostPanel ? Color.FromArgb(0, 0, 0, 0) : dark ? Color.FromArgb(255, 32, 36, 39) : Color.FromArgb(255, 250, 251, 251));
-            appliedFrostPanel = frostPanel;
-            LensHighlight.Visibility = transparent ? Visibility.Visible : Visibility.Collapsed;
+            appliedBodyState = bodyState;
+            // Stroke only: changing BorderThickness resizes LensHost and the event-driven draw would
+            // use stale lens extents. Restore the same DesignTokens brush the ThemeResource resolves to.
+            if (bodyState is 2 or 3) { LensFrame.BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)); lensStrokeOverridden = true; }
+            else if (lensStrokeOverridden && ThemeStroke(dark, ReadSettings().HighContrast == true) is { } stroke) LensFrame.BorderBrush = stroke;
+            LensHighlight.Visibility = transparent && bodyState is not (2 or 3) ? Visibility.Visible : Visibility.Collapsed;
             var foreground = new SolidColorBrush(foregroundColor);
             StableIcon.Foreground = foreground;
             StableTitle.Foreground = foreground;
@@ -528,6 +534,17 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             appliedForeground = foregroundColor;
         }
         catch (Exception exception) { RecordFailure("presentation.stablePalette", exception); }
+    }
+
+    private bool lensStrokeOverridden;
+    private static Brush? ThemeStroke(bool dark, bool highContrast)
+    {
+        foreach (var dictionary in Microsoft.UI.Xaml.Application.Current.Resources.MergedDictionaries)
+            if (dictionary.Source?.OriginalString.EndsWith("DesignTokens.xaml", StringComparison.OrdinalIgnoreCase) == true &&
+                dictionary.ThemeDictionaries.TryGetValue(highContrast ? "HighContrast" : dark ? "Dark" : "Light", out var theme) &&
+                theme is ResourceDictionary resources && resources.TryGetValue("StrokeBrush", out var brush))
+                return brush as Brush;
+        return null;
     }
 
     private void ReleaseMaterial(bool keepScene = false)
@@ -625,8 +642,12 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             case "candidate2": ComparisonMode.SelectedIndex = 4; break;
             case "dispersionOff": DispersionSwitch.IsOn = false; break;
             case "dispersionOn": DispersionSwitch.IsOn = true; break;
-            case "frostOn": FrostSwitch.IsOn = true; break;
-            case "frostOff": FrostSwitch.IsOn = false; break;
+            case "frostOn": BodyMode.SelectedIndex = 1; break;
+            case "frostOff": BodyMode.SelectedIndex = 0; break;
+            case "continuous": BodyMode.SelectedIndex = 2; break;
+            case "clear": BodyMode.SelectedIndex = 3; break;
+            case "ambientCover": BackgroundMode.SelectedIndex = 8; break;
+            case "ambientReference": BackgroundMode.SelectedIndex = 9; break;
             case "recommended": OnRecommended(this, new RoutedEventArgs()); break;
             case "diagnostic": DispersionSlider.Value = 2; break;
             case "text": BackgroundMode.SelectedIndex = 0; break;
@@ -660,7 +681,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         catch (Exception exception) { SetCompositionFailure(exception, "scene.switch"); }
     }
     private void OnDispersionChanged(object sender, RoutedEventArgs e) { dispersionEnabled = DispersionSwitch.IsOn; if (initialized) RefreshMaterial(); }
-    private void OnFrostChanged(object sender, RoutedEventArgs e) { frostRequested = FrostSwitch.IsOn; if (initialized) RefreshMaterial(); }
+    private void OnBodyModeChanged(object sender, SelectionChangedEventArgs e) { bodyMode = Math.Clamp(((ComboBox)sender).SelectedIndex, 0, 3); if (initialized) RefreshMaterial(); }
     private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!initialized || syncingReview || appliedBackgroundMode == BackgroundMode.SelectedIndex) return;

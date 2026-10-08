@@ -7,7 +7,7 @@ internal sealed record GalleryScene(uint Background, IReadOnlyList<GalleryPrimit
     internal const int Width = 1300, Height = 660;
     internal static GalleryScene Create(int mode, string? reference, string? covers)
     {
-        if (mode is < 0 or > 7) throw new ArgumentOutOfRangeException(nameof(mode));
+        if (mode is < 0 or > 9) throw new ArgumentOutOfRangeException(nameof(mode));
         var items = new List<GalleryPrimitive>();
         void Rect(float x, float y, float w, float h, uint color) => items.Add(new(0, x, y, w, h, color));
         void Image(string path, float x, float y, float w, float h, bool fill = false)
@@ -43,6 +43,19 @@ internal sealed record GalleryScene(uint Background, IReadOnlyList<GalleryPrimit
             case 6: case 7:
                 if (reference is null) throw new InvalidDataException("Explicit Test artwork directory required");
                 Image(Path.Combine(Path.GetDirectoryName(reference)!, mode == 6 ? "steam-1230140.jpg" : "steam-1094820.jpg"), 0, -430, 1300, 1950); break;
+            case 8: case 9:
+                // Details-hero composition: ambient blurred artwork filling the band, sharp poster at the left
+                // (the poster stays outside the lens, as the XAML poster would in the product).
+                var art = mode == 8
+                    ? Path.Combine(covers ?? throw new InvalidDataException("Explicit Test covers required"), "cover-00003.jpg")
+                    : reference ?? throw new InvalidDataException("Explicit Test reference required");
+                var full = Path.GetFullPath(art);
+                if (!full.Contains(Path.DirectorySeparatorChar + ".artifacts" + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(full))
+                    throw new InvalidDataException("Existing isolated Test artwork required");
+                items.Add(new(3, 0, 0, Width, Height, 18, full, 1));
+                Rect(0, 0, Width, Height, 0x26000000);
+                Image(full, 36, 34, 156, 208, true);
+                break;
         }
         return new(mode == 4 ? 0xff1f242b : 0xffedeff0, items);
     }

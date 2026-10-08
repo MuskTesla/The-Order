@@ -31,6 +31,8 @@ internal sealed class OpticalRenderer : IDisposable
     private static extern int OpticalSceneText(IntPtr handle, string text, float x, float y, float size, uint color, uint weight);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
     private static extern int OpticalSceneImage(IntPtr handle, string path, float x, float y, float w, float h, int fill);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true, CharSet = CharSet.Unicode)]
+    private static extern int OpticalSceneImageBlur(IntPtr handle, string path, float x, float y, float w, float h, int fill, float sigma);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalSceneEnd(IntPtr handle);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
@@ -86,11 +88,11 @@ internal sealed class OpticalRenderer : IDisposable
     internal void Draw(int width, int height, float[] parameters, bool backgroundOnly = false)
     {
         ObjectDisposedException.ThrowIf(!Active, this);
-        // 20 constants = accepted C1 layout; 24 adds frost amount (c[17]) and body tint (c[20..23]).
-        if (parameters.Length is not (20 or 24) || parameters.Any(x => !float.IsFinite(x))) throw new ArgumentException("Finite optical constants required");
+        // 20 constants = accepted C1 layout; 24 adds rev1 frost (c[17], tint c[20..23]); 28 adds rev2 continuous glass (c[24..27]).
+        if (parameters.Length is not (20 or 24 or 28) || parameters.Any(x => !float.IsFinite(x))) throw new ArgumentException("Finite optical constants required");
         var begin = Stopwatch.GetTimestamp();
-        Marshal.ThrowExceptionForHR(parameters.Length == 24
-            ? OpticalDrawEx(handle, checked((uint)width), checked((uint)height), parameters, 24, backgroundOnly ? 1 : 0)
+        Marshal.ThrowExceptionForHR(parameters.Length != 20
+            ? OpticalDrawEx(handle, checked((uint)width), checked((uint)height), parameters, (uint)parameters.Length, backgroundOnly ? 1 : 0)
             : backgroundOnly
                 ? OpticalDrawBackground(handle, checked((uint)width), checked((uint)height), parameters)
                 : OpticalDraw(handle, checked((uint)width), checked((uint)height), parameters));
@@ -118,6 +120,7 @@ internal sealed class OpticalRenderer : IDisposable
                     0 => OpticalSceneRect(handle, item.X, item.Y, item.Width, item.Height, item.Color),
                     1 => OpticalSceneText(handle, item.Content!, item.X, item.Y, item.Width, item.Color, checked((uint)item.Option)),
                     2 => OpticalSceneImage(handle, item.Content!, item.X, item.Y, item.Width, item.Height, item.Option),
+                    3 => OpticalSceneImageBlur(handle, item.Content!, item.X, item.Y, item.Width, item.Height, item.Option, item.Color),
                     _ => throw new InvalidDataException("Unknown Gallery primitive")
                 };
                 Marshal.ThrowExceptionForHR(hr);

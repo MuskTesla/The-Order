@@ -37,11 +37,16 @@ public sealed partial class RefractionGallery
     private long motionStarted, previousFrame;
     private double motionSeconds, motionStartPosition, frameIntervalTotal, frameIntervalMax;
     private long frameIntervals;
-    private readonly float[] opticalConstants = new float[24];
-    // Stage-plate frost: clear refracting rim, blurred+tinted body. Off = accepted C1 output.
-    private const double FrostSigmaDip = 20;
-    private bool frostRequested, frostCurrent;
+    private readonly float[] opticalConstants = new float[28];
+    // Body modes: 0 = accepted C1 (clear), 1 = rev1 clear rim + frosted centre, 2 = rev2 continuous glass.
+    private int bodyMode;
+    private double frostSigmaApplied;
+    private bool frostCurrent;
+    private double FrostSigmaDip => bodyMode == 2 ? 12 : 20;
+    private bool frostRequested => bodyMode is 1 or 2;
     private bool FrostActive => frostRequested && frostCurrent && UsesOwnedScene && sceneOpticalActive;
+    // Mode 3 = 完全清透: continuous material over the sharp scene; no blurred copy needed.
+    private bool ClearActive => bodyMode == 3 && UsesOwnedScene && sceneOpticalActive;
     private bool UsesOptical => ComparisonMode.SelectedIndex is 3 or 4;
     private bool MaterialActive => lens is not null || (optical?.Ready == true && (!UsesOwnedScene || sceneOpticalActive));
     private OpticalProfile Profile => ComparisonMode.SelectedIndex == 3 ? OpticalProfile.Reference : OpticalProfile.Daily;
@@ -74,7 +79,7 @@ public sealed partial class RefractionGallery
         RetainedFailedDevice = failedOpticalRelease is null ? 0 : 1,
         Source = UsesOwnedScene ? "Gallery-owned Direct2D/DirectWrite/WIC scene on same-device D3D surface; every revision rendered; foreground excluded" : "Gallery-only XAML background snapshot at rasterization scale; finite shader translation; foreground excluded",
         Passes = 1, TextureReadsOutside = 1, TextureReadsLensMaximum = FrostActive ? 5 : 4, BlurPasses = 0,
-        FrostRequested = frostRequested, FrostActive, FrostSigmaDip, Frost = optical?.FrostEvidence
+        BodyMode = bodyMode, FrostRequested = frostRequested, FrostActive, ClearActive, FrostSigmaDip, Frost = optical?.FrostEvidence
     };
 
     private void UpdateOptical()
@@ -186,11 +191,27 @@ public sealed partial class RefractionGallery
         c[8] = 23; c[9] = model.BevelWidth; c[10] = model.Depth; c[11] = dispersionEnabled ? model.Dispersion : 0;
         c[12] = model.Gloss; c[13] = ActualTheme == ElementTheme.Dark ? 1 : 0;
         c[14] = offsetX; c[15] = offsetY; c[16] = scale;
-        // Tint alpha .80 bounds body text contrast for any artwork (see design 03 §Frost).
         var frost = FrostActive; var darkTint = ActualTheme == ElementTheme.Dark;
-        c[17] = frost ? 1 : 0; c[18] = c[19] = 0;
-        c[20] = darkTint ? 27 / 255f : 250 / 255f; c[21] = darkTint ? 35 / 255f : 251 / 255f;
-        c[22] = darkTint ? 36 / 255f : 248 / 255f; c[23] = frost ? .8f : 0;
+        var rev1 = frost && bodyMode == 1; var rev2 = frost && bodyMode == 2; var clear = ClearActive;
+        c[18] = c[19] = 0;
+        if (rev2 || clear)
+        {
+            // Continuous glass (连续玻璃) and fully clear (完全清透): one material, Fluent-neutral tint at a
+            // minimum alpha only; the per-pixel luminance bound (.42 lift Light / .08 deepen Dark) keeps
+            // primary text >= 7:1 without a panel. Clear samples the sharp scene and uses a lighter tint.
+            c[17] = 0; c[18] = clear ? 1 : 0;
+            c[20] = c[21] = c[22] = darkTint ? 32 / 255f : 250 / 255f;
+            c[23] = clear ? (darkTint ? .16f : .10f) : (darkTint ? .30f : .22f);
+            c[24] = 1; c[25] = darkTint ? .08f : .42f; c[26] = darkTint ? -1 : 1; c[27] = .20f;
+        }
+        else
+        {
+            // rev1 (preserved for comparison): tint alpha .80 bounds body text contrast.
+            c[17] = rev1 ? 1 : 0;
+            c[20] = darkTint ? 27 / 255f : 250 / 255f; c[21] = darkTint ? 35 / 255f : 251 / 255f;
+            c[22] = darkTint ? 36 / 255f : 248 / 255f; c[23] = rev1 ? .8f : 0;
+            c[24] = c[25] = c[27] = 0; c[26] = 1;
+        }
         optical.Draw((int)Math.Ceiling(c[0] * scale), (int)Math.Ceiling(c[1] * scale), c, UsesOwnedScene && !sceneOpticalActive);
         OpticalPanel.Visibility = Visibility.Visible;
     }
@@ -271,7 +292,8 @@ public sealed partial class RefractionGallery
         }
         // Event-driven: one blur pass per scene revision or toggle, never per frame.
         var wantFrost = effect && frostRequested;
-        if (wantFrost && !frostCurrent) { optical.Frost(FrostSigmaDip); frostCurrent = true; }
+        if (wantFrost && (!frostCurrent || frostSigmaApplied != FrostSigmaDip))
+        { optical.Frost(FrostSigmaDip); frostCurrent = true; frostSigmaApplied = FrostSigmaDip; }
         else if (!wantFrost && optical.FrostBytes != 0) { optical.Frost(0); frostCurrent = false; }
         DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
     }

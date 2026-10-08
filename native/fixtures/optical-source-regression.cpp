@@ -71,7 +71,7 @@ void FrostTests(void* handle) {
  Check(D3DCompile(acceptedC1Shader,strlen(acceptedC1Shader),"AcceptedC1",nullptr,nullptr,"PS","ps_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&error));
  ComPtr<ID3D11PixelShader> accepted;Check(r->device->CreatePixelShader(blob->GetBufferPointer(),blob->GetBufferSize(),nullptr,&accepted));
  // C1 reference profile: corner 23, bevel 30, depth 30, dispersion .8, gloss .55; tint alpha .8.
- float p[24]={w,h,w,h, 128,64,104,48, 23,30,30,.8f, .55f,0,0,0, 1,0,0,0, .98f,.98f,.97f,.8f};
+ float p[28]={w,h,w,h, 128,64,104,48, 23,30,30,.8f, .55f,0,0,0, 1,0,0,0, .98f,.98f,.97f,.8f, 0,0,1,0}; // 28: the offscreen helper uploads the full 112-byte cbuffer
  const auto reference=RenderOffscreen(r,accepted.Get(),p,w,h,false);
  Require(RenderOffscreen(r,r->pixel.Get(),p,w,h,false)==reference,"Frost-off output differs from accepted C1");
  Require(OpticalDrawEx(handle,w,h,p,24,FALSE)==S_OK,"Frost-off 24-float draw failed");
@@ -100,6 +100,90 @@ void FrostTests(void* handle) {
  DrawStripes(handle,192,96,0xff406080);Check(OpticalSceneFrost(handle,6));Require(r->frostCreated==2,"Resized frost not recreated");
  Check(OpticalSceneFrost(handle,0));Require(!r->frostTexture&&!r->frost&&!r->frostValid&&!r->scene.frostTarget,"Frost retirement retained resources");
  Check(OpticalSceneFrost(handle,6));Require(r->frostTexture&&r->frostValid,"Frost re-entry failed");
+}
+double SrgbLuminance(const BYTE* bgra) {
+ auto lin=[](BYTE v){double c=v/255.0;return c<=.04045?c/12.92:std::pow((c+.055)/1.055,2.4);};
+ return .2126*lin(bgra[2])+.7152*lin(bgra[1])+.0722*lin(bgra[0]);
+}
+double RowEnergy(const std::vector<BYTE>& px,UINT w,UINT y,UINT x0,UINT x1) {
+ double e=0;for(UINT x=x0;x<x1;++x)for(int c=0;c<3;++c)e+=std::abs(px[(y*w+x+1)*4+c]-px[(y*w+x)*4+c]);return e/(x1-x0);
+}
+// rev2 continuous glass. Thresholds fixed before first run: no inner boundary on a uniform field
+// (adjacent delta <= 3), rim/body detail ratio <= 2 over stripes, luminance bounds for text contrast.
+void ContinuousTests(void* handle) {
+ auto r=static_cast<Renderer*>(handle);const UINT w=256,h=128;
+ ComPtr<ID3DBlob> blob,error;
+ Check(D3DCompile(acceptedC1Shader,strlen(acceptedC1Shader),"AcceptedC1",nullptr,nullptr,"PS","ps_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&error));
+ ComPtr<ID3D11PixelShader> accepted;Check(r->device->CreatePixelShader(blob->GetBufferPointer(),blob->GetBufferSize(),nullptr,&accepted));
+ // C1 geometry; light polarity: lift to .42, min tint .22, edge .35.
+ float p[28]={w,h,w,h, 128,64,104,48, 23,30,30,.8f, .55f,0,0,0, 1,0,0,0, .98f,.98f,.98f,.22f, 0,.42f,1,.20f};
+ DrawStripes(handle,w,h,0xffd8e4ea);
+ const auto reference=RenderOffscreen(r,accepted.Get(),p,w,h,false);
+ Require(RenderOffscreen(r,r->pixel.Get(),p,w,h,false)==reference,"rev2-off output differs from accepted C1");
+ p[24]=1;Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==E_UNEXPECTED,"rev2 drawn without a valid copy");
+ Check(OpticalSceneFrost(handle,6));
+ const auto glass=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);
+ for(UINT y=0;y<h;y+=127)for(UINT x=0;x<w;x+=255)for(int c=0;c<4;++c)Require(glass[(y*w+x)*4+c]==reference[(y*w+x)*4+c],"rev2 changed pixels outside the lens");
+ // Rim keeps the same regime as the body: detail energy along the centre row.
+ const double rim=RowEnergy(glass,w,64,24+3,24+15), body=RowEnergy(glass,w,64,98,158);
+ p[24]=0;p[17]=1;p[23]=.8f;const auto rev1=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);p[17]=0;p[23]=.22f;p[24]=1;
+ const double rim1=RowEnergy(rev1,w,64,24+3,24+15), body1=RowEnergy(rev1,w,64,98,158);
+ std::cout<<"INFO: rim/body detail energy rev2 "<<rim<<"/"<<body<<"  rev1 "<<rim1<<"/"<<body1<<"\n";
+ // Uniform field: no inner boundary anywhere between the anti-aliased edges.
+ Check(OpticalSceneBegin(handle,w,h,1,0xff808890));Check(OpticalSceneEnd(handle));Check(OpticalSceneFrost(handle,6));
+ const auto flat=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);int worst=0;
+ for(UINT y=40;y<=88;y+=8)for(UINT x=24+4;x<232-4;++x)for(int c=0;c<3;++c)worst=std::max(worst,std::abs(flat[(y*w+x+1)*4+c]-flat[(y*w+x)*4+c]));
+ std::cout<<"INFO: rev2 max adjacent delta on uniform field "<<worst<<"\n";
+ std::cout<<"INFO: rev2 rim/body energy on uniform field (edge shading only) "<<RowEnergy(flat,w,64,24+3,24+15)<<"/"<<RowEnergy(flat,w,64,98,158)<<"\n";
+ // Contrast bound at the text-safe centre over extreme and saturated backdrops, both polarities.
+ const UINT backs[]={0xff000000,0xffffffff,0xffff0000,0xffffff00,0xff0000ff,0xff00ff00,0xff808080};
+ double minLight=1,maxDark=0;
+ for(UINT b:backs){Check(OpticalSceneBegin(handle,w,h,1,b));Check(OpticalSceneEnd(handle));Check(OpticalSceneFrost(handle,6));
+  p[20]=p[21]=p[22]=250/255.f;p[23]=.22f;p[25]=.42f;p[26]=1;auto lt=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);minLight=std::min(minLight,SrgbLuminance(&lt[(64*w+128)*4]));
+  p[20]=p[21]=p[22]=32/255.f;p[23]=.30f;p[25]=.08f;p[26]=-1;auto dk=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);maxDark=std::max(maxDark,SrgbLuminance(&dk[(64*w+128)*4]));}
+ std::cout<<"INFO: rev2 body luminance light min "<<minLight<<" (text #000000E4 contrast "<<(minLight+.05)/(.0+.05)<<"), dark max "<<maxDark<<" (white text contrast "<<1.05/(maxDark+.05)<<")\n";
+ // Assertions after all measurements are printed; thresholds unchanged from the frozen definition.
+ Require(rim<=2*std::max(body,1.0),"rev2 rim and body read as different regimes");
+ Require(worst<=3,"rev2 shows an inner boundary on a uniform field");
+ Require(minLight>=.40&&maxDark<=.09,"rev2 luminance bound violated");
+ // Validation: count, exclusivity with rev1, polarity.
+ Require(OpticalDrawEx(handle,w,h,p,27,FALSE)==E_INVALIDARG,"Bad constant count accepted");
+ p[17]=1;Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==E_INVALIDARG,"rev1+rev2 accepted");p[17]=0;
+ p[26]=0;Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==E_INVALIDARG,"Zero polarity accepted");p[26]=-1;
+ Check(OpticalDrawEx(handle,w,h,p,28,FALSE));
+ // Blurred scene image primitive: rejects bad sigma, frame effects released at EndDraw.
+ Check(OpticalSceneBegin(handle,w,h,1,0xff000000));
+ Require(OpticalSceneImageBlur(handle,L"X:\\missing.png",0,0,8,8,TRUE,0)==E_INVALIDARG,"Zero sigma accepted");
+ Require(FAILED(OpticalSceneImageBlur(handle,L"X:\\missing.png",0,0,8,8,TRUE,4)),"Missing blurred image did not fail");
+ Check(OpticalSceneEnd(handle));Require(r->scene.frameEffects.empty()&&r->scene.frameImages.empty(),"Scene effects retained after EndDraw");
+}
+// 完全清透 (fully clear continuous glass). Same frozen thresholds as rev2, declared before the first run:
+// outside unchanged, no inner boundary on a uniform field (<= 3), rim/body detail ratio <= 2, luminance bounds.
+void ClearTests(void* handle) {
+ auto r=static_cast<Renderer*>(handle);const UINT w=256,h=128;
+ float p[28]={w,h,w,h, 128,64,104,48, 23,30,30,.8f, .55f,0,0,0, 1,0,1,0, .98f,.98f,.98f,.10f, 1,.42f,1,.20f};
+ Check(OpticalSceneFrost(handle,0));Require(!r->frostValid,"Frost copy still valid");
+ DrawStripes(handle,w,h,0xffd8e4ea);
+ Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==S_OK,"Clear draw required a blurred copy");
+ p[24]=0;Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==E_INVALIDARG,"Clear without continuous material accepted");p[24]=1;
+ p[18]=.5f;Require(OpticalDrawEx(handle,w,h,p,28,FALSE)==E_INVALIDARG,"Fractional clear flag accepted");p[18]=1;
+ float off[28]={};std::memcpy(off,p,sizeof(off));off[18]=0;off[24]=0;off[23]=0;
+ const auto source=RenderOffscreen(r,r->pixel.Get(),off,w,h,false);
+ const auto glass=RenderOffscreen(r,r->pixel.Get(),p,w,h,false);
+ for(UINT y=0;y<h;y+=127)for(UINT x=0;x<w;x+=255)for(int c=0;c<4;++c)Require(glass[(y*w+x)*4+c]==source[(y*w+x)*4+c],"Clear changed pixels outside the lens");
+ const double rim=RowEnergy(glass,w,64,24+3,24+15), body=RowEnergy(glass,w,64,98,158);
+ Check(OpticalSceneBegin(handle,w,h,1,0xff808890));Check(OpticalSceneEnd(handle));
+ const auto flat=RenderOffscreen(r,r->pixel.Get(),p,w,h,false);int worst=0;
+ for(UINT y=40;y<=88;y+=8)for(UINT x=24+4;x<232-4;++x)for(int c=0;c<3;++c)worst=std::max(worst,std::abs(flat[(y*w+x+1)*4+c]-flat[(y*w+x)*4+c]));
+ const UINT backs[]={0xff000000,0xffffffff,0xffff0000,0xffffff00,0xff0000ff,0xff00ff00,0xff808080};
+ double minLight=1,maxDark=0;
+ for(UINT b:backs){Check(OpticalSceneBegin(handle,w,h,1,b));Check(OpticalSceneEnd(handle));
+  p[20]=p[21]=p[22]=250/255.f;p[23]=.10f;p[25]=.42f;p[26]=1;auto lt=RenderOffscreen(r,r->pixel.Get(),p,w,h,false);minLight=std::min(minLight,SrgbLuminance(&lt[(64*w+128)*4]));
+  p[20]=p[21]=p[22]=32/255.f;p[23]=.16f;p[25]=.08f;p[26]=-1;auto dk=RenderOffscreen(r,r->pixel.Get(),p,w,h,false);maxDark=std::max(maxDark,SrgbLuminance(&dk[(64*w+128)*4]));}
+ std::cout<<"INFO: clear rim/body "<<rim<<"/"<<body<<"; uniform max delta "<<worst<<"; light min L "<<minLight<<"; dark max L "<<maxDark<<"\n";
+ Require(rim<=2*std::max(body,1.0),"Clear rim and body read as different regimes");
+ Require(worst<=3,"Clear shows an inner boundary on a uniform field");
+ Require(minLight>=.40&&maxDark<=.09,"Clear luminance bound violated");
 }
 int main(int argc,char** argv) {
  if(argc!=2||std::strcmp(argv[1],"Test")!=0)return 2;
@@ -147,7 +231,7 @@ int main(int argc,char** argv) {
   panel.failDetach=true;Require(OpticalDestroy(handle)==E_FAIL,"Scene failed detach lost owner");
   panel.failDetach=false;Check(OpticalDestroy(handle));
   Require(resourceCounts[0]==resourceCounts[1]&&panel.refs==1,"Scene graph retained after destroy");
-  Check(OpticalCreate(&panel,&handle));FrostTests(handle);
+  Check(OpticalCreate(&panel,&handle));FrostTests(handle);ContinuousTests(handle);ClearTests(handle);
   panel.failDetach=true;Require(OpticalDestroy(handle)==E_FAIL,"Frost failed detach lost owner");
   panel.failDetach=false;Check(OpticalDestroy(handle));
   Require(resourceCounts[0]==resourceCounts[1]&&panel.refs==1,"Frost graph retained after destroy");
@@ -155,6 +239,8 @@ int main(int argc,char** argv) {
   std::cout<<"PASS: 132 exact GPU readbacks; 129 same-size uploads use 1 texture; dimension changes; rejected uploads; detach retry; balanced owner.\n";
   std::cout<<"PASS: 160 exact dynamic scene readbacks; 1 target; reentrancy rejection; resize; failed image load; balanced scene owner.\n";
   std::cout<<"PASS: frost off == accepted C1 bit-exact (with and without bound copy); rim unchanged; body within tint bound; mean-preserving blur; 17 passes reuse 1 texture; stale/upload/resize invalidation fails closed; retirement and re-entry; balanced owner.\n";
+  std::cout<<"PASS: rev2 continuous glass: off == accepted C1; outside unchanged; rim/body same regime; no inner boundary on uniform field; luminance bounds over 7 backdrops x 2 themes; validation; blurred scene images released.\n";
+  std::cout<<"PASS: clear (完全清透): no blurred copy required; validation; outside unchanged; no inner boundary on uniform field; luminance bounds over 7 backdrops x 2 themes.\n";
   return 0;
  } catch(HRESULT hr) {std::cerr<<"HRESULT "<<std::hex<<hr<<"\n";return 1;}
  catch(const std::exception& e) {std::cerr<<e.what()<<"\n";return 1;}

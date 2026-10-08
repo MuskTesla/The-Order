@@ -22,6 +22,7 @@ struct GallerySource {
  ID3D11Texture2D* frostTexture=nullptr; // identity only; the renderer holds the reference
  float dpiScale=1;
  std::vector<ComPtr<ID2D1Bitmap1>> frameImages; // <=6; only until EndDraw.
+ std::vector<ComPtr<ID2D1Effect>> frameEffects; // blurred images in this frame; only until EndDraw.
  bool drawing=false;
  UINT64 completed=0, images=0, texts=0, targets=0;
  static D2D1_COLOR_F Color(UINT argb) {
@@ -110,26 +111,45 @@ struct GallerySource {
   brush->SetColor(Color(argb));
   context->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),brush.Get());++texts;
  }
- void Image(const wchar_t* path,float x,float y,float w,float h,bool fill) {
+ void Image(const wchar_t* path,float x,float y,float w,float h,bool fill,float sigma=0) {
   if(!drawing||!path||frameImages.size()>=6)throw E_INVALIDARG;
   ComPtr<IWICBitmapDecoder> decoder;Check(wic->CreateDecoderFromFilename(path,nullptr,GENERIC_READ,WICDecodeMetadataCacheOnLoad,&decoder));
   ComPtr<IWICBitmapFrameDecode> frame;Check(decoder->GetFrame(0,&frame));
   ComPtr<IWICFormatConverter> converter;Check(wic->CreateFormatConverter(&converter));
   Check(converter->Initialize(frame.Get(),GUID_WICPixelFormat32bppPBGRA,WICBitmapDitherTypeNone,nullptr,0,WICBitmapPaletteTypeCustom));
-  ComPtr<ID2D1Bitmap1> image;Check(context->CreateBitmapFromWicBitmap(converter.Get(),nullptr,&image));
+  ComPtr<ID2D1Bitmap1> image;
+  // Effects run at the context DPI; give blurred inputs that DPI so their DIP size matches the transform.
+  // The sharp path keeps the accepted default (DPI inferred from the image).
+  if(sigma>0){auto props=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_NONE,D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_PREMULTIPLIED),96*dpiScale,96*dpiScale);
+   Check(context->CreateBitmapFromWicBitmap(converter.Get(),&props,&image));}
+  else Check(context->CreateBitmapFromWicBitmap(converter.Get(),nullptr,&image));
   const auto size=image->GetSize();auto src=D2D1::RectF(0,0,size.width,size.height);
   if(fill) {
    const auto ratio=w/h,actual=size.width/size.height;
    if(actual>ratio){const float cut=(size.width-size.height*ratio)/2;src.left=cut;src.right=size.width-cut;}
    else {const float cut=(size.height-size.width/ratio)/2;src.top=cut;src.bottom=size.height-cut;}
   }
-  context->DrawBitmap(image.Get(),D2D1::RectF(x,y,x+w,y+h),1,D2D1_INTERPOLATION_MODE_LINEAR,&src);
+  if(sigma>0) {
+   // Ambient artwork: blur in image space so sigma is in destination DIPs; own effect per draw
+   // because D2D may evaluate the graph at EndDraw.
+   const float s=w/(src.right-src.left);
+   ComPtr<ID2D1Effect> effect;Check(context->CreateEffect(CLSID_D2D1GaussianBlur,&effect));
+   Check(effect->SetValue(D2D1_GAUSSIANBLUR_PROP_BORDER_MODE,D2D1_BORDER_MODE_HARD));
+   Check(effect->SetValue(D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION,sigma/s));
+   effect->SetInput(0,image.Get());
+   context->PushAxisAlignedClip(D2D1::RectF(x,y,x+w,y+h),D2D1_ANTIALIAS_MODE_ALIASED);
+   context->SetTransform(D2D1::Matrix3x2F::Scale(s,s)*D2D1::Matrix3x2F::Translation(x-src.left*s,y-src.top*s));
+   context->DrawImage(effect.Get());
+   context->SetTransform(D2D1::Matrix3x2F::Identity());context->PopAxisAlignedClip();
+   frameEffects.push_back(std::move(effect));
+  }
+  else context->DrawBitmap(image.Get(),D2D1::RectF(x,y,x+w,y+h),1,D2D1_INTERPOLATION_MODE_LINEAR,&src);
   frameImages.push_back(std::move(image));++images;
  }
  HRESULT End() noexcept {
   if(!drawing)return E_ILLEGAL_METHOD_CALL;
   auto hr=context->EndDraw();drawing=false;
-  context->SetTarget(nullptr);frameImages.clear();
+  context->SetTarget(nullptr);frameEffects.clear();frameImages.clear();
   if(SUCCEEDED(hr))++completed;
   return hr;
  }
