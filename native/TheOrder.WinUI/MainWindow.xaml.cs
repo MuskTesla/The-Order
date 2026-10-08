@@ -52,7 +52,7 @@ public sealed partial class MainWindow : Window
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
         Navigation.IsEnabled = false;
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import), QuickLaunch = QuickLaunchAsync };
-        detailsPage = new(workspace, images, launch) { ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
+        detailsPage = new(workspace, images, launch) { GoBack = GoBackAsync, ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         onlinePage = new(online, images);
         recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };

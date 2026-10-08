@@ -2,129 +2,115 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:views="using:TheOrder.WinUI.Views">
- <Grid x:Name="DetailsRoot" Padding="{StaticResource PagePadding}" RowSpacing="16" SizeChanged="OnDetailsSizeChanged">
+ <Grid x:Name="DetailsRoot" SizeChanged="OnDetailsSizeChanged">
   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <VisualStateManager.VisualStateGroups>
-   <VisualStateGroup x:Name="DetailsWidthStates">
-    <VisualState x:Name="DetailsWide"/>
-    <VisualState x:Name="DetailsNarrow">
-     <VisualState.Setters>
-      <Setter Target="HeroTitle.(Grid.Column)" Value="0"/><Setter Target="HeroTitle.(Grid.ColumnSpan)" Value="2"/>
-      <Setter Target="HeroCover.(Grid.Row)" Value="1"/><Setter Target="HeroCover.(Grid.RowSpan)" Value="1"/>
-      <Setter Target="IdentityFacts.(Grid.Row)" Value="2"/><Setter Target="IdentityFacts.(Grid.Column)" Value="0"/><Setter Target="IdentityFacts.(Grid.ColumnSpan)" Value="2"/>
-      <Setter Target="NarrowFactsRow.Height" Value="Auto"/><Setter Target="HeroLayout.RowSpacing" Value="12"/><Setter Target="HeroTitle.Margin" Value="0"/>
-      <Setter Target="LaunchInstallation.(Grid.ColumnSpan)" Value="2"/>
-      <Setter Target="LaunchActions.(Grid.Row)" Value="4"/><Setter Target="LaunchActions.(Grid.Column)" Value="0"/><Setter Target="LaunchActions.(Grid.ColumnSpan)" Value="2"/><Setter Target="LaunchActions.HorizontalAlignment" Value="Left"/>
-      <Setter Target="LaunchActions.RowSpacing" Value="8"/><Setter Target="ConfirmLaunchButton.(Grid.ColumnSpan)" Value="3"/>
-      <Setter Target="LaunchGameButton.(Grid.Row)" Value="1"/><Setter Target="LaunchGameButton.(Grid.Column)" Value="0"/>
-      <Setter Target="CancelLaunchButton.(Grid.Row)" Value="1"/><Setter Target="CancelLaunchButton.(Grid.Column)" Value="1"/>
-      <Setter Target="ManagementActions.RowSpacing" Value="8"/>
-      <Setter Target="CoverButton.(Grid.Row)" Value="1"/><Setter Target="CoverButton.(Grid.Column)" Value="0"/>
-      <Setter Target="RecognizeButton.(Grid.Row)" Value="2"/><Setter Target="RecognizeButton.(Grid.Column)" Value="0"/>
-      <Setter Target="PersonalFields.RowSpacing" Value="16"/><Setter Target="StatusEditor.(Grid.ColumnSpan)" Value="3"/>
-      <Setter Target="RatingEditor.(Grid.Row)" Value="1"/><Setter Target="RatingEditor.(Grid.Column)" Value="0"/><Setter Target="RatingEditor.(Grid.ColumnSpan)" Value="3"/>
-      <Setter Target="FavoriteEditor.(Grid.Row)" Value="2"/><Setter Target="FavoriteEditor.(Grid.Column)" Value="0"/><Setter Target="FavoriteEditor.(Grid.ColumnSpan)" Value="3"/>
-      <Setter Target="DirectoryActions.RowSpacing" Value="8"/><Setter Target="RemoveWishlistButton.(Grid.Row)" Value="1"/><Setter Target="RemoveWishlistButton.(Grid.Column)" Value="0"/>
-      <Setter Target="SaveFooter.RowSpacing" Value="8"/><Setter Target="DraftStatus.(Grid.ColumnSpan)" Value="2"/>
-      <Setter Target="SaveActions.(Grid.Row)" Value="1"/><Setter Target="SaveActions.(Grid.Column)" Value="0"/><Setter Target="SaveActions.(Grid.ColumnSpan)" Value="2"/>
-      <Setter Target="SaveActions.HorizontalAlignment" Value="Left"/>
-     </VisualState.Setters>
-    </VisualState>
-   </VisualStateGroup>
-  </VisualStateManager.VisualStateGroups>
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
-   <StackPanel Spacing="16" MaxWidth="1040" HorizontalAlignment="Stretch" Margin="0,0,0,8">
-    <Border Style="{StaticResource SurfaceStyle}" Padding="20">
-     <Grid x:Name="HeroLayout" ColumnSpacing="24">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="156"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition x:Name="NarrowFactsRow" Height="0"/></Grid.RowDefinitions>
-      <StackPanel x:Name="HeroTitle" Grid.Column="1" Spacing="8" Margin="0,0,0,12">
-       <TextBlock Text="{x:Bind ViewModel.Draft.Source.Personal.Name, Mode=OneWay}" Style="{StaticResource WorkTitleStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="DetailTitle"/>
-       <TextBlock Text="{x:Bind ViewModel.Draft.Source.Relationship, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
-      </StackPanel>
-      <Border x:Name="HeroCover" Grid.RowSpan="2" Width="156" Height="208" VerticalAlignment="Top" HorizontalAlignment="Left" CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+  <ScrollViewer x:Name="DetailsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+   <StackPanel x:Name="DetailsColumn" Spacing="16" MaxWidth="1160" HorizontalAlignment="Stretch" Padding="32,12,32,24">
+    <BreadcrumbBar x:Name="Breadcrumb" ItemClicked="OnBreadcrumb" AutomationProperties.AutomationId="DetailsBreadcrumb"/>
+    <!-- Hero: the game's own ambient band (app-rendered from decoded cover pixels) with one 完全清透 plate.
+         The poster is ordinary XAML on the band, never under glass. -->
+    <views:ArtworkStage x:Name="HeroStage" Height="300" AutomationProperties.AutomationId="DetailsHero">
+     <Grid x:Name="HeroLayout" Padding="28" ColumnSpacing="28" RowSpacing="16">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Border x:Name="HeroCover" Grid.RowSpan="2" Width="180" Height="240" VerticalAlignment="Center" CornerRadius="8" BorderThickness="1" BorderBrush="{ThemeResource StrokeBrush}" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
        <views:CoverPresenter SourceKey="{x:Bind ViewModel.Draft.Source.CoverKey, Mode=OneWay}" MinimumEdge="512"/>
       </Border>
-      <StackPanel x:Name="IdentityFacts" Grid.Row="1" Grid.Column="1" Spacing="8">
-       <TextBlock Text="{x:Bind StatusLabel(ViewModel.Draft.Status), Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="DetailPersonalStatus"/>
-       <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
-       <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
-       <TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
-      </StackPanel>
-     </Grid>
-    </Border>
-    <Border Style="{StaticResource ToolbarSurfaceStyle}" Padding="20">
-     <StackPanel Spacing="12"><TextBlock Text="启动与安装" Style="{StaticResource SectionTitleStyle}"/>
-      <StackPanel x:Name="EmptyInstallation" Grid.Row="1" Grid.ColumnSpan="2" Spacing="8" Visibility="{x:Bind NoInstallations(Launch.Installations.Length), Mode=OneWay}"><TextBlock Text="还没有本地安装，暂时无法启动。" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="EmptyInstallationReason"/><Button Content="添加或管理本地安装" Click="OnInstallations" HorizontalAlignment="Left" AutomationProperties.AutomationId="AddLocalInstallation"/></StackPanel>
-     <Grid ColumnSpacing="16" RowSpacing="12" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      
-
-      <ComboBox x:Name="LaunchInstallation" Grid.Row="1" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" ItemsSource="{x:Bind Launch.Installations, Mode=OneWay}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{x:Bind Launch.SelectedInstallationId, Mode=OneWay}" SelectionChanged="OnLaunchInstallation" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LaunchInstallation" AutomationProperties.Name="本次使用的游戏安装"/>
-      <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{x:Bind Launch.Position, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-      <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Text="{x:Bind Launch.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchMessage" AutomationProperties.LiveSetting="Polite"/>
-      <Grid x:Name="LaunchActions" Grid.Row="1" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Grid.Column="1" ColumnSpacing="8" HorizontalAlignment="Right" VerticalAlignment="Bottom">
-       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Button x:Name="ConfirmLaunchButton" Content="确认启动位置" Visibility="{x:Bind ActionVisible(Launch.CanConfirm), Mode=OneWay}" Click="OnConfirmPosition" IsEnabled="{x:Bind Launch.CanConfirm, Mode=OneWay}" AutomationProperties.AutomationId="ConfirmLaunchPosition"/>
-       <Button x:Name="LaunchGameButton" Grid.Column="1" Content="启动游戏" Click="OnLaunch" IsEnabled="{x:Bind Launch.CanLaunch, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="LaunchGame"/>
-       <Button x:Name="CancelLaunchButton" Grid.Column="2" Content="取消启动" Visibility="{x:Bind ActionVisible(Launch.CanCancel), Mode=OneWay}" Click="OnCancelLaunch" IsEnabled="{x:Bind Launch.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelLaunch"/>
-      </Grid>
-      <TextBlock Grid.Row="5" Grid.ColumnSpan="2" Text="关闭窗口会保留在托盘；退出 The Order 不会结束游戏。" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
-     </Grid></StackPanel>
-    </Border>
-    <Border Style="{StaticResource SurfaceStyle}" Padding="24">
-     <StackPanel Spacing="16">
-      <StackPanel Spacing="4"><TextBlock Text="个人资料" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="名称、收藏、分类与笔记" Style="{StaticResource SecondaryTextStyle}"/></StackPanel>
-      <ContentControl IsEnabled="{x:Bind ViewModel.CanEditDetails, Mode=OneWay}" HorizontalContentAlignment="Stretch">
-       <StackPanel x:Name="Editor" Spacing="16">
-        <TextBox Header="个人名称" Text="{x:Bind ViewModel.Draft.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="2000" AutomationProperties.AutomationId="EditName" AutomationProperties.Name="个人名称"/>
-        <Grid x:Name="PersonalFields" ColumnSpacing="16">
-         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-         <ComboBox x:Name="StatusEditor" Header="游玩状态" HorizontalAlignment="Stretch" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Draft.Status, Mode=TwoWay}" AutomationProperties.AutomationId="EditStatus" AutomationProperties.Name="作品的个人游玩状态"><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
-         <TextBox x:Name="RatingEditor" Grid.Column="1" Header="个人评分 · 0–10，可留空" Text="{x:Bind ViewModel.Draft.Rating, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditRating" AutomationProperties.Name="个人评分，0到10，可留空"/>
-         <ToggleSwitch x:Name="FavoriteEditor" Grid.Column="2" Header="收藏" OnContent="已收藏" OffContent="未收藏" IsOn="{x:Bind ViewModel.Draft.Favorite, Mode=TwoWay}" AutomationProperties.AutomationId="EditFavorite"/>
-        </Grid>
-        <TextBox Header="分类 · 逗号、中文逗号或换行分隔" Text="{x:Bind ViewModel.Draft.Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditCategories" AutomationProperties.Name="个人分类"/>
-        <TextBox Header="个人标签" Text="{x:Bind ViewModel.Draft.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditTags" AutomationProperties.Name="个人标签"/>
-        <TextBox Header="笔记" MinHeight="150" MaxHeight="320" AcceptsReturn="True" TextWrapping="Wrap" Text="{x:Bind ViewModel.Draft.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditNotes" AutomationProperties.Name="个人笔记"/>
+      <Border x:Name="HeroPlate" Grid.Column="1" Grid.RowSpan="2" MaxWidth="660" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="28,22,28,22" CornerRadius="23">
+       <StackPanel Spacing="6">
+        <TextBlock x:Name="HeroTitle" Text="{x:Bind ViewModel.Draft.Source.Personal.Name, Mode=OneWay}" Style="{StaticResource WorkTitleStyle}" AutomationProperties.AutomationId="DetailTitle" AutomationProperties.HeadingLevel="Level1"/>
+        <TextBlock Text="{x:Bind ViewModel.Draft.Source.Relationship, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Opacity=".86" TextTrimming="CharacterEllipsis"/>
+        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2,0,0">
+         <TextBlock Text="{x:Bind StatusLabel(ViewModel.Draft.Status), Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="DetailPersonalStatus"/>
+         <TextBlock Text="{x:Bind RatingLabel(ViewModel.Draft.Source.Personal.Rating), Mode=OneWay}" Foreground="{ThemeResource TextSecondaryBrush}" Style="{StaticResource BodyTextStyle}"/>
+         <FontIcon Glyph="&#xEB52;" FontSize="14" Foreground="{ThemeResource AccentBrush}" Visibility="{x:Bind ActionVisible(ViewModel.Draft.Favorite), Mode=OneWay}" AutomationProperties.Name="收藏"/>
+        </StackPanel>
+        <StackPanel x:Name="HeroActions" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+         <Button x:Name="ConfirmLaunchButton" Content="确认启动位置" Style="{StaticResource AccentButtonStyle}" Visibility="{x:Bind ActionVisible(Launch.CanConfirm), Mode=OneWay}" Click="OnConfirmPosition" IsEnabled="{x:Bind Launch.CanConfirm, Mode=OneWay}" AutomationProperties.AutomationId="ConfirmLaunchPosition"/>
+         <Button x:Name="LaunchGameButton" Click="OnLaunch" IsEnabled="{x:Bind Launch.CanLaunch, Mode=OneWay}" Visibility="{x:Bind LaunchVisible(Launch.Installations.Length, Launch.CanConfirm), Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="LaunchGame" AutomationProperties.Name="启动游戏">
+          <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE768;" FontSize="14"/><TextBlock Text="启动游戏"/></StackPanel>
+         </Button>
+         <Button x:Name="AddInstallationButton" Content="添加或管理本地安装" Style="{StaticResource AccentButtonStyle}" Visibility="{x:Bind NoInstallations(Launch.Installations.Length), Mode=OneWay}" Click="OnInstallations" AutomationProperties.AutomationId="AddLocalInstallation"/>
+         <Button x:Name="CancelLaunchButton" Content="取消启动" Visibility="{x:Bind ActionVisible(Launch.CanCancel), Mode=OneWay}" Click="OnCancelLaunch" IsEnabled="{x:Bind Launch.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelLaunch"/>
+         <Button x:Name="HeroMore" Width="40" AutomationProperties.Name="更多作品操作" AutomationProperties.AutomationId="DetailsMore"><FontIcon Glyph="&#xE712;" FontSize="14"/>
+          <Button.Flyout><MenuFlyout Placement="BottomEdgeAlignedLeft">
+           <MenuFlyoutItem Text="管理本地安装" Click="OnInstallations"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B7;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutItem x:Name="CoverButton" Text="选择本地封面" Click="OnCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="ChooseLocalCover"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xEB9F;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutItem x:Name="RecognizeButton" Text="重新识别" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeOne"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE721;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutSeparator/>
+           <MenuFlyoutItem Text="刷新在线资料" Click="OnRefreshOnline"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72C;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutItem x:Name="RemoveWishlistButton" Text="移除愿望条目" Click="OnRemoveWishlist"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+          </MenuFlyout></Button.Flyout>
+         </Button>
+        </StackPanel>
        </StackPanel>
-      </ContentControl>
-     </StackPanel>
-    </Border>
-    <Border Style="{StaticResource SurfaceStyle}" Padding="24">
-     <StackPanel Spacing="16">
-      <TextBlock Text="本地安装与游玩记录" Style="{StaticResource SectionTitleStyle}"/>
-      <TextBlock Text="{x:Bind ViewModel.Draft.Source.Installations, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-      <TextBlock Text="{x:Bind ViewModel.Draft.Source.Playtime, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}"/>
-      <Grid x:Name="ManagementActions" ColumnSpacing="8" HorizontalAlignment="Left">
-       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Button Content="管理本地安装" Click="OnInstallations" AutomationProperties.AutomationId="ManageInstallations"/>
-       <Button x:Name="CoverButton" Grid.Column="1" Content="选择本地封面" Click="OnCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="ChooseLocalCover"/>
-       <Button x:Name="RecognizeButton" Grid.Column="2" Content="重新识别" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeOne"/>
-      </Grid>
-     </StackPanel>
-    </Border>
-    <StackPanel Spacing="12">
-     <TextBlock Text="目录资料管理" Style="{StaticResource SectionTitleStyle}"/>
-     <Grid x:Name="DirectoryActions" ColumnSpacing="8" HorizontalAlignment="Left">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Button Content="刷新在线资料" Click="OnRefreshOnline"/>
-      <Button x:Name="RemoveWishlistButton" Grid.Column="1" Content="移除愿望条目" Click="OnRemoveWishlist"/>
+      </Border>
      </Grid>
-    </StackPanel>
+    </views:ArtworkStage>
+    <!-- Body: personal record | launch, installs and sources (single column below 900). -->
+    <Grid x:Name="BodyGrid" ColumnSpacing="16" RowSpacing="16">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="SideColumn" Width="320"/></Grid.ColumnDefinitions>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <Border x:Name="EditorCard" Style="{StaticResource SurfaceStyle}" Padding="24" VerticalAlignment="Top">
+      <StackPanel Spacing="16">
+       <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="2"><TextBlock Text="个人记录" Style="{StaticResource SectionTitleStyle}"/><TextBlock Text="名称、状态、评分、收藏、分类与笔记" Style="{StaticResource MetadataTextStyle}"/></StackPanel>
+        <TextBlock x:Name="DraftStatus" Grid.Column="1" Text="{x:Bind DirtyText(ViewModel.IsDirty), Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource MetadataTextStyle}" AutomationProperties.AutomationId="DraftState" AutomationProperties.LiveSetting="Polite"/>
+       </Grid>
+       <ContentControl IsEnabled="{x:Bind ViewModel.CanEditDetails, Mode=OneWay}" HorizontalContentAlignment="Stretch">
+        <StackPanel x:Name="Editor" Spacing="16">
+         <TextBox Header="个人名称" Text="{x:Bind ViewModel.Draft.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="2000" AutomationProperties.AutomationId="EditName" AutomationProperties.Name="个人名称"/>
+         <Grid x:Name="PersonalFields" ColumnSpacing="16" RowSpacing="16">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <ComboBox x:Name="StatusEditor" Header="游玩状态" HorizontalAlignment="Stretch" SelectedValuePath="Tag" SelectedValue="{x:Bind ViewModel.Draft.Status, Mode=TwoWay}" AutomationProperties.AutomationId="EditStatus" AutomationProperties.Name="作品的个人游玩状态"><ComboBoxItem Content="未开始" Tag="planned"/><ComboBoxItem Content="在玩" Tag="playing"/><ComboBoxItem Content="已完成" Tag="completed"/><ComboBoxItem Content="搁置" Tag="paused"/><ComboBoxItem Content="放弃" Tag="dropped"/></ComboBox>
+          <TextBox x:Name="RatingEditor" Grid.Column="1" Header="个人评分 · 0–10，可留空" Text="{x:Bind ViewModel.Draft.Rating, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditRating" AutomationProperties.Name="个人评分，0到10，可留空"/>
+          <ToggleSwitch x:Name="FavoriteEditor" Grid.Column="2" Header="收藏" OnContent="已收藏" OffContent="未收藏" IsOn="{x:Bind ViewModel.Draft.Favorite, Mode=TwoWay}" AutomationProperties.AutomationId="EditFavorite"/>
+         </Grid>
+         <TextBox Header="分类 · 逗号、中文逗号或换行分隔" Text="{x:Bind ViewModel.Draft.Categories, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditCategories" AutomationProperties.Name="个人分类"/>
+         <TextBox Header="个人标签" Text="{x:Bind ViewModel.Draft.Tags, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditTags" AutomationProperties.Name="个人标签"/>
+         <TextBox Header="笔记" MinHeight="150" MaxHeight="320" AcceptsReturn="True" TextWrapping="Wrap" Text="{x:Bind ViewModel.Draft.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="EditNotes" AutomationProperties.Name="个人笔记"/>
+        </StackPanel>
+       </ContentControl>
+      </StackPanel>
+     </Border>
+     <StackPanel x:Name="SideCards" Grid.Column="1" Spacing="16">
+      <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+       <StackPanel Spacing="12"><TextBlock Text="启动" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+        <StackPanel x:Name="EmptyInstallation" Spacing="8" Visibility="{x:Bind NoInstallations(Launch.Installations.Length), Mode=OneWay}"><TextBlock Text="还没有本地安装，暂时无法启动。" Style="{StaticResource BodyTextStyle}" AutomationProperties.AutomationId="EmptyInstallationReason"/></StackPanel>
+        <StackPanel Spacing="12" Visibility="{x:Bind HasInstallations(Launch.Installations.Length), Mode=OneWay}">
+         <TextBlock Text="{x:Bind Launch.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchMessage" AutomationProperties.LiveSetting="Polite"/>
+         <ComboBox x:Name="LaunchInstallation" Header="本次使用的安装" ItemsSource="{x:Bind Launch.Installations, Mode=OneWay}" DisplayMemberPath="Label" SelectedValuePath="Id" SelectedValue="{x:Bind Launch.SelectedInstallationId, Mode=OneWay}" SelectionChanged="OnLaunchInstallation" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="LaunchInstallation" AutomationProperties.Name="本次使用的游戏安装"/>
+         <TextBlock Text="{x:Bind Launch.Position, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+         <TextBlock Text="关闭窗口会保留在托盘；退出 The Order 不会结束游戏。" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
+        </StackPanel>
+       </StackPanel>
+      </Border>
+      <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+       <StackPanel Spacing="10"><TextBlock Text="本地安装与游玩记录" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+        <TextBlock Text="{x:Bind ViewModel.Draft.Source.Playtime, Mode=OneWay}" Style="{StaticResource BodyTextStyle}"/>
+        <TextBlock Text="{x:Bind ViewModel.Draft.Source.Installations, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+        <Button Content="管理本地安装" Click="OnInstallations" AutomationProperties.AutomationId="ManageInstallations"/>
+       </StackPanel>
+      </Border>
+      <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+       <StackPanel Spacing="8"><TextBlock Text="资料来源" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+        <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.Personal.Name, ViewModel.Draft.Source.MetadataTitle), Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/>
+        <TextBlock Text="{x:Bind AlternateTitle(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Visibility="{x:Bind AlternateTitleVisible(ViewModel.Draft.Source.MetadataTitle, ViewModel.Draft.Source.OriginalTitle), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
+        <TextBlock Text="{x:Bind ViewModel.Draft.Source.CoverDescription, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
+       </StackPanel>
+      </Border>
+     </StackPanel>
+    </Grid>
    </StackPanel>
   </ScrollViewer>
-  <Border Grid.Row="1" Style="{StaticResource ToolbarSurfaceStyle}" Padding="12">
+  <!-- Save bar: present only while the draft has unsaved changes; all leave guards are unchanged. -->
+  <Border x:Name="SaveBar" Grid.Row="1" Visibility="{x:Bind ActionVisible(ViewModel.IsDirty), Mode=OneWay}" Margin="16,0,16,16" Padding="16,10" CornerRadius="8" Background="{ThemeResource ToolbarBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
    <Grid x:Name="SaveFooter" ColumnSpacing="16">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-    <TextBlock x:Name="DraftStatus" Text="{x:Bind DirtyText(ViewModel.IsDirty), Mode=OneWay}" VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="DraftState" AutomationProperties.LiveSetting="Polite"/>
-    <StackPanel x:Name="SaveActions" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <Ellipse Width="8" Height="8" Fill="{ThemeResource WarningTextBrush}" VerticalAlignment="Center"/>
+    <TextBlock Grid.Column="1" Text="有尚未保存的修改" VerticalAlignment="Center" Style="{StaticResource BodyTextStyle}"/>
+    <StackPanel x:Name="SaveActions" Grid.Column="2" Orientation="Horizontal" Spacing="8">
      <Button Content="取消修改" Click="OnCancel" IsEnabled="{x:Bind ViewModel.CanReload, Mode=OneWay}" AutomationProperties.AutomationId="CancelEdit"/>
      <Button Content="保存修改" Style="{StaticResource AccentButtonStyle}" Click="OnSave" IsEnabled="{x:Bind ViewModel.CanSave, Mode=OneWay}" AutomationProperties.AutomationId="SaveEdit"/>
     </StackPanel>

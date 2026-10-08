@@ -228,7 +228,10 @@ public sealed class ArtworkStage : Grid
         fallbackArt.Visibility = art && !glassShowing ? Visibility.Visible : Visibility.Collapsed;
         fallbackScrim.Visibility = fallbackArt.Visibility;
         fallbackScrim.Fill = new SolidColorBrush(Polarity == StagePolarity.Deepen ? Windows.UI.Color.FromArgb(0x8C, 0, 0, 0) : Windows.UI.Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF));
-        Background = Effective is "Opaque" or "HighContrast" || !art && !glassShowing ? (Brush)Microsoft.UI.Xaml.Application.Current.Resources["LayerBrush"] : null;
+        // Overlay theme first (R3), then surfaces: the plate must never resolve theme brushes under a stale theme.
+        var overArt = Effective is "Glass" or "Standard" && (art || glassShowing);
+        ForegroundChanged?.Invoke(overArt ? new SolidColorBrush(Polarity == StagePolarity.Deepen ? Microsoft.UI.Colors.White : Windows.UI.Color.FromArgb(0xE4, 0, 0, 0)) : null);
+        Background = Effective is "Opaque" or "HighContrast" || !art && !glassShowing ? OwnedBrush(ref layerBrush, "LayerFillColorDefault") : null;
         if (Plate is not null && Effective != "Glass")
         {
             // Standard: system in-app Acrylic, Fluent radius. Opaque/HC: card surface.
@@ -236,12 +239,15 @@ public sealed class ArtworkStage : Grid
             Plate.Background = Effective == "Standard" && art
                 ? new AcrylicBrush { TintColor = Polarity == StagePolarity.Deepen ? Windows.UI.Color.FromArgb(255, 32, 32, 32) : Windows.UI.Color.FromArgb(255, 250, 250, 250), TintOpacity = .55, TintLuminosityOpacity = .65,
                     FallbackColor = Polarity == StagePolarity.Deepen ? Windows.UI.Color.FromArgb(255, 44, 44, 44) : Windows.UI.Color.FromArgb(255, 245, 245, 245) }
-                : (Brush)Microsoft.UI.Xaml.Application.Current.Resources["ContentBrush"];
+                : OwnedBrush(ref contentBrush, "CardBackgroundFillColorDefault");
         }
         else if (Plate is not null) Plate.CornerRadius = new CornerRadius(23);
-        var overArt = Effective is "Glass" or "Standard" && (art || glassShowing);
-        ForegroundChanged?.Invoke(overArt ? new SolidColorBrush(Polarity == StagePolarity.Deepen ? Microsoft.UI.Colors.White : Windows.UI.Color.FromArgb(0xE4, 0, 0, 0)) : null);
     }
+    // Stage-owned theme brushes. Shared app brushes must not be assigned here: the plate can carry a different
+    // RequestedTheme (polarity), and a shared brush's ThemeResource would be re-resolved for every user of it.
+    private Brush? layerBrush, contentBrush;
+    private static Brush OwnedBrush(ref Brush? cache, string colorKey) => cache ??= (Brush)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+        $"<SolidColorBrush xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Color='{{ThemeResource {colorKey}}}'/>");
     private void Fail(Exception exception)
     {
         LastFailure = exception.GetType().Name + ":0x" + exception.HResult.ToString("X8");

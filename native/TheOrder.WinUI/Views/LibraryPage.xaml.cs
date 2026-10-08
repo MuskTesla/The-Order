@@ -255,10 +255,23 @@ public sealed partial class LibraryPage : Page, IImageHost
     }
     // The pointer event carries the modifiers of this very click; the thread key state can lag behind it.
     private VirtualKeyModifiers pressModifiers;
+    private int selectionAnchor = -1;
     private void OnListPointerPressed(object sender, PointerRoutedEventArgs e)
     {
         keyboardOpen = false;
         pressModifiers = e.KeyModifiers & (VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        // Shift+click in selection mode selects the range from the anchor (the last item toggled without Shift).
+        if (!selectionMode || pressModifiers != VirtualKeyModifiers.Shift || sender is not ListViewBase list || selectionAnchor < 0) return;
+        var node = e.OriginalSource as DependencyObject;
+        while (node is not null and not SelectorItem) node = VisualTreeHelper.GetParent(node);
+        if (node is not SelectorItem container || list.IndexFromContainer(container) is var index && index < 0) return;
+        var anchor = selectionAnchor;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (!selectionMode || !ReferenceEquals(list, Active) || anchor >= list.Items.Count || index >= list.Items.Count) return;
+            var first = Math.Min(anchor, index);
+            list.SelectRange(new Microsoft.UI.Xaml.Data.ItemIndexRange(first, (uint)(Math.Max(anchor, index) - first + 1)));
+        });
     }
     private async Task OpenItem(GameSummary item)
     {
@@ -326,6 +339,8 @@ public sealed partial class LibraryPage : Page, IImageHost
     private void OnSelectionDone(object sender, RoutedEventArgs e) { SetSelectionMode(false); FocusResults(); }
     private void OnItemSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (ReferenceEquals(sender, Active) && e.AddedItems.Count == 1 && pressModifiers != VirtualKeyModifiers.Shift) selectionAnchor = Active.Items.IndexOf(e.AddedItems[0]);
+        if (!selectionMode) selectionAnchor = -1;
         // Clearing the last selected item by hand ends selection mode (not layout switches or batch resets).
         if (!synchronizing && selectionMode && ReferenceEquals(sender, Active) && Active.SelectedItems.Count == 0 && e.RemovedItems.Count > 0 && e.AddedItems.Count == 0)
             DispatcherQueue.TryEnqueue(() => { if (selectionMode && Active.SelectedItems.Count == 0) SetSelectionMode(false); });
