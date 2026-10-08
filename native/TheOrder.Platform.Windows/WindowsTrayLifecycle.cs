@@ -19,6 +19,7 @@ public sealed class WindowsTrayLifecycle : IDisposable
     private string title = "当前没有游玩会话", state = "";
     public bool Available { get; private set; }
     public event Action? Unavailable;
+    public event Action? SystemSettingsChanged;
     public WindowsTrayLifecycle(IntPtr window, Action<TrayCommand> command, Func<bool, bool> queryEnd, Action<bool> endSession, bool simulateFailure = false)
     {
         this.window = window; this.command = command; this.queryEnd = queryEnd; this.endSession = endSession;
@@ -50,6 +51,13 @@ public sealed class WindowsTrayLifecycle : IDisposable
         if (message == taskbarCreated) { Add(); return IntPtr.Zero; }
         if (message == 0x11) { try { queryEnd((unchecked((long)lParam) & 0x80000000L) != 0); } catch { } return (IntPtr)1; }
         if (message == 0x16) { try { endSession(wParam != 0); } catch { } return IntPtr.Zero; }
+        if (message is 0x1a or 0x15 or 0x31a) // WM_SETTINGCHANGE, WM_SYSCOLORCHANGE, WM_THEMECHANGED
+        {
+            // Let XAML process the new theme resources before notifying our policy.
+            var result = DefSubclassProc(hwnd, message, wParam, lParam);
+            SystemSettingsChanged?.Invoke();
+            return result;
+        }
         if (message == CallbackMessage)
         {
             var notification = (uint)((long)lParam & 0xffff);
@@ -83,6 +91,7 @@ public sealed class WindowsTrayLifecycle : IDisposable
         if (disposed) return; disposed = true;
         ShellNotifyIcon(2, ref data); Available = false;
         if (attached) { RemoveWindowSubclass(window, callback, 0x5b2); attached = false; }
+        SystemSettingsChanged = null;
         // LoadIcon returns a shared system icon: it is not owned and must not be destroyed.
     }
     [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate IntPtr Subclass(IntPtr hwnd, uint msg, nuint wParam, nint lParam, nuint id, nuint reference);

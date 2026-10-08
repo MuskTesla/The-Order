@@ -50,6 +50,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             var failure = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_DIAGNOSTICS") == "1" && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_TRAY_FAILURE") == "1";
             tray = new(hwnd, TrayAction, QuerySystemEnd, EndSystemSession, failure);
             tray.Unavailable += TrayUnavailable;
+            tray.SystemSettingsChanged += host.Window.RefreshSystemMaterialPolicy;
             if (!tray.Available) TrayUnavailable();
         }
         catch (Exception) { TrayUnavailable(); }

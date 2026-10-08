@@ -42,12 +42,20 @@ public sealed class AppLifecycleWindowsTests(ITestOutputHelper output)
                         isLogoff => { query++; if (isLogoff) logoff++; return true; }, end => { if (end) ending++; else cancelled++; }))
                     {
                         Assert.True(tray.Available, "Windows fixture requires the interactive shell notification area.");
+                        int settings = 0;
+                        tray.SystemSettingsChanged += () => settings++;
+                        SendMessage(hwnd, 0x1a, 0, 0);
+                        SendMessage(hwnd, 0x15, 0, 0);
+                        SendMessage(hwnd, 0x31a, 0, 0);
+                        Assert.Equal(3, settings);
                         tray.Update("Synthetic game", "计时已暂停；游戏可能仍在运行", false, true);
                         Assert.Equal((IntPtr)1, SendMessage(hwnd, 0x11, 0, 0));
                         SendMessage(hwnd, 0x11, 0, unchecked((nint)0x80000000L));
                         SendMessage(hwnd, 0x16, 0, 0); SendMessage(hwnd, 0x16, 1, 0);
                         SendMessage(hwnd, WindowsTrayLifecycle.CallbackMessage, 0, 0x400);
                         tray.Dispose(); Assert.False(tray.Available);
+                        SendMessage(hwnd, 0x1a, 0, 0);
+                        Assert.Equal(3, settings); // Disposed owners receive no settings callbacks.
                     }
                     // An old callback must no longer receive this message.
                     SendMessage(hwnd, WindowsTrayLifecycle.CallbackMessage, 0, 0x400);

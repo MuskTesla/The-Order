@@ -1,11 +1,9 @@
 using System.Numerics;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using TheOrder.Application;
 using TheOrder.Presentation;
@@ -215,9 +213,7 @@ public sealed partial class ArtworkStage : Grid
             if (!loaded || !request.IsCurrent(key, version) || coverKey != key || result.Pixels is not { } loadedPixels) return;
             pixels = loadedPixels; pixelsKey = key;
             Polarity = MeanLuminance(loadedPixels) > .30 ? StagePolarity.Lift : StagePolarity.Deepen;
-            var bitmap = new WriteableBitmap(loadedPixels.Width, loadedPixels.Height);
-            using (var buffer = bitmap.PixelBuffer.AsStream()) buffer.Write(loadedPixels.Bgra);
-            bitmap.Invalidate(); fallbackArt.Source = bitmap;
+            fallbackArt.Source = DisplayBitmaps.Get(images, loadedPixels);
             Refresh();
         }
         catch (OperationCanceledException) { }
@@ -246,7 +242,11 @@ public sealed partial class ArtworkStage : Grid
         // Overlay theme first (R3), then surfaces: the plate must never resolve theme brushes under a stale theme.
         var overArt = Effective is "Glass" or "Standard" && (art || glassShowing);
         ForegroundChanged?.Invoke(overArt ? new SolidColorBrush(Polarity == StagePolarity.Deepen ? Microsoft.UI.Colors.White : Windows.UI.Color.FromArgb(0xE4, 0, 0, 0)) : null);
-        Background = Effective is "Opaque" or "HighContrast" || !art && !glassShowing ? OwnedBrush(ref layerBrush, "LayerFillColorDefault") : null;
+        // Fluent layer/card colors are absent in the HighContrast dictionary.
+        // Resolving them through a dynamically loaded brush can yield WinUI's
+        // unresolved-color sentinel. Use the selected system contrast palette.
+        Background = Effective == "HighContrast" ? OwnedBrush(ref contrastBrush, "SystemColorWindowColor")
+            : Effective == "Opaque" || !art && !glassShowing ? OwnedBrush(ref layerBrush, "LayerFillColorDefault") : null;
         if (Plate is not null && Effective != "Glass")
         {
             // Standard: system in-app Acrylic, Fluent radius. Opaque/HC: card surface.
@@ -254,13 +254,14 @@ public sealed partial class ArtworkStage : Grid
             Plate.Background = Effective == "Standard" && art
                 ? new AcrylicBrush { TintColor = Polarity == StagePolarity.Deepen ? Windows.UI.Color.FromArgb(255, 32, 32, 32) : Windows.UI.Color.FromArgb(255, 250, 250, 250), TintOpacity = .55, TintLuminosityOpacity = .65,
                     FallbackColor = Polarity == StagePolarity.Deepen ? Windows.UI.Color.FromArgb(255, 44, 44, 44) : Windows.UI.Color.FromArgb(255, 245, 245, 245) }
+                : Effective == "HighContrast" ? OwnedBrush(ref contrastBrush, "SystemColorWindowColor")
                 : OwnedBrush(ref contentBrush, "CardBackgroundFillColorDefault");
         }
         else if (Plate is not null) Plate.CornerRadius = new CornerRadius(23);
     }
     // Stage-owned theme brushes. Shared app brushes must not be assigned here: the plate can carry a different
     // RequestedTheme (polarity), and a shared brush's ThemeResource would be re-resolved for every user of it.
-    private Brush? layerBrush, contentBrush;
+    private Brush? layerBrush, contentBrush, contrastBrush;
     private static Brush OwnedBrush(ref Brush? cache, string colorKey) => cache ??= (Brush)Microsoft.UI.Xaml.Markup.XamlReader.Load(
         $"<SolidColorBrush xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Color='{{ThemeResource {colorKey}}}'/>");
     private void Fail(Exception exception)
@@ -281,6 +282,7 @@ public sealed partial class ArtworkStage : Grid
     {
         effective = Effective, mode = Mode.ToString(), variant = Variant.ToString(), configuration = Variant == StageVariant.Clear ? ClearConfiguration : ContinuousConfiguration,
         coverKey, loadedCoverKey = pixelsKey, fallbackPresent = fallbackArt.Source is not null, plateBrush = Plate?.Background?.GetType().Name,
+        backgroundColor = (Background as SolidColorBrush)?.Color.ToString(), plateColor = (Plate?.Background as SolidColorBrush)?.Color.ToString(),
         polarity = Polarity.ToString(), ambientSigma = AmbientSigma, allowed, highContrast, rendererActive = optical is not null, panelVisible = panel.Visibility == Visibility.Visible,
         sceneRevisions = SceneRevisions, draws = Draws, frostPasses = FrostPasses, renderersCreated = RenderersCreated, renderersReleased = RenderersReleased,
         sourceBytes = optical?.SourceBytes ?? 0, frostBytes = optical?.FrostBytes ?? 0, coverLoaded = pixelsKey is not null && pixelsKey == coverKey, failure = LastFailure, attached, retirementPending

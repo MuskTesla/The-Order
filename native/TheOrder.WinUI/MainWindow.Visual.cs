@@ -101,6 +101,8 @@ public sealed partial class MainWindow
         }
     }
 
+    internal void RefreshSystemMaterialPolicy() => materialPolicy?.NotifyNativeSettingsChanged();
+
     internal void SetVisualWindowVisible(bool visible)
     {
         visualWindowVisible = visible;
@@ -194,7 +196,7 @@ public sealed partial class MainWindow
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), effectiveMaterialMode = EffectiveMaterialMode.ToString(), controlledAdvanced,
         diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
         stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence }, shell = ShellEvidence(),
-        round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
+        round3 = Round3Evidence(), managed = MaterialManagedEvidence(), displayBitmaps = Views.DisplayBitmaps.Evidence(images), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
         treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
         glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
@@ -254,6 +256,15 @@ public sealed partial class MainWindow
                 case "closeDialog": round3Dialog?.Hide(); break;
                 case "timer": round3TimerOverride = root.GetProperty("value").GetString() ?? ""; break;
                 case "focusSearch": TitleSearch.Focus(FocusState.Keyboard); break;
+                case "editName":
+                    var name = root.GetProperty("value").GetString() ?? "";
+                    if (name.Length > 2000 || ViewModel.Draft is null) throw new InvalidDataException("Test draft unavailable or name too long.");
+                    ViewModel.Draft.Name = name; break;
+                case "saveDraft":
+                    if (!(await ViewModel.SaveAsync()).IsCommitted) throw new InvalidDataException("Test save did not commit.");
+                    break;
+                case "accessibilityProbe":
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "accessibility.json"), JsonSerializer.Serialize(AccessibilityEvidence())); break;
                 case "materialMode":
                     if (!Enum.TryParse<Views.MaterialMode>(root.GetProperty("value").GetString(), out var mode) || !Enum.IsDefined(mode)) throw new InvalidDataException("Unknown material mode.");
                     await SetMaterialModeAsync(mode); break;

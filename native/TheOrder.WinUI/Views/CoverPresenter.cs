@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using TheOrder.Application;
 using TheOrder.Presentation;
 
@@ -56,9 +54,7 @@ public sealed class CoverPresenter : Grid
         {
             var result = await pipeline.LoadAsync(key, edge, cancellation);
             if (!loaded || !request.IsCurrent(key, version) || cancellation.IsCancellationRequested || SourceKey != key || result.Pixels is not { } pixels) return;
-            var bitmap = new WriteableBitmap(pixels.Width, pixels.Height);
-            using (var buffer = bitmap.PixelBuffer.AsStream()) buffer.Write(pixels.Bgra);
-            bitmap.Invalidate(); image.Source = bitmap; placeholder.Visibility = Visibility.Collapsed;
+            image.Source = DisplayBitmaps.Get(pipeline, pixels); placeholder.Visibility = Visibility.Collapsed;
         }
         catch (Exception) { if (request.IsCurrent(key, version)) { image.Source = null; placeholder.Visibility = Visibility.Visible; } }
     }

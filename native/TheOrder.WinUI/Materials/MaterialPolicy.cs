@@ -32,6 +32,7 @@ internal sealed class MaterialPolicy : IDisposable
     private bool materialFault;
     private readonly Dictionary<string, NotificationWarning> notificationWarnings = new(StringComparer.Ordinal);
     private int disposed;
+    private long nativeSettingsNotifications;
 
     internal bool ForceSolid { get; set; }
     // 设置 › 材质效果 › 关闭透明效果 (session-scoped app choice); behaves like the system Transparency Off.
@@ -135,6 +136,13 @@ internal sealed class MaterialPolicy : IDisposable
     private void ContrastChanged(AccessibilitySettings sender, object args) => Dispatch();
     private void CapabilityChanged(CompositionCapabilities sender, object args) => Dispatch();
     private void PowerChanged(object? sender, object args) => Dispatch();
+
+    internal void NotifyNativeSettingsChanged()
+    {
+        if (IsDisposed) return;
+        Interlocked.Increment(ref nativeSettingsNotifications);
+        Dispatch();
+    }
 
     private void Dispatch()
     {
@@ -241,7 +249,8 @@ internal sealed class MaterialPolicy : IDisposable
             failureHResult,
             failureKind,
             notificationWarnings = notificationWarnings.Values.ToArray(),
-            notificationRoute = "Available events and existing owner refresh poll; no new timer",
+            notificationRoute = "WinRT events and Win32 settings/color/theme notifications; existing owner refresh; no new timer",
+            nativeSettingsNotifications = Interlocked.Read(ref nativeSettingsNotifications),
             currentRequiredStateKnown = state.HighContrast.HasValue && state.Remote.HasValue &&
                 state.EnergySaver is not null && state.AdvancedEffects.HasValue && state.CompositionSupported.HasValue,
             materialFault,
