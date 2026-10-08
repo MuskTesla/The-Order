@@ -93,7 +93,8 @@ public sealed partial class MainWindow : Window
         catch (Exception exception) { App.TraceVisualFailure(exception); lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
         RefreshSession();
     }
-    public void SetCommandsBlocked(bool value) { commandsBlocked = value; RefreshSession(); }
+    public void SetCommandsBlocked(bool value)
+    { commandsBlocked = value; TitleSearch.IsEnabled = !value; PageContent.IsEnabled = !value; RefreshSession(); }
     public void ShowLifecycleError(string message) { lifecycleMessage = message; RefreshSession(); }
     public void CancelBackgroundRequests() { online.Leave(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); }
     private async void OnPauseTiming(object sender, RoutedEventArgs e) { try { await Sessions.PauseAsync(); } catch { ShowLifecycleError("暂停计时未完成，请重试。"); } RefreshSession(); }
@@ -138,6 +139,7 @@ public sealed partial class MainWindow : Window
     }
     private async Task Navigate(WorkspacePage page, string? id = null)
     {
+        if (commandsBlocked) return;
         installationNavigation.Invalidate();
         if (page != WorkspacePage.Online) online.Leave();
         if (navigating) return; navigating = true;

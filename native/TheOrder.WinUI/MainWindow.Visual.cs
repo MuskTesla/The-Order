@@ -255,6 +255,13 @@ public sealed partial class MainWindow
                 case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
                 case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;
                 case "probe": break;
+                case "opticalProbe":
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "optical-probe.json"), JsonSerializer.Serialize(OpticalRenderer.Diagnostics()));
+                    break;
+                case "stageAudit":
+                    var audit = await libraryPage.AuditStageAsync();
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "stage-audit.json"), JsonSerializer.Serialize(audit));
+                    break;
                 case "treeProbeFault":
                     _ = bitmapTreeProbe.Read(() => throw new System.Runtime.InteropServices.COMException("Test tree read failure", unchecked((int)0x80004005)));
                     break;

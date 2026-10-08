@@ -27,7 +27,7 @@ public sealed partial class MainWindow
         void Accelerator(VirtualKey key, VirtualKeyModifiers modifiers, Action action)
         {
             var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
-            accelerator.Invoked += (_, args) => { args.Handled = true; action(); };
+            accelerator.Invoked += (_, args) => { args.Handled = true; if (!commandsBlocked) action(); };
             Root.KeyboardAccelerators.Add(accelerator);
         }
         Root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
@@ -37,7 +37,7 @@ public sealed partial class MainWindow
         if (diagnostics) Accelerator(VirtualKey.D, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift,
             () => DiagnosticsPanel.Visibility = DiagnosticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible);
         // Mouse back button (XButton1) goes back like Alt+Left.
-        Root.PointerPressed += (_, args) => { if (args.GetCurrentPoint(Root).Properties.IsXButton1Pressed) { args.Handled = true; _ = GoBackAsync(); } };
+        Root.PointerPressed += (_, args) => { if (!commandsBlocked && args.GetCurrentPoint(Root).Properties.IsXButton1Pressed) { args.Handled = true; _ = GoBackAsync(); } };
         ViewModel.PropertyChanged += OnShellState;
         try { colorSettings = new UISettings(); colorSettings.ColorValuesChanged += OnSystemColorsChanged; }
         catch (Exception) { colorSettings = null; accentSource = "UISettings unavailable; startup theme resources"; }
@@ -57,15 +57,17 @@ public sealed partial class MainWindow
     // Search lives in the title bar and always drives the Library query; typing elsewhere returns to the Library.
     private async void OnTitleSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+        if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
         try
         {
             if (ViewModel.Page != WorkspacePage.Library && !galleryVisible) await Navigate(WorkspacePage.Library);
+            if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
             if (ViewModel.Query.Text != sender.Text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = sender.Text });
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
     }
-    private void OnTitleSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => libraryPage.FocusResults();
+    private void OnTitleSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    { if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library && !galleryVisible) libraryPage.FocusResults(); }
     private void SynchronizeTitleSearch()
     {
         if (TitleSearch is not null && TitleSearch.Text != ViewModel.Query.Text) TitleSearch.Text = ViewModel.Query.Text;
@@ -81,11 +83,12 @@ public sealed partial class MainWindow
     // prepared Ready installation launches; anything needing review or a choice opens Details instead.
     private async Task QuickLaunchAsync(GameSummary game)
     {
+        if (commandsBlocked || navigating) return;
         try
         {
             LaunchNotice.IsOpen = false;
             await Launch.OpenAsync(game.Id);
-            if (Launch.GameId != game.Id) return;
+            if (commandsBlocked || navigating || Launch.GameId != game.Id) return;
             if (!Launch.CanLaunch)
             {
                 await Navigate(WorkspacePage.Details, game.Id);

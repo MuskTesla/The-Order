@@ -482,6 +482,7 @@ public sealed partial class LibraryPage : Page, IImageHost
     internal void SetStagePolicy(bool effectsAllowed, bool highContrast, MaterialMode mode) => continueStage.SetPolicy(effectsAllowed, highContrast, mode);
     internal void ReleaseStageBeforeLeave() => continueStage.ReleaseBeforeLeave();
     internal object StageEvidence => new { placement = "Library 继续游玩", visible = continueGame is not null, game = continueGame?.Id, selectionMode, stage = continueStage.Evidence };
+    internal Task<object> AuditStageAsync() => continueStage.AuditLifecycleAsync();
 
     // ---- Test and diagnostics ------------------------------------------------------------------------------
     internal void ScrollTest(double fraction)

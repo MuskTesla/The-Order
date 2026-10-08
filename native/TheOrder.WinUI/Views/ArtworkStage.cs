@@ -23,7 +23,7 @@ public enum StagePolarity { Deepen, Lift }
 // glass is event-driven: one scene revision per change, draws only on geometry change, zero idle work.
 // Approved configurations (review 2026-10-08): 完全清透 = body mode 3, 连续玻璃 = body mode 2, both with
 // C1 geometry 23/30/30/.8/.55, edge density .20, luminance bound .42 (lift) / .08 (deepen).
-public sealed class ArtworkStage : Grid
+public sealed partial class ArtworkStage : Grid
 {
     public const string ClearConfiguration = "完全清透 · mode3 · C1 23/30/30/.8/.55 · tint α .10/.16 · bound .42/.08 · edge .20";
     public const string ContinuousConfiguration = "连续玻璃 · mode2 · C1 23/30/30/.8/.55 · σ12 · tint α .22/.30 · bound .42/.08 · edge .20";
@@ -37,7 +37,7 @@ public sealed class ArtworkStage : Grid
     private RasterPixels? pixels;
     private string? pixelsKey, sceneKey, geometry;
     private double sceneWidth, sceneHeight, sceneScale;
-    private bool loaded, allowed, highContrast, attached, initFailed;
+    private bool loaded, allowed, highContrast, attached, initFailed, retirementPending;
     private UIElement? overlay;
     public IImagePipeline? Images { get; set; }
     public Border? Plate { get; set; }
@@ -64,7 +64,16 @@ public sealed class ArtworkStage : Grid
     public string? CoverKey
     {
         get => coverKey;
-        set { if (coverKey == value) return; coverKey = value; pixels = null; pixelsKey = null; sceneKey = null; request.Clear(); Invalidate(immediate: true); }
+        set
+        {
+            if (coverKey == value) return;
+            // Retire the old artwork before awaiting another cover. A missing/failed cover must not
+            // leave the preceding game's swapchain or fallback bitmap behind the new foreground.
+            request.Clear(); Release(); fallbackArt.Source = null;
+            coverKey = value; pixels = null; pixelsKey = null; sceneKey = null;
+            ForegroundChanged?.Invoke(null);
+            Invalidate(immediate: true);
+        }
     }
     public ArtworkStage()
     {
@@ -83,7 +92,7 @@ public sealed class ArtworkStage : Grid
         if (changed) Invalidate(immediate: true);
     }
     // Before the page leaves the visual tree (proven early-release order for swapchains).
-    public void ReleaseBeforeLeave() { Detach(); Release(); }
+    public void ReleaseBeforeLeave() { loaded = false; request.Clear(); Detach(); Release(); }
     // After an explicit early release while staying in the tree (re-parenting), resume event-driven drawing.
     public void Reattach() { if (!IsLoaded) return; loaded = true; Attach(); Invalidate(immediate: true); }
     private void Attach()
@@ -133,11 +142,14 @@ public sealed class ArtworkStage : Grid
         var timer = DispatcherQueue.CreateTimer(); timer.Interval = TimeSpan.FromMilliseconds(120); timer.IsRepeating = false;
         timer.Tick += (_, _) => Refresh(); return timer;
     }
-    private string EffectiveMode() => highContrast ? "HighContrast" : Mode == MaterialMode.Opaque ? "Opaque"
-        : Mode == MaterialMode.Standard || !allowed || (Mode == MaterialMode.Auto && initFailed) ? "Standard" : "Glass";
+    private string EffectiveMode() => highContrast ? "HighContrast" : Mode == MaterialMode.Opaque || !allowed ? "Opaque"
+        : Mode == MaterialMode.Standard || (Mode == MaterialMode.Auto && initFailed) ? "Standard" : "Glass";
     private void Refresh()
     {
         if (!loaded) return;
+        // OpticalDestroy can fail to detach. Keep its owner for a later lifecycle retry,
+        // and never draw or replace it while retirement is incomplete.
+        if (retirementPending) { Release(); if (retirementPending) return; }
         Effective = EffectiveMode();
         if (Effective != "Glass") Release();
         ApplyLayers();
@@ -259,16 +271,18 @@ public sealed class ArtworkStage : Grid
     private void Release()
     {
         panel.Visibility = Visibility.Collapsed;
-        var owner = optical; optical = null; sceneKey = null; geometry = null; sceneWidth = 0;
+        var owner = optical; sceneKey = null; geometry = null; sceneWidth = 0;
         if (owner is null) return;
-        try { owner.Dispose(); RenderersReleased++; }
+        retirementPending = true;
+        try { owner.Dispose(); optical = null; retirementPending = false; RenderersReleased++; }
         catch (Exception exception) { LastFailure = "release:" + exception.GetType().Name; }
     }
     internal object Evidence => new
     {
         effective = Effective, mode = Mode.ToString(), variant = Variant.ToString(), configuration = Variant == StageVariant.Clear ? ClearConfiguration : ContinuousConfiguration,
+        coverKey, loadedCoverKey = pixelsKey, fallbackPresent = fallbackArt.Source is not null, plateBrush = Plate?.Background?.GetType().Name,
         polarity = Polarity.ToString(), ambientSigma = AmbientSigma, allowed, highContrast, rendererActive = optical is not null, panelVisible = panel.Visibility == Visibility.Visible,
         sceneRevisions = SceneRevisions, draws = Draws, frostPasses = FrostPasses, renderersCreated = RenderersCreated, renderersReleased = RenderersReleased,
-        sourceBytes = optical?.SourceBytes ?? 0, frostBytes = optical?.FrostBytes ?? 0, coverLoaded = pixelsKey is not null && pixelsKey == coverKey, failure = LastFailure, attached
+        sourceBytes = optical?.SourceBytes ?? 0, frostBytes = optical?.FrostBytes ?? 0, coverLoaded = pixelsKey is not null && pixelsKey == coverKey, failure = LastFailure, attached, retirementPending
     };
 }
