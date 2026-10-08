@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows10.0.26100": {
+      "theorder.application": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Domain": "[1.0.0, )"
+        }
+      },
+      "theorder.domain": {
+        "type": "Project"
+      },
+      "theorder.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Application": "[1.0.0, )"
+        }
+      },
+      "theorder.platform.windows": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Application": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

@@ -14,7 +14,7 @@
     <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
     <ProjectReference Include="../TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />
-    <None Include="../fixtures/**" Exclude="../fixtures/CaptureRepro/bin/**;../fixtures/CaptureRepro/obj/**;../fixtures/ImageBindingRepro/bin/**;../fixtures/ImageBindingRepro/obj/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../fixtures/**" Exclude="../fixtures/CaptureRepro/bin/**;../fixtures/CaptureRepro/obj/**;../fixtures/ImageBindingRepro/bin/**;../fixtures/ImageBindingRepro/obj/**;../fixtures/UiExperienceProfile/bin/**;../fixtures/UiExperienceProfile/obj/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
       <Compile Include="../TheOrder.WinUI/Materials/MaterialResources.cs" Link="Materials/MaterialResources.cs" />
       <Compile Include="../TheOrder.WinUI/Materials/MaterialTreeProbe.cs" Link="Materials/MaterialTreeProbe.cs" />
     <Compile Include="../TheOrder.WinUI/Materials/LensOptics.cs" Link="Materials/LensOptics.cs" />

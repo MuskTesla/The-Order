@@ -57,7 +57,9 @@ internal static class Composition
         services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<AuthenticatedCredentials>());
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
-        var performanceImages = nativeConfiguration.Diagnostics && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["PERFORMANCE_COVERS"] is not null;
+        // Explicit isolated Test images must not depend on the diagnostic text UI.
+        // Production/Development profiles never select this synthetic transport.
+        var performanceImages = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["PERFORMANCE_COVERS"] is not null;
         if (performanceImages) services.AddSingleton<PerformanceImageFixture>();
         services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
         services.AddSingleton(p => new NextMoeCatalog(p.GetRequiredService<CatalogTransport>(), clock: fixtureOnline ? () => p.GetRequiredService<SyntheticOnline>().Now : null));

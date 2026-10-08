@@ -14,7 +14,8 @@ namespace TheOrder.WinUI;
 // session-scoped material mode, library quick launch and live Windows accent updates.
 public sealed partial class MainWindow
 {
-    private Views.MaterialMode materialMode = Views.MaterialMode.Auto;
+    // Advanced materials remain opt-in for the development integration candidate.
+    private Views.MaterialMode materialMode = Views.MaterialMode.Standard;
     private MicaBackdrop? mica;
     private UISettings? colorSettings;
     private long accentEvents;
