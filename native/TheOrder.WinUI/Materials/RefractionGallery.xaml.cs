@@ -56,6 +56,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     private long finiteMotionUntil;
     private Color? appliedBackground;
     private Color? appliedForeground;
+    private bool? appliedFrostPanel;
     private readonly List<Image> coverImages = [];
     private readonly HashSet<Image> pendingCovers = [];
     private int coverFailures;
@@ -508,12 +509,15 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             RecordFailure("query.highContrastPalette", exception);
             background = Color.FromArgb(255, 240, 245, 246);
         }
+        // With an active frosted body the tinted glass carries the text; otherwise keep the solid reading panel.
+        var frostPanel = transparent && FrostActive && ReadSettings().HighContrast != true;
         if (appliedBackground.HasValue && appliedBackground.Value.Equals(background) &&
-            appliedForeground.HasValue && appliedForeground.Value.Equals(foregroundColor)) return;
+            appliedForeground.HasValue && appliedForeground.Value.Equals(foregroundColor) && appliedFrostPanel == frostPanel) return;
         try
         {
-            StableForeground.Background = new SolidColorBrush(background);
-            StableTextPanel.Background = new SolidColorBrush(dark ? Color.FromArgb(255, 32, 36, 39) : Color.FromArgb(255, 250, 251, 251));
+            StableForeground.Background = new SolidColorBrush(frostPanel ? Color.FromArgb(0, 0, 0, 0) : background);
+            StableTextPanel.Background = new SolidColorBrush(frostPanel ? Color.FromArgb(0, 0, 0, 0) : dark ? Color.FromArgb(255, 32, 36, 39) : Color.FromArgb(255, 250, 251, 251));
+            appliedFrostPanel = frostPanel;
             LensHighlight.Visibility = transparent ? Visibility.Visible : Visibility.Collapsed;
             var foreground = new SolidColorBrush(foregroundColor);
             StableIcon.Foreground = foreground;
@@ -621,6 +625,8 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
             case "candidate2": ComparisonMode.SelectedIndex = 4; break;
             case "dispersionOff": DispersionSwitch.IsOn = false; break;
             case "dispersionOn": DispersionSwitch.IsOn = true; break;
+            case "frostOn": FrostSwitch.IsOn = true; break;
+            case "frostOff": FrostSwitch.IsOn = false; break;
             case "recommended": OnRecommended(this, new RoutedEventArgs()); break;
             case "diagnostic": DispersionSlider.Value = 2; break;
             case "text": BackgroundMode.SelectedIndex = 0; break;
@@ -654,6 +660,7 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
         catch (Exception exception) { SetCompositionFailure(exception, "scene.switch"); }
     }
     private void OnDispersionChanged(object sender, RoutedEventArgs e) { dispersionEnabled = DispersionSwitch.IsOn; if (initialized) RefreshMaterial(); }
+    private void OnFrostChanged(object sender, RoutedEventArgs e) { frostRequested = FrostSwitch.IsOn; if (initialized) RefreshMaterial(); }
     private void OnBackgroundChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!initialized || syncingReview || appliedBackgroundMode == BackgroundMode.SelectedIndex) return;

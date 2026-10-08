@@ -3,6 +3,7 @@
 #include <dwrite.h>
 #include <wincodec.h>
 #include <vector>
+#pragma comment(lib, "dxguid.lib") // CLSID_D2D1GaussianBlur
 
 // Gallery-owned scene producer, never a capture API. All calls use the owning
 // UI thread and the renderer's D3D device. EndDraw submits before the same
@@ -16,6 +17,10 @@ struct GallerySource {
  ComPtr<ID2D1SolidColorBrush> brush;
  ComPtr<IDWriteFactory> textFactory;
  ComPtr<IWICImagingFactory> wic;
+ ComPtr<ID2D1Effect> blur;              // one per device context; input detached after each pass
+ ComPtr<ID2D1Bitmap1> frostTarget;      // wraps the renderer-owned frost texture
+ ID3D11Texture2D* frostTexture=nullptr; // identity only; the renderer holds the reference
+ float dpiScale=1;
  std::vector<ComPtr<ID2D1Bitmap1>> frameImages; // <=6; only until EndDraw.
  bool drawing=false;
  UINT64 completed=0, images=0, texts=0, targets=0;
@@ -36,9 +41,45 @@ struct GallerySource {
   if(drawing)throw E_ILLEGAL_METHOD_CALL;
   context->SetTarget(nullptr);target.Reset();
   ComPtr<IDXGISurface> surface;Check(texture->QueryInterface(IID_PPV_ARGS(&surface)));
-  auto properties=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+  // TARGET without CANNOT_DRAW: the frost pass reads this bitmap as an effect input.
+  auto properties=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET,
     D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_IGNORE),96*scale,96*scale);
-  Check(context->CreateBitmapFromDxgiSurface(surface.Get(),&properties,&target));++targets;
+  Check(context->CreateBitmapFromDxgiSurface(surface.Get(),&properties,&target));++targets;dpiScale=scale;
+ }
+ void ReleaseFrost() {
+  if(drawing)throw E_ILLEGAL_METHOD_CALL;
+  if(context)context->SetTarget(nullptr);
+  frostTarget.Reset();frostTexture=nullptr;
+ }
+ // One Gaussian pass from the completed scene bitmap into the frost texture.
+ HRESULT Frost(ID3D11Texture2D* texture,float sigma) noexcept {
+  if(drawing||!target||!texture||!context)return E_ILLEGAL_METHOD_CALL;
+  try {
+   if(!blur) {
+    Check(context->CreateEffect(CLSID_D2D1GaussianBlur,&blur));
+    Check(blur->SetValue(D2D1_GAUSSIANBLUR_PROP_BORDER_MODE,D2D1_BORDER_MODE_HARD));
+    Check(blur->SetValue(D2D1_GAUSSIANBLUR_PROP_OPTIMIZATION,D2D1_GAUSSIANBLUR_OPTIMIZATION_QUALITY));
+   }
+   if(frostTexture!=texture) {
+    frostTarget.Reset();
+    ComPtr<IDXGISurface> surface;Check(texture->QueryInterface(IID_PPV_ARGS(&surface)));
+    auto properties=D2D1::BitmapProperties1(D2D1_BITMAP_OPTIONS_TARGET,
+      D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_IGNORE),96*dpiScale,96*dpiScale);
+    Check(context->CreateBitmapFromDxgiSurface(surface.Get(),&properties,&frostTarget));frostTexture=texture;
+   }
+   Check(blur->SetValue(D2D1_GAUSSIANBLUR_PROP_STANDARD_DEVIATION,sigma)); // DIP at the scene DPI
+   blur->SetInput(0,target.Get());
+   context->SetTarget(frostTarget.Get());context->SetDpi(96*dpiScale,96*dpiScale);
+   context->SetTransform(D2D1::Matrix3x2F::Identity());
+   context->BeginDraw();context->Clear(D2D1::ColorF(0,0,0,1));context->DrawImage(blur.Get());
+   auto hr=context->EndDraw();
+   blur->SetInput(0,nullptr);context->SetTarget(nullptr);
+   return hr;
+  } catch(HRESULT hr) {
+   if(blur)blur->SetInput(0,nullptr);
+   context->SetTarget(nullptr);
+   return hr;
+  }
  }
  void Begin(float scale,UINT argb) {
   if(drawing||!target)throw E_ILLEGAL_METHOD_CALL;
@@ -92,5 +133,5 @@ struct GallerySource {
   if(SUCCEEDED(hr))++completed;
   return hr;
  }
- ~GallerySource(){if(drawing)End();if(context)context->SetTarget(nullptr);}
+ ~GallerySource(){if(drawing)End();if(context)context->SetTarget(nullptr);frostTarget.Reset();blur.Reset();}
 };

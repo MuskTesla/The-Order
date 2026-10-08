@@ -18,6 +18,12 @@ internal sealed class OpticalRenderer : IDisposable
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalDrawBackground(IntPtr handle, uint w, uint h, float[] parameters);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalDrawEx(IntPtr handle, uint w, uint h, float[] parameters, uint count, int background);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalSceneFrost(IntPtr handle, float sigma);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
+    private static extern int OpticalFrostDiagnostics(IntPtr handle, [Out] ulong[] values);
+    [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalSceneBegin(IntPtr handle, uint w, uint h, float scale, uint color);
     [DllImport("TheOrder.OpticalMaterial.dll", ExactSpelling = true)]
     private static extern int OpticalSceneRect(IntPtr handle, float x, float y, float w, float h, uint color);
@@ -80,11 +86,14 @@ internal sealed class OpticalRenderer : IDisposable
     internal void Draw(int width, int height, float[] parameters, bool backgroundOnly = false)
     {
         ObjectDisposedException.ThrowIf(!Active, this);
-        if (parameters.Length != 20 || parameters.Any(x => !float.IsFinite(x))) throw new ArgumentException("Finite optical constants required");
+        // 20 constants = accepted C1 layout; 24 adds frost amount (c[17]) and body tint (c[20..23]).
+        if (parameters.Length is not (20 or 24) || parameters.Any(x => !float.IsFinite(x))) throw new ArgumentException("Finite optical constants required");
         var begin = Stopwatch.GetTimestamp();
-        Marshal.ThrowExceptionForHR(backgroundOnly
-            ? OpticalDrawBackground(handle, checked((uint)width), checked((uint)height), parameters)
-            : OpticalDraw(handle, checked((uint)width), checked((uint)height), parameters));
+        Marshal.ThrowExceptionForHR(parameters.Length == 24
+            ? OpticalDrawEx(handle, checked((uint)width), checked((uint)height), parameters, 24, backgroundOnly ? 1 : 0)
+            : backgroundOnly
+                ? OpticalDrawBackground(handle, checked((uint)width), checked((uint)height), parameters)
+                : OpticalDraw(handle, checked((uint)width), checked((uint)height), parameters));
         var milliseconds = Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
         DrawCpuMilliseconds += milliseconds; MaxDrawCpuMilliseconds = Math.Max(MaxDrawCpuMilliseconds, milliseconds);
         Draws++; BufferBytes = (long)width * height * 8;
@@ -123,11 +132,35 @@ internal sealed class OpticalRenderer : IDisposable
             SceneCpuMilliseconds += Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
         }
     }
+    internal long FrostBytes { get; private set; }
+    internal double FrostCpuMilliseconds { get; private set; }
+    internal double MaxFrostCpuMilliseconds { get; private set; }
+    // Once per completed scene revision. sigma <= 0 retires the blurred copy.
+    internal void Frost(double sigmaDip)
+    {
+        ObjectDisposedException.ThrowIf(!Active, this);
+        if (Environment.CurrentManagedThreadId != thread) throw new InvalidOperationException("Owning UI thread required");
+        var begin = Stopwatch.GetTimestamp();
+        Marshal.ThrowExceptionForHR(OpticalSceneFrost(handle, (float)sigmaDip));
+        var milliseconds = Stopwatch.GetElapsedTime(begin).TotalMilliseconds;
+        FrostCpuMilliseconds += milliseconds; MaxFrostCpuMilliseconds = Math.Max(MaxFrostCpuMilliseconds, milliseconds);
+        FrostBytes = sigmaDip > 0 ? SourceBytes : 0;
+    }
+    internal object FrostEvidence
+    {
+        get
+        {
+            var v = new ulong[4];
+            var hr = Active ? OpticalFrostDiagnostics(handle, v) : 0;
+            return new { HResult = hr, TexturesCreated = v[0], Passes = v[1], Valid = v[2] == 1, TextureAlive = v[3] == 1,
+                FrostBytes, FrostCpuMilliseconds, MaxFrostCpuMilliseconds };
+        }
+    }
     public void Dispose()
     {
         if (!Active) return;
         // Failed detach leaves ownership intact so Gallery can retry cleanup.
         Marshal.ThrowExceptionForHR(OpticalDestroy(handle));
-        handle = IntPtr.Zero; SourceBytes = BufferBytes = 0;
+        handle = IntPtr.Zero; SourceBytes = BufferBytes = FrostBytes = 0;
     }
 }

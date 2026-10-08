@@ -37,7 +37,11 @@ public sealed partial class RefractionGallery
     private long motionStarted, previousFrame;
     private double motionSeconds, motionStartPosition, frameIntervalTotal, frameIntervalMax;
     private long frameIntervals;
-    private readonly float[] opticalConstants = new float[20];
+    private readonly float[] opticalConstants = new float[24];
+    // Stage-plate frost: clear refracting rim, blurred+tinted body. Off = accepted C1 output.
+    private const double FrostSigmaDip = 20;
+    private bool frostRequested, frostCurrent;
+    private bool FrostActive => frostRequested && frostCurrent && UsesOwnedScene && sceneOpticalActive;
     private bool UsesOptical => ComparisonMode.SelectedIndex is 3 or 4;
     private bool MaterialActive => lens is not null || (optical?.Ready == true && (!UsesOwnedScene || sceneOpticalActive));
     private OpticalProfile Profile => ComparisonMode.SelectedIndex == 3 ? OpticalProfile.Reference : OpticalProfile.Daily;
@@ -69,7 +73,8 @@ public sealed partial class RefractionGallery
         Profile.BevelWidth, Profile.Depth, Dispersion = dispersionEnabled ? Profile.Dispersion : 0, Profile.Gloss,
         RetainedFailedDevice = failedOpticalRelease is null ? 0 : 1,
         Source = UsesOwnedScene ? "Gallery-owned Direct2D/DirectWrite/WIC scene on same-device D3D surface; every revision rendered; foreground excluded" : "Gallery-only XAML background snapshot at rasterization scale; finite shader translation; foreground excluded",
-        Passes = 1, TextureReadsOutside = 1, TextureReadsLensMaximum = 4, BlurPasses = 0
+        Passes = 1, TextureReadsOutside = 1, TextureReadsLensMaximum = FrostActive ? 5 : 4, BlurPasses = 0,
+        FrostRequested = frostRequested, FrostActive, FrostSigmaDip, Frost = optical?.FrostEvidence
     };
 
     private void UpdateOptical()
@@ -181,6 +186,11 @@ public sealed partial class RefractionGallery
         c[8] = 23; c[9] = model.BevelWidth; c[10] = model.Depth; c[11] = dispersionEnabled ? model.Dispersion : 0;
         c[12] = model.Gloss; c[13] = ActualTheme == ElementTheme.Dark ? 1 : 0;
         c[14] = offsetX; c[15] = offsetY; c[16] = scale;
+        // Tint alpha .80 bounds body text contrast for any artwork (see design 03 §Frost).
+        var frost = FrostActive; var darkTint = ActualTheme == ElementTheme.Dark;
+        c[17] = frost ? 1 : 0; c[18] = c[19] = 0;
+        c[20] = darkTint ? 27 / 255f : 250 / 255f; c[21] = darkTint ? 35 / 255f : 251 / 255f;
+        c[22] = darkTint ? 36 / 255f : 248 / 255f; c[23] = frost ? .8f : 0;
         optical.Draw((int)Math.Ceiling(c[0] * scale), (int)Math.Ceiling(c[1] * scale), c, UsesOwnedScene && !sceneOpticalActive);
         OpticalPanel.Visibility = Visibility.Visible;
     }
@@ -223,7 +233,7 @@ public sealed partial class RefractionGallery
     }
     private void ReleaseOptical()
     {
-        StopOpticalMotion(); snapshotGeneration++; snapshotDirty = true; sceneOpticalActive = false;
+        StopOpticalMotion(); snapshotGeneration++; snapshotDirty = true; sceneOpticalActive = false; frostCurrent = false;
         OpticalPanel.Visibility = Visibility.Collapsed;
         if (optical is not null)
         {
@@ -253,11 +263,16 @@ public sealed partial class RefractionGallery
             scene ??= GalleryScene.Create(BackgroundMode.SelectedIndex,
                 Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_MATERIAL_REFERENCE"),
                 Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_COVERS"));
+            frostCurrent = false; // any scene revision invalidates the native copy
             optical.RenderScene(scene, scale);
             snapshotWidth = (int)Math.Ceiling(GalleryScene.Width * scale);
             snapshotHeight = (int)Math.Ceiling(GalleryScene.Height * scale);
             snapshotScale = scale; snapshotDirty = false;
         }
+        // Event-driven: one blur pass per scene revision or toggle, never per frame.
+        var wantFrost = effect && frostRequested;
+        if (wantFrost && !frostCurrent) { optical.Frost(FrostSigmaDip); frostCurrent = true; }
+        else if (!wantFrost && optical.FrostBytes != 0) { optical.Frost(0); frostCurrent = false; }
         DrawOptical((float)(-patternPosition * 1.2), (float)(-patternPosition * .16));
     }
 }

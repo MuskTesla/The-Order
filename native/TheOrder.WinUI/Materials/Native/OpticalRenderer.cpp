@@ -27,9 +27,11 @@ cbuffer Parameters : register(b0) {
  float4 lens;       // center DIP, half extent DIP
  float4 optics;     // corner radius, bevel width, optical depth, dispersion DIP
  float4 lighting;   // gloss, dark, background translation DIP
- float4 raster;     // scale, reserved
+ float4 raster;     // scale, frost amount (0 keeps the accepted C1 output), reserved
+ float4 frostTint;  // stage-plate body tint rgb, tint alpha
 };
 Texture2D sourceImage : register(t0);
+Texture2D frostImage : register(t1); // same-scene Gaussian copy; bound only while valid
 SamplerState linearClamp : register(s0);
 struct Vertex { float4 position : SV_POSITION; float2 uv : TEXCOORD0; };
 Vertex VS(uint id : SV_VertexID) {
@@ -37,6 +39,7 @@ Vertex VS(uint id : SV_VertexID) {
  o.position=float4(uv*float2(2,-2)+float2(-1,1),0,1);o.uv=uv;return o;
 }
 float3 Read(float2 p) { return sourceImage.SampleLevel(linearClamp,(p-lighting.zw)/viewSource.zw,0).rgb; }
+float3 ReadFrost(float2 p) { return frostImage.SampleLevel(linearClamp,(p-lighting.zw)/viewSource.zw,0).rgb; }
 float4 PS(Vertex input) : SV_TARGET {
  float2 p=input.uv*viewSource.xy;
  float3 original=Read(p);
@@ -61,6 +64,17 @@ float4 PS(Vertex input) : SV_TARGET {
    color.r=Read(coord+normal*spectral).r;
    color.b=Read(coord-normal*spectral).b;
  }
+ // Frosted body: the clear refracting rim keeps sampling the sharp source; the
+ // interior fades to the blurred copy under a bounded tint that sets text contrast.
+ // The body has its own rounded field: inner iso-lines of the plate field turn square once
+ // the bevel exceeds the corner radius, which read as a second card inside the glass.
+ if(raster.y>0) {
+   float inset=optics.y*.6, rb=max(optics.x*.6,8);
+   float2 qb=abs(local)-(lens.zw-inset)+rb;
+   float sdb=length(max(qb,0))+min(max(qb.x,qb.y),0)-rb;
+   float body=(1-smoothstep(-6,6,sdb))*raster.y;
+   color=lerp(color,lerp(ReadFrost(coord),frostTint.rgb,frostTint.a),body);
+ }
  float incidence=dot(normal,normalize(float2(-.55,-.83)));
  float bright=pow(saturate(incidence),3);
  float reverse=pow(saturate(-incidence),3);
@@ -78,6 +92,9 @@ struct Renderer {
  ComPtr<ID3D11PixelShader> pixel, backgroundPixel; ComPtr<ID3D11Buffer> constants;
  ComPtr<ID3D11SamplerState> sampler; ComPtr<ID3D11ShaderResourceView> source;
  ComPtr<ID3D11Texture2D> sourceTexture;
+ ComPtr<ID3D11Texture2D> frostTexture; ComPtr<ID3D11ShaderResourceView> frost;
+ bool frostValid=false; // only for the current scene revision at the current source size
+ UINT64 frostCreated=0, frostPasses=0;
  GallerySource scene;
  UINT sourceWidth=0,sourceHeight=0;
  UINT width=0,height=0;
@@ -116,7 +133,7 @@ struct Renderer {
   const auto background=std::string(shader)+"\nfloat4 BackgroundPS(Vertex input):SV_TARGET { return float4(Read(input.uv*viewSource.xy),1); }";
   Check(D3DCompile(background.c_str(),background.size(),"TheOrderGalleryBackground",nullptr,nullptr,"BackgroundPS","ps_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&ps,&error));
   Check(device->CreatePixelShader(ps->GetBufferPointer(),ps->GetBufferSize(),nullptr,&backgroundPixel));
-  D3D11_BUFFER_DESC buffer={};buffer.ByteWidth=80;buffer.Usage=D3D11_USAGE_DEFAULT;buffer.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
+  D3D11_BUFFER_DESC buffer={};buffer.ByteWidth=96;buffer.Usage=D3D11_USAGE_DEFAULT;buffer.BindFlags=D3D11_BIND_CONSTANT_BUFFER;
   Check(device->CreateBuffer(&buffer,nullptr,&constants));
   D3D11_SAMPLER_DESC sample={};sample.Filter=D3D11_FILTER_MIN_MAG_MIP_LINEAR;
   sample.AddressU=sample.AddressV=sample.AddressW=D3D11_TEXTURE_ADDRESS_CLAMP;sample.MaxLOD=D3D11_FLOAT32_MAX;
@@ -131,7 +148,7 @@ extern "C" __declspec(dllexport) HRESULT OpticalCreate(IUnknown* panel, void** r
 }
 extern "C" __declspec(dllexport) HRESULT OpticalUpload(void* handle,const BYTE* data,UINT w,UINT h,UINT length) noexcept {
  if(!handle||!data||w==0||h==0||w>8192||h>8192||static_cast<UINT64>(w)*h*4!=length)return E_INVALIDARG;
- return Guard([&] {auto r=static_cast<Renderer*>(handle);
+ return Guard([&] {auto r=static_cast<Renderer*>(handle);r->frostValid=false; // frost described the previous source
   if(r->sourceTexture&&w==r->sourceWidth&&h==r->sourceHeight) {
    // The immediate context preserves upload/draw ordering, including in-flight
    // reads. UpdateSubresource copies caller bytes before this call returns.
@@ -149,9 +166,14 @@ extern "C" __declspec(dllexport) HRESULT OpticalUpload(void* handle,const BYTE* 
   ++resourceCounts[2];
  });
 }
-static HRESULT Draw(void* handle,UINT width,UINT height,const float* p,bool background) noexcept {
- if(!handle||!p||width==0||height==0||width>8192||height>8192)return E_INVALIDARG;
- return Guard([&] {auto r=static_cast<Renderer*>(handle);if(!r->source)throw E_UNEXPECTED;r->Resize(width,height);
+static HRESULT Draw(void* handle,UINT width,UINT height,const float* input,UINT count,bool background) noexcept {
+ if(!handle||!input||(count!=20&&count!=24)||width==0||height==0||width>8192||height>8192)return E_INVALIDARG;
+ float p[24]={};std::memcpy(p,input,count*sizeof(float)); // legacy 20-float callers get frost amount 0
+ if(!(p[17]>=0&&p[17]<=1)||!(p[23]>=0&&p[23]<=1))return E_INVALIDARG;
+ return Guard([&] {auto r=static_cast<Renderer*>(handle);if(!r->source)throw E_UNEXPECTED;
+ // A frost request without this revision's blurred copy fails closed; the owner falls back.
+ if(!background&&p[17]>0&&!r->frostValid)throw E_UNEXPECTED;
+ r->Resize(width,height);
  ComPtr<IDXGISwapChain2> scaled;Check(r->chain.As(&scaled));
  DXGI_MATRIX_3X2_F matrix={1/p[16],0,0,1/p[16],0,0};Check(scaled->SetMatrixTransform(&matrix));
  r->context->UpdateSubresource(r->constants.Get(),0,nullptr,p,0,0);
@@ -160,17 +182,19 @@ static HRESULT Draw(void* handle,UINT width,UINT height,const float* p,bool back
  r->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
  r->context->VSSetShader(r->vertex.Get(),nullptr,0);r->context->PSSetShader(background?r->backgroundPixel.Get():r->pixel.Get(),nullptr,0);
  r->context->VSSetConstantBuffers(0,1,r->constants.GetAddressOf());r->context->PSSetConstantBuffers(0,1,r->constants.GetAddressOf());
- r->context->PSSetSamplers(0,1,r->sampler.GetAddressOf());r->context->PSSetShaderResources(0,1,r->source.GetAddressOf());
+ r->context->PSSetSamplers(0,1,r->sampler.GetAddressOf());
+ ID3D11ShaderResourceView* views[2]={r->source.Get(),r->frostValid&&!background?r->frost.Get():nullptr};r->context->PSSetShaderResources(0,2,views);
  r->context->Draw(3,0);Check(r->chain->Present(1,0));
  });
 }
-extern "C" __declspec(dllexport) HRESULT OpticalDraw(void* h,UINT w,UINT height,const float* p) noexcept { return Draw(h,w,height,p,false); }
-extern "C" __declspec(dllexport) HRESULT OpticalDrawBackground(void* h,UINT w,UINT height,const float* p) noexcept { return Draw(h,w,height,p,true); }
+extern "C" __declspec(dllexport) HRESULT OpticalDraw(void* h,UINT w,UINT height,const float* p) noexcept { return Draw(h,w,height,p,20,false); }
+extern "C" __declspec(dllexport) HRESULT OpticalDrawBackground(void* h,UINT w,UINT height,const float* p) noexcept { return Draw(h,w,height,p,20,true); }
+extern "C" __declspec(dllexport) HRESULT OpticalDrawEx(void* h,UINT w,UINT height,const float* p,UINT count,BOOL background) noexcept { return Draw(h,w,height,p,count,background!=FALSE); }
 extern "C" __declspec(dllexport) HRESULT OpticalSceneBegin(void* handle,UINT w,UINT h,float scale,UINT color) noexcept {
  if(!handle||w==0||h==0||w>8192||h>8192||!std::isfinite(scale)||scale<=0)return E_INVALIDARG;
  return Guard([&]{auto r=static_cast<Renderer*>(handle);r->scene.Init(r->device.Get());
   if(r->scene.drawing)throw E_ILLEGAL_METHOD_CALL;
-  ID3D11ShaderResourceView* empty=nullptr;r->context->PSSetShaderResources(0,1,&empty);
+  ID3D11ShaderResourceView* empty[2]={};r->context->PSSetShaderResources(0,2,empty);r->frostValid=false;
   r->context->OMSetRenderTargets(0,nullptr,nullptr);
   if(!r->scene.target||r->sourceWidth!=w||r->sourceHeight!=h){
    D3D11_TEXTURE2D_DESC d={};d.Width=w;d.Height=h;d.MipLevels=1;d.ArraySize=1;
@@ -200,6 +224,29 @@ extern "C" __declspec(dllexport) HRESULT OpticalSceneDiagnostics(void* h,UINT64*
  if(!h||!values)return E_INVALIDARG;auto& s=static_cast<Renderer*>(h)->scene;
  values[0]=s.completed;values[1]=s.images;values[2]=s.texts;values[3]=s.targets;
  values[4]=s.drawing?1:0;values[5]=s.frameImages.size();values[6]=s.context?1:0;return S_OK;
+}
+// Event-driven: called once after a scene revision completes, never per frame.
+// sigma<=0 retires the copy. A copy is valid only until the next Begin/Upload.
+extern "C" __declspec(dllexport) HRESULT OpticalSceneFrost(void* handle,float sigma) noexcept {
+ if(!handle||!std::isfinite(sigma)||sigma>64)return E_INVALIDARG;
+ return Guard([&]{auto r=static_cast<Renderer*>(handle);
+  ID3D11ShaderResourceView* empty[2]={};r->context->PSSetShaderResources(0,2,empty);r->frostValid=false;
+  if(sigma<=0){r->scene.ReleaseFrost();r->frost.Reset();r->frostTexture.Reset();return;}
+  if(!r->scene.target||r->scene.drawing||!r->sourceTexture)throw E_ILLEGAL_METHOD_CALL;
+  D3D11_TEXTURE2D_DESC d={};r->sourceTexture->GetDesc(&d);
+  D3D11_TEXTURE2D_DESC f={};if(r->frostTexture)r->frostTexture->GetDesc(&f);
+  if(!r->frostTexture||f.Width!=d.Width||f.Height!=d.Height){
+   r->scene.ReleaseFrost();r->frost.Reset();r->frostTexture.Reset();
+   d.BindFlags=D3D11_BIND_SHADER_RESOURCE|D3D11_BIND_RENDER_TARGET;d.MiscFlags=0;
+   Check(r->device->CreateTexture2D(&d,nullptr,&r->frostTexture));Check(r->device->CreateShaderResourceView(r->frostTexture.Get(),nullptr,&r->frost));
+   ++r->frostCreated;
+  }
+  Check(r->scene.Frost(r->frostTexture.Get(),sigma));++r->frostPasses;r->frostValid=true;
+ });
+}
+extern "C" __declspec(dllexport) HRESULT OpticalFrostDiagnostics(void* h,UINT64* values) noexcept {
+ if(!h||!values)return E_INVALIDARG;auto r=static_cast<Renderer*>(h);
+ values[0]=r->frostCreated;values[1]=r->frostPasses;values[2]=r->frostValid?1:0;values[3]=r->frostTexture?1:0;return S_OK;
 }
 extern "C" __declspec(dllexport) HRESULT OpticalDestroy(void* handle) noexcept {
  if(!handle)return S_OK;auto r=static_cast<Renderer*>(handle);
