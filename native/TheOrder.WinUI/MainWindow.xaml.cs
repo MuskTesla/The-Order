@@ -37,12 +37,15 @@ public sealed partial class MainWindow : Window
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
     private readonly bool performanceFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
         this.recognition = recognition;
         this.files = files; this.images = images;
+        this.materialPreferences = materialPreferences;
+        controlledAdvanced = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test &&
+            Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_ADVANCED_TEST") == "1";
         performanceFixture = configuration.Diagnostics && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT") is not null;
         installationNavigation = new(files);
@@ -58,7 +61,7 @@ public sealed partial class MainWindow : Window
         recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };
         libraryPage.RecognizeSelected = async ids => { if (await ResolveUnsavedAsync()) { await recognition.StartAsync(ids, RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
         detailsPage.Recognize = async () => { if (workspace.SelectedId is { } id && await ResolveUnsavedAsync()) { await recognition.StartAsync([id], RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
-        settingsPage = new(workspace, online) { ChangeMaterialMode = SetMaterialMode };
+        settingsPage = new(workspace, online) { ChangeMaterialMode = SetMaterialModeAsync };
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) await online.RefreshEntryAsync(id); };
         detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
         importPage = new(files, workspace) { ChooseFolder = PickFolder };
@@ -89,7 +92,7 @@ public sealed partial class MainWindow : Window
     }
     private async Task Initialize()
     {
-        try { await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); }
+        try { await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); await LoadMaterialPreferencesAsync(); }
         catch (Exception exception) { App.TraceVisualFailure(exception); lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
         RefreshSession();
     }
@@ -184,9 +187,13 @@ public sealed partial class MainWindow : Window
         ApplyMaterialPolicy();
     }
     public void CancelOnlineRequests() => online.Leave();
-    private void OnLaunchRefresh(object? sender, object e) { Launch.Refresh(); RefreshSession(); }
+    private void OnLaunchRefresh(object? sender, object e)
+    {
+        Launch.Refresh(); RefreshSession();
+    }
     public async ValueTask StopAsync()
     {
+        await materialWrite;
         DisposeVisualSystem();
         DisposeShellInput();
         onlineFixture?.ReleaseCandidate();

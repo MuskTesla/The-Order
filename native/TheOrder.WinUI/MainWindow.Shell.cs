@@ -11,11 +11,17 @@ using Windows.UI.ViewManagement;
 namespace TheOrder.WinUI;
 
 // Revision 2 shell: Fluent TitleBar (back, pane, search, session indicator), Mica, keyboard model,
-// session-scoped material mode, library quick launch and live Windows accent updates.
+// persisted material intent, library quick launch and live Windows accent updates.
 public sealed partial class MainWindow
 {
     // Advanced materials remain opt-in for the development integration candidate.
     private Views.MaterialMode materialMode = Views.MaterialMode.Standard;
+    private readonly IMaterialPreferencesStore materialPreferences;
+    private readonly bool controlledAdvanced;
+    private Task materialWrite = Task.CompletedTask;
+    private bool materialReadOnly;
+    private bool materialInitialized;
+    private string? materialPreferenceNotice;
     private MicaBackdrop? mica;
     private UISettings? colorSettings;
     private long accentEvents;
@@ -110,14 +116,39 @@ public sealed partial class MainWindow
         catch (Exception) { ViewModel.ReportUnexpected(); }
     }
 
-    // 设置 › 材质效果. Session-scoped: the persisted preference schema rejects unknown members in older builds.
+    // Separate optional companion leaves the strict native-ui v1 schema unchanged.
     internal Views.MaterialMode MaterialModeSetting => materialMode;
-    internal void SetMaterialMode(Views.MaterialMode mode)
+    private async Task LoadMaterialPreferencesAsync()
     {
-        if (materialMode == mode) return;
-        materialMode = mode;
+        try
+        {
+            var read = await materialPreferences.LoadAsync();
+            materialMode = Enum.Parse<Views.MaterialMode>(read.Preference.Mode);
+            materialReadOnly = read.ReadOnly; materialPreferenceNotice = read.Warning;
+        }
+        catch (Exception) { materialMode = Views.MaterialMode.Standard; materialReadOnly = true; materialPreferenceNotice = "材质设置未能读取，已使用标准材质；原文件保留。"; }
+        materialInitialized = true;
         ApplyMaterialPolicy();
     }
+    internal Task SetMaterialModeAsync(Views.MaterialMode mode)
+    {
+        if (commandsBlocked || !materialInitialized || materialReadOnly || !materialWrite.IsCompleted) return materialWrite;
+        return materialWrite = SaveMaterialModeAsync(mode);
+    }
+    private async Task SaveMaterialModeAsync(Views.MaterialMode mode)
+    {
+        settingsPage.SetMaterialSaving(true);
+        try
+        {
+            await materialPreferences.SaveAsync(new(mode.ToString()));
+            if (visualStopped) return;
+            materialMode = mode; materialPreferenceNotice = null;
+        }
+        catch (Exception) { materialPreferenceNotice = "材质设置未保存，已保留上次选项；请重试。"; }
+        finally { settingsPage.SetMaterialSaving(false); if (!visualStopped) ApplyMaterialPolicy(); }
+    }
+    private Views.MaterialMode EffectiveMaterialMode => Enum.Parse<Views.MaterialMode>(MaterialActivationPolicy.Effective(
+        materialMode.ToString(), Program.Profile?.Manifest.ProfileKind ?? NativeProfileKind.Development, controlledAdvanced));
 
     private void ApplyBackdrop(bool translucent)
     {

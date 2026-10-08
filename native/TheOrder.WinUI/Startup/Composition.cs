@@ -16,10 +16,15 @@ internal static class Composition
     {
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables("THE_ORDER_NATIVE_").Build();
         var services = new ServiceCollection();
-        services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Information));
+        services.AddLogging(builder =>
+        {
+            builder.AddDebug().SetMinimumLevel(LogLevel.Information);
+            if (Program.Profile is { } profile) builder.AddProvider(new NativeLifecycleLog(profile));
+        });
         var nativeConfiguration = Program.Profile?.Configuration(configuration["DIAGNOSTICS"] == "1")
             ?? new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
         services.AddSingleton(nativeConfiguration);
+        services.AddSingleton<IMaterialPreferencesStore, MaterialPreferencesStore>();
         services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
         services.AddSingleton<OfflineLibraryClient>();
@@ -118,6 +123,7 @@ internal sealed class NativeHost(ServiceProvider provider, MainWindow window, Ap
 {
     public MainWindow Window { get; } = window;
     public AppSessionHost Sessions { get; } = sessions;
-    public void LogFatal(Exception exception) => logger.LogCritical("Native client terminated: {ExceptionType}", exception.GetType().Name);
-    public async ValueTask DisposeAsync() { await Window.StopAsync(); await Sessions.DisposeAsync(); await provider.DisposeAsync(); }
+    public void LogFatal(Exception exception) => logger.LogCritical(exception, "Native client terminated: {ExceptionType}", exception.GetType().Name);
+    public void LogStarted() => logger.LogInformation("Native client started");
+    public async ValueTask DisposeAsync() { await Window.StopAsync(); await Sessions.DisposeAsync(); logger.LogInformation("Native client drained"); await provider.DisposeAsync(); }
 }

@@ -30,6 +30,7 @@ public partial class App : Microsoft.UI.Xaml.Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         host = Composition.Create();
+        host.LogStarted();
         UnhandledException += (_, error) => host?.LogFatal(error.Exception);
         host.Window.AppWindow.Closing += (sender, close) =>
         {

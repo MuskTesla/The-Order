@@ -25,7 +25,7 @@ $profile=Join-Path $dir 'profile'
 # process environment. Neither launch mode changes global/user settings.
 $prior=@{}
 Get-ChildItem Env: | Where-Object { $_.Name.StartsWith('THE_ORDER_NATIVE_') -or $_.Name -in @('KGM_DATA_DIR','KGM_TEST_EXECUTABLE','DOTNET_ROOT','DOTNET_ROOT_X64') } | ForEach-Object { $prior[$_.Name]=$_.Value }
-$values=@{DOTNET_ROOT=(Split-Path $DotnetPath);DOTNET_ROOT_X64=(Split-Path $DotnetPath);THE_ORDER_NATIVE_DATA_DIR=$profile;THE_ORDER_NATIVE_PROFILE_KIND='Test';THE_ORDER_NATIVE_FIXTURE_PROFILE='0';THE_ORDER_NATIVE_DIAGNOSTICS=$(if($Diagnostics){'1'}else{'0'});THE_ORDER_NATIVE_VISUAL_TEST=$(if($Diagnostics){'1'}else{'0'});THE_ORDER_NATIVE_VISUAL_DIRECTION='B';THE_ORDER_NATIVE_VISUAL_CONTROL=(Join-Path $dir 'control');THE_ORDER_NATIVE_PERFORMANCE_COVERS=$covers;THE_ORDER_NATIVE_ONLINE_FIXTURE='0';THE_ORDER_NATIVE_MATERIAL_SOURCE='owned-scene'}
+$values=@{DOTNET_ROOT=(Split-Path $DotnetPath);DOTNET_ROOT_X64=(Split-Path $DotnetPath);THE_ORDER_NATIVE_DATA_DIR=$profile;THE_ORDER_NATIVE_PROFILE_KIND='Test';THE_ORDER_NATIVE_FIXTURE_PROFILE='0';THE_ORDER_NATIVE_DIAGNOSTICS=$(if($Diagnostics){'1'}else{'0'});THE_ORDER_NATIVE_VISUAL_TEST=$(if($Diagnostics){'1'}else{'0'});THE_ORDER_NATIVE_VISUAL_DIRECTION='B';THE_ORDER_NATIVE_ADVANCED_TEST='1';THE_ORDER_NATIVE_VISUAL_CONTROL=(Join-Path $dir 'control');THE_ORDER_NATIVE_PERFORMANCE_COVERS=$covers;THE_ORDER_NATIVE_ONLINE_FIXTURE='0';THE_ORDER_NATIVE_MATERIAL_SOURCE='owned-scene'}
 $app=$null
 try{
  foreach($name in $prior.Keys){[Environment]::SetEnvironmentVariable($name,$null,'Process')}

@@ -26,7 +26,7 @@ public sealed partial class MainWindow
     private void InitializeVisualSystem(NativeConfiguration configuration)
     {
         materialPolicy = new(DispatcherQueue, ApplyMaterialPolicy);
-        if (configuration.Diagnostics && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+        if (Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_VISUAL_TEST") == "1")
         {
             ReadSystemAccentOnce();
@@ -50,11 +50,14 @@ public sealed partial class MainWindow
                 visualFixtureTimer.Tick += OnVisualFixture;
                 Root.Loaded += StartVisualFixture;
             }
+            if (configuration.Diagnostics)
+            {
             var item = new NavigationViewItem { Content = "材质实验室 · Test", Tag = "visual-gallery", Icon = new SymbolIcon(Symbol.Pictures) };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(item, "VisualGallery");
             Navigation.FooterMenuItems.Add(item);
             var states = new NavigationViewItem { Content = "会话状态 · Test", Tag = "visual-states", Icon = new SymbolIcon(Symbol.Play) };
             Navigation.FooterMenuItems.Add(states);
+            }
         }
         UpdateNavigationChrome();
         ApplyMaterialPolicy();
@@ -77,16 +80,18 @@ public sealed partial class MainWindow
     private void ApplyMaterialPolicy()
     {
         if (visualStopped || materialPolicy is null) return;
-        materialPolicy.AppOpaque = materialMode == Views.MaterialMode.Opaque;
+        var effectiveMode = EffectiveMaterialMode;
+        materialPolicy.AppOpaque = effectiveMode == Views.MaterialMode.Opaque;
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
         var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
         // Mica is the window backdrop; system/app transparency rules replace it with the solid canvas.
         ApplyBackdrop(materialPolicy.EffectsAllowed);
         // Hidden windows hold no glass renderer: stages drop to their XAML layers and release swapchains.
         var stageAllowed = materialPolicy.EffectsAllowed && visible;
-        libraryPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, materialMode);
-        detailsPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, materialMode);
-        settingsPage.ShowMaterialState(materialMode, materialPolicy.EffectsAllowed, materialPolicy.HighContrast);
+        libraryPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, effectiveMode);
+        detailsPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, effectiveMode);
+        settingsPage.ShowMaterialState(materialMode, materialPolicy.EffectsAllowed, materialPolicy.HighContrast,
+            controlledAdvanced, materialReadOnly || !materialInitialized, materialPreferenceNotice);
         gallery?.SetAdvanced(materialPolicy.EffectsAllowed && visible);
         gallery?.SetMotionAllowed(materialPolicy.MotionAllowed && visible);
         if (!materialPolicy.MotionAllowed && Root.XamlRoot is not null)
@@ -186,7 +191,8 @@ public sealed partial class MainWindow
     private object VisualEvidence() => new
     {
         direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
-        material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
+        material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), effectiveMaterialMode = EffectiveMaterialMode.ToString(), controlledAdvanced,
+        diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
         stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence }, shell = ShellEvidence(),
         round3 = Round3Evidence(), managed = MaterialManagedEvidence(), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
         treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
@@ -250,7 +256,7 @@ public sealed partial class MainWindow
                 case "focusSearch": TitleSearch.Focus(FocusState.Keyboard); break;
                 case "materialMode":
                     if (!Enum.TryParse<Views.MaterialMode>(root.GetProperty("value").GetString(), out var mode) || !Enum.IsDefined(mode)) throw new InvalidDataException("Unknown material mode.");
-                    SetMaterialMode(mode); break;
+                    await SetMaterialModeAsync(mode); break;
                 case "scroll": libraryPage.ScrollTest(root.GetProperty("value").GetDouble()); break;
                 case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
                 case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;

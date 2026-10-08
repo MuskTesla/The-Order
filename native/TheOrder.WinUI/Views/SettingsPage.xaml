@@ -22,7 +22,7 @@
       <RadioButton Content="关闭透明效果：使用不透明背景" Tag="Opaque"/>
      </RadioButtons>
      <TextBlock x:Name="MaterialState" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="MaterialState" AutomationProperties.LiveSetting="Polite"/>
-     <TextBlock Text="此选项只在本次运行中生效。系统的透明效果、节电模式、远程桌面与高对比度设置始终优先。" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
+      <TextBlock Text="选项保存于当前资料，下次启动恢复。高级玻璃仅限受控 Test，普通入口保持标准材质；系统透明效果、节电模式、远程桌面与高对比度设置始终优先。" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
     </StackPanel>
    </Border>
    <Border Style="{StaticResource SurfaceStyle}" Padding="24">
