@@ -6,7 +6,7 @@
     "electron/game-identification.ts": "65da4282762f007fd22a60c7e5a56c36f677282beb401bae078d84477e54c07e",
     "electron/local-game-evidence.ts": "0d9e33fe32786f073b9160370a0b5fd6143a83c5e3308f7ac5aef072df5b6a01",
     "electron/local-text-evidence.ts": "7a3dac5af2fbe5584711a063009abd95cb1e000b7d138352ba97652f4bd0043a",
-    "electron/metadata-matching.ts": "0e36eea4d9feaa8887d0774865157236bd2fa3c855b1dbd6c1acde30d596fab9",
+    "electron/metadata-matching.ts": "eeea4d33513df04c45bc32eb72199157f67509feb41d34344c5aa952f58078a6",
     "tests/title-matching.test.ts": "5211bf6de199b9dfc35307e08593eeaee237b53bcdac3d8bc7e471be8c56c2ab",
     "tests/evidence-matching.test.ts": "d050f4fa6c7d12ab38dfe142ec14c5c2e1caf44eb8f29c598ed2f575b9140f16"
   },

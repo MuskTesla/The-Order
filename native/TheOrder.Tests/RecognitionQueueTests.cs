@@ -77,6 +77,34 @@ public sealed class RecognitionQueueTests
         var id = await queue.EnqueueAsync("a", RecognitionMode.Reidentify, false); await engine.Wait(id);
         await queue.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5)); Assert.Equal(0, engine.Active); Assert.True(queue.ObserverFailed);
     }
+    [Fact] public async Task IdleWaitsUntilFinalResultObserversHavePublished()
+    {
+        using var profile = new TransactionProfile(Document(Entry(folder: @"C:\synthetic\game")));
+        using var library = profile.Open(); var engine = new PausedEngine();
+        await using var queue = new RecognitionQueue(library, engine);
+        using var release = new ManualResetEventSlim();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool published = false;
+        queue.Changed += () =>
+        {
+            if (queue.Progress.NeedsReview == 0) return;
+            entered.TrySetResult();
+            if (!release.Wait(TimeSpan.FromSeconds(5))) throw new TimeoutException("Observer release was not signaled");
+            published = true;
+        };
+        var id = await queue.EnqueueAsync("a", RecognitionMode.Reidentify, false); await engine.Wait(id);
+        var idle = queue.WhenIdleAsync(); engine.Complete(id);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(idle.IsCompleted); // A flush after idle must not race final publication.
+            Assert.False(published);
+        }
+        finally { release.Set(); }
+        await idle.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(published); Assert.False(queue.ObserverFailed);
+        Assert.Equal(id, queue.RequireCurrentResult(id).Generation);
+    }
     [Fact] public async Task WishlistsAreExcludedFromLocalRecognition()
     {
         using var profile = new TransactionProfile(Document(Entry())); using var library = profile.Open(); var engine = new PausedEngine();

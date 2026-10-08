@@ -88,10 +88,10 @@ public sealed class RecognitionQueue : IAsyncDisposable
             {
                 if (jobs.TryGetValue(id, out var job) && job.State == RecognitionJobState.Queued)
                     jobs[id] = job with { State = e is OperationCanceledException ? RecognitionJobState.Cancelled : RecognitionJobState.Failed, Message = SafeMessage(e) };
-                CompletePendingLocked();
                 SettleLocked(id, gameId, lifetime);
             }
             Notify();
+            lock (gate) CompletePendingLocked();
             if (e is OperationCanceledException) return id;
             throw;
         }
@@ -212,7 +212,14 @@ public sealed class RecognitionQueue : IAsyncDisposable
                         jobs[work.Id] = job with { State = e is StaleLibraryRequestException ? RecognitionJobState.Stale : e is OperationCanceledException ? RecognitionJobState.Cancelled : RecognitionJobState.Failed, Result = null, Message = SafeMessage(e) };
                 }
             }
-            finally { lock (gate) { SettleLocked(work.Id, work.Input.Entry.Id, work.Cancellation); CompletePendingLocked(); } Notify(); }
+            finally
+            {
+                lock (gate) SettleLocked(work.Id, work.Input.Entry.Id, work.Cancellation);
+                // Idle is a publication boundary: synchronous result observers (including
+                // the review store) must see the final state before callers can flush it.
+                Notify();
+                lock (gate) CompletePendingLocked();
+            }
         }
     }
     private void CompletePendingLocked() { if (--pending == 0) idle.TrySetResult(); }
