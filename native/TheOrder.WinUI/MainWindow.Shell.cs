@@ -151,8 +151,31 @@ public sealed partial class MainWindow
             resources[accentKeys[i]] = palette[i]; changed = true;
         }
         accentEvents++; accentSource = source;
-        if (changed) RefreshTestThemeResources();
+        if (changed) UpdateAccentBrushes(palette);
     }
+    // Fluent accent brushes are shared instances (control styles alias them via StaticResource), so updating their
+    // colours in the Light and Dark dictionaries reaches every control. Shades follow the Fluent theme mapping.
+    private static readonly (string Key, int Light, int Dark)[] accentBrushes =
+    [
+        ("AccentFillColorDefaultBrush", 4, 2), ("AccentFillColorSecondaryBrush", 4, 2), ("AccentFillColorTertiaryBrush", 4, 2),
+        ("AccentTextFillColorPrimaryBrush", 5, 3), ("AccentTextFillColorSecondaryBrush", 6, 3), ("AccentTextFillColorTertiaryBrush", 4, 2),
+        ("AccentFillColorSelectedTextBackgroundBrush", 0, 0),
+        ("AccentBrush", 5, 3), ("AccentFillBrush", 4, 2), ("SelectionBrush", 4, 2)
+    ];
+    private void UpdateAccentBrushes(Color[] palette)
+    {
+        var updated = 0;
+        foreach (var dictionary in Microsoft.UI.Xaml.Application.Current.Resources.MergedDictionaries)
+            // WinUI keys its dark theme dictionary "Default"; app dictionaries use "Dark".
+            foreach (var theme in new[] { "Light", "Dark", "Default" })
+            {
+                if (!dictionary.ThemeDictionaries.TryGetValue(theme, out var value) || value is not ResourceDictionary themed) continue;
+                foreach (var (key, light, dark) in accentBrushes)
+                    if (themed.TryGetValue(key, out var brush) && brush is SolidColorBrush solid) { solid.Color = palette[theme == "Light" ? light : dark]; updated++; }
+            }
+        accentBrushUpdates = updated;
+    }
+    private int accentBrushUpdates;
     // Test-only: drives the same live-update path with a labelled simulated palette (no personalization change).
     private void SimulateSystemAccentEvent(string value)
     {
@@ -180,7 +203,7 @@ public sealed partial class MainWindow
             selectedId = ViewModel.SelectedId, queryText = ViewModel.Query.Text, sort = ViewModel.Query.Sort, layout = ViewModel.Layout,
             titleBar = AppTitleBar.ActualHeight, backEnabled = AppTitleBar.IsBackButtonEnabled, search = TitleSearch.Text.Length, searchFocus = TitleSearch.FocusState.ToString(),
             paneMode = Navigation.DisplayMode.ToString(), paneOpen = Navigation.IsPaneOpen, sessionIndicator = SessionSurface.Visibility == Visibility.Visible,
-            exitButtonPresent = false, accentEvents, accentSource, accentRgb = accent is { } a ? $"{a.R:X2}{a.G:X2}{a.B:X2}" : "framework",
+            exitButtonPresent = false, accentEvents, accentSource, accentBrushUpdates, accentRgb = accent is { } a ? $"{a.R:X2}{a.G:X2}{a.B:X2}" : "framework",
             launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle
         };
     }

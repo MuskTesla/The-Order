@@ -469,8 +469,10 @@ public sealed partial class LibraryPage : Page, IImageHost
         if ((gridHeader is null && ReferenceEquals(GameGrid.Header, continueHost)) || (listHeader is null && ReferenceEquals(GameList.Header, continueHost))) continueStage.ReleaseBeforeLeave();
         if (!ReferenceEquals(GameGrid.Header, gridHeader)) { if (gridHeader is null) GameGrid.Header = null; }
         if (!ReferenceEquals(GameList.Header, listHeader)) { if (listHeader is null) GameList.Header = null; }
-        if (gridHeader is not null && !ReferenceEquals(GameGrid.Header, gridHeader)) GameGrid.Header = gridHeader;
-        if (listHeader is not null && !ReferenceEquals(GameList.Header, listHeader)) GameList.Header = listHeader;
+        var moved = false;
+        if (gridHeader is not null && !ReferenceEquals(GameGrid.Header, gridHeader)) { GameGrid.Header = gridHeader; moved = true; }
+        if (listHeader is not null && !ReferenceEquals(GameList.Header, listHeader)) { GameList.Header = listHeader; moved = true; }
+        if (moved) DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, continueStage.Reattach);
         if (candidate is null) return;
         continueTitle.Text = candidate.Name;
         continueMeta.Text = $"上次游玩 {candidate.LastPlayedText} · 共 {LibraryFormat.PlayTime(candidate.PlaySeconds)}";

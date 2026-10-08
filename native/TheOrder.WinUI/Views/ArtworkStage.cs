@@ -70,7 +70,8 @@ public sealed class ArtworkStage : Grid
     {
         Children.Add(fallbackArt); Children.Add(fallbackScrim); Children.Add(panel);
         Loaded += (_, _) => { loaded = true; Attach(); Invalidate(immediate: true); };
-        Unloaded += (_, _) => { loaded = false; Detach(); Release(); request.Clear(); };
+        // Re-parenting (e.g. grid header → list header) can raise the old Unloaded after the new Loaded.
+        Unloaded += (_, _) => { if (IsLoaded) return; loaded = false; Detach(); Release(); request.Clear(); };
         SizeChanged += (_, _) => { ApplyClip(); if (optical is not null) DrawNow(); Invalidate(immediate: false); };
     }
     // Called by the window policy owner: effects allowed and window visible, plus the user's quality mode.
@@ -83,6 +84,8 @@ public sealed class ArtworkStage : Grid
     }
     // Before the page leaves the visual tree (proven early-release order for swapchains).
     public void ReleaseBeforeLeave() { Detach(); Release(); }
+    // After an explicit early release while staying in the tree (re-parenting), resume event-driven drawing.
+    public void Reattach() { if (!IsLoaded) return; loaded = true; Attach(); Invalidate(immediate: true); }
     private void Attach()
     {
         if (attached) return; attached = true;
