@@ -1,5 +1,17 @@
 # The Order：当前实现与评审交接
 
+## 当前：Phase 7.2 最终集成验收与候选冻结（2026-10-08）
+
+**PASS — DEVELOPMENT INTEGRATION ACCEPTANCE / TEST CANDIDATE FROZEN。** 应用源码 `14d8ede1b2240f30b153aee9f919bbd123385f48`，工作区和分支沿用下面本地集成记录。完整 native Release 回归 **1793/1793，0失败/0跳过**；修复后 Debug/Release publish 通过。首轮1792测试的两项失败保留：识别队列 idle 在最终结果发布前完成的实际竞态已用确定性红/绿测试修复；220项 Electron oracle 重新生成，仅更新旧源码哈希，全部用例与期望不变。
+
+最终557文件候选为 `.artifacts/local-development-integration/frozen-phase7-2-final/win-x64`；不要把下节 `aa7dd7f` 原候选当作这次冻结版本。普通隔离入口 `.artifacts/phase7-2-final-acceptance/launch-frozen.ps1` 启动前核验完整 SHA256 清单，默认 Standard、250 ms JSON 诊断关闭；显式 `-Diagnostics` 为独立诊断入口。命令见 DEVELOPMENT。
+
+新普通入口实际补验搜索/筛选、焦点上下文、多选、Details 返回、草稿在隐藏/恢复和取消退出后保留、保存读回及正常退出0；深浅主题和实际620DIP请求窄窗截图已保存。新诊断短验18.698秒静置材质绘制/图像任务零增量，开关/隐藏/离开后材质纹理为0、8创建/8销毁，安全降级/过期背景/异步离开 audit 通过。诊断库hash未变，普通库仅合成条目名称与custom标记发生预期改变。四个原工作区及历史候选hash重验一致。
+
+C1和Claude视觉方向未变；旧native optical 132 readbacks/160动态回归按相同光学DLL字节身份复用。历史Private代理FAIL、未知归因与用户批准的有限例外完整保留：**已批准有限资源例外，完成开发集成；不代表资源协议全部通过或正式发布获准。** 高级材质默认OFF、Test-only；未验证的真实系统accent/HC、其他DPI/文字缩放、关机注销、真实游戏及设置持久化仍列入后续边界。没有新资源长测、Production访问、正式替换、push或Phase8实施。
+
+最终证据：`.artifacts/phase7-2-final-acceptance/report.md`、协议、修复diff、完整TRX、557文件manifest、实际输入与释放记录；维护结果见[独立审查第12节](../design/claude-phase7/07_INDEPENDENT_REVIEW.md)。下面集成/视觉记录保留为历史。
+
 ## 当前：Claude UI 本地开发集成（2026-10-08）
 
 用户已批准有限资源例外，完成开发集成；不代表资源协议全部通过或正式发布获准。当前工作区 `D:/Projects/The-Order-worktrees/codex-claude-ui-integration`、分支 `codex/claude-ui-integration`；可运行源码 checkpoint `aa7dd7f`。没有移动主开发、GPT 视觉、Claude 或独立审查工作区的分支，也没有处理其未提交修改。

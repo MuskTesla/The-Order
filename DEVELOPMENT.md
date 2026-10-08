@@ -1,5 +1,22 @@
 # 开发与维护
 
+## Phase 7.2 已冻结 Test 候选（2026-10-08）
+
+本机最终验收应用源码 `14d8ede`，557文件Release候选 `.artifacts/local-development-integration/frozen-phase7-2-final/win-x64`。完整native 1793/1793、修复后Debug/Release及普通交互/诊断释放短验通过。历史资源协议FAIL和已获批有限开发集成例外原样保留；不允许默认高级材质或正式发布。
+
+```powershell
+# 当前推荐体验：启动前逐文件核验冻结哈希；每次全新合成 Test profile。
+# Standard默认，高级材质默认OFF，不运行250 ms JSON诊断文字更新。
+& 'D:/Projects/The-Order-worktrees/codex-claude-ui-integration/.artifacts/phase7-2-final-acceptance/launch-frozen.ps1' -Wait
+
+# 独立诊断入口：同一冻结二进制、另一新Test profile；不改历史测试配置。
+& 'D:/Projects/The-Order-worktrees/codex-claude-ui-integration/.artifacts/phase7-2-final-acceptance/launch-frozen.ps1' -Diagnostics -Wait
+```
+
+入口依赖已准备的本机manifest、profile-helper、384项representative payload及合成cover，不是可搬走的正式安装包。执行目录不影响上述绝对入口；不要直接运行EXE，以免丢失Test隔离参数。×隐藏，托盘菜单真正退出；不终止游戏。启动拒绝重复Run及候选hash变化。报告见本工作区 `.artifacts/phase7-2-final-acceptance/report.md`。
+
+回退定位：最终应用 `14d8ede`，验收前分支 `8c4ddab` / 应用 `aa7dd7f`，旧557文件副本 `frozen-phase7-2/win-x64` 与原candidate-release保留；不需要reset其他工作区。下节旧普通入口仍绑定验收前候选，保留作历史，不是当前冻结体验入口。
+
 ## 当前本地开发集成 · 隔离 Test 体验（2026-10-08）
 
 工作区 `D:/Projects/The-Order-worktrees/codex-claude-ui-integration`，分支 `codex/claude-ui-integration`，可运行源码 `aa7dd7f`。只在这个工作区操作；主开发、原视觉、Claude、审查工作区和冻结候选保留不变。用户已批准有限资源例外，完成开发集成；不代表资源协议全部通过或正式发布获准。

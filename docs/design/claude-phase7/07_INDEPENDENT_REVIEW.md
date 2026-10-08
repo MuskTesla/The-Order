@@ -302,3 +302,19 @@ Release：本工作区 `.artifacts/local-development-integration/candidate-relea
 历史资源FAIL与未知归因、其他机器/真正系统accent/HC/DPI和文字缩放/关机注销/真实游戏、设置持久化仍属后续及发布前边界；本轮未执行全1792-suite或新增资源长测，未宣称无限时长稳定。若未来新改动出现具体owner/交互/退出错误再定向检查，有限资源例外不能豁免这些错误。
 
 证据根：新工作区 `.artifacts/local-development-integration/report.md`、candidate-manifest.json、pdb-integrated.json、source-hashes.json、preservation.json、integration-commits.txt、diff-from-review.patch、integration-source.patch、build-debug.log、build-release.log、tests/targeted.trx、optical.log、runs/*/identity.json/exit.json。历史证据仍位于 `D:/Projects/The-Order-worktrees/codex-claude-ui-review/.artifacts/claude-ui-independent-review/`，以及原Claude/GPT视觉目录，不虚构为当前相对路径中的副本。
+
+## 12. Phase 7.2 最终集成验收与冻结（2026-10-08）
+
+**PASS — DEVELOPMENT INTEGRATION ACCEPTANCE / TEST CANDIDATE FROZEN。** 本结论是有限范围开发候选验收，不改变第4/9/10节资源协议FAIL，不授权高级默认启用、Production、正式发布或Phase8。用户批准的有限Private代理指标例外继续有效，其余正确性、释放、安全和数据要求没有豁免。
+
+开始时分支 `codex/claude-ui-integration`、HEAD `8c4ddab`、tracked clean。完整Release套件首轮1790/1792，两项失败分别是过期oracle源码身份与真实识别队列publication竞态。`WhenIdleAsync` 原先早于同步最终结果观察者完成，调用方可能flush空或旧review；修复提交 **14d8ede** 在worker及enqueue异常路径先发布再完成pending。新增阻塞观察者测试在旧代码RED、修复GREEN。现有Electron生成器实际重跑220例，全部cases/expected一致，只更新metadata-matching.ts源码hash；不改弱测试/跳过、不安装升级依赖。291项识别相关回归和最终完整 **1793/1793（0失败/0跳过）** 通过。修复后Debug/Release重新发布到新目录，没有覆盖历史候选。
+
+冻结应用源码 `14d8ede1b2240f30b153aee9f919bbd123385f48`；候选 `.artifacts/local-development-integration/frozen-phase7-2-final/win-x64`，557文件。WinUI.dll SHA256 `4B85197D3E03E875D8317A1E16468A7DCF9D644AB218CA136F571A24ADF34AA8`；OpticalMaterial.dll仍为 `62A86D2B58A34752BBDF89415F60F315F91F4FCAAE56C8279B459A3443A5D110`，132 exact GPU readbacks/160动态scene证据依身份复用。当前manifest SHA256 `73CEBA940EA3E0AE505E2E0A95B4A66C2B9228302FD256C2CFCFC82A4AC4B377`。后续文档提交不改变已验证二进制的应用sourceCommit。
+
+普通最终入口实际补验：搜索09987及文本Ctrl+A不进入全选、收藏筛选128/384、单击Details、选择模式/Ctrl+A/Esc、搜索和List返回恢复；草稿在实际×隐藏、恢复及托盘退出取消后保留，取消后能保存。退出提示与托盘菜单实际点击，正常退出0。系统托盘区域不能直接点击时，以核验本次PID+generation+HWND的Test自身通知回调打开菜单；不冒称物理图标右键。合成库只改变一个名称/custom标记，其余383条目与目标其余字段完全一致，不访问Production。
+
+最终诊断短验：请求620DIP窗口，实际客户宽607DIP、raster scale2、截图609×795（工具缩放像素，不当成物理像素）；Light/Dark，Library Continuous/Details Clear均实际Advanced。18.698秒同状态静置 draws4→4、frost2→2、bitmap52→52，imageOutstanding/ActiveDecodes/PendingOperations/PendingWaiters均0，导航/详情pending=false，stale=0。材质开关、隐藏/恢复与离开到Settings后stage source/frostBytes=0、pending retirement=false；native8创建/8销毁。stale/safety/HC注入/lateCompletion audit全通过，库hash前后相同，退出0。不是新资源趋势PASS，不推断GPU物理存活字节。订阅highContrast的既有0x80070490 warning仍由原fallback notification route处理，currentRequiredStateKnown=true、materialFault=false；不是本轮修好该平台订阅能力。
+
+普通入口关闭250ms诊断；高级默认OFF，模式仍会话有效。窄窗第一次鼠标drag没有实际resize，其命名带narrow的截图明确不作窄窗PASS证据；后续Test resize实际尺寸与probe闭合。复用既有最终Shift+click实机证据，不冒称本轮重做。实际OS HC/强调色切换、其他DPI/文字缩放、关机注销及真实游戏继续未验证；没有新录像，不把旧录像作为新发布二进制验证。
+
+直接入口见DEVELOPMENT：`.artifacts/phase7-2-final-acceptance/launch-frozen.ps1`，普通与`-Diagnostics`入口启动前核验557文件。回退点 `8c4ddab` / `aa7dd7f` 和旧候选副本保留。四原工作区分支/HEAD/status/dirty哈希完全一致，Claude371/审查557/旧集成557/最终557均0不匹配，7d74e24仍不是祖先。本任务两个Test均正常退出，无ETW，无剩余自建实例。完整证据在新工作区 `.artifacts/phase7-2-final-acceptance/`，首轮失败与红测试保留。
