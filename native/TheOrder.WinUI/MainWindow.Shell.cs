@@ -92,12 +92,9 @@ public sealed partial class MainWindow
         {
             if (ViewModel.Page != WorkspacePage.Library && !galleryVisible)
             {
-                // Search returns to a new result set, not the old Details anchor.
-                // Its delayed restoration would steal focus from this textbox.
-                libraryPage.CancelReturnRestorationForSearch();
                 // All edits share the navigation (including its unsaved prompt).
                 // ShowPage must not replace a live edit with the previous query.
-                var navigation = titleSearchNavigation ??= Navigate(WorkspacePage.Library);
+                var navigation = titleSearchNavigation ??= NavigateForTitleSearchAsync();
                 await navigation;
                 if (ReferenceEquals(titleSearchNavigation, navigation)) titleSearchNavigation = null;
             }
@@ -107,6 +104,14 @@ public sealed partial class MainWindow
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
         finally { if (--titleSearchEditsPending == 0) SynchronizeTitleSearch(); }
+    }
+    private async Task NavigateForTitleSearchAsync()
+    {
+        // Search returns to a new result set, not the old Details anchor.
+        // If the unsaved prompt cancels navigation, retain the original Back intent.
+        var restorePending = libraryPage.CancelReturnRestorationForSearch();
+        try { await Navigate(WorkspacePage.Library); }
+        finally { if (ViewModel.Page != WorkspacePage.Library) libraryPage.RestoreCancelledReturnIntent(restorePending); }
     }
     private void OnTitleSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     { if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library && !galleryVisible) libraryPage.FocusResults(); }

@@ -286,11 +286,14 @@ public sealed partial class LibraryPage : Page, IImageHost
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
     }
-    internal void CancelReturnRestorationForSearch()
+    internal bool CancelReturnRestorationForSearch()
     {
+        var pending = restorePending;
         restorePending = false;
         returnRestorationVersion++;
+        return pending;
     }
+    internal void RestoreCancelledReturnIntent(bool pending) => restorePending |= pending;
     private async Task RestoreReturnAsync()
     {
         restorePending = false;
