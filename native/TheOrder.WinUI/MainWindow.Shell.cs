@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Windowing;
 using TheOrder.Application;
 using TheOrder.Presentation;
 using Windows.System;
@@ -46,6 +47,8 @@ public sealed partial class MainWindow
         // Mouse back button (XButton1) goes back like Alt+Left.
         Root.PointerPressed += (_, args) => { if (!commandsBlocked && args.GetCurrentPoint(Root).Properties.IsXButton1Pressed) { args.Handled = true; _ = GoBackAsync(); } };
         ViewModel.PropertyChanged += OnShellState;
+        Root.ActualThemeChanged += OnCaptionThemeChanged;
+        RefreshCaptionTheme();
         try { colorSettings = new UISettings(); colorSettings.ColorValuesChanged += OnSystemColorsChanged; }
         catch (Exception) { colorSettings = null; accentSource = "UISettings unavailable; startup theme resources"; }
     }
@@ -53,7 +56,21 @@ public sealed partial class MainWindow
     private void DisposeShellInput()
     {
         ViewModel.PropertyChanged -= OnShellState;
+        Root.ActualThemeChanged -= OnCaptionThemeChanged;
         if (colorSettings is not null) { colorSettings.ColorValuesChanged -= OnSystemColorsChanged; colorSettings = null; }
+    }
+
+    private void OnCaptionThemeChanged(FrameworkElement sender, object args) => RefreshCaptionTheme();
+    private void RefreshCaptionTheme()
+    {
+        if (visualStopped) return;
+        // The OS owns caption glyphs. Legacy can retain a light caption after
+        // leaving a contrast theme, even while XAML has returned to Dark.
+        // Let contrast themes use the system palette, then explicitly restore
+        // the live XAML theme instead of a stale OS/RequestedTheme default.
+        AppWindow.TitleBar.PreferredTheme = materialPolicy?.HighContrast == true
+            ? TitleBarTheme.Legacy
+            : Root.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
     }
 
     private void OnShellState(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -236,7 +253,7 @@ public sealed partial class MainWindow
         return new
         {
             selectedId = ViewModel.SelectedId, queryText = ViewModel.Query.Text, sort = ViewModel.Query.Sort, layout = ViewModel.Layout,
-            titleBar = AppTitleBar.ActualHeight, backEnabled = AppTitleBar.IsBackButtonEnabled, search = TitleSearch.Text.Length, searchFocus = TitleSearch.FocusState.ToString(),
+            titleBar = AppTitleBar.ActualHeight, captionTheme = AppWindow.TitleBar.PreferredTheme.ToString(), backEnabled = AppTitleBar.IsBackButtonEnabled, search = TitleSearch.Text.Length, searchFocus = TitleSearch.FocusState.ToString(),
             paneMode = Navigation.DisplayMode.ToString(), paneOpen = Navigation.IsPaneOpen, sessionIndicator = SessionSurface.Visibility == Visibility.Visible,
             exitButtonPresent = false, accentEvents, accentSource, accentBrushUpdates, accentRgb = accent is { } a ? $"{a.R:X2}{a.G:X2}{a.B:X2}" : "framework",
             launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle

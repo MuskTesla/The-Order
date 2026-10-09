@@ -83,6 +83,7 @@ public sealed partial class MainWindow
         var effectiveMode = EffectiveMaterialMode;
         materialPolicy.AppOpaque = effectiveMode == Views.MaterialMode.Opaque;
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
+        RefreshCaptionTheme();
         var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
         // Mica is the window backdrop; system/app transparency rules replace it with the solid canvas.
         ApplyBackdrop(materialPolicy.EffectsAllowed);
