@@ -32,6 +32,7 @@ public sealed partial class MainWindow
     private long titleSearchEditVersion;
     private Task? titleSearchNavigation;
     private bool titleSearchReturnFocusPending;
+    private string? titleSearchFocusObservation;
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -112,10 +113,15 @@ public sealed partial class MainWindow
             {
                 if (version != titleSearchEditVersion) return;
                 titleSearchReturnFocusPending = false;
+                if (visualFixtureTimer is not null)
+                    titleSearchFocusObservation = $"v{version}; root={FocusManager.GetFocusedElement(Root.XamlRoot)?.GetType().Name}; titlebar={ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar)}; searchRoot={ReferenceEquals(TitleSearch.XamlRoot, Root.XamlRoot)}";
                 if (!commandsBlocked && !visualStopped &&
                     ViewModel.Page == WorkspacePage.Library && Root.XamlRoot is not null &&
                     ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
-                    sender.Focus(FocusState.Keyboard);
+                {
+                    var restored = sender.Focus(FocusState.Keyboard);
+                    if (visualFixtureTimer is not null) titleSearchFocusObservation += $"; restored={restored}";
+                }
             });
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
