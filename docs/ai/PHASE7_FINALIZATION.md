@@ -1,6 +1,28 @@
 # Phase 7 Finalization / Release Candidate Preparation
 
-## 当前 Full Closure：工程与资源通过，RC GATE BLOCKED（2026-10-08）
+## 当前 App 桌面验收：对比度已修复，RC GATE BLOCKED（2026-10-08）
+
+接管HEAD5d89dfc，应用 **2b5e67a55d8eda905b8200652d189d7754dff112**，`codex-phase7-finalization` / `codex/phase7-finalization`。新635文件工程包/tag `codex/phase7-app-desktop-final-20261008`；435/f628/91和全部历史FAIL保留，不改主/视觉/Claude工作区。文档HEAD和程序source分开。
+
+| 项目 | 实际结果与证据范围 |
+|---|---|
+| App工具 |真实sky窗口/截图/input可用，原CLI os error3不再阻断。首次2b观察工具报physical Escape，用户否认，原因未知，原INTERRUPTED保留；授权reset重试后通过，不算应用缺陷。无托盘/音频/录像接口 |
+| 对比度 |2f2859c修复HC OFF后Dark caption黑色；PreferredTheme跟随Root实际主题，HC用Legacy系统palette。真实HC ON→OFF/Light/Dark glyph正确，最终源码相同，无硬编码色/新timer |
+| 文字与搜索 |dcdb3c2卡片固定行改Auto/原MinHeight，真实1.44文字及窄窗长CJK通过；f90b82c/d1097f7/4355ab5版本化搜索导航及取消旧焦点恢复，未保存提示取消保留Back。最终435真实连续query/CtrlA/Enter/Space/Back、多选及菜单/对话框焦点通过，2b逻辑未变 |
+| 可访问名称 |2b5e67a补继续游戏、识别所选、批量编辑三个复合按钮；最终真实点击选择/完成、live peers名称/角色/启用后键盘focusable通过；未启动游戏或执行业务操作 |
+| 实际系统矩阵 |真实accent红→原蓝、Light/Dark、HC、透明/动画、100/150/200%DPI、有效1.44字号与约700DIP长CJK；按未再变源码复用对应实机证据。0x80070490订阅warning保留，实际通知/备用刷新工作 |
+| Narrator |435普通Standard/无probe：用户搜索、Details/菜单、未保存提示/焦点及选中状态朗读“均成功”，停止/exit0/hash不变。没有录音，不外推全部控件；2b新三项名称另由实际provider补验 |
+| 托盘/退出 |435用户真实×隐藏→托盘打开→退出确认，exit0/hash不变；第二实例转发是独立证据。2b中断/补验正常Test内部退出清理，不冒充真实托盘操作，均exit0/hash不变 |
+| C1与资源 |435 Library Continuous/Details Clear背景身份相符，完成后13.949秒零绘制，隐藏/离开/Standard后renderer Library2/2、Details1/1，纹理/retirement/pending0。2b仅Name，不变owner/optical复用；f628原64MiB两轮四组PASS不重跑，不重启Shared/XAML池调查 |
+| 回归 |435 Debug/Release/full native1813/1813，0fail/skip；2b Debug/Release和28/28相关及实机provider另验，完整核心按风险复用，不冒称2b重复全suite。光学132静态/160动态，最终DLL与f628相同 |
+| 宿主恢复 |accent/history、text100/透明1/Dark/原类型存在性、200%DPI、HC OFF/31色/animations及Narrator OFF恢复。**CLI原默认HC方案名空串仍为高对比黑色，精确恢复未闭合**；不猜测未采registry，不报NON-ENVIRONMENT全PASS |
+| 独立环境 |最终2b输入/脚本/只读.wsb准备和语法核验，未执行。无SDK干净Windows、独立普通账户及真实结束会话仍必需；未启用组件/建账户/重启 |
+
+净应用四文件63新增/9删除；业务/schema、cache/C1/owner未改。程序ZIP `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`，635/635目录和ZIP一致。冻结时仅三份维护文档pending，release-identity的sourceDirty=true保留，应用源码clean另核验，不混称整个树clean。
+
+**RC GATE BLOCKED**：宿主默认方案名精确恢复，以及真正独立Windows必需项。Narrator、真实桌面工具原阻断已解除；已确认对比度缺陷已修复。最新本机 `.artifacts/phase7-app-acceptance-20261008/report.md`、completion/checkpoint/原始索引；启动见DEVELOPMENT。未访问Production、启动真实游戏、替换正式程序、push或Phase8。
+
+## 历史 Full Closure：工程与资源通过，RC GATE BLOCKED（2026-10-08）
 
 接管 `codex/phase7-finalization`／完整HEAD a6ee5635e9fe5ed33d249b8568fdc9a4688a75d9，tracked clean；当前应用本地提交 **f62860cd7b42dd92ca55887655e1e7a605127374**。用户撤销全部工作预算，允许范围内修复和可恢复系统设置验证；旧30/45分钟／轮数限制不适用，单步超时、保护、冻结负载／门槛不变。旧91b98d6工程包、源码archive、报告和全部FAIL／无效记录保持不变。以下历史章节属于此前回合，其宿主设置禁止与停止安排已由本轮用户授权替代，不能误当当前结果。
 

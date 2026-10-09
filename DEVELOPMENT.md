@@ -1,6 +1,25 @@
 # 开发与维护
 
-## Phase 7 Finalization：独立便携工程候选（RC GATE BLOCKED）
+## 当前 Phase 7 App 桌面验收候选（RC GATE BLOCKED）
+
+应用源码 **2b5e67a55d8eda905b8200652d189d7754dff112**，工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`，tag `codex/phase7-app-desktop-final-20261008`。新包 `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64`，程序ZIP SHA256 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`；635/635目录/ZIP一致。完整解压，可双击Start-Test.cmd；旧435/f628/91保留作回退，不覆盖冻结候选。
+
+```powershell
+# 可移植空Test，默认Standard，无250ms诊断，不依赖SDK/helper/seed。
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64/launch-test.ps1' -Wait
+# 本机384项合成体验：依赖现有helper/seed/covers，每次独立Test。
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-app-acceptance-20261008/try-candidate.ps1'
+# 显式受控Test允许手动选择C1，启动仍Standard。
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-app-acceptance-20261008/try-candidate.ps1' -ControlledAdvanced
+```
+
+普通入口无probe/250ms文字timer；独立`-EnableReadOnlyProbes`只按需getter，不冒充物理输入；包内`launch-test.ps1 -Diagnostics`是完整诊断。数据/权限/运行时安全规则沿用下节，不直接运行EXE绕过Test隔离。×隐藏、托盘正常退出仍处理草稿/写入/Session。
+
+本轮修复caption对比度、卡片放大文字截断、跨页面搜索query/焦点竞态、复合按钮可访问名称。435完整native1813/1813，2b只新增三项Name、Debug/Release与28/28相关回归及实机provider通过，复用未变的核心/C1/资源证据，不重跑长测。真实OS策略/DPI/文字/键盘、人工Narrator指定流程和托盘通过，版本范围见report。第一次工具中止未归因于用户，reset后补验成功，原记录保留。
+
+宿主已恢复App接管快照，最初CLI默认HC方案名空串仍未精确恢复；干净Windows/独立普通账户/实际结束会话另待。**RC仍BLOCKED，不允许Production使用或发布**。报告/候选/索引/检查点在 `.artifacts/phase7-app-acceptance-20261008/`，矩阵 [PHASE7_FINALIZATION](docs/ai/PHASE7_FINALIZATION.md)。程序回退与资料恢复分开，不静默覆盖较新资料，不reset其他工作区。
+
+## 历史 Phase 7 Full Closure：独立便携工程候选（RC GATE BLOCKED）
 
 工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；当前应用源码 **f62860cd7b42dd92ca55887655e1e7a605127374**，新工程tag `codex/phase7-closure-engineering-frozen-20261008`。新包在 `.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64`，ZIP与同提交源码归档在其上一级；旧91b98d6候选／tag保留不变。先核对 `files.json` / `archive-identity.json`；解压必须保留整个目录。包内.NET10.0.12、WindowsAppSDK2.5.1、x64 VC14.50.35710、PRI/XBF、索引和许可已齐备；不依赖SDK、源码、helper、合成seed或covers。本机空profile medium权限的无seed/helper启动、app-local modules与635/635文件核验通过，未代替无SDK干净Windows。
 

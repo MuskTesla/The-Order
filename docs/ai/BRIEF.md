@@ -1,6 +1,18 @@
 # The Order：当前实现与评审交接
 
-## 当前：Phase 7 Full Closure，资源与工程通过，RC Gate 仍阻断（2026-10-08）
+## 当前：App 桌面验收、对比度修复与新工程候选（2026-10-08）
+
+工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；接管HEAD5d89dfc，新应用 **2b5e67a55d8eda905b8200652d189d7754dff112**，tag `codex/phase7-app-desktop-final-20261008`。635文件候选 `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64`，ZIP/源码/manifest独立绑定；435、f628、91及历史FAIL保留。文档HEAD和应用源码分开。
+
+App真实桌面工具可用；已修复HC OFF后Dark caption变黑、放大文字卡片截断、Details搜索丢query/旧返回焦点抢输入；取消未保存提示保留Back意图。最后补齐继续游戏/识别所选/批量编辑复合按钮名称，2b实机及live provider核验。C1、cache/display surface/ownership和业务/schema未变，光学DLL与f628相同。435 Debug/Release与完整native1813/1813通过，2b仅三项Name属性，Debug/Release和28/28相关回归另验，完整核心回归按风险复用，不冒称重新执行。
+
+真实Windows accent、Light/Dark、HC、透明/动画、100/150/200%DPI、有效1.44文字与窄窗、搜索/选择/菜单/未保存对话框/返回键盘均有对应源码证据。435 Narrator指定朗读/焦点/选中状态获用户“均成功”，真实托盘打开/退出获确认；exit0/hash不变。2b名称新路径实机补验，正常Test清理exit0/hash不变；第一次工具“physical Escape”中止原因未知，用户否认，reset后重试通过，原INTERRUPTED保留。
+
+最终435 C1完成边界后13.949秒零绘制、隐藏/离开/Standard后owner/pending归零；2b只改名称，复用不变路径。继承f628两轮四组原64MiB资源PASS，不重开内存调查。宿主accent/history、text100、透明1、Dark、200%DPI、HC OFF/31色/动画与Narrator OFF恢复；**最初CLI默认HC方案名空字符串仍为高对比黑色，未精确恢复**。原registry存在性未采，不猜测删除；不能报完整宿主恢复或NON-ENVIRONMENT全PASS。干净无SDK Windows、独立普通账户、真实结束会话仍需独立环境。
+
+**RC GATE BLOCKED**，不是Phase7完成或发布批准。最新矩阵 [Phase7 Finalization](PHASE7_FINALIZATION.md)，本机证据 `.artifacts/phase7-app-acceptance-20261008/report.md`、completion/checkpoint；体验命令见 [DEVELOPMENT](../../DEVELOPMENT.md)。未访问Production/真实游戏、替换正式程序、push或Phase8。
+
+## 历史：Phase 7 Full Closure，资源与工程通过，RC Gate 仍阻断（2026-10-08）
 
 独立工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`。接管HEAD `a6ee5635e9fe5ed33d249b8568fdc9a4688a75d9`、tracked clean；新应用源码 **f62860cd7b42dd92ca55887655e1e7a605127374**。新635文件self-contained x64包 `.artifacts/phase7-closure-20261008/frozen-rc/f62860c/win-x64`，程序ZIP／源码archive／manifest逐hash绑定；旧91b98d6包635/635复核未变。**RC GATE BLOCKED**，不是Phase7完成或发布批准。
 
