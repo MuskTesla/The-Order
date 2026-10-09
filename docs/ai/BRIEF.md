@@ -1,6 +1,14 @@
 # The Order：当前实现与评审交接
 
-## 当前：Phase 7 完成，Release Candidate 可进入 Phase 8（2026-10-09）
+## 当前：Phase 8.1 原生资料保护与日用候选准备（2026-10-09）
+
+**PHASE 8.1 PASS — READY FOR USER-APPROVED DAILY-USE SWITCH。** 仅完成准备，等待用户批准实际切换；没有新程序打开／写入原始 Production，没有替换正式程序或快捷方式。工作区沿用 `codex-phase7-finalization`，本轮分支 `codex/phase8-native-profile-protection`，起点文档 `1381806`；应用仍冻结 `2b5e67a55d8eda905b8200652d189d7754dff112`，没有应用源码修改或重建。
+
+普通宿主 PowerShell 在真实物理源、独占既有 writer lease 下完成12文件一致性备份及最终哈希不变核验；备份只读并限制写入，私人 payload 不进入 Git／候选包。以受检 NativeProfileStore API建立新的 Test身份副本，保留完整库／UI／recognition，测试凭据和启动授权保持空值。实际新GUI完成搜索、筛选、Grid/List、详情中日文标记保存和重开；旧 Phase6程序 `7a3a739` 实际读取新保存副本并正常退出。另一 Test恢复目录完整库语义及设置与原快照一致，新旧reader均通过；没有 schema迁移需求，次数、时长及Session不变。
+
+报告与失败尝试保留在 `.artifacts/phase8-1-20261009/report.md`。独立候选 `D:/Projects/The-Order-candidates/phase8-1-20261009/2b5e67a/win-x64` 核验635/635；同级 `try-private-copy.ps1` 是普通 Test体验，Standard、无250ms诊断、无Advanced资格。`start-daily-candidate.ps1` 是待批准的真实切换／程序回退入口，不得在本轮执行 Production分支。回退旧程序与恢复旧资料快照分开，后者必须保留较新快照并另获明确丢弃授权。真实游戏启动、计时、Production编辑、托盘和异常恢复的日用观察尚未执行；不代表Phase8全部完成或正式发布。
+
+## 历史：Phase 7 完成，Release Candidate 可进入 Phase 8（2026-10-09）
 
 **PHASE 7 COMPLETE — RELEASE CANDIDATE READY FOR PHASE 8。** 这是 RC 阶段完成／进入下一阶段的结论，**不是正式发布、Production 使用或替换正式程序的授权**。本轮只做已有证据复核、离线交付核验和文档归档，应用修改／构建／负载／ETW／宿主设置写入均为 0。
 

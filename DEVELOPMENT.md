@@ -1,6 +1,22 @@
 # 开发与维护
 
-## 当前 Phase 7 最终 RC 与体验入口（2026-10-09）
+## 当前 Phase 8.1：已准备，实际日用切换待用户批准（2026-10-09）
+
+**PHASE 8.1 PASS — READY FOR USER-APPROVED DAILY-USE SWITCH。** 分支 `codex/phase8-native-profile-protection`；复用Phase7冻结应用 `2b5e67a`，不重建。真实原生profile/store/library/UI版本均为1，不执行Electron迁移。12文件完整备份与逐字节恢复、受控Test身份副本、新旧reader兼容、真实副本GUI保存／重开、旧程序回退和资料恢复已完成；原始Production在宿主普通PowerShell最终核验12个hash不变。private payload／加密凭据字节只留在源码及程序包外的受保护私有根，不提交。详细身份、局限、失败尝试和恢复步骤见 `.artifacts/phase8-1-20261009/report.md`。
+
+普通隔离体验：
+
+```powershell
+& 'D:/Projects/The-Order-candidates/phase8-1-20261009/try-private-copy.ps1' -Wait
+```
+
+候选完整目录为同根 `2b5e67a/win-x64`，635/635文件核验。入口绑定已恢复的真实资料Test副本，Standard、250ms诊断关闭、Advanced资格关闭。不要直接双击EXE，避免其Production build默认选择。
+
+真实切换另待用户确认；批准后才在普通WindowsPowerShell运行同根 `start-daily-candidate.ps1 -UserApprovedSwitch`，程序回退另加 `-RollbackProgram`。该入口不是改名的Start-Test：显式Production授权、固定真实根、物理路径／身份／版本检查、全部程序hash核验、清除继承Test覆盖；虚拟化视图直接拒绝、不回落。旧程序位于同根 `rollback-phase6-7a3a739/win-x64`（553个文件）。程序回退不恢复资料；恢复旧快照会丢失快照后的修改，需先保留新快照并另获明确丢弃授权，不能自动覆盖。当前阶段禁止执行这两个Production入口，原程序／正式快捷方式不变。
+
+本轮只生成和核验操作helper，没有修改native应用；继承Phase7按实际版本与范围的既有回归／资源／桌面／独立Windows证据，不重跑长测。真实游戏计时、Production保存、托盘与异常恢复留待用户批准后的日用观察。
+
+## 历史 Phase 7 最终 RC 与体验入口（2026-10-09）
 
 **PHASE 7 COMPLETE — RELEASE CANDIDATE READY FOR PHASE 8。** 不等于正式发布或 Production 授权。本轮仅归档已有验收与用户明确接受项，没有修改应用、重建、测试负载、系统设置或冻结包。
 
