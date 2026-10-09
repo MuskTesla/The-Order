@@ -1,5 +1,40 @@
 # 开发与维护
 
+## Recognition v2 候选（Claude 隔离分支，待集成评审）
+
+**集成顺序**
+1. 先由 GPT／Codex 按自身流程提交 `codex-phase7-finalization` 中的 34 个未提交文件（即 `5b574f0` 的内容）。
+2. 再 cherry-pick Claude 的识别提交（`5b574f0` 之后的提交）。冲突只可能出现在：
+   - `RecognitionReviewService.cs`
+   - `AutomaticRecognitionPolicy.cs`
+   - `AutomaticRecognitionTests.cs`
+   - `Composition.cs`
+3. 回退：在 `Composition.cs` 将 `ReleaseAwareRanking` 改回 `ReviewSafeRanking`，并还原 `AutomaticRecognitionPolicy`、`RecognitionReviewService` 的唯一性复核。旧核对记录在版本变化时本就要求重新识别；`Homonyms` 字段缺省为空，双向兼容。
+
+**代码位置**（均在 `native/`）
+- `Infrastructure/Recognition/ReleaseAwareRanking.cs`：版本解析、发行标题／长别名提升、唯一性、具体性平局判定。
+- `LocalTitleCleaner.cs`：发行格式噪声清洗。
+- `RecognitionIdentityBuilder.cs`：清洗、每来源单一索引编号、同名记录、查询规划。
+- `ExecutableEvidenceParser.cs`、`Platform.Windows/WindowsRecognitionEvidence.cs`：PE 健壮性。
+- `Application/AutomaticRecognitionPolicy.cs`、`RecognitionReviewService.cs`：唯一首位与上下文复核。
+- 测试：`Tests/RecognitionV2Tests.cs`。
+
+**限额与数据**
+- 查询 6、候选 128、富化 2、展示 5 均未改变。
+- 自适应富化实验无收益，已撤回。
+- 默认仍使用 PotatoDBMapper 索引。
+- `scripts/build-title-index-vndb.py` 可由 VNDB 转储（ODbL／DbCL）生成同格式索引：
+  - 实测 3.6 MB，保留内存 105 MB（现索引 52 MB），加载约 2.7 s。
+  - 仅在 dev 上 +1 正确／−1 误应用。
+  - 是否随包发布需评估许可（衍生数据库须 ODbL 及署名）与内存，本分支未接入。
+
+**研究工具** `TheOrder.RecognitionLab`（未加入解决方案、不发布）：
+- `inventory`：用生产扫描器与证据读取器只读采集，输出到指定私有路径。
+- `replay`：用回放目录、记录的证据与指定引擎重放。
+- `indexstats`、`rankbench`：测量索引加载成本与排序 CPU。
+
+私有数据、目录转储和回放结果仅存于 `.artifacts/rnd/`，不入 Git。回放不是实时服务测试。实时 NextMoe 验证需用户提供 key，并在隔离 Test 进程中有限次执行。
+
 ## Phase 8.2：识别与封面历史规则补齐版已切换日用（2026-10-09）
 
 原生识别核心已与实际Electron源码差分验证，本轮补齐默认EXE标题只读线索；可在识别页关闭，不执行游戏。封面采用用户确认的最终规则：资料源默认＋个人选择，本地个人封面优先；Details ⋯ 可选择作品封面或恢复资料源默认。同作品刷新保留选择，保存复核远程ID／URL／分级、凭据代次及资料token。没有更改schema、writer或Session契约。最新 >0.9 自动规则及书架Session自动同步继承不变。既有待核对条目需明确重新识别，不启动全库重扫。
