@@ -1,6 +1,22 @@
 # 开发与维护
 
-## 当前 Phase 7 App 桌面验收候选（RC GATE BLOCKED）
+## 当前 Phase 7 独立 Windows 验收（2026-10-09，RC GATE BLOCKED）
+
+应用、冻结包和Standard默认均保持下节 **2b5e67a** 身份，没有新构建。Hyper-V来宾 `TheOrder-RC-Win11` / `DESKTOP-7GKL4M7` 的独立标准账户 `TheOrderTest` 已实际完成无SDK部署、首次空库／保存重开／单实例、旧91→新2b升级、程序移除重装、同根合成快照回退及真实注销重登录后读回。包内.NET／WinUI／WindowsAppRuntime模块路径核验，635/635一致，未安装开发工具或应用helper。原干净检查点保留；任务已清理，VM仍运行。
+
+以下仅在该来宾标准账户执行，准确路径是平铺解压后的目录（旧91 ZIP另含win-x64）：
+
+```powershell
+& 'C:/Users/TheOrderTest/AppData/Local/TheOrder-RC-Acceptance/run-20261009-070202/programs/current/launch-test.ps1' -DataDirectory 'C:/Users/TheOrderTest/AppData/Local/TheOrder-RC-Acceptance/run-20261009-070202/profiles/upgrade' -Wait
+```
+
+仍为隔离合成Test、Standard、Advanced资格／诊断关闭；不直接双击EXE，不访问Production。未确认的新资料变更不能静默覆盖；闭合合成回退保留 `snapshots/old-ui-saved` 与 `snapshots/before-explicit-discard`，是操作演练，不是Phase8产品能力。日志／协议／进程和运行时身份／原始截图及hash索引在 `.artifacts/phase7-isolated-windows-20261009/run-20261009-070202/`。
+
+用户将非常规Windows取消注销排除为问题／阻塞；其真实观测仍保留：app在取消前结束，重开恢复，不外推同一进程恢复。正常注销后的新Session2、资料hash一致及托盘exit0已实测。无资源长测、ETW、源码变动或系统安全配置变更；复用既有完整回归，不为换执行器重跑。
+
+**ISOLATED WINDOWS VALIDATION: PASS（规定范围）。RC唯一剩余阻塞：宿主HC默认scheme原空串仍为“高对比黑色”**；只读重验开关／31色／动画一致，不盲改设置。不得报告Phase7全部完成、自动进入Phase8、替换正式程序或发布。下节08日记录及全部历史FAIL、候选不改写。
+
+## 历史 Phase 7 App 桌面验收候选（RC GATE BLOCKED）
 
 应用源码 **2b5e67a55d8eda905b8200652d189d7754dff112**，工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`，tag `codex/phase7-app-desktop-final-20261008`。新包 `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64`，程序ZIP SHA256 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`；635/635目录/ZIP一致。完整解压，可双击Start-Test.cmd；旧435/f628/91保留作回退，不覆盖冻结候选。
 

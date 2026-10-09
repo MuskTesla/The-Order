@@ -1,6 +1,16 @@
 # The Order：当前实现与评审交接
 
-## 当前：App 桌面验收、对比度修复与新工程候选（2026-10-08）
+## 当前：独立 Windows 验收完成，RC 仅余宿主方案名恢复（2026-10-09）
+
+工作区仍为 `D:/Projects/The-Order-worktrees/codex-phase7-finalization` / `codex/phase7-finalization`；接管文档HEAD `c3dc7dcb64f1fa9d249b371645e3cb1d22233f43`，应用仍是 **2b5e67a55d8eda905b8200652d189d7754dff112**，未修改应用／构建／冻结包。最终新旧包635/635核验一致，程序ZIP仍 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`。
+
+实际 Hyper-V `TheOrder-RC-Win11` / `e3282eb2-ab6c-4461-a72f-4f77effda189`、E盘路径及原干净检查点已核验；来宾 `DESKTOP-7GKL4M7`，CIM Windows11企业评估版26300。独立 `TheOrderTest` 不在Administrators，实际Session1/2运行，SDK0、dotnet/MSBuild不在PATH、未安装开发工具；.NET／WinUI／WindowsAppRuntime实际从包加载，Standard无Optical DLL、无250ms诊断。空库首次启动、实际保存／重开List、隐藏后的第二实例转发、真实托盘退出、旧91 UI→新2b保留合成编辑、只移除程序后重装、同根14文件快照回退均通过。快照是闭合合成Test操作演练，不是Phase8产品恢复功能。
+
+真实来宾注销至锁屏→用户重新登录标准账户→新Session2重开，ProfileId/StoreId和库hash不变，最后托盘正常exit0。Windows取消注销时app已结束，只验证重开恢复，没有伪称同一实例恢复；**用户明确认为该非常规操作不作为问题或RC阻塞**，不再追加验证。没有活跃游戏／Session、真实关机／重启或实体GPU性能的新证据。
+
+**ISOLATED WINDOWS VALIDATION: PASS（规定VM／账户／合成资料／负载范围）。RC GATE: BLOCKED，仅余宿主默认HC方案名精确恢复。** 本轮只读重验flags126/OFF、31色、动画均匹配原快照，但scheme原空字符串仍为“高对比黑色”；未盲改宿主。无新应用缺陷、资源负载或ETW，复用既有1813/1813、2b构建＋28/28及原资源通过证据。本任务app／任务／记事本已清理，VM和检查点保留。新报告与索引 `.artifacts/phase7-isolated-windows-20261009/run-20261009-070202/`；矩阵见 [PHASE7_FINALIZATION](PHASE7_FINALIZATION.md)，准确来宾入口见 [DEVELOPMENT](../../DEVELOPMENT.md)。不进入Phase8、Production或发布。
+
+## 历史：App 桌面验收、对比度修复与新工程候选（2026-10-08）
 
 工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`；接管HEAD5d89dfc，新应用 **2b5e67a55d8eda905b8200652d189d7754dff112**，tag `codex/phase7-app-desktop-final-20261008`。635文件候选 `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64`，ZIP/源码/manifest独立绑定；435、f628、91及历史FAIL保留。文档HEAD和应用源码分开。
 

@@ -1,6 +1,26 @@
 # Phase 7 Finalization / Release Candidate Preparation
 
-## 当前 App 桌面验收：对比度已修复，RC GATE BLOCKED（2026-10-08）
+## 当前独立 Windows 验收：PASS（规定范围），RC 仅余宿主恢复（2026-10-09）
+
+起点工作区 `codex-phase7-finalization` / `codex/phase7-finalization`，文档HEAD `c3dc7dcb64f1fa9d249b371645e3cb1d22233f43`、tracked clean。应用仍 **2b5e67a55d8eda905b8200652d189d7754dff112**，源码／候选没有修改，无构建或资源长测。新旧包635/635及冻结hash重验一致。
+
+| 项目 | 本轮实际证据及范围 |
+|---|---|
+| 宿主与VM权限 |实际whoami medium、Hyper-V Administrators启用／Get-VM成功；VM ID e3282eb2-ab6c-4461-a72f-4f77effda189、E盘路径／原Clean-Windows-Before-TheOrder检查点核验。未动检查点，未用VMAdmin运行app |
+| 独立普通账户 |TheOrderTest SID末1002不在Admins，标准token；首次Session1、重新登录Session2。PowerShell Direct只传包／核验，自己的Interactive/Limited任务启动实际桌面，无保存密码、提权任务或安全配置变更 |
+| 无SDK部署 |CIM来宾Win11企业评估版26300，SDK目录0、dotnet/MSBuild不在PATH、VS目录0；未安装开发环境／源码／app helper。.NET/WinUI/WindowsAppRuntime实际来自候选包，其他预装旧runtime不冒称不存在。普通Standard无OpticalDLL、无250ms诊断 |
+| 首次／设置／单实例 |实际空库、Settings改List／托盘exit0／重开List，secondary2020转发exit0唤回隐藏10276，无第二资料owner；实际窗口／PID／会话绑定 |
+| 升级／移除重装 |旧91 UI实际保存合成名v→新2b读回／收藏修改保存；只移除owned程序，14个资料文件和非可执行sentinel不变，重装635/635后实际读回 |
+| 合成快照回退 |ProfileId/StoreId及物理root保留，闭合14文件精确恢复，较新资料副本保留；最初负向receipt仅差异检测，另用两份实际快照只读replay验证实际拒绝无确认变更，0资料写入。不是产品自动恢复能力 |
+| Windows结束会话 |真实来宾Start注销至锁屏，用户登录标准账户，新Session2重开；库hash／身份不变，最终托盘exit0。OS亦结束观察者，OS终结的两实例退出码未采，不伪造0。无游戏／活跃Session／未保存app草稿范围 |
+| 取消注销范围 |真实记事本阻止／Windows取消后app已结束，只证明重新启动恢复，未实际证明同一实例WM_ENDSESSION(FALSE)。**用户明确不将该非常规操作作为问题／RC阻塞**，保留事实、不追加试验、不改历史回归 |
+| 清理及宿主设置 |自己的app／任务／记事本0、ETW0，VM与检查点保留。来宾记事本原会话设置恢复。宿主设置写0，只读SPI flags126/OFF、31色／动画匹配；默认scheme空→高对比黑色仍未精确恢复 |
+
+最终应用ZIP SHA256 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`，旧91 ZIP `FD620EBF41DB500A11E7799E81FABFD06A653FBD71A5FFA5033FA406292F71F8`。注销前／登录后／最后正常退出library均 `6D1A1EB4CFA0C18D51446051EB80135037A3387FCE25B6349544DEAE32E6CBC0`。已有1813/1813、2b Debug/Release＋28/28、原资源PASS按不变源码复用，未重做。
+
+**ISOLATED WINDOWS VALIDATION: PASS — 当前VM、标准账户、普通Standard、合成资料和规定操作。RC GATE: BLOCKED — 唯一剩余项为宿主原默认HC方案名精确恢复。** 取消注销不是用户当前验收问题；其证据不扩展为同一进程恢复。新报告／冻结protocol／脚本与hash索引 `.artifacts/phase7-isolated-windows-20261009/run-20261009-070202/`，08日报告／历史FAIL／旧候选保留。没有发行依赖或新应用缺陷被确认；不授权Production、发布、默认Advanced或自动Phase8。
+
+## 历史 App 桌面验收：对比度已修复，RC GATE BLOCKED（2026-10-08）
 
 接管HEAD5d89dfc，应用 **2b5e67a55d8eda905b8200652d189d7754dff112**，`codex-phase7-finalization` / `codex/phase7-finalization`。新635文件工程包/tag `codex/phase7-app-desktop-final-20261008`；435/f628/91和全部历史FAIL保留，不改主/视觉/Claude工作区。文档HEAD和程序source分开。
 
