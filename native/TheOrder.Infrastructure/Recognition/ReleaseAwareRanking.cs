@@ -53,30 +53,57 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         var ordered = resolved.Select((c, i) => (c, i))
             .OrderBy(p => p.c.Vetoed && !p.c.VersionNeedsConfirmation).ThenByDescending(p => Eligible(p.c))
             .ThenByDescending(p => Eligible(p.c) ? p.c.EvidenceLevel : 0).ThenByDescending(p => p.c.Confidence).ThenBy(p => p.i).Select(p => p.c).ToArray();
+        // Among near-tied eligible candidates of the top evidence level, one whose exact local titles
+        // dominate every other member's goes first, independent of catalog id order.
+        var group = ordered.TakeWhile(c => Eligible(c) && c.EvidenceLevel == ordered[0].EvidenceLevel && ordered[0].Confidence - c.Confidence < .075).ToArray();
+        if (group.Length > 1 && group.FirstOrDefault(a => group.All(b => b == a || Dominates(a, b, locals, names, releases))) is { } dominant && dominant != ordered[0])
+            ordered = [dominant, .. ordered.Where(c => c != dominant)];
         var top = ordered[0];
         if (Eligible(top))
         {
             var oracle = ranked[0];
-            string? doubt = Uniqueness(top, ordered, evidence, locals, names[top.Work.Id], releases);
-            // The oracle's own split/near-tie judgement stands when it concerns the same work.
-            if (doubt is null && oracle.Work.Id == top.Work.Id && !oracle.HighConfidence && oracle.Reason is SplitReason or TieReason) doubt = oracle.Reason;
-            ordered[0] = doubt is null ? top with { HighConfidence = true } : top with { Reason = top.Reason + "；" + doubt };
+            string? doubt = Uniqueness(top, ordered, evidence, locals, names, releases);
+            // The oracle's identifier split verdict stands when it concerns the same work. Near ties
+            // are recomputed above, with release evidence and specificity the oracle lacks.
+            if (doubt is null && oracle.Work.Id == top.Work.Id && !oracle.HighConfidence && oracle.Reason == SplitReason) doubt = oracle.Reason;
+            var reason = top.Reason.Replace("；" + TieReason, "", StringComparison.Ordinal).Replace("；" + SplitReason, "", StringComparison.Ordinal);
+            if (reason is TieReason or SplitReason) reason = "名称与资料一致";
+            ordered[0] = doubt is null ? top with { HighConfidence = true, Reason = reason } : top with { Reason = reason + "；" + doubt };
         }
         return [.. ordered];
     }
 
-    private static string? Uniqueness(RankedRecognitionCandidate top, RankedRecognitionCandidate[] ordered, RecognitionEvidence evidence,
-        LocalTitleEvidence[] locals, string[] own, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
+    // Local identity titles that exactly name this candidate or one of its known releases.
+    private static LocalTitleEvidence[] Supporting(RankedRecognitionCandidate candidate, LocalTitleEvidence[] locals, string[] own,
+        IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
     {
+        var rows = releases is not null && releases.TryGetValue(candidate.Work.Id, out var r) && !r.IsDefault ? r : [];
+        var names = own.Concat(rows.Select(x => LocalTitleCleaner.Clean(x.Title))).ToArray();
+        return [.. locals.Where(t => names.Any(n => TitleMatching.Compare(t.Value, n) is { Exact: true, Version: "same" }))];
+    }
+
+    // A candidate whose only exact local titles are truncations of a longer local title that names
+    // the other candidate exactly ("Escalation" vs "Escalation ~Kyouai no Fugue~") does not tie
+    // with it: the more specific local evidence decides.
+    private static bool Dominates(RankedRecognitionCandidate a, RankedRecognitionCandidate b, LocalTitleEvidence[] locals,
+        Dictionary<string, string[]> names, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
+    {
+        var mine = Supporting(a, locals, names[a.Work.Id], releases); var theirs = Supporting(b, locals, names[b.Work.Id], releases);
+        return theirs.Length > 0 && mine.Any(t => !theirs.Contains(t)) && theirs.All(s => mine.Any(t =>
+            TitleMatching.IndexKey(t.Value) is var longer && TitleMatching.IndexKey(s.Value) is var shorter && longer.Length > shorter.Length && longer.Contains(shorter, StringComparison.Ordinal)));
+    }
+
+    private static string? Uniqueness(RankedRecognitionCandidate top, RankedRecognitionCandidate[] ordered, RecognitionEvidence evidence,
+        LocalTitleEvidence[] locals, Dictionary<string, string[]> names, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
+    {
+        var supporting = Supporting(top, locals, names[top.Work.Id], releases);
         // As in the oracle, only candidates with at least the same evidence level contend: a title
         // match does not tie with a matching physical identifier.
-        var contender = ordered.Skip(1).Where(o => !o.Vetoed && o.EvidenceLevel >= top.EvidenceLevel && (o.Confidence >= .85 || o.MatchedReferences.Length > 0))
+        var contender = ordered.Skip(1).Where(o => !o.Vetoed && o.EvidenceLevel >= top.EvidenceLevel && (o.Confidence >= .85 || o.MatchedReferences.Length > 0) && !Dominates(top, o, locals, names, releases))
             .Select(o => o.Confidence).DefaultIfEmpty(double.NegativeInfinity).Max();
         if (top.Confidence - contender < .075) return TieReason;
-        // Exact titles that support this candidate. If every one of them is shared with another
-        // identity in the local index, only an independent physical identifier can make it unique.
-        var rows = releases is not null && releases.TryGetValue(top.Work.Id, out var r) && !r.IsDefault ? r : [];
-        var supporting = locals.Where(t => own.Concat(rows.Select(x => LocalTitleCleaner.Clean(x.Title))).Any(n => TitleMatching.Compare(t.Value, n) is { Exact: true, Version: "same" })).ToArray();
+        // If every exact supporting title is shared with another identity in the local index, only
+        // an independent physical identifier can make the candidate unique.
         var refs = top.Work.References.Select(x => x.Source + ":" + x.Id).ToHashSet(StringComparer.Ordinal);
         bool Shared(LocalTitleEvidence t) => !evidence.Homonyms.IsDefault && evidence.Homonyms.Any(h => TitleMatching.IndexKey(h.ObservedTitle) == TitleMatching.IndexKey(t.Value) && h.Identities.Any(id => !refs.Contains(id)));
         bool physical = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is "steam-config" or "steam-file"));

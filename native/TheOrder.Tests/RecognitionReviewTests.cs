@@ -36,7 +36,8 @@ public sealed class RecognitionReviewTests
         public Task<OnlinePage> SearchAsync(string q, string? cursor, CancellationToken c) => Task.FromResult(new OnlinePage([.. Works], null));
         public Task<WorkMetadata> DetailsAsync(string id, bool refresh, CancellationToken c) { DetailCalls++; return Detail?.Invoke(id, c) ?? Task.FromResult(Works.FirstOrDefault(w => w.Id == id) ?? Work(id)); }
         public Task<ImmutableArray<WorkMetadata>> ResolveReferencesAsync(ImmutableArray<string> references, CancellationToken c) => Task.FromResult(ImmutableArray<WorkMetadata>.Empty);
-        public Task<ImmutableArray<ReleaseIdentity>> ReleasesAsync(string id, CancellationToken c) => Task.FromResult(ImmutableArray<ReleaseIdentity>.Empty);
+        public ImmutableArray<ReleaseIdentity> ReleaseRows = [];
+        public Task<ImmutableArray<ReleaseIdentity>> ReleasesAsync(string id, CancellationToken c) => Task.FromResult(ReleaseRows.Where(r => r.WorkId == id).ToImmutableArray());
         public Task TestConnectionAsync(CancellationToken c) => Task.CompletedTask;
         public void ClearCache() { }
     }

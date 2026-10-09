@@ -13,11 +13,19 @@ public static partial class Engines
         // performed by RecognitionReviewService.ApplyAutomaticAsync.
         "v2" => ((index, reader, catalog) => new RecognitionEngine(index, reader, new ReleaseAwareRanking(), catalog),
             AutomaticRecognitionPolicy.Select, (r, s, c) => ContextApply(new ReleaseAwareRanking(), r, s, c)),
+        // Ablation: v2 ranking with the previous "highest eligible candidate" policy (no uniqueness).
+        "v2-highest" => ((index, reader, catalog) => new RecognitionEngine(index, reader, new ReleaseAwareRanking(), catalog),
+            HighestEligible, (r, s, c) => SingleWorkApply(new ReleaseAwareRanking(), r, s, c)),
         // Ablation: v2 identity builder and policy with the old ranker.
         "v2-oldranker" => ((index, reader, catalog) => new RecognitionEngine(index, reader, new ReviewSafeRanking(), catalog),
             AutomaticRecognitionPolicy.Select, (r, s, c) => SingleWorkApply(new ReviewSafeRanking(), r, s, c)),
         _ => throw new ArgumentException("unknown engine " + name),
     };
+
+    // AutomaticRecognitionPolicy.Select at baseline 5b574f0.
+    private static RankedRecognitionCandidate? HighestEligible(RecognitionResult result) =>
+        result.Input.Mode != RecognitionMode.MissingMetadata || result.Input.Entry.Metadata is not null || result.Input.Entry.Installations.IsEmpty || result.EnrichmentUnavailable ? null
+        : result.Candidates.Where(AutomaticRecognitionPolicy.Eligible).OrderByDescending(c => c.Confidence).ThenBy(c => c.Work.Id, StringComparer.Ordinal).FirstOrDefault();
 
     private static RankedRecognitionCandidate? ContextApply(IRecognitionRanker ranker, RecognitionResult result, RankedRecognitionCandidate selected, IRecognitionCatalog catalog)
     {

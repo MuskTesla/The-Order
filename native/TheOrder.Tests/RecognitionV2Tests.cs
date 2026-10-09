@@ -143,6 +143,19 @@ public sealed class RecognitionV2Tests
     }
 
     [Fact]
+    public void MoreSpecificLocalTitleBreaksATruncationTie()
+    {
+        // The folder is a truncation; the program's full title names only one work.
+        var specific = Rank(E(("folder", "Hoshi"), ("file-description", "Hoshi ~Kouro no Fugue~")), [W("200", "Hoshi ~Kouro no Fugue~"), W("201", "Hoshi")]);
+        Assert.Equal("200", specific[0].Work.Id); Assert.True(specific[0].HighConfidence);
+        var swapped = Rank(E(("folder", "Hoshi"), ("file-description", "Hoshi ~Kouro no Fugue~")), [W("201", "Hoshi ~Kouro no Fugue~"), W("200", "Hoshi")]);
+        Assert.Equal("201", swapped[0].Work.Id); Assert.True(swapped[0].HighConfidence);
+        // Two unrelated exact titles do not dominate each other.
+        var unrelated = Rank(E(("folder", "Hoshi"), ("file-description", "Tsuki no Kouro")), [W("200", "Tsuki no Kouro"), W("201", "Hoshi")]);
+        Assert.False(unrelated[0].HighConfidence);
+    }
+
+    [Fact]
     public void ExactReleaseTitleNamesTheWork()
     {
         var ranked = Rank(E(("folder", "星空の航路 ～もうひとつの空～")), [W("200", "星空の航路")], Releases(R("200", "星空の航路 ～もうひとつの空～")));
@@ -202,6 +215,51 @@ public sealed class RecognitionV2Tests
         }
         Assert.All(expected.Where(c => c.Vetoed), c => Assert.False(c.HighConfidence));
         Assert.Single(expected, c => c.HighConfidence);
+    }
+
+    // --- Configured pipeline: queue -> RecognitionEngine -> ReleaseAwareRanking -> policy ->
+    // RecognitionReviewService contextual re-check -> transactional library commit.
+
+    private static async Task<(RecognitionReviewTests.Lab Lab, Guid Id)> Imported(string name, WorkMetadata[] works, params ReleaseIdentity[] releases)
+    {
+        var lab = new RecognitionReviewTests.Lab(entry: Entry(name, @"C:\synthetic\" + name));
+        lab.Catalog.Works = works; lab.Catalog.ReleaseRows = [.. releases];
+        await lab.Init();
+        var id = await lab.Queue.EnqueueAsync("a", RecognitionMode.MissingMetadata, true);
+        await lab.Queue.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(5)); await lab.Reviews.FlushAsync();
+        return (lab, id);
+    }
+
+    [Fact]
+    public async Task ReleaseResolvedEditionIsAppliedAndPersonalFieldsSurvive()
+    {
+        var (lab, id) = await Imported("星空の航路 REMASTERED", [W("200", "星空の航路"), W("300", "全然別の作品")], R("200", "星空の航路 REMASTERED"));
+        await using var _ = lab;
+        await lab.Library.UpdateAsync("a", new() { Notes = "personal", Rating = 8 });
+        Assert.True((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
+        var entry = Assert.Single(lab.Library.Snapshot.Entries);
+        Assert.Equal("200", entry.Metadata?.Id); Assert.Equal("personal", entry.Notes); Assert.Equal(8, entry.PersonalRating);
+    }
+
+    [Fact]
+    public async Task SameTitleWorksStayForReviewWithoutWriting()
+    {
+        var (lab, id) = await Imported("Hoshi no Kouro", [W("200", "Hoshi no Kouro"), W("201", "Hoshi no Kouro")]);
+        await using var _ = lab;
+        Assert.Null(AutomaticRecognitionPolicy.Select(lab.Queue.RequireCurrentResult(id)));
+        Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
+        Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata); Assert.Single(lab.Reviews.Snapshot);
+    }
+
+    [Fact]
+    public async Task UnconfirmedFanDiscStaysForReviewWithoutWriting()
+    {
+        var (lab, id) = await Imported("星空の航路 FD", [W("200", "星空の航路")], R("200", "星空の航路 ダウンロード版"));
+        await using var _ = lab;
+        var top = lab.Queue.RequireCurrentResult(id).Candidates[0];
+        Assert.True(top.VersionNeedsConfirmation);
+        Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
+        Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata);
     }
 
     [Fact]
