@@ -445,6 +445,7 @@ public sealed partial class LibraryPage : Page, IImageHost
         playContent.Children.Add(new FontIcon { Glyph = "", FontSize = 14 }); playContent.Children.Add(new TextBlock { Text = "继续游戏" });
         play.Content = playContent;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(play, "ContinuePlay");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(play, "继续游戏");
         play.Click += async (_, _) => { if (continueGame is { } game && QuickLaunch is not null) await QuickLaunch(game); };
         var details = new Button { Content = "详情" };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(details, "ContinueDetails");
