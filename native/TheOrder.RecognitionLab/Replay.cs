@@ -99,5 +99,21 @@ public static class Replay
         return string.Join(Environment.NewLine, lines);
     }
 
-    public static readonly JsonSerializerOptions Options = new(Program.Json) { PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never };
+    public static readonly JsonSerializerOptions Options = ReplayOptions();
+    private static JsonSerializerOptions ReplayOptions()
+    {
+        // Research response caches may carry bounded transient identity facts. Shipping serializers
+        // deliberately ignore them, preserving the existing library/review/online JSON contracts.
+        var resolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver();
+        resolver.Modifiers.Add(info =>
+        {
+            if (info.Type != typeof(WorkMetadata)) return;
+            var fact = info.Properties.Single(p => p.Name == nameof(WorkMetadata.CatalogIdentity));
+            fact.Get = value => ((WorkMetadata)value).CatalogIdentity;
+            var property = typeof(WorkMetadata).GetProperty(nameof(WorkMetadata.CatalogIdentity))!;
+            fact.Set = (value, facts) => property.SetValue(value, facts);
+            fact.ShouldSerialize = (_, _) => true;
+        });
+        return new(Program.Json) { PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.Never, TypeInfoResolver = resolver };
+    }
 }

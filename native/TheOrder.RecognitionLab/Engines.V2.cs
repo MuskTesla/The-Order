@@ -78,8 +78,18 @@ public static partial class Engines
         var view = new Live.Recorder(production, cache, [.. c.Hidden]);
         var index = new TitleIndex(() => File.OpenRead(indexPath));
         var entry = Program.Entry(c.Name, new("i0", c.Folder, null, []));
+        var previewLocal = await new RecordedEvidenceReader(c.Evidence).ReadAsync(entry, true, default);
+        var previewIdentity = await RecognitionIdentityBuilder.BuildAsync(entry, previewLocal.Evidence, index, default);
+        var preview = new Dictionary<string, WorkMetadata>(StringComparer.Ordinal);
+        foreach (var previewWork in await view.ResolveReferencesAsync(previewIdentity.References, default)) preview[previewWork.Id] = previewWork;
+        foreach (var query in previewIdentity.Queries.Take(6))
+            foreach (var previewWork in (await view.SearchAsync(query, null, default)).Items) preview[previewWork.Id] = previewWork;
+        Console.WriteLine("preliminary:");
+        foreach (var x in new ReleaseAwareRanking().Rank(previewIdentity.Evidence, preview.Values).Take(10))
+            Console.WriteLine($"   {x.Work.Id} {x.Confidence:0.000} veto={x.Vetoed} vnc={x.VersionNeedsConfirmation} official={(x.Work.TitleEvidence ?? []).Any(t => !t.IsMachine && t.Kind is "official" or "original" or "latin")} {x.Work.Title} | {x.Reason}");
         var result = await new RecognitionEngine(index, new RecordedEvidenceReader(c.Evidence), new ReleaseAwareRanking(), view).RecognizeAsync(
             new(entry, new(Guid.Empty, Guid.Empty, 0, 0)) { Mode = RecognitionMode.MissingMetadata }, Guid.NewGuid(), true, true, _ => { }, CancellationToken.None);
+        Console.WriteLine(JsonSerializer.Serialize(new { result.Identity.Evidence.IndexProofs, result.Identity.Evidence.Homonyms, result.Identity.Queries, result.Identity.References }, Program.Json));
         void Show(string label, IEnumerable<RankedRecognitionCandidate> list) { Console.WriteLine(label); foreach (var x in list) Console.WriteLine($"   {x.Work.Id} {Live.Vndb(x.Work)} {x.Confidence:0.000} high={x.HighConfidence} veto={x.Vetoed} vnc={x.VersionNeedsConfirmation} lvl={x.EvidenceLevel} refs=[{string.Join(",", x.MatchedReferences)}] {x.Work.Title} | {x.Reason}"); }
         Show("result:", result.Candidates);
         Console.WriteLine("unavailable=" + result.EnrichmentUnavailable + " " + result.EnrichmentMessage);

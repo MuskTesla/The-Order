@@ -8,8 +8,9 @@ using TheOrder.Platform.Windows;
 
 namespace TheOrder.RecognitionLab;
 
-// Offline research harness. Every command is read-only with respect to its inputs and writes
-// only to the explicit output path. It never launches executables or touches a library profile.
+// Research harness: replay uses recorded responses; capture/live use the bounded public catalog.
+// Inventory reads authorized files without executing them. The explicit Test credential/profile
+// commands use the supported native store; no command binds a Production library.
 public static class Program
 {
     internal static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
@@ -24,6 +25,8 @@ public static class Program
             "indexstats" => await IndexStats(args[1]),
             "rankbench" => await Engines.RankBench(args[1], args[2], args[3]),
             "explain" => await Engines.Explain(args[1], args[2], args[3], args[4]),
+            "capture" => await Live.Capture(args[1], args[2]),
+            "mapfacts" => await Live.MapFacts(args[1], args[2]),
             "dumpprofile" => Live.DumpTestProfile(args[1]),
             "seedcredential" => await Live.SeedTestCredential(args[1]),
             "live" => await Live.Run(args[1], args[2], args[3], args[4], args[5], args.Length > 6 && args[6] == "coverage"),

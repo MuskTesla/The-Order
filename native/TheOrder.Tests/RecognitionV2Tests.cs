@@ -374,5 +374,5 @@ public sealed class RecognitionV2Tests
     }
 
     [Fact]
-    public void AlgorithmVersionChangedForV2() => Assert.Equal("recognition-v2-release-aware-3", TitleMatching.AlgorithmVersion);
+    public void AlgorithmVersionChangedForV2() => Assert.Equal("recognition-v2-release-aware-4", TitleMatching.AlgorithmVersion);
 }

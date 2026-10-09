@@ -12,11 +12,19 @@ namespace TheOrder.RecognitionLab;
 // Bounded live validation against the real NextMoe catalog through the production transport.
 // The key is read from THEORDER_LAB_NEXTMOE_KEY at request time and never written anywhere.
 // Responses are cached in a private file (catalog data only) so several engines share one fetch.
-public static class Live
+public static partial class Live
 {
     private sealed class EnvironmentCredential : ICredentialProvider
     {
-        public Task<string?> ReadAsync(CancellationToken cancellation) => Task.FromResult(Environment.GetEnvironmentVariable("THEORDER_LAB_NEXTMOE_KEY"));
+        public async Task<string?> ReadAsync(CancellationToken cancellation)
+        {
+            if (Environment.GetEnvironmentVariable("THEORDER_LAB_NEXTMOE_KEY") is { Length: > 0 } secret) return secret;
+            if (Environment.GetEnvironmentVariable("THEORDER_LAB_TEST_CREDENTIAL_PROFILE") is not { Length: > 0 } directory) return null;
+            var request = TheOrder.Platform.Windows.NativeProfilePaths.Select(NativeProfileKind.Development, "Test", directory);
+            if (request.Kind != NativeProfileKind.Test) throw new InvalidOperationException("Test credential profile required");
+            using var profile = TheOrder.Platform.Windows.NativeProfileStore.Open(request, new TheOrder.Infrastructure.Legacy.NativeLibraryCodec());
+            return await new TheOrder.Platform.Windows.IsolatedCredentialStore(new NativeConfiguration(directory, false, profile)).ReadAsync(cancellation);
+        }
     }
 
     // Throttled, caching, request-counting decorator. Hidden VNDB ids simulate a catalog that lacks a work.
@@ -46,6 +54,8 @@ public static class Live
         {
             Requests[kind] = Requests.GetValueOrDefault(kind) + 1;
             if (cache.TryGetValue(kind + "|" + key, out var json)) return JsonSerializer.Deserialize<T>(json, Replay.Options)!;
+            if (Environment.GetEnvironmentVariable("THEORDER_LAB_REPLAY_ONLY") == "1")
+                throw new InvalidOperationException("Replay cache missing " + kind + "|" + key);
             await Throttle(calls);
             var value = await fetch();
             cache[kind + "|" + key] = JsonSerializer.Serialize(value, Replay.Options);
@@ -121,7 +131,7 @@ public static class Live
     // live <cases.json> <index.json.gz> <cache.json> <out.json> <engine> [coverage]
     public static async Task<int> Run(string casesPath, string indexPath, string cachePath, string output, string engineName, bool coverageOnly)
     {
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THEORDER_LAB_NEXTMOE_KEY"))) { Console.Error.WriteLine("THEORDER_LAB_NEXTMOE_KEY not set"); return 2; }
+        if (Environment.GetEnvironmentVariable("THEORDER_LAB_REPLAY_ONLY") != "1" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THEORDER_LAB_NEXTMOE_KEY")) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THEORDER_LAB_TEST_CREDENTIAL_PROFILE"))) { Console.Error.WriteLine("No configured credential source"); return 2; }
         var cases = JsonSerializer.Deserialize<List<EvidenceCase>>(await File.ReadAllTextAsync(casesPath), Replay.Options)!;
         var cache = File.Exists(cachePath) ? new ConcurrentDictionary<string, string>(JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(cachePath))!) : new();
         var (production, owner) = Production();

@@ -44,8 +44,20 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
                 }
                 if (!identity.References.IsEmpty) Accept(await catalog.ResolveReferencesAsync(identity.References, token).ConfigureAwait(false));
                 foreach (var query in identity.Queries.Take(6)) { token.ThrowIfCancellationRequested(); Accept((await catalog.SearchAsync(query, null, token).ConfigureAwait(false)).Items); }
-                // Only the strongest two suggestions receive background details. Other details are on demand.
-                var strongest = ranker.Rank(identity.Evidence, works.Values, cancellation: token).Take(2).ToArray();
+                // Resolve/search can return an index-referenced card without any official titles.
+                // Its weak card score cannot rule out the work before fetching that missing detail.
+                // This changes bounded retrieval only; inferred index IDs still grant no write or
+                // ranking authority, and the complete candidates must pass the same final checks.
+                var preliminary = ranker.Rank(identity.Evidence, works.Values, cancellation: token);
+                var requestedReferences = identity.References.ToHashSet(StringComparer.Ordinal);
+                var incompleteReferenced = preliminary.Where(c => !c.Vetoed && !(c.Work.TitleEvidence ?? []).Any(t => !t.IsMachine && t.Kind is "official" or "original" or "latin")
+                    && c.Work.References.Any(r => requestedReferences.Contains(r.Source + ":" + r.Id)));
+                // Only repair weak-card retrieval when there is no strong compatible title.
+                // A reference returned for a parent/related edition must not displace the
+                // already strongest edition candidates. The two-detail budget is unchanged.
+                var retrievalOrder = preliminary.Any(c => !c.Vetoed && c.Confidence > .9)
+                    ? preliminary : incompleteReferenced.Concat(preliminary);
+                var strongest = retrievalOrder.DistinctBy(c => c.Work.Id).Take(2).ToArray();
                 foreach (var candidate in strongest)
                 {
                     token.ThrowIfCancellationRequested();

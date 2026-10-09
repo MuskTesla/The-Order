@@ -95,7 +95,15 @@ public sealed partial record RemoteWorkDto(JsonElement Value)
             Unique(Rows(work, "companies").Where(c => Text(c, "attribution_role") == "developer").Select(Localized)),
             Unique(Rows(work, "tags").Where(t => Text(t, "tier") != "hidden" && Text(t, "spoiler") is "" or "none").Select(Localized)), ratings.ToImmutable(),
             [.. Rows(work, "characters").Where(c => Text(c, "spoiler") is "" or "none" && ValidId(Text(c, "id"))).Select(c => new WorkCharacter(Text(c, "id"), Localized(c) is { Length: > 0 } name ? name : "角色 " + Text(c, "id"), Text(c, "display_name"), Image(Field(c, "image")), Text(c, "roster_role"), Unique(Rows(c, "voices").Select(Localized))))],
-            [.. references], Text(claim, "site") == "kungal" && Text(claim, "state") == "live" && ValidId(claimId) ? "https://www.kungal.com/galgame/" + claimId : null, NullText(work, "content_rating"), now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"));
+            [.. references], Text(claim, "site") == "kungal" && Text(claim, "state") == "live" && ValidId(claimId) ? "https://www.kungal.com/galgame/" + claimId : null, NullText(work, "content_rating"), now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"))
+        {
+            CatalogIdentity = new(
+                Unique(Rows(work, "companies").Take(64).Where(c => Text(c, "attribution_role") is "developer" or "publisher")
+                    .SelectMany(c => new[] { Localized(c), Text(c, "display_name") }).Where(n => n.Length <= 100)).Take(32).ToImmutableArray(),
+                Unique(Rows(work, "links").Take(64).Where(l => Text(l, "source") == "official_site").Select(l => Text(l, "url"))
+                    .Where(u => u.Length <= 2048 && Uri.TryCreate(u, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.UserInfo.Length == 0 && uri.IsDefaultPort))
+                    .Take(32).ToImmutableArray())
+        };
     }
     private static string? NullText(JsonElement value, string field) => Text(value, field) is { Length: > 0 } text ? text : null;
     [GeneratedRegex("^[0-9]{1,20}$")] private static partial Regex IdPattern();

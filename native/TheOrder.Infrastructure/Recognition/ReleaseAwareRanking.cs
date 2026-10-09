@@ -40,6 +40,11 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             var rows = releases is not null && releases.TryGetValue(candidate.Work.Id, out var r) && !r.IsDefault ? r : [];
             if (Resolve(candidate, values, names, rows, ranked, cancellation) is { } problem)
                 return candidate with { Vetoed = true, VersionNeedsConfirmation = true, HighConfidence = false, EvidenceLevel = 0, Reason = problem };
+            // Short product names are not identifying on their own. A binary's product title,
+            // its publisher, an unambiguous index row and this work's release must agree.
+            if (ProgramCompanyProof(evidence, candidate.Work, rows) is { } program)
+                return candidate with { Confidence = Math.Max(candidate.Confidence, .975), EvidenceLevel = Math.Max(candidate.EvidenceLevel, 2), HighConfidence = false,
+                    Reason = "程序作品名称、发行公司与索引及正式发行资料相互印证", Evidence = candidate.Evidence.Add(program) };
             // An identity title that is exactly an official release title of this work names it.
             if (candidate.Confidence <= .95 && ReleaseExact(candidate, locals, rows) is { } proof)
                 return candidate with { Confidence = .955, EvidenceLevel = Math.Max(candidate.EvidenceLevel, 1), HighConfidence = false,
@@ -67,9 +72,12 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             string? doubt = Uniqueness(top, ordered, evidence, locals, names, releases);
             // The oracle's identifier split verdict stands when it concerns the same work. Near ties
             // are recomputed above, with release evidence and specificity the oracle lacks.
-            if (doubt is null && oracle.Work.Id == top.Work.Id && !oracle.HighConfidence && oracle.Reason == SplitReason) doubt = oracle.Reason;
+            if (doubt is null && oracle.Work.Id == top.Work.Id && !oracle.HighConfidence && oracle.Reason == SplitReason
+                && ranked.Any(c => c.MatchedReferences.Length > 0 && c.Work.Id != top.Work.Id && !SameCatalogIdentity(top.Work, c.Work))) doubt = oracle.Reason;
             var reason = top.Reason.Replace("；" + TieReason, "", StringComparison.Ordinal).Replace("；" + SplitReason, "", StringComparison.Ordinal);
             if (reason is TieReason or SplitReason) reason = "名称与资料一致";
+            if (doubt is null && ordered.Skip(1).Any(c => !c.Vetoed && SameCatalogIdentity(top.Work, c.Work)))
+                reason += "；同版本目录记录经标题及来源资料复核，优先采用身份资料更完整的记录";
             ordered[0] = doubt is null ? top with { HighConfidence = true, Reason = reason } : top with { Reason = reason + "；" + doubt };
         }
         return [.. ordered];
@@ -95,6 +103,10 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         // confirms the same edition. An unidentified homonym remains a competing identity.
         if (mine.Length > 0 && a.MatchedReferences.Length > 0 && b.MatchedReferences.Length == 0
             && SameCatalogIdentity(a.Work, b.Work) && theirs.All(mine.Contains)) return true;
+        // Choose the richer representation only inside a corroborated equivalent group. Scores
+        // and numerical work IDs do not decide between different identities.
+        if (mine.Length > 0 && theirs.Length > 0 && SameCatalogIdentity(a.Work, b.Work) && theirs.All(mine.Contains)
+            && CatalogCoverage(a.Work).CompareTo(CatalogCoverage(b.Work)) > 0) return true;
         return theirs.Length > 0 && mine.Any(t => !theirs.Contains(t)) && theirs.All(s => mine.Any(t =>
             TitleMatching.IndexKey(t.Value) is var longer && TitleMatching.IndexKey(s.Value) is var shorter && longer.Length > shorter.Length && longer.Contains(shorter, StringComparison.Ordinal)));
     }
@@ -119,8 +131,31 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         // independent identity evidence. This is a narrow weak-input guard, not an index blacklist.
         var localKeys = locals.Select(t => TitleMatching.IndexKey(t.Value)).Where(k => k.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
         bool directIdentifier = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is not ("title-index" or "sidecar")));
-        if (!directIdentifier && localKeys.Length == 1 && localKeys[0].Length <= 6 && localKeys[0].All(char.IsAsciiLetter))
+        var rows = releases is not null && releases.TryGetValue(top.Work.Id, out var available) && !available.IsDefault ? available : [];
+        if (!directIdentifier && ProgramCompanyProof(evidence, top.Work, rows) is null && localKeys.Length == 1 && localKeys[0].Length <= 6 && localKeys[0].All(char.IsAsciiLetter))
             return "本地只有短拉丁名称，索引和同名发行资料不能区分同名作品，请补充独立编号或手动核对";
+        return null;
+    }
+
+    private static CandidateExplanation? ProgramCompanyProof(RecognitionEvidence evidence, WorkMetadata work, ImmutableArray<ReleaseIdentity> releases)
+    {
+        if (work.CatalogIdentity is not { } catalog || catalog.Companies.IsDefault || evidence.IndexProofs.IsDefault) return null;
+        static string Brand(string value) => TitleMatching.Compact(TitleMatching.Rx("株式会社|有限会社").Replace(
+            TitleMatching.Rx(@"\b(?:copyright|corporation|company|co|ltd|limited|inc|llc|corp|\d{4})\b").Replace(TitleMatching.Normalize(value), ""), ""));
+        bool Same(string a, string b) => TitleMatching.Compare(a, b) is { Exact: true, Version: "same", Conflict: null };
+        bool Company(string value) => Brand(value) is { Length: >= 3 } brand && catalog.Companies.Take(32).Any(c => Brand(c) == brand);
+        if (!evidence.Companies.Any(Company)) return null;
+        var own = Canonical(work); var refs = work.References.Select(r => r.Source + ":" + r.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var program in evidence.Titles.Where(t => t.Source is "product-name" or "file-description"))
+        {
+            if (!own.Any(n => Same(program.Value, n)) || !evidence.Titles.Any(t => t.Source == "folder" && Same(t.Value, program.Value))) continue;
+            if (!evidence.IndexProofs.Any(p => p.Source is "folder" or "product-name" or "file-description" && Same(p.ObservedTitle, program.Value)
+                && p.RecordNames.Any(n => Same(n, program.Value)) && p.References.Any(refs.Contains)
+                && !p.References.GroupBy(r => r.Split(':')[0], StringComparer.Ordinal).Any(g => g.Distinct(StringComparer.Ordinal).Count() > 1))) continue;
+            if (!releases.Any(r => r.WorkId == work.Id && r.Kind is "default" or "digital" or "physical"
+                && new[] { r.Title, r.OriginalTitle }.Any(n => Same(n, program.Value)))) continue;
+            return new(program.Source, program.Value, own.First(n => Same(program.Value, n)), 1, true, "same", null);
+        }
         return null;
     }
 
@@ -168,15 +203,48 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
 
     private static bool SameCatalogIdentity(WorkMetadata a, WorkMetadata b)
     {
-        var left = a.References.Where(r => r.Source is "vndb" or "bangumi").ToArray();
-        var right = b.References.Where(r => r.Source is "vndb" or "bangumi").ToArray();
-        if (!left.Any(x => right.Any(y => x.Source == y.Source && x.Id == y.Id))) return false;
-        if (left.Any(x => right.Any(y => x.Source == y.Source) && !right.Any(y => x.Source == y.Source && x.Id == y.Id))) return false;
+        static bool WorkReference(WorkReference r) => r.Source == "vndb" ? TitleMatching.Rx(@"^v[1-9]\d*$").IsMatch(r.Id)
+            : r.Source is "bangumi" or "erogamescape" && TitleMatching.Rx(@"^[1-9]\d*$").IsMatch(r.Id);
+        var left = a.References.Where(WorkReference).ToArray();
+        var right = b.References.Where(WorkReference).ToArray();
+        if (left.Concat(right).GroupBy(r => r.Source, StringComparer.Ordinal).Any(g => g.GroupBy(r => r.Id).Count() > 1)) return false;
+        // A common title or official site cannot overrule contradictory source identifiers.
+        if (left.Any(x => right.Any(y => x.Source == y.Source) && !right.Any(y => x.Source == y.Source && x.Id == y.Id))
+            || right.Any(x => left.Any(y => x.Source == y.Source) && !left.Any(y => x.Source == y.Source && x.Id == y.Id))) return false;
         var mine = Canonical(a); var theirs = Canonical(b);
-        return mine.SelectMany(t => Identity(TitleMatching.Markers(t))).ToHashSet(StringComparer.Ordinal)
+        if (!mine.SelectMany(t => Identity(TitleMatching.Markers(t))).ToHashSet(StringComparer.Ordinal)
                 .SetEquals(theirs.SelectMany(t => Identity(TitleMatching.Markers(t))))
-            && mine.Any(x => theirs.Any(y => TitleMatching.Compare(x, y) is { Exact: true, Version: "same", Conflict: null }));
+            || !mine.Any(x => theirs.Any(y => TitleMatching.Compare(x, y) is { Exact: true, Version: "same", Conflict: null }))) return false;
+        if (left.Any(x => right.Any(y => x.Source == y.Source && x.Id == y.Id))) return true;
+        if (left.Length == 0 || right.Length == 0) return false;
+        var sitesA = ProductSites(a); var sitesB = ProductSites(b);
+        if (sitesA.Intersect(sitesB, StringComparer.Ordinal).Any()) return true;
+        // Some sources catalog a named reboot separately, without a cross-reference or site.
+        // This is a narrow catalog-level inference, not an independently read local identifier:
+        // both primary original titles must exactly name a long, explicitly marked edition,
+        // and each record must be backed by a different, non-contradictory known source.
+        string originalA = a.OriginalTitle, originalB = b.OriginalTitle;
+        var key = TitleMatching.IndexKey(originalA);
+        return key.Length >= 16 && !Identity(TitleMatching.Markers(originalA)).IsEmpty
+            && mine.Contains(originalA, StringComparer.Ordinal) && theirs.Contains(originalB, StringComparer.Ordinal)
+            && TitleMatching.Compare(originalA, originalB) is { Exact: true, Version: "same", Conflict: null }
+            && !left.Any(x => right.Any(y => x.Source == y.Source))
+            && Identity(TitleMatching.Markers(a.Title)).SetEquals(Identity(TitleMatching.Markers(originalA)))
+            && Identity(TitleMatching.Markers(b.Title)).SetEquals(Identity(TitleMatching.Markers(originalB)));
     }
+
+    private static string[] ProductSites(WorkMetadata work) => work.CatalogIdentity is not { OfficialSites.IsDefault: false } info ? []
+        : [.. info.OfficialSites.Take(32).Select(raw =>
+        {
+            if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri) || uri.Scheme != "https" || uri.UserInfo.Length != 0 || !uri.IsDefaultPort || uri.Query.Length != 0) return "";
+            var path = uri.AbsolutePath.TrimEnd('/');
+            if (path.EndsWith("/index.html", StringComparison.OrdinalIgnoreCase)) path = path[..^11];
+            return path.Length < 3 ? "" : uri.IdnHost.ToLowerInvariant() + path;
+        }).Where(s => s.Length > 0).Distinct(StringComparer.Ordinal)];
+
+    private static (int Sites, int Titles, int Sources, int Companies) CatalogCoverage(WorkMetadata work) =>
+        (ProductSites(work).Length, Canonical(work).Length, work.References.Select(r => r.Source).Distinct(StringComparer.Ordinal).Count(),
+            work.CatalogIdentity is { Companies.IsDefault: false } info ? info.Companies.Length : 0);
 
     private static string? Resolve(RankedRecognitionCandidate candidate, string[] locals, Dictionary<string, string[]> names,
         ImmutableArray<ReleaseIdentity> releases, ImmutableArray<RankedRecognitionCandidate> all, CancellationToken cancellation)
@@ -192,6 +260,13 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             var mine = Identity(TitleMatching.Markers(local));
             bool Names(string title) => Identity(TitleMatching.Markers(title)).IsSupersetOf(mine)
                 && TitleMatching.Compare(local, title) is { Version: not "conflict" } c && About(local, title, c);
+            // An inconsistent parent record may carry the edition in OriginalTitle while its
+            // displayed official title still names the base work. Prefer a separate record whose
+            // primary title names that exact edition in the same title language.
+            if (!mine.IsEmpty && !Identity(TitleMatching.Markers(candidate.Work.Title)).IsSupersetOf(mine)
+                && all.Any(o => o.Work.Id != candidate.Work.Id && !o.Vetoed && Names(o.Work.Title)
+                    && TitleMatching.Markers(o.Work.Title).Base == TitleMatching.Markers(candidate.Work.Title).Base))
+                return "另一候选的主标题明确对应本地版本；当前记录的主标题与版本资料不一致，请核对后选择。";
             // An official title of another work naming the edition outranks this work listing it only
             // as an alias (a catalog can hold both).
             if (!mine.IsEmpty && !relevant.Any(p => canonical.Contains(p.Name) && Names(p.Name))

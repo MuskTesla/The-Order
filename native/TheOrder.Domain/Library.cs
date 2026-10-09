@@ -13,13 +13,20 @@ public sealed record TitleEvidence(string Text, string Kind, bool IsMachine, str
 public sealed record SourceRating(string Source, double Score, double Scale, double? Votes);
 public sealed record WorkCharacter(string Id, string Name, string OriginalName, string? ImageUrl, string Role, ImmutableArray<string> VoiceActors);
 public sealed record WorkReference(string Source, string Id, string? Url);
+// Bounded catalog facts for recognition only. Library projection does not persist these facts;
+// restored recognition suggestions must fetch current details before making a new decision.
+public sealed record CatalogWorkIdentity(ImmutableArray<string> Companies, ImmutableArray<string> OfficialSites);
 public sealed record WorkMetadata(
     string Id, string Title, string OriginalTitle, ImmutableArray<string> Aliases,
     ImmutableArray<TitleEvidence>? TitleEvidence, string? CoverUrl, ImmutableArray<WorkCover>? Covers,
     string? BannerUrl, string Description, string? ReleaseDate, string? ReleaseDatePrecision,
     ImmutableArray<string> Developers, ImmutableArray<string> Tags, ImmutableArray<SourceRating> Ratings,
     ImmutableArray<WorkCharacter> Characters, ImmutableArray<WorkReference> References,
-    string? WebUrl, string? ContentRating, string FetchedAt);
+    string? WebUrl, string? ContentRating, string FetchedAt)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CatalogWorkIdentity? CatalogIdentity { get; init; }
+}
 
 public sealed record LibraryEntry(
     string Id, string Name, bool? NameIsCustom, WorkMetadata? Metadata,
