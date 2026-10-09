@@ -97,6 +97,11 @@ public sealed partial class MainWindow
                 var navigation = titleSearchNavigation ??= Navigate(WorkspacePage.Library);
                 await navigation;
                 if (ReferenceEquals(titleSearchNavigation, navigation)) titleSearchNavigation = null;
+                // WinUI can move focus to TitleBar when its page content is replaced.
+                // Keep typing in the search box, but do not steal another control's focus.
+                if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library &&
+                    Root.XamlRoot is not null && ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
+                    sender.Focus(FocusState.Keyboard);
             }
             if (version != titleSearchEditVersion) return;
             if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
