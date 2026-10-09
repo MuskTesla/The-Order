@@ -33,6 +33,7 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
         if (uri.Host == "images.example")
         {
             var image = uri.AbsolutePath.Contains("invalid", StringComparison.Ordinal) ? new byte[] { 1, 2, 3 } : Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABUSURBVFhH7c2hFQAgDMTQA1HWY1gGRIPmBZOo9sxvMyuVVDJyHNf7eu/5lDCWMJYwljCWMJYwljCWMJYwljCWMJYwljCWMJYwljCWMJYwljDWN3gDzZMCdFL7NuoAAAAASUVORK5CYII=");
+            if (uri.AbsolutePath.Contains("alternative", StringComparison.Ordinal)) image = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAADwAAAAoCAYAAACiu5n/AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAACBSURBVGhD7c8xAYMAAMRA1FUJSuqhTmoLDbBHwLH8cHtynL/rfsPn+3/F0RClIcqGlYYoG1YaomxYaYiyYaUhyoaVhigbVhqibFhpiLJhpSHKhpWGKBtWGqJsWGmIsmGlIcqGlYYoG1YaomxYaYiyYaUhyoaVhigbVhqibFhpiPIAO6EzeKnXZYkAAAAASUVORK5CYII=");
             var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image) }; response.Content.Headers.ContentType = new("image/png"); return response;
         }
         query.TryGetValue("q", out var q);
@@ -74,12 +75,16 @@ public sealed class SyntheticOnline : HttpMessageHandler, ICredentialProvider, I
         return Json(Work(id == "86" ? "90" : id));
     }
     private static object Work(string id) => new { @object = "work", id, display_name = "合成在线作品 " + id, cover = new { url = "https://images.example/" + (id == "99" ? "invalid" : "cover") + ".png" },
+        covers = ArtworkChoices(),
         intros = new[] { new { lang = "zh-Hans", value = "这是隔离验收使用的虚构作品。资料按需加载；加入愿望单后可离线查看与编辑。" } }, companies = new[] { new { attribution_role = "developer", display_name = "Synthetic Studio" } } };
     private static object RecognitionWork(string id) => new { @object = "work", id,
         display_name = id is "210" or "211" ? "双子の庭" : id == "220" ? "航路 第1章" : "星空の航路",
         cover = new { url = "https://images.example/cover.png" },
+        covers = ArtworkChoices(),
         refs = new[] { new { source = "steam", external_id = id is "200" or "201" ? "123456" : id == "210" ? "210001" : id == "211" ? "211001" : "220001" } },
         intros = new[] { new { lang = "zh-Hans", value = "Phase 4B 虚构识别语料，候选编号 " + id + "，仅用于独立资料验收。" } },
         companies = new[] { new { attribution_role = "developer", display_name = "Synthetic Studio" } } };
+    private static object[] ArtworkChoices() => [new { id = "1", url = "https://images.example/cover.png", width = 40, height = 60, vote_count = 0, sexual = "safe" },
+        new { id = "2", url = "https://images.example/alternative.png", width = 60, height = 40, vote_count = 200, sexual = "safe" }];
     private static HttpResponseMessage Json(object value, int status = 200) => new((HttpStatusCode)status) { Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json") };
 }

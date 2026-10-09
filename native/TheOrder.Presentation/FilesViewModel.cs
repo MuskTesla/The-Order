@@ -51,6 +51,7 @@ public sealed class FilesViewModel(IOfflineFilesClient client, WorkspaceViewMode
     public bool HasDraft => Draft is not null;
     public string InstallationMessage { get; private set; } = "";
     public string LastPreflight { get; private set; } = "";
+    public Func<ImmutableArray<string>, Task>? RecognizeImported { get; set; }
     public Task ScanAsync(string root)
     {
         if (disposed || IsScanning || !workspace.CanEdit) return Task.CompletedTask;
@@ -88,6 +89,11 @@ public sealed class FilesViewModel(IOfflineFilesClient client, WorkspaceViewMode
         ScanMessage = result.Message;
         if (result.IsCommitted) { Stage = ImportStage.Completed; Candidates = Array.Empty<ScanCandidate>(); }
         NotifyScan();
+        if (result.IsCommitted && !result.ImportedGameIds.IsDefaultOrEmpty && !disposed && RecognizeImported is { } recognize)
+        {
+            try { await recognize(result.ImportedGameIds); }
+            catch (Exception) { ScanMessage += " 导入已保存，但自动识别未能启动，请前往识别与核对重试。"; NotifyScan(); }
+        }
     }
     public Task LoadInstallationsAsync(string id)
     {

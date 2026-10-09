@@ -169,7 +169,12 @@ public sealed class FilesystemBoundaryTests
         Assert.Equal(candidate.Folder.Identity, Assert.Single(scanned.Candidates).Folder.Identity);
         var result = await files.ImportAsync(scanned.Candidates, default);
         Assert.True(result.IsCommitted); Assert.Equal(1, persistence.Writes);
-        Assert.Equal(candidate.Folder.StoredPath, Assert.Single(Codec.Decode(persistence.Bytes)).Installations[0].Folder);
+        var imported = Assert.Single(Codec.Decode(persistence.Bytes));
+        Assert.Equal(candidate.Folder.StoredPath, imported.Installations[0].Folder);
+        Assert.Equal(imported.Id, Assert.Single(result.ImportedGameIds));
+        var duplicate = await files.ImportAsync(scanned.Candidates, default);
+        Assert.True(duplicate.IsCommitted); Assert.Empty(duplicate.ImportedGameIds);
+        Assert.Single(Codec.Decode(persistence.Bytes));
     }
 
     [Theory][InlineData(false, false)][InlineData(true, false)][InlineData(true, true)]

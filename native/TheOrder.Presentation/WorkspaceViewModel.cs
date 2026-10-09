@@ -29,6 +29,8 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
     private ClientResult notice = new(ClientOutcome.Success, "");
     private ClientPreferences preferences = new();
     private LibraryQuery query = new();
+    private LibrarySnapshot? displayedSessionLibrary;
+    private Task? sessionLibraryRefresh;
     private WorkspacePage page;
     private string? selectedId;
     private int total;
@@ -141,7 +143,22 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
         if (!loading || queryReadyDuringReload) await SearchAsync(); // While opening, defer; once opened, latest query may supersede Reload's query.
     }
     public async Task SearchAsync() => await SearchCoreAsync(reportFailure: true);
-    private async Task<RefreshOutcome> SearchCoreAsync(bool reportFailure)
+    // Refresh the committed in-memory projection, never reload the application-owned writer
+    // or replace a Details draft. The existing shell tick supplies the latest snapshot:
+    // one query may be in flight; busy/superseded updates are retried on a later tick.
+    public Task SynchronizeSessionLibraryAsync(LibrarySnapshot? snapshot)
+    {
+        if (snapshot is null || ReferenceEquals(snapshot, displayedSessionLibrary) || disposed || !IsLoaded
+            || loading || searching || IsSaving || externalBusy || sessionLibraryRefresh is { IsCompleted: false })
+            return Task.CompletedTask;
+        return sessionLibraryRefresh = SynchronizeSessionLibraryCoreAsync(snapshot);
+    }
+    private async Task SynchronizeSessionLibraryCoreAsync(LibrarySnapshot snapshot)
+    {
+        if (await SearchCoreAsync(reportFailure: false, preserveSelection: true) == RefreshOutcome.Success)
+            displayedSessionLibrary = snapshot;
+    }
+    private async Task<RefreshOutcome> SearchCoreAsync(bool reportFailure, bool preserveSelection = false)
     {
         if (!client.Capability.Loaded || disposed) return RefreshOutcome.Superseded;
         searchCancellation?.Cancel(); searchCancellation?.Dispose();
@@ -156,7 +173,7 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
             if (disposed || generation != searchGeneration || cancellation.IsCancellationRequested) return RefreshOutcome.Superseded;
             LastQueryMilliseconds = timer.Elapsed.TotalMilliseconds;
             items = result.Items; itemView = items; total = result.Total; categories = result.Categories; tags = result.Tags;
-            ClearSelection();
+            if (!preserveSelection) ClearSelection();
             Changed(nameof(Items)); Changed(nameof(Categories)); Changed(nameof(Tags)); Changed(nameof(LastQueryMilliseconds));
             return RefreshOutcome.Success;
         }
@@ -231,7 +248,7 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
         return saving = RunMutationAsync(token => client.SaveAsync(source, input, token), source.Id);
     }
     // Includes preprocessing, admission, durable commit and refresh. Close drains this whole task.
-    private async Task<ClientResult> RunMutationAsync(Func<CancellationToken, Task<ClientResult>> mutation, string? detailId = null)
+    private async Task<ClientResult> RunMutationAsync(Func<CancellationToken, Task<ClientResult>> mutation, string? detailId = null, bool preserveSelection = false)
     {
         operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         IsSaving = true; Changed(nameof(IsSaving)); StateChanged();
@@ -255,7 +272,7 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
                     try { SetDraft(new(await client.DetailsAsync(detailId, lifetime.Token))); }
                     catch (Exception) { detailFailed = true; }
                 }
-                var queryRefresh = await SearchCoreAsync(reportFailure: false);
+                var queryRefresh = await SearchCoreAsync(reportFailure: false, preserveSelection: preserveSelection);
                 LastRefresh = detailFailed ? RefreshOutcome.Failed : queryRefresh;
                 if (LastRefresh == RefreshOutcome.Failed)
                     Report(new(ClientOutcome.CommittedWithWarning, result.Message + " 界面刷新失败；修改已经保存，请重新读取，不要重复提交。"));
@@ -272,11 +289,11 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
         }
     }
     public void CancelPendingOperation() => operationCancellation?.Cancel();
-    public Task<ClientResult> ExecuteFileMutationAsync(Func<CancellationToken, Task<ClientResult>> operation, string? detailId = null)
+    public Task<ClientResult> ExecuteFileMutationAsync(Func<CancellationToken, Task<ClientResult>> operation, string? detailId = null, bool preserveSelection = false)
     {
         if (saving is { IsCompleted: false }) return saving;
         if (!CanEdit || IsDirty) return Task.FromResult(new ClientResult(ClientOutcome.ReadOnly, "请先处理个人资料草稿，或等待当前操作完成。"));
-        return saving = RunMutationAsync(operation, detailId);
+        return saving = RunMutationAsync(operation, detailId, preserveSelection);
     }
     private Task<ClientResult> StartBatchAsync(Func<CancellationToken, Task<ClientResult>> mutation)
     {
@@ -337,6 +354,8 @@ public sealed class WorkspaceViewModel(IOfflineLibraryClient client, IUiPreferen
         if (disposed) return; disposed = true;
         searchCancellation?.Cancel(); detailsCancellation?.Cancel();
         if (saving is not null) await saving;
+        if (sessionLibraryRefresh is not null) await sessionLibraryRefresh;
+        displayedSessionLibrary = null;
         await preferenceSaves;
         lifetime.Cancel();
         if (draft is not null) draft.PropertyChanged -= DraftChanged;

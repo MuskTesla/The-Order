@@ -62,7 +62,13 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
             }).ToImmutableArray(), cancellation).ConfigureAwait(false);
             var result = await library.ImportLocalAsync(prepared, preflight, cancellation).ConfigureAwait(false);
             var presented = OfflineLibraryClient.Present(result);
-            return presented with { Message = $"{presented.Message} 新增 {result.Value.Added} 个，重复跳过 {result.Value.Skipped} 个。" };
+            // New installation IDs are generated for this admission. Skipped duplicates never
+            // acquire these IDs, so recognition cannot accidentally target an old relation.
+            var installations = prepared.Select(p => p.Installation.Value.Id).ToHashSet(StringComparer.Ordinal);
+            var imported = library.Snapshot.Entries.Where(e => e.Installations.Any(i => installations.Contains(i.Id)))
+                .Select(e => e.Id).ToImmutableArray();
+            return presented with { Message = $"{presented.Message} 新增 {result.Value.Added} 个，重复跳过 {result.Value.Skipped} 个。",
+                ImportedGameIds = imported };
         }
         catch (Exception e) when (OfflineLibraryClient.Expected(e)) { return OfflineLibraryClient.Failure(e); }
     }

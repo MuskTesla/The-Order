@@ -18,6 +18,8 @@ public sealed class CoverPresenter : Grid
     public static readonly DependencyProperty SourceKeyProperty = DependencyProperty.Register(nameof(SourceKey), typeof(string), typeof(CoverPresenter), new PropertyMetadata(null, OnSourceChanged));
     public string? SourceKey { get => (string?)GetValue(SourceKeyProperty); set => SetValue(SourceKeyProperty, value); }
     public int MinimumEdge { get; set; } = 16;
+    // Only picker previews use containment. Existing Library/Details artwork is unchanged.
+    public bool PreserveEntireImage { get => image.Stretch == Stretch.Uniform; set => image.Stretch = value ? Stretch.Uniform : Stretch.UniformToFill; }
     public CoverPresenter()
     {
         Children.Add(placeholder); Children.Add(image);

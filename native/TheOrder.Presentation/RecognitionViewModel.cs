@@ -19,6 +19,10 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
     private readonly CancellationTokenSource lifetime = new();
     private readonly HashSet<Task> pending = [];
     private CancellationTokenSource? batch, details;
+    private CancellationTokenSource? automaticStop;
+    private readonly Queue<string> automaticTargets = new();
+    private readonly HashSet<string> automaticIds = new(StringComparer.Ordinal);
+    private Task? automatic;
     private long detailsGeneration, candidateSelectionGeneration, authGeneration;
     private int dirty = 1;
     private bool disposed, busy;
@@ -31,10 +35,11 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         authGeneration = auth.Generation; reviews.Changed += OnChanged; queue.Changed += OnChanged;
     }
     public bool UseOnline { get; set; } = true;
-    public bool IncludePe { get; set; }
+    // Match the Electron default: bounded, read-only VERSIONINFO evidence, never execution.
+    public bool IncludePe { get; set; } = true;
     public string ManualId { get => manualId; set => Set(ref manualId, value); }
     public bool Busy => busy;
-    public string Message { get; private set; } = "从书架选择条目进行识别，或仅补全缺失资料。建议均需明确确认。";
+    public string Message { get; private set; } = "导入后自动识别。排序分严格大于 0.9 时应用最高可用候选，其余结果在此核对；版本和身份冲突仍须确认。";
     public string ProgressText { get; private set; } = "尚未开始识别。";
     public RecognitionProgress Progress => queue.Progress;
     public IReadOnlyList<RecognitionReviewCard> Reviews { get; private set; } = Array.Empty<RecognitionReviewCard>();
@@ -51,6 +56,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
     public string SelectedMessage { get; private set; } = "";
     public string RemoteFacts { get; private set; } = "选择候选的“查看详情”，按需读取完整资料。";
     public string? RemoteCoverKey { get; private set; }
+    public IReadOnlyList<CandidateDetailLink> RemoteLinks { get; private set; } = Array.Empty<CandidateDetailLink>();
     public string? PersistenceError => reviews.PersistenceError ?? reviews.CapacityError;
     public bool HasSelection => selectedId is not null;
     public bool CanApply => !busy && workspace.CanEdit && selectedId is { } id && reviews.Snapshot.FirstOrDefault(r => r.Id == id)?.Status == RecognitionReviewStatus.NeedsReview && Candidates.Any(c => c.Id == selectedCandidate && c.CanApply);
@@ -63,7 +69,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         if (disposed) return;
         if (authGeneration != auth.Generation)
         {
-            authGeneration = auth.Generation; CancelDetails(); RemoteFacts = "详情不可用：凭据已变化，请重新读取。"; RemoteCoverKey = null; DisplayedCandidateId = null;
+            authGeneration = auth.Generation; CancelDetails(); RemoteFacts = "详情不可用：凭据已变化，请重新读取。"; RemoteCoverKey = null; DisplayedCandidateId = null; RemoteLinks = [];
             _ = Track(async () => { await reviews.RefreshValidityAsync(lifetime.Token); Refresh(); });
             Interlocked.Exchange(ref dirty, 1);
         }
@@ -82,7 +88,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         {
             if (selectedId is not null) CancelDetails();
             selectedId = null; Candidates = []; LocalFacts = ""; SelectedMessage = ""; SelectedTitle = "选择一项核对建议"; selectedCandidate = "";
-            DisplayedCandidateId = null; RemoteCoverKey = null; RemoteFacts = "选择候选后可查看完整详情。";
+            DisplayedCandidateId = null; RemoteCoverKey = null; RemoteLinks = []; RemoteFacts = "选择候选后可查看完整详情。";
         }
         else
         {
@@ -114,13 +120,13 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
     private static string SourceName(string source) => source switch { "folder" => "目录名", "custom-name" => "书架名称", "sidecar" => "旧版侧车资料", "title-index" => "独立标题索引", "executable-name" => "程序名", "archive-name" => "资源文件名", "product-name" => "程序产品名", "file-description" => "程序说明", "manual-title" or "readme-title" => "说明标题", "config-title" => "配置标题", "steam-config" or "steam-file" => "Steam 配置", _ => source };
     public void Select(Guid id)
     {
-        if (selectedId == id) return; CancelDetails(); selectedId = id; ChangeCandidate(""); RemoteCoverKey = null; DisplayedCandidateId = null; RemoteFacts = "选择候选后可查看完整详情。"; LastDecision = null; Refresh();
+        if (selectedId == id) return; CancelDetails(); selectedId = id; ChangeCandidate(""); RemoteCoverKey = null; RemoteLinks = []; DisplayedCandidateId = null; RemoteFacts = "选择候选后可查看完整详情。"; LastDecision = null; Refresh();
     }
     private bool ChangeCandidate(string id)
     {
         if (selectedCandidate == id) return false;
         CancelDetails(); candidateSelectionGeneration++; selectedCandidate = id;
-        DisplayedCandidateId = null; RemoteCoverKey = null;
+        DisplayedCandidateId = null; RemoteCoverKey = null; RemoteLinks = [];
         RemoteFacts = id.Length == 0 ? "选择候选后可查看完整详情。" : "正在读取候选详情…";
         return true;
     }
@@ -130,6 +136,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         Notify(); _ = OpenDetailsAsync(id);
     }
     public void ReportLocalDetailsFailure() => workspace.ReportUnexpected();
+    public void ReportLinkFailure() { Message = "无法打开浏览器，请使用候选详情中的链接重试。"; Notify(); }
     public Task StartAsync(ImmutableArray<string> selected, RecognitionMode mode) => Track(async () =>
     {
         if (batch is not null || !offline.Capability.Loaded) return;
@@ -149,7 +156,95 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         }
         finally { batch = null; Refresh(); }
     });
-    public void CancelAll() { batch?.Cancel(); queue.CancelAll(); Message = "已取消识别及本轮可用建议。"; Refresh(); }
+    public void CancelAll()
+    {
+        batch?.Cancel(); automaticStop?.Cancel(); automaticTargets.Clear(); automaticIds.Clear();
+        queue.CancelAll(); Message = "已取消识别及本轮可用建议。"; Refresh();
+    }
+
+    // Import supplies exact committed IDs. At most two jobs are active; waiting IDs are
+    // bounded by the existing 2000-item import limit and do not retain remote payloads.
+    public Task StartImportedAsync(ImmutableArray<string> ids)
+    {
+        if (disposed || ids.IsDefaultOrEmpty || !offline.Capability.Loaded) return Task.CompletedTask;
+        int deferred = 0;
+        foreach (var id in ids.Distinct(StringComparer.Ordinal))
+        {
+            if (automaticIds.Contains(id)) continue;
+            if (automaticIds.Count >= 2000) { deferred++; continue; }
+            automaticIds.Add(id); automaticTargets.Enqueue(id);
+        }
+        if (automatic is not { IsCompleted: false }) automatic = Track(RunAutomaticImportsAsync);
+        if (deferred > 0) { Message = $"自动识别待处理上限已到，{deferred} 项保留在书架，请在当前批次结束后补全资料。"; Notify(); }
+        return Task.CompletedTask;
+    }
+    public Task WaitForAutomaticRecognitionAsync() => automatic ?? Task.CompletedTask;
+    public Task StartUnidentifiedAsync() => Track(async () =>
+    {
+        await reviews.InitializeAsync(lifetime.Token);
+        var awaitingReview = reviews.Snapshot.Select(r => r.GameId).ToHashSet(StringComparer.Ordinal);
+        var ids = offline.CurrentSnapshot?.Entries.Where(e => e.Metadata is null && !e.Installations.IsEmpty
+            && !awaitingReview.Contains(e.Id)).Select(e => e.Id).ToImmutableArray() ?? [];
+        await StartImportedAsync(ids);
+    });
+    private async Task RunAutomaticImportsAsync()
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        automaticStop = stop;
+        int applied = 0, review = 0, failed = 0;
+        try
+        {
+            await reviews.InitializeAsync(stop.Token);
+            while (automaticTargets.Count > 0)
+            {
+                stop.Token.ThrowIfCancellationRequested();
+                while (batch is not null) await Task.Delay(250, stop.Token);
+                var jobs = new List<(Guid Job, string Game)>();
+                for (int n = 0; n < RecognitionQueue.WorkerCount && automaticTargets.TryDequeue(out var id); n++)
+                {
+                    try
+                    {
+                        var input = await offline.CaptureRecognitionAsync(id, stop.Token);
+                        if (input.Entry.Metadata is not null || input.Entry.Installations.IsEmpty) { automaticIds.Remove(id); continue; }
+                        jobs.Add((await queue.EnqueueAsync(id, RecognitionMode.MissingMetadata, online: true, includePe: IncludePe, cancellation: stop.Token), id));
+                    }
+                    catch (Exception e) when (e is InvalidDataException or InvalidOperationException)
+                    { failed++; automaticIds.Remove(id); }
+                }
+                Message = $"正在自动识别 · 已应用 {applied} · 待核对 {review} · 未完成 {failed}。"; Refresh();
+                await queue.WhenIdleAsync(stop.Token);
+                foreach (var item in jobs)
+                {
+                    try
+                    {
+                        var job = queue.Snapshot.FirstOrDefault(j => j.Id == item.Job);
+                        if (job?.State != RecognitionJobState.NeedsReview || job.Result is null) { failed++; continue; }
+                        if (AutomaticRecognitionPolicy.Select(job.Result) is null) { review++; continue; }
+                        // Never borrow an active save task or modify an unsaved personal draft.
+                        while (busy || !workspace.CanEdit || workspace.IsDirty) await Task.Delay(250, stop.Token);
+                        stop.Token.ThrowIfCancellationRequested();
+                        busy = true; Notify();
+                        try
+                        {
+                            var decision = await workspace.ExecuteFileMutationAsync(async token =>
+                            {
+                                using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, stop.Token);
+                                return await reviews.ApplyAutomaticAsync(item.Job, linked.Token);
+                            }, workspace.SelectedId == item.Game ? item.Game : null, preserveSelection: true);
+                            LastDecision = decision;
+                            if (decision.IsCommitted) applied++;
+                            else { review++; Message = "自动应用未完成，导入资料保持不变：" + decision.Message; }
+                            await reviews.RefreshValidityAsync(stop.Token);
+                        }
+                        finally { busy = false; Refresh(); }
+                    }
+                    finally { automaticIds.Remove(item.Game); }
+                }
+            }
+            Message = $"自动识别完成：已应用 {applied} 项，{review} 项需核对，{failed} 项未完成。";
+        }
+        finally { automaticTargets.Clear(); automaticIds.Clear(); automaticStop = null; Refresh(); }
+    }
     public Task RerunAsync() => SelectedGameId is { } id ? StartAsync([id], RecognitionMode.Reidentify) : Task.CompletedTask;
     public Task IgnoreAsync() => selectedId is { } id ? Track(async () => { LastDecision = await reviews.IgnoreAsync(id, lifetime.Token); Message = LastDecision.Message; Refresh(); }) : Task.CompletedTask;
     public Task ApplyAsync() => selectedId is { } id && CanApply ? Mutate(c => reviews.ApplyAsync(id, selectedCandidate, c), SelectedGameId) : Task.CompletedTask;
@@ -170,13 +265,14 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         ChangeCandidate(candidateId); CancelDetails(); details = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         var token = details.Token; long generation = detailsGeneration, selection = candidateSelectionGeneration, epoch = auth.Generation;
         bool Current() => generation == detailsGeneration && selection == candidateSelectionGeneration && selectedId == review && selectedCandidate == candidateId && epoch == auth.Generation && !token.IsCancellationRequested;
-        DisplayedCandidateId = null; RemoteCoverKey = null; RemoteFacts = "正在读取候选详情…"; Notify();
+        DisplayedCandidateId = null; RemoteCoverKey = null; RemoteLinks = []; RemoteFacts = "正在读取候选详情…"; Notify();
         try
         {
             var result = await catalog.DetailsAsync(candidateId, false, token);
             if (!Current()) return;
             DisplayedCandidateId = candidateId;
             RemoteCoverKey = covers.Register(result.CoverUrl, result.FetchedAt);
+            RemoteLinks = CandidateDetailLinks.From(result);
             RemoteFacts = $"{result.Title}\n原名：{result.OriginalTitle}\n别名：{string.Join(" / ", result.Aliases)}\n发行：{result.ReleaseDate}\n开发商：{string.Join("、", result.Developers)}\n编号：{result.Id}\n来源：{string.Join("、", result.References.Select(r => r.Source + ":" + r.Id))}\n{result.Description}";
         }
         catch (OperationCanceledException) { if (generation == detailsGeneration && selection == candidateSelectionGeneration) RemoteFacts = "详情不可用：读取已取消。"; }
@@ -195,7 +291,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
         }
     }
     private async Task Observe(Task task) { try { await task; } finally { lock (pending) pending.Remove(task); } }
-    private void Notify() { foreach (string name in new[] { nameof(Reviews), nameof(Candidates), nameof(SelectedReviewItem), nameof(SelectedCandidateItem), nameof(SelectedTitle), nameof(SelectedId), nameof(SelectedGameId), nameof(LocalFacts), nameof(SelectedMessage), nameof(RemoteFacts), nameof(RemoteCoverKey), nameof(ProgressText), nameof(Progress), nameof(Message), nameof(Busy), nameof(CanApply), nameof(HasSelection), nameof(PersistenceError), nameof(LastDecision), nameof(LastJobState) }) Changed(name); }
+    private void Notify() { foreach (string name in new[] { nameof(Reviews), nameof(Candidates), nameof(SelectedReviewItem), nameof(SelectedCandidateItem), nameof(SelectedTitle), nameof(SelectedId), nameof(SelectedGameId), nameof(LocalFacts), nameof(SelectedMessage), nameof(RemoteFacts), nameof(RemoteCoverKey), nameof(RemoteLinks), nameof(ProgressText), nameof(Progress), nameof(Message), nameof(Busy), nameof(CanApply), nameof(HasSelection), nameof(PersistenceError), nameof(LastDecision), nameof(LastJobState) }) Changed(name); }
     public async ValueTask DisposeAsync()
     {
         if (disposed) return; disposed = true; lifetime.Cancel(); CancelDetails();

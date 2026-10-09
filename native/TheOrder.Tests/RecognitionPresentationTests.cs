@@ -48,4 +48,17 @@ public sealed class RecognitionPresentationTests
         Assert.Equal(RecognitionReviewStatus.Stale, Assert.Single(lab.Reviews.Snapshot).Status);
         Assert.Throws<StaleLibraryRequestException>(() => lab.Queue.RequireCurrentResult(id));
     }
+    [Fact]
+    public async Task DetailLinksClearOnSelectionAndCredentialChangeAndIgnoreLateResponse()
+    {
+        await using var lab = new Lab(); await lab.Init(); var id = await lab.Recognize();
+        await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace); vm.Select(id);
+        lab.Catalog.Detail = (_, _) => Task.FromResult(Work() with { WebUrl = "https://vndb.org/v200" });
+        await vm.OpenDetailsAsync("200"); Assert.Single(vm.RemoteLinks);
+        await lab.Credentials.ClearAsync(default); vm.RefreshIfDirty(); Assert.Empty(vm.RemoteLinks);
+        var deferred = new TaskCompletionSource<TheOrder.Domain.WorkMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lab.Catalog.Detail = (_, _) => deferred.Task;
+        var pending = vm.OpenDetailsAsync("200"); await vm.IgnoreAsync();
+        deferred.SetResult(Work() with { WebUrl = "https://vndb.org/v200" }); await pending; Assert.Empty(vm.RemoteLinks);
+    }
 }

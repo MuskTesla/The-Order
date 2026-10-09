@@ -1,6 +1,32 @@
 # The Order：当前实现与评审交接
 
-## 当前：Phase 8.2 已完成切换，真实日用观察中（2026-10-09）
+## 当前 Phase 8.2：Electron 识别默认与个人封面选择补齐并切换日用（2026-10-09）
+
+已核对真实 Electron 源码、识别差分 oracle 与历史 `9c27af3`／`16ccc28` 封面记录。原生 TitleMatching、EvidenceRanking、ReviewSafeRanking 已包含标题清洗、别名、独立编号、同索引行、PE 标题及章节／FD／重制冲突等规则，本轮没有重写算法或把排序分当成概率。实际缺口是原生自动导入默认 IncludePe=false；已恢复 Electron 的默认只读 EXE VERSIONINFO 线索，沿用数量／大小／路径边界及用户关闭选项，不执行 EXE、不扩大目录扫描。严格 >0.9 的最新自动选择规则继续保留；既有待核对条目不自动重跑。
+
+用户确认沿用最终“资料源默认封面＋个人选择”，不恢复被取代的高票竖图自动优先。原生默认选图和本地／远程个人封面字段已兼容；新增 Details ⋯ 中“选择作品封面…”及“恢复资料源默认封面”，完整预览横竖图，同一作品刷新保留个人选择，取消不写入。保存再次核验作品、封面 ID／URL／分级、凭据代次与原 cover token，经既有串行事务提交；不改变个人字段、Session／计数／时长或 schema。既有本地封面优先级保留，显式远程选择可替换本地封面，界面提前说明。没有借此补做全局 blur/plain/crop 显示偏好 UI。
+
+最终相关 Debug／Release 回归各1283/1283、Debug WinUI 构建及独立 Release publish通过。实际鼠标／键盘在新原生 Test identity 加入虚构作品、选择蓝色横图、取消（library 字节不变）、恢复资料源默认图；正常exit0，image work／waiters／导航／详情在途及 stale covers=0。开发验证没有使用真实库、凭据、真实 API 或游戏。完整历史来源、源码差异、候选／UI／测试证据见 `.artifacts/phase8-2-electron-algorithm-parity-20261009/report.md`。
+
+用户批准“替换日用版本”后，普通宿主入口实际切换成功：独立候选 `D:/Projects/The-Order-candidates/phase8-2-electron-algorithm-parity-20261009/candidate-01/win-x64`，558项文件冻结核验，WinUI DLL SHA256 `A6302FF41FB7777001EB9995702733063441E9B30F3109DF5556EBA292A40C8F`。新入口 `start-daily-electron-parity.ps1 -UserApprovedSwitch`；Standard、诊断关闭、Advanced资格关闭。真实物理Production／原ProfileId／StoreId／writer owner及实际进程代次一致，切换时36部作品、36安装、30关联、4条Session／4次／466秒不变，另建15文件一致性备份并验证独立恢复；旧版和旧备份保留，没有恢复旧快照。源码HEAD仍为 `45b77f4` 加已记录的继承与本轮未提交差异，不以HEAD或相同apphost哈希代替完整程序身份。未暂存、提交、推送，不代表Phase8完成或正式发布。
+
+## 历史 Phase 8.2：自动识别与候选跳转链接已切换日用（2026-10-09）
+
+用户要求导入后不再手动开始识别；排序分严格大于0.9时应用最高候选，其他结果人工选择。当前分支在`45b77f4`与上一轮未提交的Session书架同步修复上实现：导入事务回执只提供实际新增ID，自动队列最多2项在途、2000项待处理；已有安装目录被跳过时不重复识别。启动时补处理没有关联、安装存在且没有既有核对记录的条目，不替换已有作品关联或既有核对决定。
+
+自动选择不要求旧的唯一候选分差标志；同分按作品ID稳定选择。仍保留版本／编号冲突否决、最新详情与发行资料复核、本地证据／凭据代次及原事务保护；分数为排序指标而非准确概率。失败或不满足条件的结果留待核对。后台应用等待未保存个人草稿处理完毕，保留当前查询、详情页、选择和后提交的个人字段。Session、历史、启动授权与持久化schema未改变。候选详情新增可点击作品／来源链接，限定当前来源HTTPS白名单；选择或凭据变化立即清除旧链接，不合成未提供的URL。
+
+Debug与Release相关回归各548/548通过，最终Debug构建及独立Release publish成功。实际鼠标键盘在新的原生Test identity中选择、扫描并导入3个合成目录，无“开始识别”点击，2项自动关联、1项章节冲突保留核对；实际详情显示Steam链接控件。Test正常exit0，图片任务及导航／详情在途均为0，退出不改变library hash。真实API、私人库和凭据没有用于开发测试，浏览器外部站点导航未执行。新候选与合成体验入口见`.artifacts/phase8-2-auto-recognition-20261009/report.md`及`D:/Projects/The-Order-candidates/phase8-2-auto-recognition-20261009/`；该合成fixture需要Diagnostics=1，不能冒充普通日用入口。用户批准“本轮完成替换”后，普通宿主入口`start-daily-auto-recognition.ps1 -UserApprovedSwitch`已实际启动候选，Production根／ProfileId／StoreId／writer owner与进程身份一致，Diagnostics=0、Advanced资格关闭；启动核验时36个安装及4条Session／4次／466秒均未变，预先新增15文件备份并验证独立字节恢复。应用正常使用已保存凭据进行获授权的自动识别，代理／备份助手不解密或输出凭据。用户已在操作新窗口，代理停止进一步输入并保留运行；不把此时点核验冒充全部真实库已识别。旧程序和入口保留，不恢复旧快照。不得把源码HEAD或相同apphost EXE hash当作同一完整程序。未暂存、提交或推送。
+
+## 历史 Phase 8.2 日用修复切换：启动／退出自动同步书架（2026-10-09）
+
+用户报告已批准的 `2b5e67a` 在游戏结束后，书架最近游玩仍需手动刷新。实际源码确认 Session 事务已更新内存 writer 和持久化记录，Shell 原有刷新只更新计时状态，没有重新生成书架摘要。当前独立分支 `codex/phase8-native-profile-protection` 在 `45b77f4` 上保留未提交的窄范围修复：复用既有 Shell tick，针对改变的已提交 LibrarySnapshot 单飞查询当前筛选，保留 Details 草稿与作品选择，不重开 writer、不增加新计时或写盘。Session／进程／资料版本契约均未改动。
+
+相关 Debug／Release 回归各230项通过；最终6项新增回归及 Debug构建、Release publish通过。真实鼠标输入在原生 Test identity的6项合成库启动项目自有游戏，自动显示最近游玩与继续游玩；正常结束后列表12→13分钟、选择保持1项，存储次数3→4、历史0→1、720→798秒，Completed／ExitConfirmed；Test应用正常exit0。修复验证限合成Test；未启动真实游戏、重跑资源长测或移动Phase7标签。
+
+用户明确批准“切换到修复版”并在普通宿主PowerShell执行后，**DAILY-USE REPAIR SWITCH COMPLETE — OBSERVATION IN PROGRESS**。独立候选 `D:/Projects/The-Order-candidates/phase8-2-live-refresh-20261009/candidate-01/win-x64`，新日用入口 `start-daily-repair.ps1 -UserApprovedSwitch`，普通合成Test入口 `try-repair.ps1`；诊断与Advanced资格均关闭。实际PID3404、创建时间／EXEhash／原Production identity／writer owner一致；启动前后2部作品、2个安装、3条Session、3次／426秒及library hash不变，真实窗口核对Standard后返回书架留给用户。资料自Phase8.1发生变化，切换前已在资料锁下另建15文件备份并验证独立恢复副本，旧备份保留。完整差异、候选manifest、回归、合成实机与宿主切换回执见 `.artifacts/phase8-2-live-session-refresh-20261009/report.md`；真实游戏自动更新仍待用户确认。旧 `2b5e67a` 程序／入口不覆盖，源代码修复未暂存或提交。不代表Phase8全部完成或正式发布。
+
+## 历史：Phase 8.2 首次切换2b5e67a，随后日用发现书架刷新问题（2026-10-09）
 
 **DAILY-USE SWITCH COMPLETE — OBSERVATION IN PROGRESS。** 用户明确批准后，普通宿主 PowerShell 从既有 Production 入口启动未改动的 `2b5e67a55d8eda905b8200652d189d7754dff112`。635项候选文件、553项旧程序回退文件核验一致；真实 Production 与 Phase 8.1 备份哈希未变。实际进程 EXE、原 Profile/Store identity、真实根及 writer lock owner 经宿主物理读取／Windows Restart Manager核验，启动前后库字节与数量一致，实际窗口显示真实书架。设置页确认 Standard；诊断轮询关闭，Advanced资格关闭。未改原程序、快捷方式、历史候选或证据。
 

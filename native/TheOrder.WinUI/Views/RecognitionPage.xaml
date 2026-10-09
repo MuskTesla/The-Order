@@ -10,13 +10,13 @@
     <Setter Target="ManualApplyButton.(Grid.Row)" Value="1"/><Setter Target="ManualApplyButton.(Grid.Column)" Value="0"/><Setter Target="ManualApplyButton.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualIdBox.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualActions.RowSpacing" Value="8"/>
    </VisualState.Setters></VisualState>
   </VisualStateGroup></VisualStateManager.VisualStateGroups>
-  <StackPanel Spacing="8"><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="高分是建议。作品、版本和本地来源一致后，再确认关联。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
+  <StackPanel Spacing="8"><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="导入后自动识别：排序分严格大于 0.9 时应用最高可用候选，其余结果在此选择。分数不是正确概率；版本或身份冲突仍需核对。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
   <Border Grid.Row="1" Style="{StaticResource ToolbarSurfaceStyle}" Padding="16">
    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="184" ItemHeight="68" MaximumRowsOrColumns="6">
     <Button Content="只补缺失资料" Click="OnMissing" AutomationProperties.AutomationId="RecognizeMissing"/>
     <Button Content="取消本轮识别" Click="OnCancel" AutomationProperties.AutomationId="RecognitionCancel"/>
     <ToggleSwitch Header="在线补充" IsOn="{x:Bind ViewModel.UseOnline, Mode=TwoWay}" OnContent="启用" OffContent="仅本地" AutomationProperties.AutomationId="RecognitionOnline" AutomationProperties.Name="识别时使用在线补充"/>
-    <ToggleSwitch Header="程序版本线索（可选）" IsOn="{x:Bind ViewModel.IncludePe, Mode=TwoWay}" OnContent="读取有界资源" OffContent="只用文件名" AutomationProperties.AutomationId="RecognitionPe" AutomationProperties.Name="识别时读取程序版本线索"/>
+    <ToggleSwitch Header="程序版本线索（可选）" IsOn="{x:Bind ViewModel.IncludePe, Mode=TwoWay}" OnContent="读取有界资源" OffContent="只用文件名" AutomationProperties.AutomationId="RecognitionPe" AutomationProperties.Name="识别时读取程序版本线索" ToolTipService.ToolTip="默认启用，与旧版一致。只读程序版本资源，不运行游戏；可关闭，读取也可能触发系统安全扫描。"/>
    </VariableSizedWrapGrid>
   </Border>
   <StackPanel Grid.Row="2" Spacing="8"><TextBlock Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionProgress"/><TextBlock Text="{x:Bind ViewModel.Message, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="RecognitionMessage" AutomationProperties.LiveSetting="Polite"/><TextBlock Text="{x:Bind ViewModel.PersistenceError, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" Foreground="{ThemeResource WarningTextBrush}" AutomationProperties.LiveSetting="Polite"/></StackPanel>
@@ -43,6 +43,9 @@
      </Grid>
      <local:CoverPresenter SourceKey="{x:Bind ViewModel.RemoteCoverKey, Mode=OneWay}" Width="140" Height="190" HorizontalAlignment="Left"/>
      <TextBlock Text="{x:Bind ViewModel.RemoteFacts, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="RecognitionRemoteFacts"/>
+     <ItemsControl ItemsSource="{x:Bind ViewModel.RemoteLinks, Mode=OneWay}" AutomationProperties.AutomationId="RecognitionRemoteLinks">
+      <ItemsControl.ItemTemplate><DataTemplate x:DataType="p:CandidateDetailLink"><StackPanel Spacing="4"><HyperlinkButton Content="{x:Bind Title}" Tag="{x:Bind Url}" Click="OnOpenLink" HorizontalAlignment="Left"/><TextBlock Text="{x:Bind Url}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+     </ItemsControl>
     </StackPanel></ScrollViewer>
    </Border>
   </Grid>

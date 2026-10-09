@@ -54,14 +54,15 @@ public sealed class RecognitionReviewTests
         private readonly Factory factory;
         public TransactionalLibrary Library => factory.Library;
         public Lab(MemoryStore? store = null, LibraryEntry? entry = null, IRecognitionCatalog? catalog = null,
-            IRecognitionEvidenceReader? reader = null, IRecognitionReviewCodec? codec = null, ITitleIndex? titleIndex = null, IPersistenceProbe? probe = null)
+            IRecognitionEvidenceReader? reader = null, IRecognitionReviewCodec? codec = null, ITitleIndex? titleIndex = null, IPersistenceProbe? probe = null,
+            IRecognitionRanker? ranker = null, IRecognitionEngine? engine = null)
         {
             Profile = new(new LegacyLibraryCodec().Encode([entry ?? Entry(folder: @"C:\synthetic\game")], Clock)); factory = new(Profile, probe);
             Store = store ?? new(); Offline = new(factory, new LegacyClientTextRules());
             var secret = new OnlineTransportTests.Credential(); Credentials = new(secret, secret);
             var index = new TitleIndex(() => new MemoryStream(Gzip("{\"version\":1,\"records\":[]}")));
-            Queue = new(Offline, new RecognitionEngine(titleIndex ?? index, reader ?? Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
-            Reviews = new(Offline, Queue, Store, codec ?? new RecognitionReviewCodec(), reader ?? Reader, new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
+            Queue = new(Offline, engine ?? new RecognitionEngine(titleIndex ?? index, reader ?? Reader, ranker ?? new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
+            Reviews = new(Offline, Queue, Store, codec ?? new RecognitionReviewCodec(), reader ?? Reader, ranker ?? new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
         }
         public async Task Init() { Assert.Equal(ClientOutcome.Success, (await Offline.LoadAsync(default)).Outcome); await Reviews.InitializeAsync(default); }
         public async Task<Guid> Recognize()

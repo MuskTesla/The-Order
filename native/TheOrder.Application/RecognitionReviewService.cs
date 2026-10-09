@@ -4,7 +4,8 @@ using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-// The explicit decision application layer owns writes. The engine and worker queue never receive it.
+// The decision application layer owns writes, including the user-authorized import policy.
+// The engine and worker queue never receive write authority.
 public sealed class RecognitionReviewService : IAsyncDisposable
 {
     private readonly OfflineLibraryClient offline;
@@ -216,8 +217,9 @@ public sealed class RecognitionReviewService : IAsyncDisposable
         finally { decision.Release(); }
     }
     public Task<ClientResult> ApplyAsync(Guid reviewId, string candidateId, CancellationToken cancellation) => DecideAsync(reviewId, null, candidateId, cancellation);
+    public Task<ClientResult> ApplyAutomaticAsync(Guid reviewId, CancellationToken cancellation) => DecideAsync(reviewId, null, "", cancellation, automatic: true);
     public Task<ClientResult> ManualLinkAsync(string gameId, string workId, CancellationToken cancellation) => DecideAsync(null, gameId, workId, cancellation);
-    private async Task<ClientResult> DecideAsync(Guid? reviewId, string? manualGameId, string workId, CancellationToken cancellation)
+    private async Task<ClientResult> DecideAsync(Guid? reviewId, string? manualGameId, string workId, CancellationToken cancellation, bool automatic = false)
     {
         using var stopping = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
         await decision.WaitAsync(stopping.Token).ConfigureAwait(false);
@@ -225,16 +227,19 @@ public sealed class RecognitionReviewService : IAsyncDisposable
         try
         {
             await InitializeAsync(stopping.Token).ConfigureAwait(false);
-            if (workId.Length is < 1 or > 20 || !workId.All(c => c is >= '0' and <= '9')) throw new InvalidDataException("目录作品编号须为 1 至 20 位数字。");
             RecognitionResult? result = null;
             if (reviewId is { } id)
             {
                 if (Require(id).Status != RecognitionReviewStatus.NeedsReview) throw new StaleLibraryRequestException();
                 result = queue.RequireCurrentResult(id);
+                if (automatic)
+                    workId = AutomaticRecognitionPolicy.Select(result)?.Work.Id
+                        ?? throw new InvalidDataException("没有可安全自动应用的候选，请在识别与核对中选择。排序分须严格大于 0.9，且没有版本或身份冲突。");
                 var candidate = result.Candidates.FirstOrDefault(c => c.Work.Id == workId) ?? throw new StaleLibraryRequestException();
                 if (candidate.Vetoed) throw new InvalidDataException(candidate.VersionNeedsConfirmation ? "版本信息不足，需要确认；不能直接应用。" : "此候选存在身份冲突，不能直接应用；请核对版本后使用手动关联。");
                 if (result.SourceFingerprint != fingerprint(result.Input.Entry)) throw new StaleLibraryRequestException();
             }
+            if (workId.Length is < 1 or > 20 || !workId.All(c => c is >= '0' and <= '9')) throw new InvalidDataException("目录作品编号须为 1 至 20 位数字。");
             var input = result?.Input ?? await offline.CaptureRecognitionAsync(manualGameId!, stopping.Token).ConfigureAwait(false);
             var authSnapshot = await auth.CaptureAsync(stopping.Token).ConfigureAwait(false);
             using var operation = CancellationTokenSource.CreateLinkedTokenSource(stopping.Token, authSnapshot.Changed,
@@ -245,11 +250,15 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             // does not itself authorize a different local relation; this call is already explicit intent.
             var work = await catalog.DetailsAsync(workId, true, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
+            if (automatic && work.Id != workId)
+                throw new InvalidDataException("候选作品编号已变化，保留本地条目，请重新核对。");
             if (result is not null)
             {
                 var releases = await catalog.ReleasesAsync(work.Id, token).ConfigureAwait(false);
                 var ranked = await Task.Run(() => ranker.Rank(result.Identity.Evidence, [work], new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases }, token), token).ConfigureAwait(false);
                 if (ranked.IsEmpty || ranked[0].Vetoed) throw new InvalidDataException("最新详情与本地证据存在冲突，请重新核对。");
+                if (automatic && !AutomaticRecognitionPolicy.Eligible(ranked[0]))
+                    throw new InvalidDataException("最新详情已不满足大于 0.9 的自动应用条件，请手动核对。");
             }
             var receipt = await library.CommitLinkAsync(input.Entry.Id, work, transaction, preserveName: true, preserveMergedName: true, cancellation: token, verifyBeforeCommit: async () =>
             {

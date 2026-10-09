@@ -99,6 +99,33 @@ public sealed class FilesPresentationTests
         await using var files = new FilesViewModel(client, workspace); await files.ScanAsync("synthetic"); await files.RetryScanAsync();
         Assert.Equal(2, attempts); Assert.Equal(ImportStage.NoCandidates, files.Stage); Assert.Contains("深度限制", files.ScanMessage);
     }
+    [Theory][InlineData(ClientOutcome.Committed, true)][InlineData(ClientOutcome.CommittedWithWarning, true)]
+    [InlineData(ClientOutcome.IoFailure, false)][InlineData(ClientOutcome.CandidateStale, false)]
+    public async Task RecognitionReceivesOnlySuccessfulImportReceiptAfterCommit(ClientOutcome outcome, bool expected)
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        var candidate = new ScanCandidate("scan-a", "合成游戏", null!, [], "合成扫描", null!);
+        var client = new Files { SaveResult = new(outcome, "导入结果") { ImportedGameIds = ["committed-a"] },
+            Scan = (_, _) => Task.FromResult(new ScanResult(ScanStatus.Completed, [candidate], new(1, 1, 1, "synthetic"), [], "")) };
+        await using var files = new FilesViewModel(client, workspace);
+        var callbacks = 0;
+        files.RecognizeImported = ids => { callbacks++; Assert.Equal(ImportStage.Completed, files.Stage); Assert.Equal("committed-a", Assert.Single(ids)); Assert.False(workspace.IsSaving); return Task.CompletedTask; };
+        await files.ScanAsync("synthetic"); await files.ImportAsync([candidate]);
+        Assert.Equal(expected ? 1 : 0, callbacks);
+    }
+    [Fact]
+    public async Task DuplicateReceiptDoesNotRecognizeAndRecognitionFailureCannotUndoImport()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        var candidate = new ScanCandidate("scan-a", "合成游戏", null!, [], "合成扫描", null!);
+        var client = new Files { Scan = (_, _) => Task.FromResult(new ScanResult(ScanStatus.Completed, [candidate], new(1, 1, 1, "synthetic"), [], "")) };
+        await using var files = new FilesViewModel(client, workspace); var callbacks = 0;
+        files.RecognizeImported = _ => { callbacks++; throw new IOException("synthetic callback failure"); };
+        await files.ScanAsync("synthetic"); await files.ImportAsync([candidate]); Assert.Equal(0, callbacks);
+        client.SaveResult = new(ClientOutcome.Committed, "导入已保存") { ImportedGameIds = ["committed-a"] };
+        await files.ScanAsync("synthetic"); await files.ImportAsync([candidate]);
+        Assert.Equal(ImportStage.Completed, files.Stage); Assert.Equal(1, callbacks); Assert.Contains("导入已保存", files.ScanMessage); Assert.Contains("自动识别未能启动", files.ScanMessage);
+    }
     private sealed class Files : IOfflineFilesClient
     {
         public int Scans, Saves;

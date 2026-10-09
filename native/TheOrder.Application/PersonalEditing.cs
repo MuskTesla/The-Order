@@ -16,8 +16,9 @@ public sealed record GameDetails(string Id, PersonalValues Personal, string Meta
 {
     public string? CoverKey { get; init; }
     public CoverEditToken? CoverToken { get; init; }
+    public string? WorkId { get; init; }
 }
-public sealed record CoverEditToken(Guid Epoch, string Id, Guid Generation, LocalCover? Original, CoverChoice? Choice);
+public sealed record CoverEditToken(Guid Epoch, string Id, Guid Generation, LocalCover? Original, CoverChoice? Choice, string? WorkId = null);
 public sealed record BulkPersonalPatch
 {
     public Change<string> Status { get; init; }
@@ -37,18 +38,39 @@ public sealed partial class TransactionalLibrary
             e.Metadata is null ? "尚未关联目录作品" : $"目录作品 {e.Metadata.Id} · {string.Join(" / ", e.Metadata.Developers)}",
             e.Installations.IsEmpty ? "愿望条目 · 尚无安装" : string.Join("\n", e.Installations.Select(i => $"{(i.Id == e.PreferredInstallationId ? "首选 · " : "")}{i.Folder}\n{i.Executable ?? "尚未设置启动程序"}")),
             $"累计 {e.TotalPlaySeconds / 3600} 小时 {e.TotalPlaySeconds % 3600 / 60} 分钟 · {e.PlayCount} 次 · {e.Sessions.Length} 条历史记录",
-            e.LocalCover is not null ? "个人本地封面 · 保存在书架资料中" : e.CoverChoice is not null || e.Metadata?.CoverUrl is not null ? "已保留资料封面 · 离线占位" : "暂无封面",
-            new(epoch, id, lifecycles[id].Generation, personal)) { CoverKey = ImageSourceKeys.For(e), CoverToken = new(epoch, id, lifecycles[id].Generation, e.LocalCover, e.CoverChoice) });
+            e.LocalCover is not null ? "个人本地封面 · 保存在书架资料中" : e.CoverChoice?.WorkId == e.Metadata?.Id && e.CoverChoice is not null ? "个人选择的作品封面" : e.Metadata?.CoverUrl is not null ? "资料源默认封面" : "暂无封面",
+            new(epoch, id, lifecycles[id].Generation, personal)) { WorkId = e.Metadata?.Id, CoverKey = ImageSourceKeys.For(e), CoverToken = new(epoch, id, lifecycles[id].Generation, e.LocalCover, e.CoverChoice, e.Metadata?.Id) });
     }, cancellation);
 
     public Task<CommitResult<LibraryEntry>> SaveLocalCoverAsync(CoverEditToken token, LocalCover? cover, CancellationToken cancellation = default)
         => Mutate(games =>
         {
             var entry = Find(games, token.Id);
-            if (token.Epoch != epoch || token.Generation != lifecycles[entry.Id].Generation || token.Original != entry.LocalCover || token.Choice != entry.CoverChoice) throw new StaleLibraryRequestException();
+            ValidateCoverToken(token, entry);
             var changed = entry with { LocalCover = cover, CoverChoice = null };
             return (games.Replace(entry, changed), changed);
         }, cancellation);
+
+    private void ValidateCoverToken(CoverEditToken token, LibraryEntry entry)
+    {
+        if (token.Epoch != epoch || token.Generation != lifecycles[entry.Id].Generation || token.Original != entry.LocalCover
+            || token.Choice != entry.CoverChoice || token.WorkId != entry.Metadata?.Id) throw new StaleLibraryRequestException();
+    }
+
+    // The caller supplies revalidated catalog data, never a URL taken from a View.
+    // Personal fields and accounting remain untouched; only the cover part of metadata is refreshed.
+    public Task<CommitResult<LibraryEntry>> SaveRemoteCoverAsync(CoverEditToken token, WorkMetadata work, string? coverId,
+        CancellationToken cancellation = default, Action? precommit = null) => Mutate(games =>
+        {
+            var entry = Find(games, token.Id); ValidateCoverToken(token, entry);
+            if (entry.Metadata is null || work.Id != token.WorkId) throw new StaleLibraryRequestException();
+            work = codec.NormalizeWork(work);
+            var selected = coverId is null ? null : work.Covers?.FirstOrDefault(c => c.Id == coverId)
+                ?? throw new InvalidDataException("这张封面已不可用，请重新打开封面选择。");
+            var changed = entry with { LocalCover = null, CoverChoice = selected is null ? null : new(work.Id, selected),
+                Metadata = entry.Metadata with { CoverUrl = work.CoverUrl, Covers = work.Covers, FetchedAt = work.FetchedAt } };
+            return (games.Replace(entry, changed), changed);
+        }, cancellation, precommit: precommit);
 
     public Task<CommitResult<LibraryEntry>> SavePersonalAsync(PersonalEditToken token, PersonalPatch patch, CancellationToken cancellation = default)
         => Mutate(games =>

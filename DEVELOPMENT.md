@@ -1,6 +1,52 @@
 # 开发与维护
 
-## 当前 Phase 8.2：已切换候选，真实日用观察中（2026-10-09）
+## Phase 8.2：识别与封面历史规则补齐版已切换日用（2026-10-09）
+
+原生识别核心已与实际Electron源码差分验证，本轮补齐默认EXE标题只读线索；可在识别页关闭，不执行游戏。封面采用用户确认的最终规则：资料源默认＋个人选择，本地个人封面优先；Details ⋯ 可选择作品封面或恢复资料源默认。同作品刷新保留选择，保存复核远程ID／URL／分级、凭据代次及资料token。没有更改schema、writer或Session契约。最新 >0.9 自动规则及书架Session自动同步继承不变。既有待核对条目需明确重新识别，不启动全库重扫。
+
+```powershell
+# 已批准并实际完成的日用切换；后续正常退出旧实例后可使用新入口。
+# 普通宿主PowerShell，真实Production；Standard、诊断0、Advanced资格0。
+& 'D:/Projects/The-Order-candidates/phase8-2-electron-algorithm-parity-20261009/start-daily-electron-parity.ps1' -UserApprovedSwitch
+# 程序回退到上一版自动识别候选，不恢复任何资料快照。
+& 'D:/Projects/The-Order-candidates/phase8-2-auto-recognition-20261009/start-daily-auto-recognition.ps1' -UserApprovedSwitch
+```
+
+558项候选文件及全部hash核验；新入口清除Test环境覆盖、检查原Production identity和物理资料边界，失败不回落。本次用户于普通宿主运行 `switch-parity-and-verify.ps1` 后，实际进程／DLL hash／writer owner一致；预先新建15文件资料锁内备份并验证独立恢复，启动时36作品／36安装／4Session／4次／466秒不变。程序留给用户正常使用，没有恢复旧快照、修改快捷方式或覆盖旧程序。资料恢复需要另外授权并先保护较新修改。
+
+Debug／Release相关回归各1283/1283；最终Debug构建及独立Release publish通过；合成Test实际鼠标键盘选择／取消／恢复默认与正常退出已验证，未调用真实服务或启动游戏。源码仍 `45b77f4` 加继承及本轮未提交差异，精确文件清单／源码快照／包identity／失败尝试／实机与切换回执在 `.artifacts/phase8-2-electron-algorithm-parity-20261009/`。旧候选与历史证据不覆盖。Advanced仍限受控Test，未重跑资源长测，不代表Phase8全部完成或发布。
+
+## 历史 Phase 8.2：自动识别版已批准并完成日用切换（2026-10-09）
+
+导入保存后自动排队识别，排序分严格大于0.9时选择最高可安全应用候选；无高分、版本／身份冲突、证据变化及失败保留人工核对。启动补处理没有关联与既有核对记录的已安装条目；不重新识别已关联作品。候选来源URL新增浏览器跳转控件。未保存草稿、旧关联、个人字段和事务保护仍生效。详情见`.artifacts/phase8-2-auto-recognition-20261009/report.md`。
+
+```powershell
+# 原生Test身份，项目自有合成目录／HTTP／凭据，不访问私人库和真实网络。
+# 此专用fixture需要Diagnostics=1；不是普通Production入口，不修改日用快捷方式。
+& 'D:/Projects/The-Order-candidates/phase8-2-auto-recognition-20261009/try-auto-recognition.ps1' -Wait
+# 已批准的新日用入口：先正常退出当前实例，在普通外部PowerShell运行。
+# Standard，诊断关闭，Advanced资格关闭；不会恢复资料快照。
+& 'D:/Projects/The-Order-candidates/phase8-2-auto-recognition-20261009/start-daily-auto-recognition.ps1' -UserApprovedSwitch
+```
+
+Debug／Release相关回归各548项通过，最终Debug构建及Release独立publish通过。源代码包含此前未提交的书架自动同步修复。用户批准“本轮完成替换”后，普通宿主PowerShell已启动新候选，实际PID4132／创建时间／WinUI DLL hash／真实Production identity／writer owner核验一致；启动核验时36个安装、4条Session、4次／466秒均未变。新建15文件一致性备份，旧程序与备份保留；启动后补识别可按授权继续更新未关联条目的资料，不要求后续library hash永远不变。诊断及Advanced资格关闭，不将合成fixture改名作日用。无schema或凭据格式变化，不需迁移或恢复旧快照。资料回退仍须另获授权，程序回退不恢复资料。
+
+## 历史 Phase 8.2：书架自动同步修复版切换（2026-10-09）
+
+本地修复使成功启动后的最近游玩、退出后的累计时长与继续游玩摘要自动同步，不依赖手动刷新。只查询当前应用-owned writer的已提交快照，不重载资料、不改变计时语义、日期定义或schema；选择与Details未保存草稿保留。源代码为 `45b77f4` 加本轮未提交差异；回归与候选身份见 `.artifacts/phase8-2-live-session-refresh-20261009/`。
+
+```powershell
+# 6项项目自有合成资料；不接触真实库。Standard，诊断／Advanced关闭。
+& 'D:/Projects/The-Order-candidates/phase8-2-live-refresh-20261009/try-repair.ps1' -Wait
+# 用户已批准本修复版；先从托盘正常退出当前实例，再于普通外部PowerShell运行。
+& 'D:/Projects/The-Order-candidates/phase8-2-live-refresh-20261009/start-daily-repair.ps1' -UserApprovedSwitch
+```
+
+**DAILY-USE REPAIR SWITCH COMPLETE — OBSERVATION IN PROGRESS。** 用户已批准并通过普通宿主PowerShell实际启动修复版，进程创建时间／EXEhash、真实Production根及原Profile/Store identity、writer lock owner和2部作品数量均已核验；设置页Standard生效、诊断／Advanced资格关闭。资料自Phase8.1有变化，启动前在独占资料锁下另建15文件备份并验证独立恢复副本；启动前后library字节与数量不变，旧备份保留。程序留给用户，真实游戏自动更新仍待日用确认。未修改原正式程序目录或快捷方式。
+
+入口复用Phase8.1物理路径及Production identity检查，核验独立包全部hash，清除Test环境覆盖，不允许失败回落；此执行器的LocalAppData虚拟化仍不适合直接打开真实Production。原 `phase8-1-20261009/start-daily-candidate.ps1 -UserApprovedSwitch` 可回到未改动的 `2b5e67a` 程序，后加 `-RollbackProgram` 则回到Phase6版本；两者均先正常退出当前实例，均不恢复资料。新备份及实际切换索引见本轮report；资料恢复需另获明确授权并先保护较新资料。源码未暂存或提交，不代表Phase8全部完成／正式发布获准。
+
+## 历史 Phase 8.2：首次切换2b5e67a（2026-10-09）
 
 **DAILY-USE SWITCH COMPLETE — OBSERVATION IN PROGRESS。** 用户已明确批准候选 `2b5e67a` 正常读写现有原生 Production，仅用于真实日用验证，不含公开发布或推送。应用未改动／重建，普通宿主 PowerShell 从既有 `start-daily-candidate.ps1 -UserApprovedSwitch` 启动；真实物理根、原 Profile/Store identity、实际 EXE、写入锁 owner 和资料数量已核对。原资料自 Phase 8.1 备份后所有权威文件哈希未变，因此沿用原独立不可变备份，无需另建相同快照。启动后的 library 字节及数量未变。窗口已返回真实书架并留给用户使用。
 

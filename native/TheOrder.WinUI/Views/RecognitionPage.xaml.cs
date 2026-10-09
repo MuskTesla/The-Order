@@ -24,6 +24,15 @@ public sealed partial class RecognitionPage : Page, IImageHost
     { if (e.AddedItems.FirstOrDefault() is RecognitionReviewCard card && card.Id != ViewModel.SelectedId) { ViewModel.Select(card.Id); ReviewDetails.ChangeView(null, 0, null); } }
     private void OnCandidate(object sender, SelectionChangedEventArgs e) { if (e.AddedItems.FirstOrDefault() is RecognitionCandidateCard card) ViewModel.SelectCandidate(card.Id); }
     private async void OnRemoteDetails(object sender, RoutedEventArgs e) { if (sender is Button { Tag: string id }) await ViewModel.OpenDetailsAsync(id); }
+    private async void OnOpenLink(object sender, RoutedEventArgs e)
+    {
+        if (sender is not HyperlinkButton { Tag: string url } || !CandidateDetailLinks.Allowed(url)) return;
+        try
+        {
+            if (!await Windows.System.Launcher.LaunchUriAsync(new Uri(url))) ViewModel.ReportLinkFailure();
+        }
+        catch (Exception) { ViewModel.ReportLinkFailure(); }
+    }
     private async void OnRerun(object sender, RoutedEventArgs e) => await ViewModel.RerunAsync();
     private async void OnIgnore(object sender, RoutedEventArgs e) => await ViewModel.IgnoreAsync();
     private async void OnApply(object sender, RoutedEventArgs e) => await ViewModel.ApplyAsync();

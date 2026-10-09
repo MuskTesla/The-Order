@@ -18,6 +18,10 @@ public sealed partial class DetailsPage : Page, IImageHost
     private async void OnRefreshOnline(object sender, RoutedEventArgs e) { try { if (RefreshOnline is not null) await RefreshOnline(); } catch { ViewModel.ReportUnexpected(); } }
     private async void OnRemoveWishlist(object sender, RoutedEventArgs e) { try { if (RemoveWishlist is not null) await RemoveWishlist(); } catch { ViewModel.ReportUnexpected(); } }
     public Func<Task>? ChangeCover { get; set; }
+    public Func<Task>? ChooseWorkCover { get; set; }
+    public Func<Task>? RestoreDefaultCover { get; set; }
+    private async void OnWorkCover(object sender, RoutedEventArgs e) { try { if (ChooseWorkCover is not null) await ChooseWorkCover(); } catch { ViewModel.ReportUnexpected(); } }
+    private async void OnDefaultCover(object sender, RoutedEventArgs e) { try { if (RestoreDefaultCover is not null) await RestoreDefaultCover(); } catch { ViewModel.ReportUnexpected(); } }
     private async void OnInstallations(object sender, RoutedEventArgs e) { try { if (ManageInstallations is not null) await ManageInstallations(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     private async void OnCover(object sender, RoutedEventArgs e) { try { if (ChangeCover is not null) await ChangeCover(); } catch (Exception) { ViewModel.ReportUnexpected(); } }
     public Func<Task>? GoBack { get; set; }

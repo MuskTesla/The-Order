@@ -36,6 +36,8 @@
           <Button.Flyout><MenuFlyout Placement="BottomEdgeAlignedLeft">
            <MenuFlyoutItem Text="管理本地安装" Click="OnInstallations"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8B7;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
            <MenuFlyoutItem x:Name="CoverButton" Text="选择本地封面" Click="OnCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="ChooseLocalCover"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xEB9F;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutItem Text="选择作品封面…" Click="OnWorkCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="ChooseWorkCover"/>
+           <MenuFlyoutItem Text="恢复资料源默认封面" Click="OnDefaultCover" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" AutomationProperties.AutomationId="RestoreDefaultCover"/>
            <MenuFlyoutItem x:Name="RecognizeButton" Text="重新识别" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeOne"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE721;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>
            <MenuFlyoutSeparator/>
            <MenuFlyoutItem Text="刷新在线资料" Click="OnRefreshOnline"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72C;"/></MenuFlyoutItem.Icon></MenuFlyoutItem>

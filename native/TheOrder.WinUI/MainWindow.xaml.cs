@@ -37,7 +37,7 @@ public sealed partial class MainWindow : Window
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
     private readonly bool performanceFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
@@ -57,6 +57,9 @@ public sealed partial class MainWindow : Window
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import), QuickLaunch = QuickLaunchAsync };
         detailsPage = new(workspace, images, launch) { GoBack = GoBackAsync, ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
+        detailsPage.ChooseWorkCover = () => ChooseWorkCoverAsync(coverSelection, coverRegistry);
+        detailsPage.RestoreDefaultCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details)
+            await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, null, token), details.Id); };
         onlinePage = new(online, images);
         recognitionPage = new(recognition, images) { OpenLocalDetails = id => Navigate(WorkspacePage.Details, id) };
         libraryPage.RecognizeSelected = async ids => { if (await ResolveUnsavedAsync()) { await recognition.StartAsync(ids, RecognitionMode.Reidentify); await Navigate(WorkspacePage.Recognition); } };
@@ -64,7 +67,8 @@ public sealed partial class MainWindow : Window
         settingsPage = new(workspace, online) { ChangeMaterialMode = SetMaterialModeAsync };
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) await online.RefreshEntryAsync(id); };
         detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
-        importPage = new(files, workspace) { ChooseFolder = PickFolder };
+        files.RecognizeImported = recognition.StartImportedAsync;
+        importPage = new(files, workspace, recognition) { ChooseFolder = PickFolder };
         installationsPage = new(files, workspace) { ChooseFolder = PickFolder, ChooseExecutable = () => PickFile(".exe") };
         InitializeVisualSystem(configuration);
         workspace.ThemeChanged += ApplyTheme; workspace.PropertyChanged += OnState;
@@ -92,12 +96,16 @@ public sealed partial class MainWindow : Window
     }
     private async Task Initialize()
     {
-        try { await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); await LoadMaterialPreferencesAsync(); }
+        try
+        {
+            await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); await LoadMaterialPreferencesAsync();
+            if (ViewModel.CanEdit) await recognition.StartUnidentifiedAsync();
+        }
         catch (Exception exception) { App.TraceVisualFailure(exception); lifecycleMessage = "启动恢复未完成，已禁用操作；请退出后重试。"; ViewModel.ReportUnexpected(); }
         RefreshSession();
     }
     public void SetCommandsBlocked(bool value)
-    { commandsBlocked = value; TitleSearch.IsEnabled = !value; PageContent.IsEnabled = !value; RefreshSession(); }
+    { commandsBlocked = value; if (value) coverDialog?.Hide(); TitleSearch.IsEnabled = !value; PageContent.IsEnabled = !value; RefreshSession(); }
     public void ShowLifecycleError(string message) { lifecycleMessage = message; RefreshSession(); }
     public void CancelBackgroundRequests() { online.Leave(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); }
     private async void OnPauseTiming(object sender, RoutedEventArgs e) { try { await Sessions.PauseAsync(); } catch { ShowLifecycleError("暂停计时未完成，请重试。"); } RefreshSession(); }
@@ -190,6 +198,9 @@ public sealed partial class MainWindow : Window
     private void OnLaunchRefresh(object? sender, object e)
     {
         Launch.Refresh(); RefreshSession();
+        recognition.RefreshIfDirty();
+        if (Sessions.Ready && !Sessions.Closing && !commandsBlocked)
+            _ = ViewModel.SynchronizeSessionLibraryAsync(Sessions.Library);
     }
     public async ValueTask StopAsync()
     {

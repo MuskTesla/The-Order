@@ -63,7 +63,16 @@ public sealed partial class LibraryPage : Page, IImageHost
     {
         // Normal browsing (SelectionMode None) holds no selection; SelectedItems may only be touched in selection mode.
         if (e.PropertyName == nameof(WorkspaceViewModel.SelectionVersion) && selectionMode) { GameGrid.SelectedItems.Clear(); GameList.SelectedItems.Clear(); }
-        if (e.PropertyName is nameof(WorkspaceViewModel.Items) or nameof(WorkspaceViewModel.Layout) or nameof(WorkspaceViewModel.Query)) Synchronize();
+        if (e.PropertyName is nameof(WorkspaceViewModel.Items) or nameof(WorkspaceViewModel.Layout) or nameof(WorkspaceViewModel.Query))
+        {
+            // Explicit query/reload changes already clear SelectionVersion. A live Session
+            // projection only updates records: retain selection by ID across ItemsSource rebinding.
+            var selected = selectionMode ? Active.SelectedItems.OfType<GameSummary>().Select(i => i.Id).ToHashSet(StringComparer.Ordinal) : [];
+            Synchronize();
+            if (selectionMode && selected.Count > 0)
+                foreach (var item in ViewModel.Items.Where(i => selected.Contains(i.Id)))
+                    if (!Active.SelectedItems.Contains(item)) Active.SelectedItems.Add(item);
+        }
         if (e.PropertyName is nameof(WorkspaceViewModel.IsEmpty) or nameof(WorkspaceViewModel.EmptyText) or nameof(WorkspaceViewModel.Items)) UpdateEmptyActions();
         UpdateSelectionChrome();
     }
