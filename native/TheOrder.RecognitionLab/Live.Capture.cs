@@ -7,6 +7,41 @@ namespace TheOrder.RecognitionLab;
 // only response bodies and non-secret request paths are saved in the explicit research directory.
 public static partial class Live
 {
+    private sealed class RecordedCredential : TheOrder.Application.ICredentialProvider
+    {
+        public Task<string?> ReadAsync(CancellationToken cancellation) => Task.FromResult<string?>("recorded-response-only");
+    }
+    private sealed class CapturedBodies(string directory) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
+        {
+            var parts = request.RequestUri!.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length is not (4 or 5) || parts[0] != "v2" || parts[1] != "catalog" || parts[2] != "works"
+                || !RemoteWorkDto.ValidId(parts[3]) || parts.Length == 5 && parts[4] != "releases") throw new InvalidDataException("Unrecorded request");
+            var file = Path.Combine(directory, parts[3] + (parts.Length == 5 ? "-releases.json" : "-work.json"));
+            return new(System.Net.HttpStatusCode.OK) { Content = new StringContent(await File.ReadAllTextAsync(file, cancellation), System.Text.Encoding.UTF8, "application/json") };
+        }
+    }
+    // Map the recorded bodies through the real transport/catalog validators. The handler never
+    // connects to a network; both compared binaries then consume exactly these same identities.
+    public static async Task<int> MapCapture(string directory, string input, string output)
+    {
+        var cache = JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(input))!;
+        var files = Directory.GetFiles(directory, "*-work.json");
+        if (files.Length is < 1 or > 8) return 2;
+        using var client = new HttpClient(new CapturedBodies(directory));
+        var catalog = new NextMoeCatalog(new CatalogTransport(client, new RecordedCredential(), new("https://api.nextmoe.dev/v2/")), clock: () => DateTimeOffset.UnixEpoch);
+        foreach (var file in files.Order(StringComparer.Ordinal))
+        {
+            var id = Path.GetFileName(file).Replace("-work.json", "", StringComparison.Ordinal);
+            if (!RemoteWorkDto.ValidId(id)) throw new InvalidDataException("Invalid captured identity");
+            cache["details|" + id] = JsonSerializer.Serialize(await catalog.DetailsAsync(id, true, default), Replay.Options);
+            cache["releases|" + id] = JsonSerializer.Serialize(await catalog.ReleasesAsync(id, default), Replay.Options);
+        }
+        await File.WriteAllTextAsync(output, JsonSerializer.Serialize(cache));
+        Console.WriteLine(files.Length + " recorded work/release pairs mapped; http=0"); return 0;
+    }
+
     // Apply the shipping mapper to already captured public bodies without sending a request.
     public static async Task<int> MapFacts(string directory, string output)
     {

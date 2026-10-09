@@ -80,8 +80,10 @@ public static partial class Engines
         var entry = Program.Entry(c.Name, new("i0", c.Folder, null, []));
         var previewLocal = await new RecordedEvidenceReader(c.Evidence).ReadAsync(entry, true, default);
         var previewIdentity = await RecognitionIdentityBuilder.BuildAsync(entry, previewLocal.Evidence, index, default);
+        Console.WriteLine("queries: " + string.Join(" | ", previewIdentity.Queries));
         var preview = new Dictionary<string, WorkMetadata>(StringComparer.Ordinal);
-        foreach (var previewWork in await view.ResolveReferencesAsync(previewIdentity.References, default)) preview[previewWork.Id] = previewWork;
+        if (!previewIdentity.References.IsEmpty)
+            foreach (var previewWork in await view.ResolveReferencesAsync(previewIdentity.References, default)) preview[previewWork.Id] = previewWork;
         foreach (var query in previewIdentity.Queries.Take(6))
             foreach (var previewWork in (await view.SearchAsync(query, null, default)).Items) preview[previewWork.Id] = previewWork;
         Console.WriteLine("preliminary:");

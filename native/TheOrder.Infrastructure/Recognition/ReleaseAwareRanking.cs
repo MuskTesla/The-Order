@@ -32,6 +32,7 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         if (ranked.IsEmpty) return ranked;
         var locals = evidence.Titles.Where(t => IdentitySource(t.Source)).DistinctBy(t => t.Value, StringComparer.Ordinal).ToArray();
         var values = locals.Select(t => t.Value).ToArray();
+        var chineseSpellings = values.ToDictionary(v => v, LocalQueryVariants.Chinese, StringComparer.Ordinal);
         var names = ranked.ToDictionary(c => c.Work.Id, c => Names(c.Work), StringComparer.Ordinal);
         var resolved = ranked.Select(candidate =>
         {
@@ -49,6 +50,9 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             if (candidate.Confidence <= .95 && ReleaseExact(candidate, locals, rows) is { } proof)
                 return candidate with { Confidence = .955, EvidenceLevel = Math.Max(candidate.EvidenceLevel, 1), HighConfidence = false,
                     Reason = "本地完整标题与正式发行名称一致", Evidence = candidate.Evidence.Add(proof) };
+            if (candidate.Confidence <= .9 && ChineseExact(locals, candidate.Work, chineseSpellings) is { } spelling)
+                return candidate with { Confidence = .94, EvidenceLevel = Math.Max(candidate.EvidenceLevel, 1), HighConfidence = false,
+                    Reason = "本地中文标题与非机器官方中文标题繁简一致", Evidence = candidate.Evidence.Add(spelling) };
             // A long, specific alias (often a translated title) is weaker than an official title but
             // still names the work; uniqueness and homonym checks below decide whether it is enough.
             if (candidate.Confidence <= .9 && AliasExact(locals, names[candidate.Work.Id]) is { } alias)
@@ -89,7 +93,8 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
     {
         var rows = releases is not null && releases.TryGetValue(candidate.Work.Id, out var r) && !r.IsDefault ? r : [];
         var names = own.Concat(rows.Select(x => LocalTitleCleaner.Clean(x.Title))).ToArray();
-        return [.. locals.Where(t => names.Any(n => TitleMatching.Compare(t.Value, n) is { Exact: true, Version: "same" }))];
+        return [.. locals.Where(t => names.Any(n => TitleMatching.Compare(t.Value, n) is { Exact: true, Version: "same" })
+            || ChineseExact([t], candidate.Work) is not null)];
     }
 
     // A candidate whose only exact local titles are truncations of a longer local title that names
@@ -169,6 +174,20 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             foreach (var name in own)
                 if (TitleMatching.Compare(local.Value, name) is { Exact: true, Distinctive: true, Version: "same", Conflict: null })
                     return new(local.Source, local.Value, name, 1, true, "same", null);
+        }
+        return null;
+    }
+
+    private static CandidateExplanation? ChineseExact(LocalTitleEvidence[] locals, WorkMetadata work, Dictionary<string, string[]>? spellings = null)
+    {
+        var titles = (work.TitleEvidence ?? []).Where(t => !t.IsMachine && t.Kind is "official" or "original").Take(200).ToArray();
+        foreach (var local in locals)
+        {
+            var scripts = spellings?.GetValueOrDefault(local.Value) ?? LocalQueryVariants.Chinese(local.Value);
+            if (scripts.Length == 0) continue;
+            foreach (var official in titles)
+                if (LocalQueryVariants.ChineseExact(local.Value, official.Text, official.Language, scripts))
+                    return new(local.Source, local.Value, official.Text, 1, true, "same", null);
         }
         return null;
     }

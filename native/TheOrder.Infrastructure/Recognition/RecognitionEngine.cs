@@ -43,21 +43,39 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
                     foreach (var candidate in candidates.Take(128)) { if (works.Count >= 128 && !works.ContainsKey(candidate.Id)) break; works[candidate.Id] = candidate; }
                 }
                 if (!identity.References.IsEmpty) Accept(await catalog.ResolveReferencesAsync(identity.References, token).ConfigureAwait(false));
-                foreach (var query in identity.Queries.Take(6)) { token.ThrowIfCancellationRequested(); Accept((await catalog.SearchAsync(query, null, token).ConfigureAwait(false)).Items); }
+                var exactQueries = identity.Evidence.Titles.Where(t => ReleaseAwareRanking.IdentitySource(t.Source)).Select(t => TitleMatching.IndexKey(t.Value)).ToHashSet(StringComparer.Ordinal);
+                var singletonQueries = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (var query in identity.Queries.Take(6))
+                {
+                    token.ThrowIfCancellationRequested(); var page = await catalog.SearchAsync(query, null, token).ConfigureAwait(false); Accept(page.Items);
+                    // Keep where an incomplete card was found. A longer literal local query can
+                    // retrieve the right work even when a later short query has high-scoring
+                    // unrelated aliases. This affects detail scheduling only, never confidence.
+                    var key = TitleMatching.IndexKey(query);
+                    if (page.NextCursor is null && page.Items.DistinctBy(w => w.Id).Take(2).ToArray() is [var single]
+                        && exactQueries.Contains(key) && key.Length >= 8)
+                        singletonQueries[single.Id] = Math.Max(singletonQueries.GetValueOrDefault(single.Id), key.Length);
+                }
                 // Resolve/search can return an index-referenced card without any official titles.
                 // Its weak card score cannot rule out the work before fetching that missing detail.
                 // This changes bounded retrieval only; inferred index IDs still grant no write or
                 // ranking authority, and the complete candidates must pass the same final checks.
                 var preliminary = ranker.Rank(identity.Evidence, works.Values, cancellation: token);
+                static bool Incomplete(WorkMetadata work) => !(work.TitleEvidence ?? []).Any(t => !t.IsMachine && t.Kind is "official" or "original" or "latin");
+                int longestStrongSupport = preliminary.Where(c => !c.Vetoed && c.Confidence > .9).SelectMany(c => c.Evidence)
+                    .Where(e => e.Exact && e.Conflict is null && e.Version == "same" && ReleaseAwareRanking.IdentitySource(e.Source))
+                    .Select(e => TitleMatching.IndexKey(e.ObservedTitle).Length).DefaultIfEmpty().Max();
+                var specificIncomplete = preliminary.Where(c => !c.Vetoed && Incomplete(c.Work) && singletonQueries.GetValueOrDefault(c.Work.Id) > longestStrongSupport)
+                    .OrderByDescending(c => singletonQueries[c.Work.Id]);
                 var requestedReferences = identity.References.ToHashSet(StringComparer.Ordinal);
-                var incompleteReferenced = preliminary.Where(c => !c.Vetoed && !(c.Work.TitleEvidence ?? []).Any(t => !t.IsMachine && t.Kind is "official" or "original" or "latin")
+                var incompleteReferenced = preliminary.Where(c => !c.Vetoed && Incomplete(c.Work)
                     && c.Work.References.Any(r => requestedReferences.Contains(r.Source + ":" + r.Id)));
                 // Only repair weak-card retrieval when there is no strong compatible title.
                 // A reference returned for a parent/related edition must not displace the
                 // already strongest edition candidates. The two-detail budget is unchanged.
                 var retrievalOrder = preliminary.Any(c => !c.Vetoed && c.Confidence > .9)
                     ? preliminary : incompleteReferenced.Concat(preliminary);
-                var strongest = retrievalOrder.DistinctBy(c => c.Work.Id).Take(2).ToArray();
+                var strongest = specificIncomplete.Concat(retrievalOrder).DistinctBy(c => c.Work.Id).Take(2).ToArray();
                 foreach (var candidate in strongest)
                 {
                     token.ThrowIfCancellationRequested();

@@ -27,6 +27,7 @@ public static class Program
             "explain" => await Engines.Explain(args[1], args[2], args[3], args[4]),
             "capture" => await Live.Capture(args[1], args[2]),
             "mapfacts" => await Live.MapFacts(args[1], args[2]),
+            "mapcapture" => await Live.MapCapture(args[1], args[2], args[3]),
             "dumpprofile" => Live.DumpTestProfile(args[1]),
             "seedcredential" => await Live.SeedTestCredential(args[1]),
             "live" => await Live.Run(args[1], args[2], args[3], args[4], args[5], args.Length > 6 && args[6] == "coverage"),

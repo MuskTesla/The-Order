@@ -20,7 +20,10 @@ public static class RecognitionIdentityBuilder
         evidence = evidence with { Titles = [.. evidence.Titles.Where(t => t.Source != "readme-heading").Concat(readme.Select(t => new LocalTitleEvidence(t, "readme-title")))
             .Select(t => t.Source == "sidecar" ? t : t with { Value = LocalTitleCleaner.Clean(t.Value, t.Source) }).Distinct().Take(40)] };
         var names = Names(evidence.Titles.Where(t => t.Source != "sidecar").Select(t => t.Value));
-        var matches = await index.FindAsync(names, cancellation).ConfigureAwait(false);
+        // Script variants broaden lookup, not the actual evidence. Exact row proofs below still
+        // require the original spelling; inferred references retain their title-index provenance.
+        var lookupNames = names.Concat(names.SelectMany(LocalQueryVariants.Chinese)).DistinctBy(TitleMatching.IndexKey, StringComparer.Ordinal).Take(24).ToImmutableArray();
+        var matches = await index.FindAsync(lookupNames, cancellation).ConfigureAwait(false);
         cancellation.ThrowIfCancellationRequested();
         static string IdentityOf(IndexCandidate m) => References(m.Record.References).FirstOrDefault() ?? "unknown:" + m.Row;
         var identities = matches.Select(IdentityOf).Distinct(StringComparer.Ordinal).ToArray();
@@ -44,11 +47,13 @@ public static class RecognitionIdentityBuilder
             .Select(t => new TitleIndexProof(t.Value, t.Source, [.. m.Record.Names.Take(30)], References(m.Record.References)))).Take(20).ToImmutableArray();
         // Exact local titles that the index assigns to more than one identity. A catalog that only
         // returns one of them must not treat the shared title as unique proof.
-        var shared = matches.GroupBy(m => TitleMatching.IndexKey(m.ObservedTitle), StringComparer.Ordinal)
-            .Select(g => (Key: g.Key, Identities: g.Select(IdentityOf).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(8).ToImmutableArray()))
-            .Where(g => g.Identities.Length > 1).ToDictionary(g => g.Key, g => g.Identities, StringComparer.Ordinal);
-        var homonyms = evidence.Titles.Where(t => t.Source != "sidecar" && shared.ContainsKey(TitleMatching.IndexKey(t.Value)))
-            .Select(t => new TitleHomonym(t.Value, t.Source, shared[TitleMatching.IndexKey(t.Value)])).Take(20).ToImmutableArray();
+        var homonyms = evidence.Titles.Where(t => t.Source != "sidecar").Select(t =>
+        {
+            var spellings = new[] { t.Value }.Concat(LocalQueryVariants.Chinese(t.Value)).Select(TitleMatching.IndexKey).ToHashSet(StringComparer.Ordinal);
+            var ids = matches.Where(m => spellings.Contains(TitleMatching.IndexKey(m.ObservedTitle))).Select(IdentityOf)
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).Take(8).ToImmutableArray();
+            return new TitleHomonym(t.Value, t.Source, ids);
+        }).Where(h => h.Identities.Length > 1).Take(20).ToImmutableArray();
         var combined = evidence with { References = [.. evidence.References.Concat(indexedRefs.Select(r => new ReferenceEvidence(r, "title-index"))).Take(40)], IndexProofs = proofs,
             Warnings = matches.Length >= 128 ? evidence.Warnings.Add("本地同名候选达到上限，无法判断唯一性，请手动核对。") : evidence.Warnings, Homonyms = homonyms };
         var primary = Names(evidence.Titles.Where(t => t.Source is "manual-title" or "config-title").Select(t => t.Value)
@@ -58,7 +63,8 @@ public static class RecognitionIdentityBuilder
         // Spend the bounded query budget on distinct titles first, then their edition-free bases and
         // index names, and only then on spelling variants of the same title.
         var bases = primary.Take(3).Select(TitleMatching.BaseTitle).OfType<string>();
-        var queries = primary.Take(3).Concat(bases).Concat(unambiguous.SelectMany(m => m.Record.Names).Take(2)).Concat(primary.Skip(3))
+        var queries = primary.Take(3).Concat(bases).Concat(unambiguous.SelectMany(m => m.Record.Names).Take(2))
+            .Concat(primary.Take(3).SelectMany(LocalQueryVariants.Retrieval)).Concat(primary.Skip(3))
             .Concat(primary.SelectMany(TitleMatching.Variants)).Concat(unambiguous.SelectMany(m => m.Record.Names))
             .Where(v => TitleMatching.Compare(v, v).Score > 0).DistinctBy(v => TitleMatching.Compact(TitleMatching.Normalize(v)), StringComparer.Ordinal).Take(6).ToImmutableArray();
         return new(combined, matches, queries, References(combined.References.Select(r => r.Value)));

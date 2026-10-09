@@ -23,7 +23,7 @@ public static partial class Live
             var request = TheOrder.Platform.Windows.NativeProfilePaths.Select(NativeProfileKind.Development, "Test", directory);
             if (request.Kind != NativeProfileKind.Test) throw new InvalidOperationException("Test credential profile required");
             using var profile = TheOrder.Platform.Windows.NativeProfileStore.Open(request, new TheOrder.Infrastructure.Legacy.NativeLibraryCodec());
-            return await new TheOrder.Platform.Windows.IsolatedCredentialStore(new NativeConfiguration(directory, false, profile)).ReadAsync(cancellation);
+            return await new TheOrder.Platform.Windows.IsolatedCredentialStore(new NativeConfiguration(profile.Root, false, profile)).ReadAsync(cancellation);
         }
     }
 
@@ -103,7 +103,7 @@ public static partial class Live
         var request = TheOrder.Platform.Windows.NativeProfilePaths.Select(NativeProfileKind.Development, "Test", directory);
         if (request.Kind != NativeProfileKind.Test) { Console.Error.WriteLine("not a Test profile: " + request.Kind); return 2; }
         using var profile = TheOrder.Platform.Windows.NativeProfileStore.Open(request, new TheOrder.Infrastructure.Legacy.NativeLibraryCodec());
-        var store = new TheOrder.Platform.Windows.IsolatedCredentialStore(new NativeConfiguration(directory, false, profile));
+        var store = new TheOrder.Platform.Windows.IsolatedCredentialStore(new NativeConfiguration(profile.Root, false, profile));
         await store.SaveAsync(secret, CancellationToken.None);
         Console.WriteLine("stored in Test profile: " + await store.HasCredentialAsync(CancellationToken.None));
         return 0;
