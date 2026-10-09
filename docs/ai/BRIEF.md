@@ -1,6 +1,18 @@
 # The Order：当前实现与评审交接
 
-## 当前：独立 Windows 验收完成，RC 仅余宿主方案名恢复（2026-10-09）
+## 当前：Phase 7 完成，Release Candidate 可进入 Phase 8（2026-10-09）
+
+**PHASE 7 COMPLETE — RELEASE CANDIDATE READY FOR PHASE 8。** 这是 RC 阶段完成／进入下一阶段的结论，**不是正式发布、Production 使用或替换正式程序的授权**。本轮只做已有证据复核、离线交付核验和文档归档，应用修改／构建／负载／ETW／宿主设置写入均为 0。
+
+工作区 `D:/Projects/The-Order-worktrees/codex-phase7-finalization`，分支 `codex/phase7-finalization`，接管文档 HEAD `b689152ba5ef08290199519ff44dbf4880281992`。最终应用仍 **2b5e67a55d8eda905b8200652d189d7754dff112**；冻结 tag `codex/phase7-app-desktop-final-20261008` 未移动，应用源码无后续差异。新旧程序目录和 ZIP 的 manifest 项分别 635/635 一致（另有 manifest 自身，ZIP 共636文件）；程序 ZIP SHA256仍 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`。收尾文档提交独立绑定在 `.artifacts/phase7-final-rc-confirmation-20261009/checkpoint.json`。
+
+用户明确接受宿主原 API 默认高对比度方案名 `""` → `高对比黑色`，以及将来启用时默认方案是否完全等价未验证。此项归为**用户接受的宿主测试环境残留**，仅解除其 RC 阻塞；不是精确恢复、应用修复或测试 PASS。本轮不再修改宿主。取消注销此前按用户范围排除为问题／阻塞，实际“应用已结束后重开恢复”的记录保留，不补成同一实例恢复 PASS。
+
+桌面／键盘／人工 Narrator／策略及相关回归、原64MiB资源验收、独立 Windows 标准账户无SDK部署／单实例／合成升级重装回退／实际注销后重开，均按各报告的真实候选和范围继承；未再执行。没有其他尚未处理的 RC 阻断。历史 FAIL、未知归因、有限开发例外及冻结包内旧 Gate 文案均保留；当前结论由外部最终验收回执绑定，不把开发例外扩展为发布豁免。
+
+普通入口仍 Standard、250ms JSON 诊断关闭，Advanced C1 仅显式受控 Test。VM 本轮实际为 Off，原 `Clean-Windows-Before-TheOrder` 检查点存在，未改变状态。最终矩阵、范围、体验与程序／资料回退分离规则见 [PHASE7_FINALIZATION](PHASE7_FINALIZATION.md)、[DEVELOPMENT](../../DEVELOPMENT.md) 和 `.artifacts/phase7-final-rc-confirmation-20261009/report.md`。Phase 8 待办为**现有原生资料快照、版本升级兼容、受控真实日用、回退与正式发布验收**，不包含 Electron→WinUI 数据迁移；本轮未执行 Phase 8。
+
+## 历史：独立 Windows 验收完成，RC 当时仅余宿主方案名恢复（2026-10-09）
 
 工作区仍为 `D:/Projects/The-Order-worktrees/codex-phase7-finalization` / `codex/phase7-finalization`；接管文档HEAD `c3dc7dcb64f1fa9d249b371645e3cb1d22233f43`，应用仍是 **2b5e67a55d8eda905b8200652d189d7754dff112**，未修改应用／构建／冻结包。最终新旧包635/635核验一致，程序ZIP仍 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`。
 

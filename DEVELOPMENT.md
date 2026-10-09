@@ -1,6 +1,28 @@
 # 开发与维护
 
-## 当前 Phase 7 独立 Windows 验收（2026-10-09，RC GATE BLOCKED）
+## 当前 Phase 7 最终 RC 与体验入口（2026-10-09）
+
+**PHASE 7 COMPLETE — RELEASE CANDIDATE READY FOR PHASE 8。** 不等于正式发布或 Production 授权。本轮仅归档已有验收与用户明确接受项，没有修改应用、重建、测试负载、系统设置或冻结包。
+
+应用源码 **2b5e67a55d8eda905b8200652d189d7754dff112**；分支 `codex/phase7-finalization`，冻结 tag `codex/phase7-app-desktop-final-20261008`。完整程序 ZIP `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/The-Order-x64-engineering-2b5e67a.zip` 为平铺根，SHA256 `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501`。目录／ZIP 内635个manifest项全部核验一致；运行时、许可、启动入口齐全。最终文档 HEAD、离线回执与历史报告身份在 `.artifacts/phase7-final-rc-confirmation-20261009/checkpoint.json` / `delivery-verification.json`；准确矩阵见 [PHASE7_FINALIZATION](docs/ai/PHASE7_FINALIZATION.md)。
+
+普通隔离入口（不在本轮执行）：
+
+```powershell
+& 'D:/Projects/The-Order-worktrees/codex-phase7-finalization/.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/win-x64/launch-test.ps1' -Wait
+```
+
+完整解压后也可双击 `Start-Test.cmd`。默认 `%LOCALAPPDATA%/TheOrder-RC/Test`、Standard、无250ms诊断；启动前核对所有文件并拒绝 Production 根／已有非Test资料。不要直接双击 EXE 绕过隔离入口。需现有384项合成内容时可用下节既有 `try-candidate.ps1`（依赖本机helper/seed/covers，和无开发依赖的便携入口不同）。只有显式 `-ControlledAdvanced` 才允许手动选择 C1；`-Diagnostics` 是独立诊断入口，不是普通体验。
+
+**程序回退**：退出本次 Test 后，将完整旧包 `.artifacts/phase7-finalization/frozen-rc/The-Order-x64-engineering-91b98d6.zip` 解压到独立目录（ZIP 含 `win-x64` 根），核验旧manifest，再用旧包的 `launch-test.ps1` 指向明确的隔离Test资料。旧包 SHA256 `FD620EBF41DB500A11E7799E81FABFD06A653FBD71A5FFA5033FA406292F71F8`，不覆盖新冻结包、不 reset 源码。
+
+**资料回退**：程序回退不会自动恢复资料。先退出 Test、保存当前闭合快照，再校验预备快照文件哈希、同一物理root／ProfileId／StoreId，确认是否有较新修改；没有显式丢弃确认不得覆盖。来宾已验证快照位于 `C:/Users/TheOrderTest/AppData/Local/TheOrder-RC-Acceptance/run-20261009-070202/snapshots/old-ui-saved` 和 `snapshots/before-explicit-discard`，只适用于对应 `profiles/upgrade` 的合成资料。不能把演练脚本当作正式产品的自动恢复功能，不能对 Production 运行。本轮不执行任何回退。
+
+宿主默认高对比度方案名空字符串→“高对比黑色”及未来默认方案等价性未知，现为**用户接受的宿主测试环境残留**；不是精确恢复、应用修复或测试PASS，禁止继续为此改宿主设置。历史 FAIL／原协议／冻结包中生成时的未验收文案不改写，使用独立最终回执给出当前 Gate。用户接受只限此差异，未豁免其他应用／数据保护／资源要求。VM 本轮为 Off、原干净检查点保留，不自动启动或还原。
+
+下一阶段需另行执行现有原生资料快照、版本升级兼容、真实日用、回退及正式发布验收；不执行 Electron→WinUI 迁移。本轮不进入Phase8、不替换正式程序、不推送或发布。
+
+## 历史 Phase 7 独立 Windows 验收（2026-10-09，当时 RC GATE BLOCKED）
 
 应用、冻结包和Standard默认均保持下节 **2b5e67a** 身份，没有新构建。Hyper-V来宾 `TheOrder-RC-Win11` / `DESKTOP-7GKL4M7` 的独立标准账户 `TheOrderTest` 已实际完成无SDK部署、首次空库／保存重开／单实例、旧91→新2b升级、程序移除重装、同根合成快照回退及真实注销重登录后读回。包内.NET／WinUI／WindowsAppRuntime模块路径核验，635/635一致，未安装开发工具或应用helper。原干净检查点保留；任务已清理，VM仍运行。
 

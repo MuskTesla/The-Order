@@ -1,6 +1,49 @@
 # Phase 7 Finalization / Release Candidate Preparation
 
-## 当前独立 Windows 验收：PASS（规定范围），RC 仅余宿主恢复（2026-10-09）
+## 当前最终 RC Gate：Phase 7 完成（2026-10-09）
+
+**PHASE 7 COMPLETE — RELEASE CANDIDATE READY FOR PHASE 8。** 当前无未获处理的 RC 阻断。该结论允许进入 Phase 8 的工作安排，**不是正式发布获准、Production 使用或替换正式程序的授权**。本轮应用修改／构建／新增测试负载／ETW／系统设置写入均为0；只复核现有范围、离线核验交付和本地提交文档。
+
+### 最终身份与冻结对应
+
+| 对象 | 实际身份 |
+|---|---|
+| 工作区／分支 | `D:/Projects/The-Order-worktrees/codex-phase7-finalization` / `codex/phase7-finalization` |
+| 收尾前文档HEAD | `b689152ba5ef08290199519ff44dbf4880281992`，tracked clean；收尾提交见最终 `checkpoint.json` |
+| 应用源码／冻结tag | `2b5e67a55d8eda905b8200652d189d7754dff112` / `codex/phase7-app-desktop-final-20261008`；tag未移动，native源码与当前HEAD无差异 |
+| 程序ZIP SHA256 | `1FD295C9B96CB8A319648481C634937ABB174490ECCA15822B80FF0B63C5D501` |
+| 源码ZIP SHA256 | `8441CC04D6FAAC5EB38CEC37894B559B770CBA7D97DA45F2D6A262B7679E4727`；Git archive comment为完整2b源码SHA |
+| manifest SHA256 | `AE0811D139D3DAF7214B50E245DEF1C02C0AC1FAE7FC09CAB894742524C1FB7C`；目录与ZIP635/635manifest文件匹配，另有manifest自身 |
+| 应用／光学DLL SHA256 | `6DA82872F0B5F58EEED9F4F9C6C03753DBEE993511EBDFBF147F224E31AD7576` / `1E94FD2433094CA30BEFCF17B4F7085E99B3F108F5686E64B901FA8D16BEEB90` |
+| 程序包／资料入口 | `.artifacts/phase7-app-acceptance-20261008/frozen-rc/2b5e67a/`；完整平铺ZIP、self-contained运行时／许可、Test launcher均核验 |
+
+冻结包的 `release-identity.json`、`archive-identity.json`、README内Gate是生成时历史状态，保留原字节／哈希；不改包、不重新构建。最终验收由 `.artifacts/phase7-final-rc-confirmation-20261009/acceptance.json` 外部绑定上述身份和当前文档提交，交付时应附此回执及报告。冻结时的sourceDirty只涉及已列明的三份维护文档，应用源码当时clean；不把源码archive内旧文档当作最新验收结论。
+
+### 最终验收矩阵与范围
+
+| 分类 | 条目／结论与依据 |
+|---|---|
+| 通过（限定范围） | f628缓存命中显示位图复用修复、创建量3273→80、原64MiB两轮四组PASS；后续路径未改变。沿用原协议，非有限开发例外替代资源验收 |
+| 通过（限定范围） | 435 Debug／Release及完整native1813/1813、最终2b Debug／Release＋28/28和三个实际可访问名称补验；光学132静态／160动态及不变DLL。按源码和候选范围复用，不声称最终2b重跑全suite |
+| 通过（限定范围） | 桌面／键盘／托盘／焦点／选中状态、人工Narrator指定流程、实际Accent／Light/Dark／HC／透明／动画／100/150/200%DPI／有效1.44字号／窄窗；C1两位置与释放／静置证据按对应版本继承 |
+| 通过（限定范围） | 当前VM、独立标准账户、无SDK／源码／helper部署、app-local运行时、首次启动／单实例、合成升级／程序移除重装／同根资料回退、已保存且无活跃Session的真实注销后重开；新旧635/635一致 |
+| 用户接受的限制 | 宿主默认HC方案名原API空字符串→“高对比黑色”；未来再次启用时默认方案是否完全等价未验证。**仅解除该项RC阻塞，不是精确恢复／应用修复／测试PASS**。用户明确禁止继续改宿主设置 |
+| 未覆盖但不阻塞（当前RC范围） | 真实Production快照／日用／回退与发布验收属于Phase8；全部硬件／无限时长／其他reader／实体GPU性能无普遍证明。真实OS结束会话无活跃游戏、无未保存app草稿，实体重启／关机未实测；保留代码／受控回归和实机范围，不扩展为上述场景PASS |
+| 按用户排除为问题／阻塞 | Windows取消注销事实保留：app在取消前已结束，重开恢复；同一实例收到FALSE并恢复未实测，不记为PASS、不再追加验证 |
+| 历史未通过／未知 | 原32MiB Private代理FAIL、Shared/XAML旧协议、工具失败／INTERRUPTED与未闭合归因全部保留，不回写PASS，不扩大此前有限开发集成例外 |
+| 真正阻断 | **无尚未处理的当前Phase7 RC阻断**；这一结论不代替正式发布门槛 |
+
+普通入口 Standard、诊断轮询关闭，Advanced C1仅明确受控Test；安全／无障碍降级、资源释放、退出收尾与数据保护均未豁免。VM实际为Off，原 `Clean-Windows-Before-TheOrder` / `2db0565f-5ed2-46d6-ba34-53e27acdd08f` 仍在，未修改VM或检查点。
+
+### 证据、体验、回退和停止
+
+最终离线身份／交付核验、原报告哈希和当前Gate回执在 `.artifacts/phase7-final-rc-confirmation-20261009/`；来源为 `.artifacts/phase7-closure-20261008/report.md`、`.artifacts/phase7-app-acceptance-20261008/report.md`、`.artifacts/phase7-isolated-windows-20261009/run-20261009-070202/report.md`。原报告、候选、快照和全部历史状态原样保留。
+
+体验用最终包 `Start-Test.cmd` 或 `launch-test.ps1 -Wait`；程序回退用独立旧91b98d6完整包，资料恢复另行执行“退出Test→保存当前闭合快照→核对哈希／同root／ProfileId／StoreId→确认丢弃较新变更→精确恢复”，不静默覆盖。准确路径和开关见 [DEVELOPMENT](../../DEVELOPMENT.md)。本轮不启动体验或回退。
+
+Phase8待办：**现有原生资料快照、版本升级兼容、受控真实日用、回退、正式发布验收**；无Electron→WinUI迁移。完成本轮归档后暂停，不自动执行Phase8、访问Production、替换正式程序、push或公开发布。
+
+## 历史独立 Windows 验收：PASS（规定范围），RC 当时仅余宿主恢复（2026-10-09）
 
 起点工作区 `codex-phase7-finalization` / `codex/phase7-finalization`，文档HEAD `c3dc7dcb64f1fa9d249b371645e3cb1d22233f43`、tracked clean。应用仍 **2b5e67a55d8eda905b8200652d189d7754dff112**，源码／候选没有修改，无构建或资源长测。新旧包635/635及冻结hash重验一致。
 
