@@ -1,6 +1,20 @@
 # The Order：当前实现与评审交接
 
-## Claude 识别研发候选：Recognition v2（2026-10-09，待集成评审，未切换日用）
+## 当前识别候选：Recognition v2 最终验证完成（2026-10-09，待用户批准集成／日用更新）
+
+**RECOGNITION CANDIDATE VERIFIED — READY FOR USER-APPROVED INTEGRATION / DAILY-USE UPDATE。** Claude 原分支保留在 `27b7166`；接续分支 `codex/recognition-v2-validation`，最终应用源码 `78427b406c6a58ba2a17be5d51a2e5865fc1e8e9`，算法 `recognition-v2-release-aware-3`。本节及 DEVELOPMENT 的当前节取代以下历史候选的当前状态声明；历史结果与失败不改写。
+
+接续修复：版本官方标题优先规则被父作品精确别名提前返回绕过；机器翻译标题误作独立身份；索引推导编号误作更强事实；自动提交未携带竞争候选发行上下文；短拉丁名称与目录缺失同名作品的误应用；歧义候选界面错误声称“唯一对应”。提交 `38ace0f`／`78427b4`。自动应用仍严格 >0.9，同时必须身份／版本一致且唯一领先，不按分数或 ID 处理歧义。提交时保留本轮竞争候选的有界发行上下文，重取选中详情并复核；上下文不持久化，重开后的历史建议需重新识别。
+
+最终同条件 **真实 NextMoe JSON 响应回放**，使用运行前冻结的版本级真值和修订隐藏集合：36项授权真实目录正确自动识别 **30→31/36**，候选错误自动应用0，5项人工；公共60项 **47→51/60**，基线错误1→候选0，20项负例均拒绝自动应用，真实响应召回57/60。真实隐藏组有31项目标确实不存在、5项独立版本／其他有效记录仍存在，不能称36项全是负例。历史29→33、离线35/36不是最终结果。本轮有限在线补采24次请求及真实GUI网络访问与最终零新请求回放分别记录。
+
+一次新独立 **离线 VNDB 转储模拟**，排除既有1144个作品系列、运行前冻结390项（295正例／95负例）：候选v2正确自动282、错误1；该错误驱动短标题保护后，最终v3在同一集合正确281、错误0、95/95负例拒绝。最后一项是修复后回归，**不是又一次未调参的独立验证**。有限目录仍可能缺失同名／版本资料，零观测错误不能外推为所有游戏正确。
+
+全量Debug **1927/1927，无跳过**（含现有Electron依赖测试；最终算法v3、界面说明修订前）；最终78427b4的Debug识别477/477、Release识别及FilesPresentation492/492，WinUI Debug／Release构建成功。真实桌面在隔离Test完成自动导入、版本匹配、歧义详情与人工应用、个人编辑保存重开、识别取消及旧异步结果不覆盖当前选择；最终实例正常exit0，图像及导航／详情在途0。没有启动游戏、改动Production或切换日用。
+
+Release候选 `.artifacts/rnd/gpt-verification-20261009/candidate-78427b4`，559项hash一致，manifest SHA256 `7FBFD5210E8BC169C4C4A1EEAF0DD6F43E03FC5E63E883A5DAD31D69E94982DB`；普通隔离体验 `launch.ps1`，Standard、诊断0、Advanced资格0。完整结果、实际截图、失败尝试和23文件运行时／测试集成补丁见同目录 `report.md`／`integration-manifest.json`。原主工作区34项修改及HEAD未变；32源码逐字节、2文档仅换行差异匹配5b574f0基线。**不得整体引入5b574f0**；实际应用补丁已在主工作区只读 `git apply --check` 通过，尚未应用。
+
+## 历史 Claude v1 识别研发候选（2026-10-09，归档结果，已由上节取代）
 
 隔离分支 `claude/recognition-rnd`（仅本地）。`5b574f0` 是 `codex-phase7-finalization`（HEAD `45b77f4`）34 个未提交文件的逐字节副本，已按 `final-checkpoint.json` 核对 34/34；**不要单独集成该提交**。Claude 的改动是其后的提交。算法版本 `electron-recognition-v1-native-4` → `recognition-v2-release-aware-1`。
 

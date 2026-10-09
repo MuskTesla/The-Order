@@ -1,6 +1,34 @@
 # 开发与维护
 
-## Recognition v2 候选（Claude 隔离分支，待集成评审）
+## 当前 Recognition v2：最终验证、集成及完整回退（2026-10-09）
+
+本轮只准备隔离候选，**集成与日用更新仍需用户最终批准**。源码 `78427b406c6a58ba2a17be5d51a2e5865fc1e8e9`，算法 `recognition-v2-release-aware-3`，分支 `codex/recognition-v2-validation`；文档提交不改变已冻结程序。结果和证据在 `.artifacts/rnd/gpt-verification-20261009/report.md`。原主工作区HEAD45b77f4和34项既有修改未变，Claude原分支27b7166及其未入库资料保留。
+
+```powershell
+# 普通权限、仅隔离Test；默认Standard、诊断关闭、Advanced资格关闭。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/rnd/gpt-verification-20261009/launch.ps1' -Wait
+```
+
+该入口核验559项候选hash和manifest身份，使用已验证的独立3条目Test资料；不会绑定Production。没有启动游戏。`launch-diagnostic.ps1`是单独的诊断入口，不能改名作为Production入口。普通体验可使用设置页现有凭据机制，密钥不写入报告或包。私有Test资料、回放数据、凭据和游戏路径不进入Git或交付程序目录。
+
+**批准后的最小集成顺序（本轮未执行）**
+
+1. 再次核实主工作区实际HEAD、34项原修改和协作者状态；先按原文件清单建立属于主开发的本地基线检查点，保留无关修改。`5b574f0`只用于差异参照，不cherry-pick。
+2. 从该检查点建立集成分支，应用已冻结的 `integration-runtime-tests.patch`（相对5b574f0→78427b4，共16运行时文件和7测试文件）。当前现场 `git apply --check` 已通过，未修改主工作区。源码提交依赖链ba6c333→b2d8936→27b7166→38ace0f→78427b4；6ab590f是早期文档，不能作为最新结论。优先审阅限定补丁，避免混入Lab、VNDB索引生成实验和历史文档。
+3. 同步原BRIEF／DEVELOPMENT的当前结果，运行受影响回归并构建独立集成候选，核对全部DLL／manifest。随后复用已验证的普通宿主Production切换流程，在资料锁下补做一致性备份并核对原Profile/Store、物理路径及实际进程；不能把Start-Test改名作为Production入口。
+4. 日用切换只替换程序入口，保留原程序和较新资料。旧算法建议重开时成为NeedsRecheck；不静默重新识别整个已关联库，不清空个人编辑或Session数据。
+
+**完整回退**
+
+- 程序回退：正常退出新实例，使用已保留的 `D:/Projects/The-Order-candidates/phase8-2-electron-algorithm-parity-20261009/start-daily-electron-parity.ps1 -UserApprovedSwitch`。不自动恢复资料快照；后续较新编辑继续保留。
+- 源码回退：回到上面主开发基线检查点，或在核对无后续冲突后应用完整 `rollback-runtime-tests.patch`。覆盖排名层、自动策略、提交复核、证据读取／身份、版本标记、DI装配和相关界面／测试；**仅切换Composition中的ranker不足以完整回退**。
+- profile/store/writer/library schema未变化。ReleaseContext仅限内存且JsonIgnore；资料快照恢复与程序回退分别授权，恢复旧快照会丢失快照之后的修改。
+
+最终算法v3的全量Debug1927/1927（界面说明修订前），最终源码Debug识别477/477、Release识别及FilesPresentation492/492、Debug／Release WinUI成功。已有Electron环境合法复用，历史3项依赖阻塞在这次全量中实际执行通过，不删／跳测试。真实NextMoe回放与离线模拟独立标记；390项独立样本找到的Dahlia误应用已修复，同集重跑只能称修复后回归。
+
+在线查询6、聚合候选128、自动富化2、展示5、识别预算60秒及队列边界沿用；新增自动复核上下文最多本轮2个作品的有界发行结果，凭据失效时清空，未持久化。离线模拟p50/p95为438/1041ms，只代表本地回放；网络延迟和大库吞吐不据此推算。未升级依赖、启用新索引或重跑图形／资源长测。
+
+## 历史 Recognition v1 候选交接（Claude 原报告，以下早期建议已由上节取代）
 
 **集成顺序**
 1. 先由 GPT／Codex 按自身流程提交 `codex-phase7-finalization` 中的 34 个未提交文件（即 `5b574f0` 的内容）。
@@ -9,7 +37,7 @@
    - `AutomaticRecognitionPolicy.cs`
    - `AutomaticRecognitionTests.cs`
    - `Composition.cs`
-3. 回退：在 `Composition.cs` 将 `ReleaseAwareRanking` 改回 `ReviewSafeRanking`，并还原 `AutomaticRecognitionPolicy`、`RecognitionReviewService` 的唯一性复核。旧核对记录在版本变化时本就要求重新识别；`Homonyms` 字段缺省为空，双向兼容。
+3. 早期回退建议曾仅切换 `Composition.cs` 的排名器并还原自动策略／提交唯一性。这不足以覆盖最终候选的完整修改，已作废；完整回退见上节。旧核对记录在版本变化时要求重新识别；`Homonyms` 字段缺省为空，双向兼容。
 
 **代码位置**（均在 `native/`）
 - `Infrastructure/Recognition/ReleaseAwareRanking.cs`：版本解析、发行标题／长别名提升、唯一性、具体性平局判定。
