@@ -87,6 +87,7 @@ public sealed partial class MainWindow
         if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
         var text = sender.Text;
         var version = ++titleSearchEditVersion;
+        var returnToSearch = ViewModel.Page != WorkspacePage.Library;
         titleSearchEditsPending++;
         try
         {
@@ -97,15 +98,20 @@ public sealed partial class MainWindow
                 var navigation = titleSearchNavigation ??= Navigate(WorkspacePage.Library);
                 await navigation;
                 if (ReferenceEquals(titleSearchNavigation, navigation)) titleSearchNavigation = null;
-                // WinUI can move focus to TitleBar when its page content is replaced.
-                // Keep typing in the search box, but do not steal another control's focus.
-                if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library &&
-                    Root.XamlRoot is not null && ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
-                    sender.Focus(FocusState.Keyboard);
             }
             if (version != titleSearchEditVersion) return;
             if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
             if (ViewModel.Query.Text != text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = text });
+            // Restore after query/layout completion; earlier focus is lost when
+            // the result containers change. Never override a later edit or a
+            // user moving focus to another control (including result submission).
+            if (returnToSearch) DispatcherQueue.TryEnqueue(() =>
+            {
+                if (version == titleSearchEditVersion && !commandsBlocked && !visualStopped &&
+                    ViewModel.Page == WorkspacePage.Library && Root.XamlRoot is not null &&
+                    ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
+                    sender.Focus(FocusState.Keyboard);
+            });
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
         finally { if (--titleSearchEditsPending == 0) SynchronizeTitleSearch(); }
