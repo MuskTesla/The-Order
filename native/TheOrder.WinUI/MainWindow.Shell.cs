@@ -31,8 +31,6 @@ public sealed partial class MainWindow
     private int titleSearchEditsPending;
     private long titleSearchEditVersion;
     private Task? titleSearchNavigation;
-    private bool titleSearchReturnFocusPending;
-    private string? titleSearchFocusObservation;
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -89,14 +87,14 @@ public sealed partial class MainWindow
         if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
         var text = sender.Text;
         var version = ++titleSearchEditVersion;
-        // A burst can continue after the first edit has already changed Page.
-        // Keep its return focus intent until the latest edit/query settles.
-        titleSearchReturnFocusPending |= ViewModel.Page != WorkspacePage.Library && !galleryVisible;
         titleSearchEditsPending++;
         try
         {
             if (ViewModel.Page != WorkspacePage.Library && !galleryVisible)
             {
+                // Search returns to a new result set, not the old Details anchor.
+                // Its delayed restoration would steal focus from this textbox.
+                libraryPage.CancelReturnRestorationForSearch();
                 // All edits share the navigation (including its unsaved prompt).
                 // ShowPage must not replace a live edit with the previous query.
                 var navigation = titleSearchNavigation ??= Navigate(WorkspacePage.Library);
@@ -106,23 +104,6 @@ public sealed partial class MainWindow
             if (version != titleSearchEditVersion) return;
             if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
             if (ViewModel.Query.Text != text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = text });
-            // Restore after query/layout completion; earlier focus is lost when
-            // the result containers change. Never override a later edit or a
-            // user moving focus to another control (including result submission).
-            if (titleSearchReturnFocusPending) DispatcherQueue.TryEnqueue(() =>
-            {
-                if (version != titleSearchEditVersion) return;
-                titleSearchReturnFocusPending = false;
-                if (visualFixtureTimer is not null)
-                    titleSearchFocusObservation = $"v{version}; root={FocusManager.GetFocusedElement(Root.XamlRoot)?.GetType().Name}; titlebar={ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar)}; searchRoot={ReferenceEquals(TitleSearch.XamlRoot, Root.XamlRoot)}";
-                if (!commandsBlocked && !visualStopped &&
-                    ViewModel.Page == WorkspacePage.Library && Root.XamlRoot is not null &&
-                    ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
-                {
-                    var restored = sender.Focus(FocusState.Keyboard);
-                    if (visualFixtureTimer is not null) titleSearchFocusObservation += $"; restored={restored}";
-                }
-            });
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
         finally { if (--titleSearchEditsPending == 0) SynchronizeTitleSearch(); }

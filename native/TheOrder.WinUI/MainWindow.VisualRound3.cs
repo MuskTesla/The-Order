@@ -18,7 +18,6 @@ public sealed partial class MainWindow
         library = libraryPage.VisualLayoutEvidence(), timerWidth = SessionDuration.ActualWidth,
         timerText = SessionDuration.Text, focus = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Root.XamlRoot)?.GetType().Name,
         textScale = new Windows.UI.ViewManagement.UISettings().TextScaleFactor,
-        searchFocusObservation = titleSearchFocusObservation,
         shell = "continuous canvas; independent toolbar; no enclosing glass", fixtureOnly = visualFixtureTimer is not null
     };
     private async Task CaptureRound3Async(string label)

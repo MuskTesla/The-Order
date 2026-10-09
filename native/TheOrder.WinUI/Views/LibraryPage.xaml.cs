@@ -29,6 +29,7 @@ public sealed partial class LibraryPage : Page, IImageHost
     public Func<ImmutableArray<string>, Task>? RecognizeSelected { get; set; }
     private bool synchronizing = true, selectionMode, keyboardOpen, restorePending;
     private string? scrollKey, lastOpenedId;
+    private long returnRestorationVersion;
     private readonly bool diagnostics;
     private readonly Stopwatch display = Stopwatch.StartNew();
     private readonly ConditionalWeakTable<object, object> seenContainers = new();
@@ -285,21 +286,29 @@ public sealed partial class LibraryPage : Page, IImageHost
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
     }
+    internal void CancelReturnRestorationForSearch()
+    {
+        restorePending = false;
+        returnRestorationVersion++;
+    }
     private async Task RestoreReturnAsync()
     {
         restorePending = false;
+        var version = returnRestorationVersion;
         var key = scrollKey; var id = lastOpenedId; var keyboard = keyboardOpen;
         try
         {
             // Wait one layout pass so the re-bound list has realized its panel.
             await Task.Yield();
+            if (version != returnRestorationVersion || !IsLoaded) return;
             var target = id is null ? null : ViewModel.Items.FirstOrDefault(i => i.Id == id);
             if (key is not null && Active.ItemsPanelRoot is not null)
                 await ListViewPersistenceHelper.SetRelativeScrollPositionAsync(Active, key,
                     value => AsyncInfo.Run(_ => Task.FromResult<object>(ViewModel.Items.FirstOrDefault(i => i.Id == value)!)));
-            if (target is null) return;
+            if (version != returnRestorationVersion || !IsLoaded || target is null) return;
             if (Active.ContainerFromItem(target) is not Control container) { Active.ScrollIntoView(target); await Task.Yield(); container = (Active.ContainerFromItem(target) as Control)!; }
-            container?.Focus(keyboard ? FocusState.Keyboard : FocusState.Programmatic);
+            if (version == returnRestorationVersion && IsLoaded)
+                container?.Focus(keyboard ? FocusState.Keyboard : FocusState.Programmatic);
         }
         catch (Exception) { /* Restoration is best effort; the query state itself is never lost. */ }
     }
