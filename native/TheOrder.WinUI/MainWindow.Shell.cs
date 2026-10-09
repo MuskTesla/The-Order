@@ -31,6 +31,7 @@ public sealed partial class MainWindow
     private int titleSearchEditsPending;
     private long titleSearchEditVersion;
     private Task? titleSearchNavigation;
+    private bool titleSearchReturnFocusPending;
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -87,7 +88,9 @@ public sealed partial class MainWindow
         if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
         var text = sender.Text;
         var version = ++titleSearchEditVersion;
-        var returnToSearch = ViewModel.Page != WorkspacePage.Library;
+        // A burst can continue after the first edit has already changed Page.
+        // Keep its return focus intent until the latest edit/query settles.
+        titleSearchReturnFocusPending |= ViewModel.Page != WorkspacePage.Library && !galleryVisible;
         titleSearchEditsPending++;
         try
         {
@@ -105,9 +108,11 @@ public sealed partial class MainWindow
             // Restore after query/layout completion; earlier focus is lost when
             // the result containers change. Never override a later edit or a
             // user moving focus to another control (including result submission).
-            if (returnToSearch) DispatcherQueue.TryEnqueue(() =>
+            if (titleSearchReturnFocusPending) DispatcherQueue.TryEnqueue(() =>
             {
-                if (version == titleSearchEditVersion && !commandsBlocked && !visualStopped &&
+                if (version != titleSearchEditVersion) return;
+                titleSearchReturnFocusPending = false;
+                if (!commandsBlocked && !visualStopped &&
                     ViewModel.Page == WorkspacePage.Library && Root.XamlRoot is not null &&
                     ReferenceEquals(FocusManager.GetFocusedElement(Root.XamlRoot), AppTitleBar))
                     sender.Focus(FocusState.Keyboard);
