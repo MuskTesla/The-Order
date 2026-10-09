@@ -1,6 +1,26 @@
 # 开发与维护
 
-## 当前 Recognition v2：最终验证、集成及完整回退（2026-10-09）
+## 当前 Recognition v6：公共泛化复核与集成准备（2026-10-09）
+
+源码03f1f7bb0dfcc35957fe5ba4301cf21551a8dc88，算法recognition-v2-release-aware-6，codex/recognition-v2-generalization。**集成／日用更新仍待用户最终批准**。用户的普遍优于PotatoVN目标尚未由配对评测证明；主开发45b77f4和34项修改未动，历史候选与错误保留。
+
+```powershell
+# 普通权限，绑定既有隔离Test；Standard、诊断0、Advanced资格0。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/rnd/gpt-generalization-20261009/launch.ps1' -Wait
+# 可显式传 -DataDirectory ABSOLUTE_TEST_PATH 使用新Test目录；非Test身份拒绝。
+```
+
+该入口核验640项payload及固定manifest SHA256 `500201A24746398FF6B9C41E998D91DDDFA2EB9CAE081EA048F931D522CB4823`。独立 `launch-diagnostic.ps1` 使用自己的Test根并显式开启诊断，不能改名作为Production入口。凭据仅通过现有Settings／隔离DPAPI机制；程序包与Git不含profile、密钥、私人输入或缓存。
+
+**获批后集成**：先核验主工作区，为其34项既有修改建立主开发自己的检查点，再于集成分支应用本目录 `integration-runtime-tests.patch`（5b574f0→03f1f7b，19运行时＋9测试文件）。实际主工作区 `git apply --check` 已通过，未应用；排除基线复制、Lab和替代索引。Claude后的代码链38ace0f→78427b4→12320f6→c703898→03f1f7b；不得整体cherry-pick5b574f0。集成后补受影响回归并构建独立程序；获批切换沿已验证普通宿主流程备份，核验物理资料／Profile／Store／process后进行。旧算法建议成为NeedsRecheck，不静默重新识别整个已关联库。
+
+**完整回退**：同目录 `rollback-runtime-tests.patch` 覆盖排名、身份、自动策略、提交复核、DTO／PE证据、DI、算法版本与相关UI/tests；只换ranker不足。保留程序回退 `D:/Projects/The-Order-candidates/phase8-2-electron-algorithm-parity-20261009/start-daily-electron-parity.ps1 -UserApprovedSwitch`，正常退出新版后使用，本轮未执行。程序回退不恢复旧资料快照；保留较新编辑。writer/profile/store/library schema未变，CatalogIdentity和ReleaseContext是有界内存事实，持久化契约不变。
+
+最终全量Debug1969/1969、Release受影响533/533、定向88/88，无跳过；WinUI Debug／Release成功。合法既有Electron工具环境用于全量依赖测试，无删测／伪PASS。本次未重新操作桌面，复用v3实际交互的版本范围见报告。公共开发集真实NextMoe同响应51→54/60；新181正例离线首次盲测168正确＋1错误，修复后同集168正确＋0错误（不是新盲测）；新24真实API盲测及最终回放均24/24。用户36项作品正确36、确认版本35＋WA2安装年份未知1。
+
+6查询／128候选／2详情2发行／5展示／60秒预算保留。繁简／副标题不擦除原身份；官方非机器中文等价受语言、长度、冲突、唯一性保护。没有新索引、游戏执行、Production改动或图形／资源调查。离线392/887ms p50/p95不代表联网或整页输入延迟。详情 `.artifacts/rnd/gpt-generalization-20261009/report.md`；当前足以供限定集成判断，不能宣布任意条件胜过PotatoVN。
+
+## 历史 Recognition v3：验证、集成及回退记录（已由上节取代，2026-10-09）
 
 本轮只准备隔离候选，**集成与日用更新仍需用户最终批准**。源码 `78427b406c6a58ba2a17be5d51a2e5865fc1e8e9`，算法 `recognition-v2-release-aware-3`，分支 `codex/recognition-v2-validation`；文档提交不改变已冻结程序。结果和证据在 `.artifacts/rnd/gpt-verification-20261009/report.md`。原主工作区HEAD45b77f4和34项既有修改未变，Claude原分支27b7166及其未入库资料保留。
 

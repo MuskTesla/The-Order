@@ -1,6 +1,20 @@
 # The Order：当前实现与评审交接
 
-## 当前识别候选：Recognition v2 最终验证完成（2026-10-09，待用户批准集成／日用更新）
+## 当前识别候选：v6 公共泛化复核（2026-10-09，待批准集成／日用更新）
+
+应用源码 **03f1f7bb0dfcc35957fe5ba4301cf21551a8dc88**，算法 `recognition-v2-release-aware-6`，分支 `codex/recognition-v2-generalization`。**RECOGNITION CANDIDATE VERIFIED — READY FOR USER-APPROVED INTEGRATION / DAILY-USE UPDATE**，限以下证据范围。用户要求的“几乎任何条件下优于 PotatoVN”**尚未证明**；用户报告34/36不是可核验的同输入／版本真值配对。未集成主工作区、替换日用或写 Production。
+
+v4新增有界公司／作品站点身份、版本与等价记录复核、不完整索引卡片详情调度；v5新增繁简检索、官方非机器中文等价、仅用于检索的副标题前缀、CD/DVD/BD-GAME噪声清洗及长原始查询调度。v6修复同名精确候选因“索引＋发行”证据等级不同被排除的通用漏洞。独立编号、可区分的程序发行公司、更长明确标题及已核实等价记录仍可区分。无游戏名／ID特判，不扩大6查询／2详情／2发行限额，不把索引推导当独立事实，保留章节／FD／重制／编号冲突和唯一性保护。
+
+数据角色分开：既有公共60项是**开发集**，真实NextMoe同缓存v4→v6正确自动 **51→54/60**，错误0，人工9→6，20负例拒绝。授权36项真实目录回归作品级正确36/36，35项确认版本，WA2完整作品正确但安装年份未知；31项真正隐藏负例拒绝，另5项有效其他身份仍存在（4自动／1人工）。
+
+新225项公开目录生成合成输入（181正例／44隐藏负例）运行前冻结，与既有1510作品系列不重叠；20重复通用负例单列。**首次离线VNDB模拟盲测v4和v5均168正确自动／181、错误1，没有覆盖增益。** The Question同名误应用驱动v6修复，同集修复后回归168正确、错误0、13人工，44新负例及20重复负例拒绝；不得改成首次盲测PASS。新24项真实NextMoe盲测v4/v5均24/24，v6同响应回归24/24，错误0；不能外推为任意安装正确。
+
+最终全量native Debug **1969/1969，无跳过**，Release受影响 **533/533**，定向88/88，WinUI Debug／Release publish成功。v3真实桌面导入、编辑、歧义、取消及过期结果证据按版本复用；本次无原生桌面工具，未声称v6重新完成鼠标键盘录像。v4–v6未改UI，当前核心提交／异步回归通过。所有历史错误、缓存缺项和版本断言失败保留。
+
+候选 `.artifacts/rnd/gpt-generalization-20261009/candidate-03f1f7b`，640项payload，files.json SHA256 `500201A24746398FF6B9C41E998D91DDDFA2EB9CAE081EA048F931D522CB4823`。普通 `launch.ps1`：隔离Test、Standard、诊断0、Advanced资格0；独立诊断入口保留。19运行时＋9测试文件的集成／完整回退补丁同目录，主工作区只读apply-check通过且34项修改逐字节未变，尚未应用。禁止整体引入5b574f0基线复制。评测角色、人工原因、成本、身份及比较缺口见 `report.md`／`final-metrics.json`／`integration-manifest.json`；私人输入、profile和缓存不进Git或程序包。
+
+## 历史识别候选：Recognition v3 验证记录（已由上节取代，2026-10-09）
 
 **RECOGNITION CANDIDATE VERIFIED — READY FOR USER-APPROVED INTEGRATION / DAILY-USE UPDATE。** Claude 原分支保留在 `27b7166`；接续分支 `codex/recognition-v2-validation`，最终应用源码 `78427b406c6a58ba2a17be5d51a2e5865fc1e8e9`，算法 `recognition-v2-release-aware-3`。本节及 DEVELOPMENT 的当前节取代以下历史候选的当前状态声明；历史结果与失败不改写。
 
