@@ -28,6 +28,9 @@ public sealed partial class MainWindow
     private long accentEvents;
     private string accentSource = "Windows theme resources (startup)";
     private bool diagnosticsToggle;
+    private int titleSearchEditsPending;
+    private long titleSearchEditVersion;
+    private Task? titleSearchNavigation;
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -82,19 +85,31 @@ public sealed partial class MainWindow
     private async void OnTitleSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+        var text = sender.Text;
+        var version = ++titleSearchEditVersion;
+        titleSearchEditsPending++;
         try
         {
-            if (ViewModel.Page != WorkspacePage.Library && !galleryVisible) await Navigate(WorkspacePage.Library);
+            if (ViewModel.Page != WorkspacePage.Library && !galleryVisible)
+            {
+                // All edits share the navigation (including its unsaved prompt).
+                // ShowPage must not replace a live edit with the previous query.
+                var navigation = titleSearchNavigation ??= Navigate(WorkspacePage.Library);
+                await navigation;
+                if (ReferenceEquals(titleSearchNavigation, navigation)) titleSearchNavigation = null;
+            }
+            if (version != titleSearchEditVersion) return;
             if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
-            if (ViewModel.Query.Text != sender.Text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = sender.Text });
+            if (ViewModel.Query.Text != text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = text });
         }
         catch (Exception) { ViewModel.ReportUnexpected(); }
+        finally { if (--titleSearchEditsPending == 0) SynchronizeTitleSearch(); }
     }
     private void OnTitleSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     { if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library && !galleryVisible) libraryPage.FocusResults(); }
     private void SynchronizeTitleSearch()
     {
-        if (TitleSearch is not null && TitleSearch.Text != ViewModel.Query.Text) TitleSearch.Text = ViewModel.Query.Text;
+        if (titleSearchEditsPending == 0 && TitleSearch is not null && TitleSearch.Text != ViewModel.Query.Text) TitleSearch.Text = ViewModel.Query.Text;
     }
 
     private async void OnSessionDetails(object sender, RoutedEventArgs e)
