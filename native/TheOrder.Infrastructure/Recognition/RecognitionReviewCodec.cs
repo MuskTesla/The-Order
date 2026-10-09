@@ -157,5 +157,7 @@ public sealed class RecognitionReviewCodec(int admissionEntries = 10000, int adm
         Array(evidence.Titles, 100); Array(evidence.References, 100); Array(evidence.Companies, 100); Array(evidence.Warnings, 1000); Array(evidence.Fingerprints, 1000); Array(evidence.IndexProofs, 100);
         if (evidence.Titles.Any(t => t.Value is null || t.Source is null) || evidence.References.Any(r => r.Value is null || r.Source is null)) throw new InvalidDataException("证据说明无效。");
         foreach (var proof in evidence.IndexProofs) { Array(proof.RecordNames, 100); Array(proof.References, 100); }
+        Array(evidence.Homonyms, 100);
+        foreach (var homonym in evidence.Homonyms) { if (homonym.ObservedTitle is null || homonym.Source is null) throw new InvalidDataException("证据说明无效。"); Array(homonym.Identities, 100); }
     }
 }

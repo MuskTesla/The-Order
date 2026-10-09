@@ -176,8 +176,12 @@ public sealed class ExecutableEvidenceParser : IExecutableEvidenceParser
             string key = decoder.GetString(bytes, offset + 6, cursor - offset - 6);
             if (parents.Length == 0 && key != "VS_VERSION_INFO") throw Invalid();
             cursor = Align(cursor + 2); int valueBytes = valueLength * (type == 1 ? 2 : 1);
+            bool stringLeaf = parents.Length == 3 && parents[0] == "VS_VERSION_INFO" && parents[1] == "StringFileInfo" && Match(parents[2], @"^[0-9a-f]{8}$", true) && type == 1;
+            // Some resource tools write a String's wValueLength in bytes instead of WORDs. Accept that
+            // reading only when the byte count itself fits this leaf; any other overflow stays invalid.
+            if (stringLeaf && valueBytes > 0 && !Range(cursor, valueBytes, blockEnd) && Range(cursor, valueLength, blockEnd)) valueBytes = valueLength & ~1;
             if (valueBytes > 0 && !Range(cursor, valueBytes, blockEnd)) throw Invalid();
-            if (parents.Length == 3 && parents[0] == "VS_VERSION_INFO" && parents[1] == "StringFileInfo" && Match(parents[2], @"^[0-9a-f]{8}$", true) && type == 1 && targets.TryGetValue(key, out var target))
+            if (stringLeaf && targets.TryGetValue(key, out var target))
             { string value = Clean(decoder.GetString(bytes, cursor, valueBytes)); target.Add(value); }
             cursor = Align(cursor + valueBytes);
             while (cursor + 6 <= blockEnd)

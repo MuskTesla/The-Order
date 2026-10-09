@@ -76,7 +76,7 @@ internal static class Composition
         services.AddSingleton<IExecutableEvidenceParser, ExecutableEvidenceParser>();
         services.AddSingleton<IRecognitionEvidenceReader>(p => new WindowsRecognitionEvidence(p.GetRequiredService<ILocalEvidenceParser>(), RecognitionFingerprint.Evidence, p.GetRequiredService<IExecutableEvidenceParser>()));
         services.AddSingleton<ITitleIndex>(_ => new TitleIndex(() => File.OpenRead(Path.Combine(AppContext.BaseDirectory, "data", "title-index.json.gz"))));
-        services.AddSingleton<IRecognitionRanker, ReviewSafeRanking>();
+        services.AddSingleton<IRecognitionRanker, ReleaseAwareRanking>();
         services.AddSingleton<IRecognitionEngine, RecognitionEngine>();
         services.AddSingleton<IRecognitionLibrarySource>(p => p.GetRequiredService<OfflineLibraryClient>());
         services.AddSingleton<RecognitionQueue>();

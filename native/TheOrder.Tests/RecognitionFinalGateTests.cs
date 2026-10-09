@@ -173,7 +173,7 @@ public sealed class RecognitionFinalGateTests
         RecognitionReviewStatus.Stale, "old-algorithm", null,
         large ? [.. Enumerable.Range(1, 5).Select(n => new HistoricalRecognitionCandidate(n.ToString(), new string('中', 2000), new string('文', 2000), .5, new string('字', 2000)))] : [], Message: "old");
     private static RecognitionReviewService Service(Lab lab, IRecognitionReviewStorage store, IRecognitionReviewCodec? codec = null) =>
-        new(lab.Offline, lab.Queue, store, codec ?? new RecognitionReviewCodec(), lab.Reader, new ReviewSafeRanking(), lab.Catalog, lab.Credentials.AuthContext, RecognitionFingerprint.Identity);
+        new(lab.Offline, lab.Queue, store, codec ?? new RecognitionReviewCodec(), lab.Reader, new ReleaseAwareRanking(), lab.Catalog, lab.Credentials.AuthContext, RecognitionFingerprint.Identity);
     private static void Legal(RecognitionReviewService service)
     { var snapshot = service.Snapshot; Assert.InRange(snapshot.Length, 0, 10000); Assert.InRange(new RecognitionReviewCodec().Write(snapshot).Length, 1, 16 * 1024 * 1024); }
 

@@ -24,7 +24,8 @@ public sealed class AutomaticRecognitionTests
         public bool Veto = false;
         public ImmutableArray<RankedRecognitionCandidate> Rank(RecognitionEvidence evidence, IEnumerable<WorkMetadata> works,
             IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases = null, CancellationToken cancellation = default)
-            => [.. works.Select(w => Candidate(w.Id, Score) with { Work = w, Vetoed = Veto })];
+            // Like the production ranker, only the first (unique) candidate carries HighConfidence.
+            => [.. works.Select((w, i) => Candidate(w.Id, Score, i == 0 && !Veto) with { Work = w, Vetoed = Veto })];
     }
     private sealed class Engine : IRecognitionEngine
     {
@@ -44,7 +45,7 @@ public sealed class AutomaticRecognitionTests
                 TitleMatching.AlgorithmVersion, RecognitionFingerprint.Identity(input.Entry), false, null, 0);
         }
     }
-    private static RankedRecognitionCandidate Candidate(string id, double score) => new(Work(id), score, "合成分数", false, false, [], 2, [], []);
+    private static RankedRecognitionCandidate Candidate(string id, double score, bool unique = true) => new(Work(id), score, "合成分数", unique, false, [], 2, [], []);
     [Theory][InlineData(true)][InlineData(false)]
     public async Task ImportUsesElectronDefaultPeEvidenceAndHonorsOptOut(bool enabled)
     {
@@ -68,20 +69,46 @@ public sealed class AutomaticRecognitionTests
     [InlineData(1, true)][InlineData(double.NaN, false)][InlineData(double.PositiveInfinity, false)]
     public void ThresholdIsStrictAndFinite(double score, bool expected) => Assert.Equal(expected, AutomaticRecognitionPolicy.Eligible(Candidate("200", score)));
 
+    // Recognition v2: the ranker's uniqueness verdict decides. Several eligible candidates without
+    // it are a tie for the user, not a choice by score or id (that rule applied wrong identities to
+    // same-title works in replay evaluation).
     [Fact]
-    public async Task HighestScoreWinsEvenWhenSeveralCandidatesAreAboveThreshold()
+    public async Task UniqueTopIsAppliedAlongsideLowerEligibleCandidates()
     {
-        var engine = new Engine { Candidates = [Candidate("200", .92), Candidate("201", .98), Candidate("202", .95)] };
+        var engine = new Engine { Candidates = [Candidate("201", .98), Candidate("202", .95, false), Candidate("200", .92, false)] };
         await using var lab = new Lab(engine: engine, ranker: new Ranker()); await lab.Init(); var id = await Recognize(lab);
         Assert.True((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
         Assert.Equal("201", Assert.Single(lab.Library.Snapshot.Entries).Metadata?.Id); Assert.Empty(lab.Reviews.Snapshot);
+    }
+    [Fact]
+    public async Task SeveralEligibleCandidatesWithoutUniquenessStayForReview()
+    {
+        var engine = new Engine { Candidates = [Candidate("201", .98, false), Candidate("202", .95, false)] };
+        await using var lab = new Lab(engine: engine, ranker: new Ranker()); await lab.Init(); var id = await Recognize(lab);
+        Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
+        Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata); Assert.Single(lab.Reviews.Snapshot); Assert.Equal(0, lab.Catalog.DetailCalls);
+    }
+    [Fact]
+    public async Task RefetchedContextThatLosesUniquenessPreventsAutomaticCommit()
+    {
+        var engine = new Engine { Candidates = [Candidate("200", .99), Candidate("201", .5, false)] };
+        await using var lab = new Lab(engine: engine, ranker: new ReorderingRanker()); await lab.Init(); var id = await Recognize(lab);
+        Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted); Assert.Null(lab.Library.Snapshot.Entries[0].Metadata);
+    }
+    // Fresh details make another candidate rank first: the original decision no longer holds.
+    private sealed class ReorderingRanker : IRecognitionRanker
+    {
+        public ImmutableArray<RankedRecognitionCandidate> Rank(RecognitionEvidence evidence, IEnumerable<WorkMetadata> works,
+            IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases = null, CancellationToken cancellation = default)
+            => [.. works.Reverse().Select((w, i) => Candidate(w.Id, .99, i == 0) with { Work = w })];
     }
     [Theory][InlineData("score")][InlineData("veto")][InlineData("version")][InlineData("conflicts")]
     public async Task IneligibleResultsRemainForManualReviewWithoutWriting(string reason)
     {
         var candidate = Candidate("200", reason == "score" ? .9 : .99);
-        candidate = reason switch { "veto" => candidate with { Vetoed = true }, "version" => candidate with { Vetoed = true, VersionNeedsConfirmation = true, EvidenceLevel = 0 },
-            "conflicts" => candidate with { Vetoed = true, Conflicts = ["不同作品编号"] }, _ => candidate };
+        // A vetoed candidate is never unique (the review codec rejects that combination).
+        candidate = reason switch { "veto" => candidate with { Vetoed = true, HighConfidence = false }, "version" => candidate with { Vetoed = true, HighConfidence = false, VersionNeedsConfirmation = true, EvidenceLevel = 0 },
+            "conflicts" => candidate with { Vetoed = true, HighConfidence = false, Conflicts = ["不同作品编号"] }, _ => candidate };
         await using var lab = new Lab(engine: new Engine { Candidates = [candidate] }, ranker: new Ranker()); await lab.Init(); var id = await Recognize(lab);
         Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted); Assert.Null(lab.Library.Snapshot.Entries[0].Metadata);
         Assert.Single(lab.Reviews.Snapshot); Assert.Equal(0, lab.Catalog.DetailCalls);

@@ -255,10 +255,15 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             if (result is not null)
             {
                 var releases = await catalog.ReleasesAsync(work.Id, token).ConfigureAwait(false);
-                var ranked = await Task.Run(() => ranker.Rank(result.Identity.Evidence, [work], new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases }, token), token).ConfigureAwait(false);
-                if (ranked.IsEmpty || ranked[0].Vetoed) throw new InvalidDataException("最新详情与本地证据存在冲突，请重新核对。");
-                if (automatic && !AutomaticRecognitionPolicy.Eligible(ranked[0]))
-                    throw new InvalidDataException("最新详情已不满足大于 0.9 的自动应用条件，请手动核对。");
+                // Automatic application re-checks uniqueness against the same competitors that the
+                // decision saw, with this work refreshed. Competitors only lose information here, so
+                // the re-check cannot create a tie-break the original decision did not make.
+                IEnumerable<WorkMetadata> context = automatic ? result.Candidates.Select(c => c.Work.Id == work.Id ? work : c.Work) : [work];
+                var ranked = await Task.Run(() => ranker.Rank(result.Identity.Evidence, context, new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases }, token), token).ConfigureAwait(false);
+                var current = ranked.FirstOrDefault(c => c.Work.Id == work.Id);
+                if (current is null || current.Vetoed) throw new InvalidDataException("最新详情与本地证据存在冲突，请重新核对。");
+                if (automatic && (ranked[0].Work.Id != work.Id || !current.HighConfidence || !AutomaticRecognitionPolicy.Eligible(current)))
+                    throw new InvalidDataException("最新详情已不满足唯一且大于 0.9 的自动应用条件，请手动核对。");
             }
             var receipt = await library.CommitLinkAsync(input.Entry.Id, work, transaction, preserveName: true, preserveMergedName: true, cancellation: token, verifyBeforeCommit: async () =>
             {

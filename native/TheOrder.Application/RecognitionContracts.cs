@@ -6,9 +6,15 @@ namespace TheOrder.Application;
 public sealed record LocalTitleEvidence(string Value,string Source);
 public sealed record ReferenceEvidence(string Value,string Source,string? Via=null);
 public sealed record TitleIndexProof(string ObservedTitle,string Source,ImmutableArray<string> RecordNames,ImmutableArray<string> References);
+// A local title whose exact index key belongs to more than one catalog identity.
+public sealed record TitleHomonym(string ObservedTitle,string Source,ImmutableArray<string> Identities);
 public sealed record RecognitionEvidence(ImmutableArray<LocalTitleEvidence> Titles,ImmutableArray<ReferenceEvidence> References,
     ImmutableArray<string> Companies,ImmutableArray<string> Warnings,ImmutableArray<string> Fingerprints,bool AuxiliaryDirectory,
-    ImmutableArray<TitleIndexProof> IndexProofs);
+    ImmutableArray<TitleIndexProof> IndexProofs)
+{
+    // Added by recognition v2. Documents written before it deserialize to an empty list.
+    public ImmutableArray<TitleHomonym> Homonyms { get; init; } = [];
+}
 public sealed record ReleaseIdentity(string Id,string WorkId,string Title,string OriginalTitle,string Kind,string? Date);
 public sealed record CandidateExplanation(string Source,string ObservedTitle,string MatchedTitle,double Similarity,bool Exact,string Version,string? Conflict);
 public sealed record RankedRecognitionCandidate(WorkMetadata Work,double Confidence,string Reason,bool HighConfidence,

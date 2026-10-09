@@ -61,8 +61,8 @@ public sealed class RecognitionReviewTests
             Store = store ?? new(); Offline = new(factory, new LegacyClientTextRules());
             var secret = new OnlineTransportTests.Credential(); Credentials = new(secret, secret);
             var index = new TitleIndex(() => new MemoryStream(Gzip("{\"version\":1,\"records\":[]}")));
-            Queue = new(Offline, engine ?? new RecognitionEngine(titleIndex ?? index, reader ?? Reader, ranker ?? new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
-            Reviews = new(Offline, Queue, Store, codec ?? new RecognitionReviewCodec(), reader ?? Reader, ranker ?? new ReviewSafeRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
+            Queue = new(Offline, engine ?? new RecognitionEngine(titleIndex ?? index, reader ?? Reader, ranker ?? new ReleaseAwareRanking(), catalog ?? Catalog, Credentials.AuthContext), Credentials.AuthContext);
+            Reviews = new(Offline, Queue, Store, codec ?? new RecognitionReviewCodec(), reader ?? Reader, ranker ?? new ReleaseAwareRanking(), catalog ?? Catalog, Credentials.AuthContext, RecognitionFingerprint.Identity);
         }
         public async Task Init() { Assert.Equal(ClientOutcome.Success, (await Offline.LoadAsync(default)).Outcome); await Reviews.InitializeAsync(default); }
         public async Task<Guid> Recognize()

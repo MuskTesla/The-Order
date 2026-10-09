@@ -44,10 +44,18 @@ public sealed class RecognitionRemediationTests
         BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(4), (ushort)type); keyBytes.CopyTo(bytes, 6); value.CopyTo(bytes, start);
         for (int i = 0; i < children.Length; i++) children[i].CopyTo(bytes, offsets[i]); return bytes;
     }
-    internal static byte[] Pe(params (string Key, string Value)[] fields)
+    internal static byte[] Pe(params (string Key, string Value)[] fields) => Pe(false, fields);
+    // byteLengths: String wValueLength counted in bytes, as some resource tools write it.
+    internal static byte[] Pe(bool byteLengths, params (string Key, string Value)[] fields)
     {
+        byte[] Leaf(string key, string value)
+        {
+            var leaf = Block(key, Encoding.Unicode.GetBytes(value + "\0"), 1);
+            if (byteLengths) BinaryPrimitives.WriteUInt16LittleEndian(leaf.AsSpan(2), (ushort)Encoding.Unicode.GetByteCount(value + "\0"));
+            return leaf;
+        }
         var payload = Block("VS_VERSION_INFO", new byte[52], 0, Block("StringFileInfo", [], 1,
-            Block("041104b0", [], 1, fields.Select(f => Block(f.Key, Encoding.Unicode.GetBytes(f.Value + "\0"), 1)).ToArray())));
+            Block("041104b0", [], 1, fields.Select(f => Leaf(f.Key, f.Value)).ToArray())));
         int raw = (0x100 + payload.Length + 511) & ~511; var bytes = new byte[0x400 + raw];
         void U16(int at, int value) => BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(at), (ushort)value);
         void U32(int at, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(at), value);
@@ -271,7 +279,7 @@ public sealed class RecognitionRemediationTests
     {
         await using var lab = new Lab(); await lab.Init();
         var index = new TitleIndex(() => new MemoryStream(Gzip("{\"version\":1,\"records\":[{\"names\":[\"星空の航路\"],\"references\":[\"vndb:v123\"]}]}")));
-        var engine = new ObservedEngine(new RecognitionEngine(index, lab.Reader, new ReviewSafeRanking(), lab.Catalog, lab.Credentials.AuthContext));
+        var engine = new ObservedEngine(new RecognitionEngine(index, lab.Reader, new ReleaseAwareRanking(), lab.Catalog, lab.Credentials.AuthContext));
         var source = new PublicationSource(lab.Offline); await using var queue = new RecognitionQueue(source, engine, lab.Credentials.AuthContext);
         var id = await queue.EnqueueAsync("a", RecognitionMode.Reidentify, true); await source.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var local = engine.Produced!.Identity; Assert.Single(local.LocalCandidates);

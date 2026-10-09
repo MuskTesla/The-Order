@@ -121,7 +121,9 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                     if (parsed.Fingerprint.Length > 0) peHashes.Add(parsed.Fingerprint);
                     if (string.Equals(path, preferred.Executable, StringComparison.OrdinalIgnoreCase) && parsed.Evidence.Titles.Any(t => t.Source is "product-name" or "file-description")) includePe = false;
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { observations.Add(path + "|pe-unavailable"); warnings.Add("部分程序版本资料无法安全读取。"); }
+                // A malformed version resource only removes this executable's PE evidence; it must
+                // not fail recognition of the whole entry.
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException) { observations.Add(path + "|pe-unavailable"); warnings.Add("部分程序版本资料无法安全读取。"); }
             }
             foreach (var file in entries.Where(e => !e.IsDirectory && !e.IsReparsePoint && Match(e.Name, @"\.(ain|pfs|ypf)$") && !Match(e.Name, @"backup|beifen|\.bak|\.old")).Take(5))
             { string name = Path.GetFileNameWithoutExtension(file.Name); if (executableParser?.IsUsefulTitle(name) == true) titles.Add(new(name, "archive-name")); }

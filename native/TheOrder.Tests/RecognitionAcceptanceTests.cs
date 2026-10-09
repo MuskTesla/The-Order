@@ -104,7 +104,7 @@ public sealed class RecognitionAcceptanceTests
             var secret=new Credential(); var credentials=new AuthenticatedCredentials(secret,secret);
             var catalog=new NextMoeCatalog(new(http,credentials,new("https://api.nextmoe.dev/v2/")));
             var reader=new WindowsRecognitionEvidence(new LocalEvidenceParser(),RecognitionFingerprint.Evidence,new ExecutableEvidenceParser());
-            var source=new BenchmarkSource(folder); var engine=new RecognitionEngine(index,reader,new ReviewSafeRanking(),catalog,credentials.AuthContext);
+            var source=new BenchmarkSource(folder); var engine=new RecognitionEngine(index,reader,new ReleaseAwareRanking(),catalog,credentials.AuthContext);
             await using var queue=new RecognitionQueue(source,engine,credentials.AuthContext);
             int workers=0; queue.Changed+=()=>InterlockedExtensionsMax(ref workers,queue.Progress.Processing);
             var clock=Stopwatch.StartNew(); for(int i=0;i<count;i++)await queue.EnqueueAsync(i.ToString(),RecognitionMode.Reidentify,online);

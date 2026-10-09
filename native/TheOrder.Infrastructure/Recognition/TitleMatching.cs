@@ -8,11 +8,16 @@ using TheOrder.Infrastructure.Legacy;
 namespace TheOrder.Infrastructure.Recognition;
 
 public sealed record TitleComparison(double Score, bool Exact, string? Conflict, string Version, bool Distinctive);
+public sealed record TitleMarkers(string Base, System.Collections.Immutable.ImmutableHashSet<string> Editions, System.Collections.Immutable.ImmutableHashSet<string> Expansions,
+    System.Collections.Immutable.ImmutableArray<string> Chapters, System.Collections.Immutable.ImmutableArray<string> Numbers)
+{
+    public bool Any => !Editions.IsEmpty || !Expansions.IsEmpty || !Chapters.IsEmpty;
+}
 
 // Pure compatibility algorithm. No filesystem, network, repository, or UI access.
 public static class TitleMatching
 {
-    public const string AlgorithmVersion = "electron-recognition-v1-native-4";
+    public const string AlgorithmVersion = "recognition-v2-release-aware-1";
     private const string Packaging = @"^(?:(?:pc|windows|win(?:32|64)|x(?:86|64)|chs|cht|cn|jp|en)|(?:简体|繁体|官方)?中文(?:版)?|官中(?:版)?|汉化(?:硬盘|整合)?版?|(?:日文|英文|日语|英语|简中|繁中)版?|免安装(?:版)?|硬盘版|绿色版|直装版|解压即玩)$";
     private const string Suffix = @"(?:[\s._-]+(?:chs|cht|x64|x86|win32|win64)|[\s._-]*(?:(?:简体|繁体|官方)中文(?:版)?|官中(?:版)?|汉化(?:硬盘|整合)?版|免安装(?:版)?|硬盘版|绿色版|直装版|解压即玩))$";
     private static readonly HashSet<string> Generic = new(("game games gamedata game32 game64 data datafiles engine content assets plugins binaries win32 win64 windows x86 x64 www backup save saves savedata managed runtime resources system start startup launch launcher main config settings setup install installer uninstall directx dotnet advhd siglusengine onscripter nscripter kirikiri krkr krkrz artemis bgi rio reallive malie unityplayer 游戏 游戏目录 游戏文件 游戏本体 本体 新建文件夹").Split(' '), StringComparer.Ordinal);
@@ -102,6 +107,10 @@ public static class TitleMatching
         return new(normalized,Trim(Layout(basis)),editions,expansions,[..Rx(@"\d+").Matches(basis).Select(m=>Number(m.Value))],chapters);
     }
     public static bool HasVersion(string value) {var p=Parse(value);return p.Editions.Count+p.Expansions.Count+p.Chapters.Count>0;}
+    // The title without edition, expansion or chapter markers, or null when it has none.
+    public static string? BaseTitle(string value) {var p=Parse(value);return p.Editions.Count+p.Expansions.Count>0&&p.Chapters.Count==0&&Meaningful(p.Base)&&Informative(p.Base)?p.Base:null;}
+    // Read-only view of the same parse used by Compare; it does not change any comparison.
+    public static TitleMarkers Markers(string value) {var p=Parse(value);return new(Compact(p.Base),[..p.Editions],[..p.Expansions],[..p.Chapters],[..p.Numbers]);}
     public static string[] Variants(string value)
     {
         if(value.Length>500) return [];
