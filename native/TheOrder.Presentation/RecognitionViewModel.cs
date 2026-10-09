@@ -101,7 +101,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
                     + "\n来源编号：" + string.Join("、", result.Identity.References) + "\n" + string.Join("；", result.Identity.Evidence.Warnings)
                     + (result.Identity.LocalCandidates.IsEmpty ? "" : "\n本地索引：" + string.Join("；", result.Identity.LocalCandidates.Take(6).Select(c => string.Join(" / ", c.Record.Names.Take(2)) + " · " + string.Join(", ", c.Record.References.Take(3)))));
                 var candidates = result.Candidates.Select(c => new RecognitionCandidateCard(c.Work.Id, c.Work.Title + " · " + c.Work.Id,
-                    $"排序分 {c.Confidence:0.000} · {(c.VersionNeedsConfirmation ? "版本信息不足，需要确认" : c.Vetoed ? "身份冲突" : c.HighConfidence ? "高置信建议" : "需要核对")} · {c.Reason}",
+                    $"排序分 {c.Confidence:0.000} · {(c.VersionNeedsConfirmation ? "版本信息不足，需要确认" : c.Vetoed ? "身份冲突" : c.HighConfidence ? "高置信建议" : "需要核对")} · {(c.HighConfidence ? c.Reason : c.Reason.Replace("完整官方标题唯一对应", "完整官方标题与本地名称一致", StringComparison.Ordinal))}",
                     string.Join("\n", c.Evidence.Take(6).Select(e => $"{SourceName(e.Source)}：{e.ObservedTitle} → {e.MatchedTitle} · 相似度 {e.Similarity:0.000}")) + "\n一致来源：" + string.Join("、", c.MatchedReferences),
                     string.Join("；", c.Conflicts), selected.Status == RecognitionReviewStatus.NeedsReview && !c.Vetoed)).ToArray();
                 if (!Candidates.SequenceEqual(candidates)) Candidates = candidates;

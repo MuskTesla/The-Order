@@ -29,6 +29,20 @@ public sealed class RecognitionPresentationTests
         await vm.IgnoreAsync(); Assert.False(vm.HasSelection); Assert.Empty(vm.Candidates);
         Assert.Null(vm.RemoteCoverKey); Assert.DoesNotContain("编号：200", vm.RemoteFacts);
     }
+    [Fact]
+    public async Task AmbiguousOfficialTitlesDoNotClaimUniqueCorrespondenceInTheUi()
+    {
+        await using var lab = new Lab();
+        lab.Catalog.Works = [Work("200"), Work("201")];
+        await lab.Init(); var id = await lab.Recognize();
+        var result = lab.Queue.RequireCurrentResult(id);
+        Assert.Null(AutomaticRecognitionPolicy.Select(result));
+        Assert.Contains(result.Candidates, c => c.Reason.Contains("完整官方标题唯一对应", StringComparison.Ordinal));
+        await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace);
+        vm.Select(id); Assert.Equal(2, vm.Candidates.Count);
+        Assert.All(vm.Candidates, c => Assert.DoesNotContain("唯一对应", c.Summary));
+        Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata);
+    }
     [Fact] public async Task LateDetailsAfterIgnoredSelectionCannotReappear()
     {
         await using var lab = new Lab(); await lab.Init(); var id = await lab.Recognize();
