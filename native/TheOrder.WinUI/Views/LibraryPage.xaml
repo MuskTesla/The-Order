@@ -7,7 +7,7 @@
   <DataTemplate x:Key="CardTemplate" x:DataType="app:GameSummary">
    <Border Margin="6" Padding="6,6,6,10" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1" CornerRadius="8" ContextFlyout="{StaticResource CardMenu}"
            AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
-    <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="40"/><RowDefinition Height="16"/></Grid.RowDefinitions>
+    <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto" MinHeight="40"/><RowDefinition Height="Auto" MinHeight="16"/></Grid.RowDefinitions>
      <Border CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
       <Grid>
        <FontIcon Glyph="&#xE8F1;" FontSize="24" Foreground="{ThemeResource TextTertiaryBrush}" AutomationProperties.AccessibilityView="Raw"/>
