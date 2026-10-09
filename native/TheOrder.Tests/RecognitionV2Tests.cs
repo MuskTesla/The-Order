@@ -155,6 +155,40 @@ public sealed class RecognitionV2Tests
         Assert.False(unrelated[0].HighConfidence);
     }
 
+    // Live NextMoe validation: some catalogs hold an edition as its own work and keep unmerged
+    // duplicate records of one work.
+
+    [Fact]
+    public void SeparatelyCatalogedEditionBeatsAReleaseOfTheParent()
+    {
+        var ranked = Rank(E(("folder", "星空の航路 REMASTERED")), [W("200", "星空の航路"), W("201", "星空の航路 REMASTERED")],
+            Releases(R("200", "星空の航路 REMASTERED")));
+        Assert.Equal("201", ranked[0].Work.Id); Assert.True(ranked[0].HighConfidence);
+        Assert.True(ranked.Single(c => c.Work.Id == "200").VersionNeedsConfirmation);
+    }
+
+    [Fact]
+    public async Task IndexIdentityFoundThroughABaseTitleDoesNotVetoTheEdition()
+    {
+        var index = new TitleIndex(() => new MemoryStream(Gzip("""{"version":1,"records":[{"names":["星空の航路"],"references":["vndb:v1","bangumi:10"]}]}""")));
+        var built = await RecognitionIdentityBuilder.BuildAsync(Entry(), E(("folder", "星空の航路 SANA EDITION"), ("readme-title", "星空の航路")), index, default);
+        Assert.DoesNotContain(built.Evidence.References, r => r.Source == "title-index"); Assert.Empty(built.Evidence.IndexProofs);
+        var ranked = Rank(built.Evidence, [W("200", "星空の航路", refs: ["vndb:v1", "bangumi:10"]), W("201", "星空の航路 SANA EDITION", refs: ["bangumi:11"])]);
+        Assert.Equal("201", ranked[0].Work.Id); Assert.True(ranked[0].HighConfidence);
+    }
+
+    [Fact]
+    public void IndexIdentifiedRecordBeatsAnUnidentifiedDuplicateButNotAKnownHomonym()
+    {
+        var evidence = E(("folder", "星空の航路")) with { References = [new("vndb:v1", "title-index")] };
+        var identified = W("200", "星空の航路", refs: ["vndb:v1"]); var duplicate = W("201", "星空の航路", refs: ["bangumi:20"]);
+        var ranked = Rank(evidence, [duplicate, identified]);
+        Assert.Equal("200", ranked[0].Work.Id); Assert.True(ranked[0].HighConfidence);
+        Assert.False(Rank(E(("folder", "星空の航路")), [duplicate, W("202", "星空の航路")])[0].HighConfidence);
+        var homonym = evidence with { Homonyms = [new("星空の航路", "folder", ["vndb:v1", "vndb:v2"])] };
+        Assert.False(Rank(homonym, [duplicate, identified])[0].HighConfidence);
+    }
+
     [Fact]
     public void ExactReleaseTitleNamesTheWork()
     {

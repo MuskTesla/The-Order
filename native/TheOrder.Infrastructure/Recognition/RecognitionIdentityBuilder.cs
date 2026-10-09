@@ -26,6 +26,14 @@ public static class RecognitionIdentityBuilder
         var identities = matches.Select(IdentityOf).Distinct(StringComparer.Ordinal).ToArray();
         // A saturated lookup is incomplete: an unseen row can carry a conflicting identity.
         var unambiguous = identities.Length == 1 && matches.Length < 128 ? matches : [];
+        // An index row found through a less specific local title (a base title, when another local
+        // identity title names an edition of it) identifies the base work, not this installation.
+        // Its ids must not act as trusted local identifiers against the edition.
+        bool Superseded(IndexCandidate m) => evidence.Titles.Any(t => ReleaseAwareRanking.IdentitySource(t.Source)
+            && TitleMatching.Markers(t.Value).Base is { Length: >= 2 } b && b == TitleMatching.Markers(m.ObservedTitle).Base
+            && !ReleaseAwareRanking.Identity(TitleMatching.Markers(t.Value)).Except(ReleaseAwareRanking.Identity(TitleMatching.Markers(m.ObservedTitle))).IsEmpty
+            && !m.Record.Names.Any(n => TitleMatching.Compare(t.Value, n) is { Exact: true }));
+        if (unambiguous.Any(Superseded)) unambiguous = [];
         // One index identity is one piece of evidence: at most one reference per source, and none
         // for a source the local files already identify. Several ids of the same work (base game,
         // DLC, regional store pages) must not read as conflicting local identifiers.

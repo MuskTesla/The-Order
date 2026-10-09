@@ -22,7 +22,11 @@ public static class Program
             "inventory" => await Inventory(args[1], args[2], args[3]),
             "replay" => await RunReplay(args[1], args[2], args[3], args[4], args[5]),
             "indexstats" => await IndexStats(args[1]),
-            "rankbench" => await RankBench(args[1], args[2], args[3]),
+            "rankbench" => await Engines.RankBench(args[1], args[2], args[3]),
+            "explain" => await Engines.Explain(args[1], args[2], args[3], args[4]),
+            "dumpprofile" => Live.DumpTestProfile(args[1]),
+            "seedcredential" => await Live.SeedTestCredential(args[1]),
+            "live" => await Live.Run(args[1], args[2], args[3], args[4], args[5], args.Length > 6 && args[6] == "coverage"),
             _ => 2,
         };
     }
@@ -88,35 +92,6 @@ public static class Program
         await File.WriteAllTextAsync(output, JsonSerializer.Serialize(outcomes, Json));
         var summary = Replay.Summary(outcomes); Console.WriteLine(summary);
         await File.WriteAllTextAsync(Path.ChangeExtension(output, ".summary.txt"), summary);
-        return 0;
-    }
-
-    // CPU cost of ranking each case's actual retrieval pool (the engine ranks it twice per job).
-    private static async Task<int> RankBench(string casesPath, string catalogPath, string indexPath)
-    {
-        var cases = JsonSerializer.Deserialize<List<EvidenceCase>>(await File.ReadAllTextAsync(casesPath), Replay.Options)!;
-        var catalog = new ReplayCatalog(catalogPath); var index = new TitleIndex(() => File.OpenRead(indexPath));
-        var rankers = new (string Name, IRecognitionRanker Ranker)[] { ("ReviewSafeRanking", new ReviewSafeRanking()), ("ReleaseAwareRanking", new ReleaseAwareRanking()) };
-        var totals = rankers.ToDictionary(r => r.Name, _ => new List<double>());
-        foreach (var c in cases.Where(c => !c.Tags.Contains("evidence-failure")))
-        {
-            var view = catalog.View(c.Hidden);
-            var entry = Entry(c.Name, new("i0", c.Folder, null, []));
-            var reader = new RecordedEvidenceReader(c.Evidence);
-            var local = await reader.ReadAsync(entry, true, CancellationToken.None);
-            var identity = await RecognitionIdentityBuilder.BuildAsync(entry, local.Evidence, index, CancellationToken.None);
-            await new RecognitionEngine(index, reader, new ReleaseAwareRanking(), view).RecognizeAsync(new(entry, new(Guid.Empty, Guid.Empty, 0, 0)), Guid.NewGuid(), true, true, _ => { }, CancellationToken.None);
-            var pool = view.Seen.Keys.Take(128).Select(v => catalog.Works[v[1..]]).ToArray();
-            var releases = pool.Take(2).ToDictionary(w => w.Metadata.Id, w => w.Releases);
-            foreach (var (name, ranker) in rankers)
-            {
-                ranker.Rank(identity.Evidence, pool.Select(w => w.Metadata), releases);
-                var watch = System.Diagnostics.Stopwatch.StartNew();
-                for (int i = 0; i < 5; i++) ranker.Rank(identity.Evidence, pool.Select(w => w.Metadata), releases);
-                totals[name].Add(watch.Elapsed.TotalMilliseconds / 5);
-            }
-        }
-        foreach (var (name, ms) in totals) { var o = ms.Order().ToArray(); Console.WriteLine($"{name}: cases={o.Length} p50={o[o.Length / 2]:0.0}ms p95={o[(int)(o.Length * .95)]:0.0}ms max={o[^1]:0.0}ms"); }
         return 0;
     }
 

@@ -20,8 +20,8 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
     // EvidenceRanking's own uniqueness verdicts for an eligible top candidate.
     private const string SplitReason = "来源编号同时支持多个作品，需要核对", TieReason = "前两候选证据接近，需要补充线索";
     internal static bool IdentitySource(string source) => source is "folder" or "custom-name" or "product-name" or "file-description" or "manual-title" or "config-title" or "readme-title";
-    private static bool Packaging(string marker) => marker.StartsWith("version:", StringComparison.Ordinal) || marker.StartsWith("resolution:", StringComparison.Ordinal) || marker is "r18" or "all-ages";
-    private static ImmutableHashSet<string> Identity(TitleMarkers m) => [.. m.Editions.Concat(m.Expansions).Where(x => !Packaging(x))];
+    internal static bool Packaging(string marker) => marker.StartsWith("version:", StringComparison.Ordinal) || marker.StartsWith("resolution:", StringComparison.Ordinal) || marker is "r18" or "all-ages";
+    internal static ImmutableHashSet<string> Identity(TitleMarkers m) => [.. m.Editions.Concat(m.Expansions).Where(x => !Packaging(x))];
 
     public ImmutableArray<RankedRecognitionCandidate> Rank(RecognitionEvidence evidence, IEnumerable<WorkMetadata> works,
         IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases = null, CancellationToken cancellation = default)
@@ -89,6 +89,10 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         Dictionary<string, string[]> names, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
     {
         var mine = Supporting(a, locals, names[a.Work.Id], releases); var theirs = Supporting(b, locals, names[b.Work.Id], releases);
+        // An identifier the local index proved from an exact local title outranks a record that has
+        // no identifier match and no exact local title of its own beyond a's (an unmerged duplicate
+        // record, or a same-name work the index does not know).
+        if (mine.Length > 0 && a.MatchedReferences.Length > 0 && b.MatchedReferences.Length == 0 && theirs.All(mine.Contains)) return true;
         return theirs.Length > 0 && mine.Any(t => !theirs.Contains(t)) && theirs.All(s => mine.Any(t =>
             TitleMatching.IndexKey(t.Value) is var longer && TitleMatching.IndexKey(s.Value) is var shorter && longer.Length > shorter.Length && longer.Contains(shorter, StringComparison.Ordinal)));
     }
@@ -157,14 +161,23 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
                 .Where(p => p.Comparison.Version != "conflict" && About(local, p.Name, p.Comparison)).ToArray();
             if (relevant.Length == 0 || relevant.Any(p => p.Comparison.Exact && p.Comparison.Version == "same")) continue;
             var mine = Identity(TitleMatching.Markers(local));
+            bool Names(string title) => Identity(TitleMatching.Markers(title)).IsSupersetOf(mine)
+                && TitleMatching.Compare(local, title) is { Version: not "conflict" } c && About(local, title, c);
+            // An official title of another work naming the edition outranks this work listing it only
+            // as an alias (a catalog can hold both).
+            if (!mine.IsEmpty && !relevant.Any(p => canonical.Contains(p.Name) && Names(p.Name))
+                && all.Any(o => o.Work.Id != candidate.Work.Id && !o.Vetoed && Canonical(o.Work).Any(Names)))
+                return "另一候选的正式标题包含本地标题中的版本标识；请核对后选择。";
             if (!mine.IsEmpty && !relevant.Any(p => Identity(TitleMatching.Markers(p.Name)).IsSupersetOf(mine)))
             {
                 bool Covers(string title) => Identity(TitleMatching.Markers(title)).IsSupersetOf(mine)
                     && TitleMatching.Compare(local, title) is { Version: not "conflict" } c && About(local, title, c);
+                // A catalog that represents the edition as its own work names it more specifically than
+                // a release of this work does (some catalogs list both).
+                if (all.Any(o => o.Work.Id != candidate.Work.Id && !o.Vetoed && names[o.Work.Id].Any(Covers)))
+                    return "另一候选包含本地标题中的版本标识；请核对后选择。";
                 if (!releases.Any(r => r.WorkId == candidate.Work.Id && (Covers(r.Title) || Covers(r.OriginalTitle))))
-                    return all.Any(o => o.Work.Id != candidate.Work.Id && !o.Vetoed && names[o.Work.Id].Any(Covers))
-                        ? "另一候选包含本地标题中的版本标识；请核对后选择。"
-                        : "本地标题含有资料中未确认的版本标识；请核对后选择。";
+                    return "本地标题含有资料中未确认的版本标识；请核对后选择。";
             }
             // A plain title is not proof of a remake/FD that every relevant official title names.
             // Another local identity source must say so. Descriptive aliases do not count here.
