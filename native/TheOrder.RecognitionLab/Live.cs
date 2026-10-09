@@ -51,7 +51,10 @@ public static class Live
             cache[kind + "|" + key] = JsonSerializer.Serialize(value, Replay.Options);
             return value;
         }
-        private bool Visible(WorkMetadata w) => !w.References.Any(r => r.Source == "vndb" && hidden.Contains(r.Id));
+        // The absence protocol may explicitly hide verified equivalent catalog records as well
+        // as the original VNDB identity. An edition is never hidden merely by a similar title.
+        private bool Visible(WorkMetadata w) => !hidden.Contains("nm:" + w.Id)
+            && !w.References.Any(r => hidden.Contains(r.Source == "vndb" ? r.Id : r.Source + ":" + r.Id));
         private T Track<T>(T works) where T : IEnumerable<WorkMetadata> { foreach (var w in works) Seen.Add(w.Id); return works; }
         public async Task<OnlinePage> SearchAsync(string query, string? cursor, CancellationToken cancellation)
         {

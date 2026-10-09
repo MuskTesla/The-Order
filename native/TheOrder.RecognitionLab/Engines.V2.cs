@@ -34,7 +34,7 @@ public static partial class Engines
         if (work.Id != selected.Work.Id) return null;
         var releases = catalog.ReleasesAsync(work.Id, default).GetAwaiter().GetResult();
         var context = result.Candidates.Select(c => c.Work.Id == work.Id ? work : c.Work);
-        var ranked = ranker.Rank(result.Identity.Evidence, context, new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases });
+        var ranked = ranker.Rank(result.Identity.Evidence, context, result.ReleaseContext.SetItem(work.Id, releases));
         var current = ranked.FirstOrDefault(c => c.Work.Id == work.Id);
         return current is null || current.Vetoed || ranked[0].Work.Id != work.Id || !current.HighConfidence || !AutomaticRecognitionPolicy.Eligible(current) ? null : current;
     }
@@ -87,7 +87,7 @@ public static partial class Engines
         if (chosen is null) return 0;
         var work = await view.DetailsAsync(chosen.Work.Id, true, default); Console.WriteLine("details id: " + work.Id);
         var releases = await view.ReleasesAsync(work.Id, default); Console.WriteLine("releases: " + releases.Length);
-        var ranked = new ReleaseAwareRanking().Rank(result.Identity.Evidence, result.Candidates.Select(x => x.Work.Id == work.Id ? work : x.Work), new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases });
+        var ranked = new ReleaseAwareRanking().Rank(result.Identity.Evidence, result.Candidates.Select(x => x.Work.Id == work.Id ? work : x.Work), result.ReleaseContext.SetItem(work.Id, releases));
         Show("context re-rank:", ranked);
         return 0;
     }

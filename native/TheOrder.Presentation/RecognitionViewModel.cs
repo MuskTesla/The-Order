@@ -39,7 +39,7 @@ public sealed class RecognitionViewModel : ObservableState, IAsyncDisposable
     public bool IncludePe { get; set; } = true;
     public string ManualId { get => manualId; set => Set(ref manualId, value); }
     public bool Busy => busy;
-    public string Message { get; private set; } = "导入后自动识别。排序分严格大于 0.9 时应用最高可用候选，其余结果在此核对；版本和身份冲突仍须确认。";
+    public string Message { get; private set; } = "导入后自动识别。排序分严格大于 0.9、身份与版本一致且唯一领先时自动应用；歧义或证据不足的结果在此核对。";
     public string ProgressText { get; private set; } = "尚未开始识别。";
     public RecognitionProgress Progress => queue.Progress;
     public IReadOnlyList<RecognitionReviewCard> Reviews { get; private set; } = Array.Empty<RecognitionReviewCard>();

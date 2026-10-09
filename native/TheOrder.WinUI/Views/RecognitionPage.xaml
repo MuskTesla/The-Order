@@ -10,7 +10,7 @@
     <Setter Target="ManualApplyButton.(Grid.Row)" Value="1"/><Setter Target="ManualApplyButton.(Grid.Column)" Value="0"/><Setter Target="ManualApplyButton.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualIdBox.(Grid.ColumnSpan)" Value="2"/><Setter Target="ManualActions.RowSpacing" Value="8"/>
    </VisualState.Setters></VisualState>
   </VisualStateGroup></VisualStateManager.VisualStateGroups>
-  <StackPanel Spacing="8"><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="导入后自动识别：排序分严格大于 0.9 时应用最高可用候选，其余结果在此选择。分数不是正确概率；版本或身份冲突仍需核对。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
+  <StackPanel Spacing="8"><TextBlock Text="识别与核对" Style="{StaticResource PageTitleStyle}"/><TextBlock Text="导入后自动识别：排序分严格大于 0.9、身份与版本一致且唯一领先时自动应用；歧义或证据不足的结果在此选择。排序分不是正确概率。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel>
   <Border Grid.Row="1" Style="{StaticResource ToolbarSurfaceStyle}" Padding="16">
    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="184" ItemHeight="68" MaximumRowsOrColumns="6">
     <Button Content="只补缺失资料" Click="OnMissing" AutomationProperties.AutomationId="RecognizeMissing"/>

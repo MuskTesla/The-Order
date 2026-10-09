@@ -79,6 +79,33 @@ public sealed class RecognitionV2Tests
     // --- Edition identity
 
     [Fact]
+    public void OfficialEditionTitleBeatsAnExactAliasOnTheParent()
+    {
+        var ranked = Rank(E(("folder", "星空の航路 REFLECTION BLUE")),
+            [W("200", "星空の航路", aliases: ["星空の航路 REFLECTION BLUE"]), W("201", "星空の航路 REFLECTION BLUE")]);
+        Assert.Equal("201", ranked[0].Work.Id);
+        Assert.True(ranked[0].HighConfidence);
+        Assert.True(ranked.Single(c => c.Work.Id == "200").VersionNeedsConfirmation);
+    }
+
+    [Fact]
+    public void MachineOnlyTitleCannotBecomeAnAutomaticAliasProof()
+    {
+        var work = W("200", "星空的航路之夜") with { TitleEvidence = [new("星空的航路之夜", "official", true, "zh-Hans")] };
+        var ranked = Rank(E(("folder", "星空的航路之夜")), [work]);
+        Assert.False(ranked[0].HighConfidence);
+    }
+
+    [Fact]
+    public void AnIndexReferenceAloneCannotResolveTwoUnprovenSameTitleIdentities()
+    {
+        var evidence = E(("folder", "星空の航路")) with { References = [new("vndb:v1", "title-index")] };
+        var ranked = Rank(evidence, [W("200", "星空の航路", refs: ["vndb:v1"]), W("201", "星空の航路", refs: ["vndb:v2"])]);
+        Assert.False(ranked[0].HighConfidence);
+        Assert.False(ranked.Single(c => c.Work.Id == "201").Vetoed);
+    }
+
+    [Fact]
     public void EditionNamedByAReleaseOfTheWorkIsResolved()
     {
         var ranked = Rank(E(("folder", "星空の航路 REMASTERED")), [W("200", "星空の航路")], Releases(R("200", "星空の航路 REMASTERED")));
@@ -178,15 +205,40 @@ public sealed class RecognitionV2Tests
     }
 
     [Fact]
-    public void IndexIdentifiedRecordBeatsAnUnidentifiedDuplicateButNotAKnownHomonym()
+    public void IndexIdentifierDoesNotProveAnUnidentifiedRecordIsADuplicate()
     {
         var evidence = E(("folder", "星空の航路")) with { References = [new("vndb:v1", "title-index")] };
         var identified = W("200", "星空の航路", refs: ["vndb:v1"]); var duplicate = W("201", "星空の航路", refs: ["bangumi:20"]);
         var ranked = Rank(evidence, [duplicate, identified]);
-        Assert.Equal("200", ranked[0].Work.Id); Assert.True(ranked[0].HighConfidence);
+        Assert.False(ranked[0].HighConfidence);
         Assert.False(Rank(E(("folder", "星空の航路")), [duplicate, W("202", "星空の航路")])[0].HighConfidence);
         var homonym = evidence with { Homonyms = [new("星空の航路", "folder", ["vndb:v1", "vndb:v2"])] };
         Assert.False(Rank(homonym, [duplicate, identified])[0].HighConfidence);
+    }
+
+    [Fact]
+    public void SameEditionAndSharedCatalogIdentityCanConfirmADuplicate()
+    {
+        var evidence = E(("folder", "星空の航路")) with {
+            References = [new("vndb:v1", "title-index")],
+            IndexProofs = [new("星空の航路", "folder", ["星空の航路"], ["vndb:v1"])] };
+        var identified = W("200", "星空の航路", refs: ["vndb:v1", "bangumi:20"]);
+        var duplicate = W("201", "星空の航路", refs: ["bangumi:20"]);
+        Assert.True(Rank(evidence, [duplicate, identified])[0].HighConfidence);
+        Assert.False(Rank(evidence, [duplicate with { References = [new("vndb", "v2", null), new("bangumi", "20", null)] }, identified])[0].HighConfidence);
+    }
+
+    [Fact]
+    public void ShortSingleWordAndInferredIndexCannotProveIdentityOfAnAbsentHomonym()
+    {
+        var evidence = E(("folder", "Dahlia"), ("executable-name", "dahlia_chs")) with {
+            References = [new("vndb:v2", "title-index")],
+            IndexProofs = [new("Dahlia", "folder", ["Dahlia"], ["vndb:v2"])] };
+        var work = W("200", "Dahlia", refs: ["vndb:v2", "steam:123456"]);
+        var releases = Releases(R("200", "Dahlia"));
+        Assert.False(Rank(evidence, [work], releases)[0].HighConfidence);
+        Assert.True(Rank(evidence with { References = evidence.References.Add(new("steam:123456", "steam-config")) }, [work], releases)[0].HighConfidence);
+        Assert.True(Rank(E(("folder", "Longer Distinctive Title")), [W("201", "Longer Distinctive Title")])[0].HighConfidence);
     }
 
     [Fact]
@@ -264,6 +316,31 @@ public sealed class RecognitionV2Tests
         return (lab, id);
     }
 
+    private sealed class FixedReader(RecognitionEvidence evidence) : IRecognitionEvidenceReader
+    {
+        public Task<LocalEvidenceSnapshot> ReadAsync(LibraryEntry entry, bool includePe, CancellationToken cancellation) =>
+            Task.FromResult(new LocalEvidenceSnapshot(evidence, [], [], new string('a', 64)) { IncludePe = includePe });
+    }
+
+    [Fact]
+    public async Task CommitRecheckMustKeepACompetitorsPreviouslyFetchedReleaseEvidence()
+    {
+        var index = new TitleIndex(() => new MemoryStream(Gzip("""{"version":1,"records":[{"names":["星空の航路","星空の航路 REMASTERED"],"references":["vndb:v1"]}]}""")));
+        var reader = new FixedReader(E(("folder", "星空の航路"), ("manual-title", "星空の航路 REMASTERED")));
+        await using var lab = new RecognitionReviewTests.Lab(entry: Entry("星空の航路", @"C:\synthetic\hoshi"), titleIndex: index, reader: reader);
+        lab.Catalog.Works = [W("200", "星空の航路", aliases: ["星空の航路 REMASTERED"], refs: ["vndb:v1"]), W("201", "遠い別世界")];
+        lab.Catalog.ReleaseRows = [R("200", "星空の航路"), R("201", "星空の航路 REMASTERED")];
+        await lab.Init();
+        var id = await lab.Queue.EnqueueAsync("a", RecognitionMode.MissingMetadata, true);
+        await lab.Queue.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("200", AutomaticRecognitionPolicy.Select(lab.Queue.RequireCurrentResult(id))?.Work.Id);
+        // The selected work's refreshed release no longer supports its stronger original proof.
+        // The competitor's already-fetched release still makes the result ambiguous.
+        lab.Catalog.ReleaseRows = [R("201", "星空の航路 REMASTERED")];
+        Assert.False((await lab.Reviews.ApplyAutomaticAsync(id, default)).IsCommitted);
+        Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata);
+    }
+
     [Fact]
     public async Task ReleaseResolvedEditionIsAppliedAndPersonalFieldsSurvive()
     {
@@ -297,5 +374,5 @@ public sealed class RecognitionV2Tests
     }
 
     [Fact]
-    public void AlgorithmVersionChangedForV2() => Assert.Equal("recognition-v2-release-aware-1", TitleMatching.AlgorithmVersion);
+    public void AlgorithmVersionChangedForV2() => Assert.Equal("recognition-v2-release-aware-3", TitleMatching.AlgorithmVersion);
 }

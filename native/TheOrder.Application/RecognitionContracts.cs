@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using TheOrder.Domain;
 
 namespace TheOrder.Application;
@@ -73,7 +74,12 @@ public sealed record RecognitionResult(Guid Generation, RecognitionEntrySnapshot
     RecognitionIdentity Identity, ImmutableArray<RankedRecognitionCandidate> Candidates, string AlgorithmVersion,
     string SourceFingerprint, bool EnrichmentUnavailable, string? EnrichmentMessage, long? AuthGeneration)
 {
+    // At most the two enriched works' release responses. Transient competitor context is needed
+    // for the automatic commit recheck; restored reviews must be re-identified, never reapplied.
+    [JsonIgnore]
+    public ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>> ReleaseContext { get; init; } = ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>>.Empty;
     public RecognitionResult WithoutEnrichment() => this with { Candidates = [], AuthGeneration = null,
+        ReleaseContext = ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>>.Empty,
         EnrichmentUnavailable = true, EnrichmentMessage = "凭据已变化，在线候选已撤销；本地识别结果保留。" };
 }
 public interface IRecognitionEngine

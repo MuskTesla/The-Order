@@ -255,11 +255,12 @@ public sealed class RecognitionReviewService : IAsyncDisposable
             if (result is not null)
             {
                 var releases = await catalog.ReleasesAsync(work.Id, token).ConfigureAwait(false);
-                // Automatic application re-checks uniqueness against the same competitors that the
-                // decision saw, with this work refreshed. Competitors only lose information here, so
-                // the re-check cannot create a tie-break the original decision did not make.
+                // Keep the competitors' original bounded release evidence. Dropping it can veto a
+                // still-valid competitor and fabricate uniqueness when the selected work changes.
                 IEnumerable<WorkMetadata> context = automatic ? result.Candidates.Select(c => c.Work.Id == work.Id ? work : c.Work) : [work];
-                var ranked = await Task.Run(() => ranker.Rank(result.Identity.Evidence, context, new Dictionary<string, ImmutableArray<ReleaseIdentity>> { [work.Id] = releases }, token), token).ConfigureAwait(false);
+                var releaseContext = automatic ? result.ReleaseContext.SetItem(work.Id, releases)
+                    : ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>>.Empty.Add(work.Id, releases);
+                var ranked = await Task.Run(() => ranker.Rank(result.Identity.Evidence, context, releaseContext, token), token).ConfigureAwait(false);
                 var current = ranked.FirstOrDefault(c => c.Work.Id == work.Id);
                 if (current is null || current.Vetoed) throw new InvalidDataException("最新详情与本地证据存在冲突，请重新核对。");
                 if (automatic && (ranked[0].Work.Id != work.Id || !current.HighConfidence || !AutomaticRecognitionPolicy.Eligible(current)))

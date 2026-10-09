@@ -26,7 +26,9 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
     public ImmutableArray<RankedRecognitionCandidate> Rank(RecognitionEvidence evidence, IEnumerable<WorkMetadata> works,
         IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases = null, CancellationToken cancellation = default)
     {
-        var ranked = compatibility.Rank(evidence, works, releases, cancellation);
+        // Index identifiers plan retrieval and support explicit same-row proofs. They are inferred
+        // from a title, not independently read identifiers that can veto a competing work.
+        var ranked = compatibility.Rank(evidence with { References = [.. evidence.References.Where(r => r.Source != "title-index")] }, works, releases, cancellation);
         if (ranked.IsEmpty) return ranked;
         var locals = evidence.Titles.Where(t => IdentitySource(t.Source)).DistinctBy(t => t.Value, StringComparer.Ordinal).ToArray();
         var values = locals.Select(t => t.Value).ToArray();
@@ -89,10 +91,10 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         Dictionary<string, string[]> names, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
     {
         var mine = Supporting(a, locals, names[a.Work.Id], releases); var theirs = Supporting(b, locals, names[b.Work.Id], releases);
-        // An identifier the local index proved from an exact local title outranks a record that has
-        // no identifier match and no exact local title of its own beyond a's (an unmerged duplicate
-        // record, or a same-name work the index does not know).
-        if (mine.Length > 0 && a.MatchedReferences.Length > 0 && b.MatchedReferences.Length == 0 && theirs.All(mine.Contains)) return true;
+        // Same-row title evidence can distinguish records only after independent catalog metadata
+        // confirms the same edition. An unidentified homonym remains a competing identity.
+        if (mine.Length > 0 && a.MatchedReferences.Length > 0 && b.MatchedReferences.Length == 0
+            && SameCatalogIdentity(a.Work, b.Work) && theirs.All(mine.Contains)) return true;
         return theirs.Length > 0 && mine.Any(t => !theirs.Contains(t)) && theirs.All(s => mine.Any(t =>
             TitleMatching.IndexKey(t.Value) is var longer && TitleMatching.IndexKey(s.Value) is var shorter && longer.Length > shorter.Length && longer.Contains(shorter, StringComparison.Ordinal)));
     }
@@ -112,6 +114,13 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         bool Shared(LocalTitleEvidence t) => !evidence.Homonyms.IsDefault && evidence.Homonyms.Any(h => TitleMatching.IndexKey(h.ObservedTitle) == TitleMatching.IndexKey(t.Value) && h.Identities.Any(id => !refs.Contains(id)));
         bool physical = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is "steam-config" or "steam-file"));
         if (supporting.Length > 0 && supporting.All(Shared) && !physical) return "本地标题与其他作品同名，需要补充线索";
+        // A short Latin word can name unrelated works, including one missing from both the
+        // catalog result and our finite index. Repeating that word in an index/release is not
+        // independent identity evidence. This is a narrow weak-input guard, not an index blacklist.
+        var localKeys = locals.Select(t => TitleMatching.IndexKey(t.Value)).Where(k => k.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+        bool directIdentifier = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is not ("title-index" or "sidecar")));
+        if (!directIdentifier && localKeys.Length == 1 && localKeys[0].Length <= 6 && localKeys[0].All(char.IsAsciiLetter))
+            return "本地只有短拉丁名称，索引和同名发行资料不能区分同名作品，请补充独立编号或手动核对";
         return null;
     }
 
@@ -139,15 +148,35 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         return null;
     }
 
+    private static bool MachineOnly(WorkMetadata work, string value)
+    {
+        var matching = (work.TitleEvidence ?? []).Where(t => TitleMatching.IndexKey(t.Text) == TitleMatching.IndexKey(value)).ToArray();
+        return matching.Length > 0 && matching.All(t => t.IsMachine);
+    }
+
     internal static string[] Names(WorkMetadata work) => [.. new[] { work.Title, work.OriginalTitle }
         .Concat((work.TitleEvidence ?? []).Where(t => !t.IsMachine).Select(t => t.Text)).Concat(work.Aliases)
-        .Where(t => t.Length is > 0 and < 500).Distinct(StringComparer.Ordinal).Take(200)];
+        .Where(t => t.Length is > 0 and < 500 && !MachineOnly(work, t)).Distinct(StringComparer.Ordinal).Take(200)];
 
     private static bool About(string local, string name, TitleComparison c) =>
         c.Score >= .5 || TitleMatching.Markers(local).Base is { Length: >= 2 } b && b == TitleMatching.Markers(name).Base;
 
     private static string[] Canonical(WorkMetadata work) => [.. new[] { work.Title, work.OriginalTitle }
+        .Where(t => !(work.TitleEvidence ?? []).Any(p => TitleMatching.IndexKey(p.Text) == TitleMatching.IndexKey(t))
+            || (work.TitleEvidence ?? []).Any(p => TitleMatching.IndexKey(p.Text) == TitleMatching.IndexKey(t) && !p.IsMachine && p.Kind is "official" or "original" or "latin"))
         .Concat((work.TitleEvidence ?? []).Where(t => !t.IsMachine && t.Kind is "official" or "original" or "latin").Select(t => t.Text)).Where(t => t.Length > 0).Distinct(StringComparer.Ordinal)];
+
+    private static bool SameCatalogIdentity(WorkMetadata a, WorkMetadata b)
+    {
+        var left = a.References.Where(r => r.Source is "vndb" or "bangumi").ToArray();
+        var right = b.References.Where(r => r.Source is "vndb" or "bangumi").ToArray();
+        if (!left.Any(x => right.Any(y => x.Source == y.Source && x.Id == y.Id))) return false;
+        if (left.Any(x => right.Any(y => x.Source == y.Source) && !right.Any(y => x.Source == y.Source && x.Id == y.Id))) return false;
+        var mine = Canonical(a); var theirs = Canonical(b);
+        return mine.SelectMany(t => Identity(TitleMatching.Markers(t))).ToHashSet(StringComparer.Ordinal)
+                .SetEquals(theirs.SelectMany(t => Identity(TitleMatching.Markers(t))))
+            && mine.Any(x => theirs.Any(y => TitleMatching.Compare(x, y) is { Exact: true, Version: "same", Conflict: null }));
+    }
 
     private static string? Resolve(RankedRecognitionCandidate candidate, string[] locals, Dictionary<string, string[]> names,
         ImmutableArray<ReleaseIdentity> releases, ImmutableArray<RankedRecognitionCandidate> all, CancellationToken cancellation)
@@ -159,7 +188,7 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             // Only this work's names that the local title is about, and that do not contradict it.
             var relevant = own.Select(n => (Name: n, Comparison: TitleMatching.Compare(local, n)))
                 .Where(p => p.Comparison.Version != "conflict" && About(local, p.Name, p.Comparison)).ToArray();
-            if (relevant.Length == 0 || relevant.Any(p => p.Comparison.Exact && p.Comparison.Version == "same")) continue;
+            if (relevant.Length == 0) continue;
             var mine = Identity(TitleMatching.Markers(local));
             bool Names(string title) => Identity(TitleMatching.Markers(title)).IsSupersetOf(mine)
                 && TitleMatching.Compare(local, title) is { Version: not "conflict" } c && About(local, title, c);
@@ -168,6 +197,7 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
             if (!mine.IsEmpty && !relevant.Any(p => canonical.Contains(p.Name) && Names(p.Name))
                 && all.Any(o => o.Work.Id != candidate.Work.Id && !o.Vetoed && Canonical(o.Work).Any(Names)))
                 return "另一候选的正式标题包含本地标题中的版本标识；请核对后选择。";
+            if (relevant.Any(p => p.Comparison.Exact && p.Comparison.Version == "same")) continue;
             if (!mine.IsEmpty && !relevant.Any(p => Identity(TitleMatching.Markers(p.Name)).IsSupersetOf(mine)))
             {
                 bool Covers(string title) => Identity(TitleMatching.Markers(title)).IsSupersetOf(mine)

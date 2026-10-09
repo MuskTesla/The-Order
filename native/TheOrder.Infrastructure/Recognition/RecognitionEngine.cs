@@ -68,7 +68,8 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
         if (works.Count >= 128 || identity.LocalCandidates.Length >= 128)
             ranked = [.. ranked.Select(c => c with { HighConfidence = false, Reason = c.Reason + "；候选达到上限，无法确认唯一性。" })];
         var result = new RecognitionResult(generation, input, local, identity, ranked, TitleMatching.AlgorithmVersion,
-            RecognitionFingerprint.Identity(input.Entry), unavailable, message, authSnapshot?.Generation);
+            RecognitionFingerprint.Identity(input.Entry), unavailable, message, authSnapshot?.Generation)
+        { ReleaseContext = releases.ToImmutableDictionary(StringComparer.Ordinal) };
         // Final result admission shares the auth boundary; the queue also checks it when publishing.
         try { return authSnapshot is { } accepted ? auth!.Accept(accepted, () => { cancellation.ThrowIfCancellationRequested(); return result; }) : result; }
         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)

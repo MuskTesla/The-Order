@@ -25,7 +25,7 @@ public sealed partial class ImportPage : Page
         try
         {
             var selected = CandidateList.SelectedItems.OfType<ScanCandidate>().ToImmutableArray(); if (selected.IsEmpty) return;
-            var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = $"导入 {selected.Length} 个候选？", Content = "保存到当前书架后立即自动识别；排序分大于 0.9 时应用最高可用候选，其余结果在识别与核对中选择。版本或身份冲突不会自动应用。重复目录跳过，不会复制、执行或删除游戏文件。", PrimaryButtonText = "确认导入", CloseButtonText = "返回核对", DefaultButton = ContentDialogButton.Close };
+            var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = $"导入 {selected.Length} 个候选？", Content = "保存到当前书架后立即自动识别；排序分严格大于 0.9、身份与版本一致且唯一领先时自动应用，歧义或证据不足的结果在识别与核对中选择。重复目录跳过，不会复制、执行或删除游戏文件。", PrimaryButtonText = "确认导入", CloseButtonText = "返回核对", DefaultButton = ContentDialogButton.Close };
             if (await dialog.ShowAsync() == ContentDialogResult.Primary) await ViewModel.ImportAsync(selected);
         }
         catch (Exception) { Workspace.ReportUnexpected(); }
