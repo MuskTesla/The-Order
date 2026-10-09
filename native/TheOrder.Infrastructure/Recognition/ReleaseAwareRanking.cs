@@ -120,6 +120,19 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         LocalTitleEvidence[] locals, Dictionary<string, string[]> names, IReadOnlyDictionary<string, ImmutableArray<ReleaseIdentity>>? releases)
     {
         var supporting = Supporting(top, locals, names[top.Work.Id], releases);
+        bool directIdentifier = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is not ("title-index" or "sidecar")));
+        var rows = releases is not null && releases.TryGetValue(top.Work.Id, out var available) && !available.IsDefault ? available : [];
+        var programProof = ProgramCompanyProof(evidence, top.Work, rows);
+        // An inferred index row plus a release can raise the evidence level, but it cannot
+        // distinguish two unrelated works with the same full local title. A lower-level exact
+        // competitor still matters. Keep independently read identifiers and corroborated binary
+        // publisher facts separate from repetitions of the same title.
+        if (!directIdentifier && supporting.Length > 0 && ordered.Skip(1).Any(o => !o.Vetoed
+            && !SameCatalogIdentity(top.Work, o.Work) && !Dominates(top, o, locals, names, releases)
+            && supporting.All(Supporting(o, locals, names[o.Work.Id], releases).Contains)
+            && !(programProof is not null && ProgramCompanyProof(evidence, o.Work,
+                releases is not null && releases.TryGetValue(o.Work.Id, out var otherRows) && !otherRows.IsDefault ? otherRows : []) is null)))
+            return "完整本地标题同时对应不同作品，索引与同名发行资料不能区分，需要补充独立线索";
         // As in the oracle, only candidates with at least the same evidence level contend: a title
         // match does not tie with a matching physical identifier.
         var contender = ordered.Skip(1).Where(o => !o.Vetoed && o.EvidenceLevel >= top.EvidenceLevel && (o.Confidence >= .85 || o.MatchedReferences.Length > 0) && !Dominates(top, o, locals, names, releases))
@@ -135,9 +148,7 @@ public sealed class ReleaseAwareRanking : IRecognitionRanker
         // catalog result and our finite index. Repeating that word in an index/release is not
         // independent identity evidence. This is a narrow weak-input guard, not an index blacklist.
         var localKeys = locals.Select(t => TitleMatching.IndexKey(t.Value)).Where(k => k.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
-        bool directIdentifier = top.MatchedReferences.Any(m => evidence.References.Any(e => e.Value == m && e.Source is not ("title-index" or "sidecar")));
-        var rows = releases is not null && releases.TryGetValue(top.Work.Id, out var available) && !available.IsDefault ? available : [];
-        if (!directIdentifier && ProgramCompanyProof(evidence, top.Work, rows) is null && localKeys.Length == 1 && localKeys[0].Length <= 6 && localKeys[0].All(char.IsAsciiLetter))
+        if (!directIdentifier && programProof is null && localKeys.Length == 1 && localKeys[0].Length <= 6 && localKeys[0].All(char.IsAsciiLetter))
             return "本地只有短拉丁名称，索引和同名发行资料不能区分同名作品，请补充独立编号或手动核对";
         return null;
     }

@@ -14,6 +14,56 @@ public sealed class RecognitionV5Tests
         References = reference.Length == 0 ? [] : [new(reference.Split(':')[0], reference.Split(':')[1], null)] };
     private static RecognitionEvidence E(params (string Source, string Value)[] titles) => Evidence([.. titles.Select(t => new LocalTitleEvidence(t.Value, t.Source))]);
     private static TitleIndex Index(string json = "{\"version\":1,\"records\":[]}") => new(() => new MemoryStream(Gzip(json)));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InferredIndexAndReleaseCannotSuppressLowerLevelFullTitleHomonym(bool reverse)
+    {
+        const string title = "The Voyage";
+        var evidence = E(("product-name", title)) with {
+            IndexProofs = [new(title, "product-name", [title], ["vndb:v9"])] };
+        var indexed = W("200", title, reference: "vndb:v9");
+        var other = W("201", title, reference: "vndb:v10");
+        var releases = new Dictionary<string, ImmutableArray<ReleaseIdentity>> {
+            ["200"] = [new("3", "200", title, title, "default", null)],
+            ["201"] = [new("4", "201", title, title, "default", null)] };
+        var ranked = new ReleaseAwareRanking().Rank(evidence, reverse ? [other, indexed] : [indexed, other], releases);
+        Assert.Equal("200", ranked[0].Work.Id);
+        Assert.Equal(2, ranked[0].EvidenceLevel);
+        Assert.Equal(1, ranked[1].EvidenceLevel);
+        Assert.False(ranked[0].HighConfidence);
+        Assert.Contains("同时对应不同作品", ranked[0].Reason);
+    }
+
+    [Fact]
+    public void IndependentSteamIdentityCanResolveSameFullTitleCompetition()
+    {
+        const string title = "The Voyage";
+        var evidence = E(("folder", title)) with { References = [new("steam:100", "steam-config")] };
+        var ranked = new ReleaseAwareRanking().Rank(evidence,
+            [W("200", title, reference: "steam:100"), W("201", title, reference: "steam:101")]);
+        Assert.Equal("200", ranked[0].Work.Id); Assert.True(ranked[0].HighConfidence);
+        Assert.True(ranked[1].Vetoed);
+    }
+
+    [Fact]
+    public void BinaryPublisherProofCanDistinguishFullTitleCompetitorOnlyWhenItDisagrees()
+    {
+        const string title = "The Voyage";
+        var evidence = E(("folder", title), ("product-name", title)) with {
+            Companies = ["North Star"], IndexProofs = [new(title, "product-name", [title], ["vndb:v9"])] };
+        var mine = W("200", title, reference: "vndb:v9") with { CatalogIdentity = new(["North Star"], []) };
+        var other = W("201", title, reference: "vndb:v10") with { CatalogIdentity = new(["Different Studio"], []) };
+        var releases = new Dictionary<string, ImmutableArray<ReleaseIdentity>> {
+            ["200"] = [new("3", "200", title, title, "default", null)],
+            ["201"] = [new("4", "201", title, title, "default", null)] };
+        Assert.True(new ReleaseAwareRanking().Rank(evidence, [mine, other], releases)[0].HighConfidence);
+        // The same company is no longer a distinguishing fact when both records agree.
+        other = other with { CatalogIdentity = mine.CatalogIdentity };
+        evidence = evidence with { IndexProofs = evidence.IndexProofs.Add(new(title, "product-name", [title], ["vndb:v10"])) };
+        Assert.False(new ReleaseAwareRanking().Rank(evidence, [mine, other], releases)[0].HighConfidence);
+    }
     private sealed class Reader(RecognitionEvidence evidence) : IRecognitionEvidenceReader
     {
         public Task<LocalEvidenceSnapshot> ReadAsync(LibraryEntry entry, bool includePe, CancellationToken cancellation) =>
