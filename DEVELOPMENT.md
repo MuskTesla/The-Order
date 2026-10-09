@@ -1,6 +1,19 @@
 # 开发与维护
 
-## 当前 Phase 8.1：已准备，实际日用切换待用户批准（2026-10-09）
+## 当前 Phase 8.2：已切换候选，真实日用观察中（2026-10-09）
+
+**DAILY-USE SWITCH COMPLETE — OBSERVATION IN PROGRESS。** 用户已明确批准候选 `2b5e67a` 正常读写现有原生 Production，仅用于真实日用验证，不含公开发布或推送。应用未改动／重建，普通宿主 PowerShell 从既有 `start-daily-candidate.ps1 -UserApprovedSwitch` 启动；真实物理根、原 Profile/Store identity、实际 EXE、写入锁 owner 和资料数量已核对。原资料自 Phase 8.1 备份后所有权威文件哈希未变，因此沿用原独立不可变备份，无需另建相同快照。启动后的 library 字节及数量未变。窗口已返回真实书架并留给用户使用。
+
+```powershell
+# 普通 PowerShell 7，先从托盘正常退出当前实例；不要从 Codex 内置终端启动真实资料。
+& 'D:/Projects/The-Order-candidates/phase8-1-20261009/start-daily-candidate.ps1' -UserApprovedSwitch
+# 仅程序回退；同样先正常退出，不恢复或覆盖较新资料。
+& 'D:/Projects/The-Order-candidates/phase8-1-20261009/start-daily-candidate.ps1' -UserApprovedSwitch -RollbackProgram
+```
+
+Standard 在实际设置页为选中且生效，普通入口关闭诊断轮询／Advanced资格。未修改现有正式程序目录或快捷方式。真实游戏必须由用户选择并启动；计时和结束记录、Production编辑保存、托盘隐藏恢复、退出重开及真实发生的异常恢复仍待实际观察，不以既有 Test 证据代替。本轮没有资源负载、ETW或系统设置更改。报告／宿主启动与身份回执见 `.artifacts/phase8-2-20261009/report.md`。资料恢复需要单独的明确授权，并先保护较新资料，不能随程序回退自动执行。
+
+## 历史 Phase 8.1：准备完成时，实际日用切换待用户批准（2026-10-09）
 
 **PHASE 8.1 PASS — READY FOR USER-APPROVED DAILY-USE SWITCH。** 分支 `codex/phase8-native-profile-protection`；复用Phase7冻结应用 `2b5e67a`，不重建。真实原生profile/store/library/UI版本均为1，不执行Electron迁移。12文件完整备份与逐字节恢复、受控Test身份副本、新旧reader兼容、真实副本GUI保存／重开、旧程序回退和资料恢复已完成；原始Production在宿主普通PowerShell最终核验12个hash不变。private payload／加密凭据字节只留在源码及程序包外的受保护私有根，不提交。详细身份、局限、失败尝试和恢复步骤见 `.artifacts/phase8-1-20261009/report.md`。
 

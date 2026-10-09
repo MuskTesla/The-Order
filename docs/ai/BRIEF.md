@@ -1,6 +1,14 @@
 # The Order：当前实现与评审交接
 
-## 当前：Phase 8.1 原生资料保护与日用候选准备（2026-10-09）
+## 当前：Phase 8.2 已完成切换，真实日用观察中（2026-10-09）
+
+**DAILY-USE SWITCH COMPLETE — OBSERVATION IN PROGRESS。** 用户明确批准后，普通宿主 PowerShell 从既有 Production 入口启动未改动的 `2b5e67a55d8eda905b8200652d189d7754dff112`。635项候选文件、553项旧程序回退文件核验一致；真实 Production 与 Phase 8.1 备份哈希未变。实际进程 EXE、原 Profile/Store identity、真实根及 writer lock owner 经宿主物理读取／Windows Restart Manager核验，启动前后库字节与数量一致，实际窗口显示真实书架。设置页确认 Standard；诊断轮询关闭，Advanced资格关闭。未改原程序、快捷方式、历史候选或证据。
+
+独立分支仍为 `codex/phase8-native-profile-protection`；Phase 8.1 原待提交的 `DEVELOPMENT.md`／本文件已单独文档提交 `4bf727e`，不含私库、备份或凭据。报告及实际启动回执：`.artifacts/phase8-2-20261009/report.md`。由于 Codex 宿主仍有 LocalAppData 文件虚拟化，本次真实启动由用户在普通外部 PowerShell 执行冻结 Production 入口，代理核验其回执并以 computer use 只读核对实际窗口，未把虚拟空库作为真实资料。
+
+程序保持运行留给用户；真实游戏启动与计时、结束记录、编辑保存、托盘及退出重开仍待日用证据，异常恢复仅按实际发生记录。本轮不再跑资源长测，不自动恢复旧资料、不公开发布、不推送。普通启动和程序回退命令见 `DEVELOPMENT.md`；程序回退不恢复资料。**不代表 Phase 8 全部完成或正式发布获准。**
+
+## 历史：Phase 8.1 原生资料保护与日用候选准备（2026-10-09）
 
 **PHASE 8.1 PASS — READY FOR USER-APPROVED DAILY-USE SWITCH。** 仅完成准备，等待用户批准实际切换；没有新程序打开／写入原始 Production，没有替换正式程序或快捷方式。工作区沿用 `codex-phase7-finalization`，本轮分支 `codex/phase8-native-profile-protection`，起点文档 `1381806`；应用仍冻结 `2b5e67a55d8eda905b8200652d189d7754dff112`，没有应用源码修改或重建。
 
