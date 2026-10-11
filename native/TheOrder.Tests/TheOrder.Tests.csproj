@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <IsPackable>false</IsPackable><IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0"><PrivateAssets>all</PrivateAssets></PackageReference>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+    <ProjectReference Include="../TheOrder.Infrastructure/TheOrder.Infrastructure.csproj" />
+    <ProjectReference Include="../TheOrder.Presentation/TheOrder.Presentation.csproj" />
+    <ProjectReference Include="../TheOrder.Performance/TheOrder.Performance.csproj" />
+    <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
+    <ProjectReference Include="../TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />
+    <None Include="../fixtures/**" Exclude="../fixtures/CaptureRepro/bin/**;../fixtures/CaptureRepro/obj/**;../fixtures/ImageBindingRepro/bin/**;../fixtures/ImageBindingRepro/obj/**;../fixtures/UiExperienceProfile/bin/**;../fixtures/UiExperienceProfile/obj/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+      <Compile Include="../TheOrder.WinUI/Materials/MaterialResources.cs" Link="Materials/MaterialResources.cs" />
+      <Compile Include="../TheOrder.WinUI/Materials/MaterialTreeProbe.cs" Link="Materials/MaterialTreeProbe.cs" />
+    <Compile Include="../TheOrder.WinUI/Materials/LensOptics.cs" Link="Materials/LensOptics.cs" />
+    <None Include="../TheOrder.WinUI/Assets/Brand.png" Link="material-fixtures/Brand.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../TheOrder.WinUI/Resources/DesignTokens.xaml" Link="material-fixtures/DesignTokens.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../TheOrder.WinUI/Views/DetailsPage.xaml" Link="material-fixtures/DetailsPage.xaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

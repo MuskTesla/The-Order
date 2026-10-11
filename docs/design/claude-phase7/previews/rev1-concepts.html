@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Order Concepts</title>
+<script src="kit.js"></script>
+<style id="theme"></style>
+<style>
+.win { position:absolute; inset:0; display:flex; flex-direction:column; background:var(--mica); }
+.titlebar { height:32px; display:flex; align-items:center; gap:10px; padding:0 0 0 14px; font-size:12px; color:var(--text2); flex:none; }
+.titlebar .caps { margin-left:auto; display:flex; } .titlebar .caps span { width:46px; height:32px; display:grid; place-items:center; color:var(--text2); }
+.body { flex:1; display:flex; min-height:0; }
+.content { flex:1; background:var(--canvas); border-top-left-radius:8px; border-top:1px solid var(--stroke2); border-left:1px solid var(--stroke2); display:flex; flex-direction:column; min-width:0; position:relative; overflow:hidden; }
+/* ---- A ---- */
+.railA { width:220px; padding:8px 6px; display:flex; flex-direction:column; gap:2px; flex:none; }
+.nav { height:40px; display:flex; align-items:center; gap:12px; padding:0 12px; border-radius:4px; color:var(--text); position:relative; }
+.nav.on { background:rgba(127,127,127,.12); } .nav.on::before { content:''; position:absolute; left:0; top:12px; bottom:12px; width:3px; border-radius:2px; background:var(--accent); }
+.badge { margin-left:auto; font-size:11px; line-height:16px; min-width:18px; text-align:center; padding:0 5px; border-radius:8px; background:var(--accent); color:var(--accent-fg); font-weight:600; }
+.headA { height:64px; display:flex; align-items:center; gap:8px; padding:0 24px; flex:none; }
+.headA h1 { font-size:20px; line-height:28px; font-weight:600; margin-right:8px; }
+.search { height:32px; border:1px solid var(--stroke); border-bottom-color:var(--text3); border-radius:4px; background:var(--raised); display:flex; align-items:center; gap:8px; padding:0 10px; color:var(--text3); }
+.gridA { padding:4px 24px 24px; display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:22px 20px; overflow:hidden; }
+.tile .cv { aspect-ratio:3/4; border-radius:6px; overflow:hidden; box-shadow:var(--shadow); outline:1px solid rgba(127,127,127,.18); outline-offset:-1px; }
+.tile .tt { margin-top:8px; font-weight:600; font-size:14px; line-height:20px; }
+.tile .mm { margin-top:2px; display:flex; align-items:center; gap:8px; font-size:12px; line-height:16px; color:var(--text2); }
+.strip { height:52px; flex:none; display:flex; align-items:center; gap:12px; padding:0 16px; background:var(--content); border-top:1px solid var(--stroke); }
+.strip .thumb { width:30px; height:40px; border-radius:3px; overflow:hidden; }
+.mono { font-family:'Cascadia Mono',Consolas,monospace; font-variant-numeric:tabular-nums; }
+/* ---- B ---- */
+.tbB { height:48px; display:flex; align-items:center; padding-left:16px; gap:12px; flex:none; }
+.tbB .search { width:420px; margin-left:auto; margin-right:auto; background:var(--content); }
+.railB { width:72px; display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 0 10px; flex:none; }
+.navB { width:62px; height:56px; border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:11px; line-height:14px; color:var(--text2); position:relative; }
+.navB.on { background:rgba(127,127,127,.12); color:var(--text); font-weight:600; } .navB.on::before { content:''; position:absolute; left:-4px; top:18px; bottom:18px; width:3px; border-radius:2px; background:var(--accent); }
+.cmdB { height:52px; display:flex; align-items:center; gap:6px; padding:0 20px; flex:none; }
+.cmdB h1 { font-size:20px; font-weight:600; line-height:28px; }
+.split { flex:1; display:flex; min-height:0; }
+.gridB { flex:1; padding:4px 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:20px 16px; align-content:start; overflow:hidden; }
+.tile.sel .cv { outline:2px solid var(--accent); outline-offset:2px; }
+.insp { width:340px; flex:none; border-left:1px solid var(--stroke2); background:var(--content); display:flex; flex-direction:column; overflow:hidden; }
+.stage { position:relative; height:268px; overflow:hidden; flex:none; }
+.stage .art { position:absolute; inset:-30px; filter:blur(3px) saturate(1.15); transform:scale(1.1); }
+.stage .shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.25)); }
+.facts { padding:16px 20px; display:flex; flex-direction:column; gap:14px; }
+.kv { display:grid; grid-template-columns:72px 1fr; gap:6px 12px; font-size:13px; }
+.kv dt { color:var(--text2); }
+.chips span { display:inline-block; font-size:12px; line-height:22px; padding:0 8px; border-radius:11px; background:var(--accent-soft); margin:0 4px 4px 0; }
+/* ---- C ---- */
+.tbC { height:48px; display:flex; align-items:center; gap:4px; padding:0 0 0 16px; flex:none; }
+.tab { height:32px; padding:0 14px; display:flex; align-items:center; border-radius:4px; color:var(--text2); position:relative; }
+.tab.on { color:var(--text); font-weight:600; } .tab.on::after { content:''; position:absolute; left:14px; right:14px; bottom:-2px; height:3px; border-radius:2px; background:var(--accent); }
+.hero { position:relative; height:340px; flex:none; overflow:hidden; }
+.hero .art { position:absolute; inset:-40px; filter:blur(2px); transform:scale(1.05); }
+.shelf { padding:14px 28px 0; }
+.shelf h2 { font-size:16px; line-height:22px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.row { display:flex; gap:16px; }
+.row .tile { width:118px; flex:none; }
+</style></head>
+<body><div id="app"></div>
+<script>
+const P = params(); const which = P.c || 'A'; document.documentElement.dataset.theme = P.theme || 'light';
+document.getElementById('theme').textContent = themeCSS();
+const caps = `<div class="caps"><span>—</span><span>☐</span><span>✕</span></div>`;
+const tile = (g, i, sel) => `<div class="tile ${sel ? 'sel' : ''}"><div class="cv">${coverSVG(i)}</div>
+ <div class="tt clamp2 ${isJa(g.t) ? 'ja' : ''}">${esc(g.t)}</div>
+ <div class="mm">${statusChip(g.s)}${g.fav ? `<span style="color:var(--accent);margin-left:auto">${icon('heart', 12)}</span>` : ''}</div></div>`;
+
+function A() {
+  return `<div class="win"><div class="titlebar">${BRAND}<span>The Order</span>${caps}</div><div class="body">
+  <div class="railA">
+   <div class="nav on">${icon('library', 18)}书架</div><div class="nav">${icon('globe', 18)}发现作品</div><div class="nav">${icon('scan', 18)}识别与核对<span class="badge">3</span></div>
+   <div style="flex:1"></div><div class="nav">${icon('gear', 18)}设置</div><div class="nav">${icon('power', 18)}退出 The Order</div></div>
+  <div class="content">
+   <div class="headA"><h1>书架</h1><span class="caption">18 部作品</span>
+    <div class="search" style="width:300px;margin-left:24px">${icon('search', 14)}搜索作品、原名或标签</div>
+    <div style="flex:1"></div>
+    <button class="btn">${icon('sort', 14)}最近添加</button><button class="btn">${icon('filter', 14)}筛选</button>
+    <span style="display:inline-flex;border:1px solid var(--stroke);border-radius:4px;overflow:hidden"><button class="btn icon" style="border:0;border-radius:0;background:var(--accent-soft)">${icon('grid')}</button><button class="btn icon" style="border:0;border-radius:0">${icon('list')}</button></span>
+    <button class="btn">${icon('select', 14)}选择</button><button class="btn">${icon('plus', 14)}导入</button></div>
+   <div class="gridA">${GAMES.slice(0, 18).map((g, i) => tile(g, i)).join('')}</div>
+   <div style="flex:1"></div>
+   <div class="strip" style="position:absolute;left:0;right:0;bottom:0"><div class="thumb">${coverSVG(0)}</div><div><div style="font-weight:600" class="ja">星海の約束</div><div class="caption">正在游玩 · 计时中</div></div>
+    <span class="mono" style="margin-left:24px;font-size:15px">0:42:10</span><div style="flex:1"></div><button class="btn">${icon('pause', 12)}暂停计时</button><button class="btn ghost">打开详情</button></div>
+  </div></div></div><div class="label-tag">Concept A · 安静书架 · Concept mockup</div>`;
+}
+
+function B() {
+  const g = GAMES[0];
+  return `<div class="win"><div class="tbB">${BRAND}<span style="font-size:13px;font-weight:600">The Order</span>
+   <div class="search">${icon('search', 14)}搜索书架 <span style="margin-left:auto;font-size:11px;border:1px solid var(--stroke);border-radius:3px;padding:0 4px">Ctrl+F</span></div>
+   <div style="display:flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 4px;border-radius:15px;background:var(--accent-soft);font-size:12px"><span style="width:22px;height:22px;border-radius:11px;overflow:hidden">${coverSVG(0)}</span><span class="ja">星海の約束</span><span class="mono">0:42:10</span></div>
+   ${caps}</div>
+  <div class="body"><div class="railB"><div class="navB on">${icon('library', 20)}书架</div><div class="navB">${icon('globe', 20)}发现</div><div class="navB">${icon('scan', 20)}识别<span class="badge" style="position:absolute;top:6px;right:10px;margin:0">3</span></div><div style="flex:1"></div><div class="navB">${icon('gear', 20)}设置</div><div class="navB">${icon('power', 20)}退出</div></div>
+  <div class="content">
+   <div class="cmdB"><h1>书架</h1><span class="caption" style="margin:4px 12px 0 8px">18 部</span>
+    <div style="flex:1"></div><button class="btn ghost">${icon('sort', 14)}最近添加 ${icon('down', 12)}</button><button class="btn ghost">${icon('filter', 14)}筛选</button>
+    <span style="display:inline-flex;gap:2px"><button class="btn icon ghost" style="background:var(--accent-soft)">${icon('grid')}</button><button class="btn icon ghost">${icon('list')}</button></span>
+    <button class="btn ghost">${icon('select', 14)}选择</button><button class="btn">${icon('plus', 14)}导入</button><button class="btn icon ghost">${icon('pane')}</button></div>
+   <div class="split"><div class="gridB">${GAMES.slice(0, 15).map((x, i) => tile(x, i, i === 0)).join('')}</div>
+    <aside class="insp"><div class="stage"><div class="art">${coverSVG(0)}</div><div class="shade"></div>
+      <div class="glass" style="position:absolute;left:12px;right:12px;bottom:12px;height:138px"><div class="body"></div>
+       <div class="inner" style="padding:22px 26px">
+        <div class="ja" style="font-size:18px;line-height:24px;font-weight:600">${g.t}</div><div class="caption">${g.o} · ${g.dev}</div>
+        <div style="display:flex;gap:8px;margin-top:14px"><button class="btn accent lg" style="flex:1;justify-content:center">${icon('play', 14)}启动游戏</button><button class="btn lg">详情</button></div></div></div></div>
+     <div class="facts"><div class="caption" style="display:flex;align-items:center;gap:6px">${icon('folder', 14)}首选安装 · Hoshiumi-v1.2 <span style="margin-left:auto">${icon('down', 12)}</span></div>
+      <dl class="kv"><dt>状态</dt><dd>${statusChip('playing')}</dd><dt>评分</dt><dd>9 分 · ${icon('heart', 12)} 收藏</dd><dt>游玩</dt><dd>42 小时 30 分 · 37 次</dd><dt>最近</dt><dd>今天 21:40</dd></dl>
+      <div class="chips"><span>纯爱</span><span>科幻</span><span>个人收藏</span></div>
+      <div class="caption clamp2" style="-webkit-line-clamp:3">笔记：第二章的天文台场景值得重玩一次，记得先存档到 07 号位。</div></div></aside></div>
+  </div></div></div><div class="label-tag">Concept B · 舞台与检视 · Concept mockup</div>`;
+}
+
+function C() {
+  const g = GAMES[0];
+  const shelf = (title, idx) => `<div class="shelf"><h2>${title} ${icon('chevron', 14)}</h2><div class="row">${idx.map(i => tile(GAMES[i], i)).join('')}</div></div>`;
+  return `<div class="win"><div class="tbC">${BRAND}<span style="font-size:13px;font-weight:600;margin-right:18px">The Order</span>
+   <div class="tab on">首页</div><div class="tab">书架</div><div class="tab">发现</div><div class="tab">识别 · 3</div>
+   <div class="search" style="width:260px;margin-left:auto;background:var(--content)">${icon('search', 14)}搜索书架</div><span class="btn icon ghost" style="margin-left:6px">${icon('gear')}</span>${caps}</div>
+  <div class="body"><div class="content" style="border-left:0;border-top-left-radius:0">
+   <div class="hero"><div class="art">${coverSVG(0)}</div><div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,0) 60%)"></div>
+    <div style="position:absolute;left:40px;top:40px;width:172px;height:230px;border-radius:8px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.4)">${coverSVG(0)}</div>
+    <div class="glass" style="position:absolute;left:236px;top:120px;width:520px;height:170px"><div class="body"></div><div class="inner" style="padding:24px 30px">
+     <div class="caption">继续游玩 · 上次 今天 21:40</div><div class="ja" style="font-size:26px;line-height:34px;font-weight:600">${g.t}</div>
+     <div style="display:flex;gap:8px;margin-top:16px"><button class="btn accent lg">${icon('play', 14)}启动游戏</button><button class="btn lg">详情</button><span class="caption" style="align-self:center;margin-left:8px">累计 42 小时 · 第 37 次</span></div></div></div></div>
+   ${shelf('最近游玩', [6, 15, 1, 3, 10, 17, 4, 8])}
+  </div></div></div><div class="label-tag">Concept C · 放映厅 · Concept mockup</div>`;
+}
+document.getElementById('app').innerHTML = { A, B, C }[which]();
+</script></body></html>

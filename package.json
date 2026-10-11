@@ -1,0 +1,73 @@
+{
+  "name": "kun-gal-manager",
+  "version": "0.7.1",
+  "private": true,
+  "type": "module",
+  "description": "The Order — a personal Windows visual novel library built with KunUI and NextMoe.",
+  "license": "AGPL-3.0-or-later",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "dev": "node scripts/dev.mjs",
+    "dev:ui": "vite --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "build": "npm run typecheck && vite build && node scripts/build-electron.mjs",
+    "test": "tsx --test tests/*.test.ts",
+    "test:desktop": "npm run build && node tests/desktop-import.mjs && node tests/desktop-matching.mjs && node tests/desktop-reidentification.mjs && node tests/desktop-preservation.mjs && node tests/desktop-concurrency.mjs && node tests/desktop-reload.mjs && node tests/desktop-binding-pagination.mjs && node tests/desktop-details.mjs && node tests/desktop-workspace.mjs && node tests/desktop-cancel-queue.mjs",
+    "test:desktop-reidentification": "npm run build && node tests/desktop-reidentification.mjs",
+    "test:packaged": "node tests/desktop-import.mjs --packaged && node tests/desktop-matching.mjs --packaged && node tests/desktop-reidentification.mjs --packaged && node tests/desktop-preservation.mjs --packaged && node tests/desktop-concurrency.mjs --packaged && node tests/desktop-binding-pagination.mjs --packaged && node tests/desktop-reload.mjs --asar && node tests/desktop-details.mjs --packaged && node tests/desktop-details.mjs --asar && node tests/desktop-cancel-queue.mjs --asar && node tests/desktop-workspace.mjs --packaged && node tests/desktop-production-origin.mjs && node tests/ui-b.mjs --asar",
+    "start": "electron .",
+    "package": "npm run build && electron-builder --win dir"
+  },
+  "dependencies": {
+    "@kungal/ui-core": "2.56.2",
+    "@kungal/ui-tokens": "2.56.2",
+    "@kungal/ui-vue": "2.56.2",
+    "lucide-vue-next": "^0.577.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "electron": "44.5.1",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.27.0",
+    "playwright": "^1.63.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.2",
+    "vue-tsc": "^3.0.0"
+  },
+  "build": {
+    "appId": "dev.local.kungalmanager",
+    "productName": "The Order",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "data/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "asar": true,
+    "extraFiles": [
+      "README.md",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "win": {
+      "icon": "public/icon.ico",
+      "target": "dir",
+      "signExecutable": false
+    },
+    "copyright": "Copyright © 2026 The Order contributors"
+  },
+  "author": {
+    "name": "The Order contributors"
+  }
+}

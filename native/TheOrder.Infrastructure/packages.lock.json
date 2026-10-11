@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "theorder.application": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Domain": "[1.0.0, )"
+        }
+      },
+      "theorder.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}

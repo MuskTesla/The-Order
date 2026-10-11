@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../TheOrder.Domain/TheOrder.Domain.csproj" /></ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="TheOrder.Tests" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Localization/*.json" /></ItemGroup>
+</Project>

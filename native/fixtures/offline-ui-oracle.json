@@ -1,0 +1,5973 @@
+{
+  "electron": "44.5.1",
+  "hashes": {
+    "src/library-workspace.ts": "2940207f41ed443c4ab321ddd5c932dc31b0e93583de5bc4e7cb34e9231ef3b2",
+    "src/library-insights.ts": "5c8fd80f2dafea85f7c4c47c307781e2d7e8a7bcccf11e88607b94e889286df2",
+    "electron/library.ts": "651d3c627f755e547e6d4c45f0c1e4a53b8ddf84d46aa25c936b97310ff7f447",
+    "native/scripts/generate-offline-ui-oracle.mjs": "5ac69094f889ecf23fca0369964009db943e5dda0932d85c4b5db42e06229719"
+  },
+  "games": [
+    {
+      "id": "entry-0",
+      "name": "中文正式名",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "planned",
+      "personalRating": 0,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1000,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-01T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-1",
+      "name": "９－ｎｉｎｅ",
+      "metadata": {
+        "id": "101",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": null,
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-1",
+          "folderPath": "Z:\\Fixture\\1",
+          "executablePath": null,
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-1",
+      "status": "playing",
+      "personalRating": 1,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1001,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-02T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-2",
+      "name": "Alpha",
+      "metadata": {
+        "id": "102",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": "https://example.invalid/cover.png",
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-2",
+          "folderPath": "Z:\\Fixture\\2",
+          "executablePath": "Z:\\Fixture\\2\\Game.exe",
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-2",
+      "status": "completed",
+      "personalRating": 2,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1002,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-03T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-3",
+      "name": "alpha",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "paused",
+      "personalRating": 3,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1003,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-04T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-4",
+      "name": "苹果",
+      "metadata": {
+        "id": "104",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": "https://example.invalid/cover.png",
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-4",
+          "folderPath": "Z:\\Fixture\\4",
+          "executablePath": "Z:\\Fixture\\4\\Game.exe",
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-4",
+      "status": "dropped",
+      "personalRating": 4,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1004,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-05T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-5",
+      "name": "重逢",
+      "metadata": {
+        "id": "105",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": null,
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-5",
+          "folderPath": "Z:\\Fixture\\5",
+          "executablePath": null,
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-5",
+      "status": "planned",
+      "personalRating": 5,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1005,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-06T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-6",
+      "name": "İSTANBUL",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "playing",
+      "personalRating": 6,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1006,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-07T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-7",
+      "name": "ΟΣ",
+      "metadata": {
+        "id": "107",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": null,
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-7",
+          "folderPath": "Z:\\Fixture\\7",
+          "executablePath": null,
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-7",
+      "status": "completed",
+      "personalRating": 7,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1007,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-08T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-8",
+      "name": "Part 10",
+      "metadata": {
+        "id": "108",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": "https://example.invalid/cover.png",
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-8",
+          "folderPath": "Z:\\Fixture\\8",
+          "executablePath": "Z:\\Fixture\\8\\Game.exe",
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-8",
+      "status": "paused",
+      "personalRating": 8,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1008,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-09T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-9",
+      "name": "Part 2",
+      "metadata": null,
+      "installations": [],
+      "preferredInstallationId": null,
+      "status": "dropped",
+      "personalRating": 9,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1009,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-10T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-10",
+      "name": "零评分",
+      "metadata": {
+        "id": "110",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": "https://example.invalid/cover.png",
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-10",
+          "folderPath": "Z:\\Fixture\\10",
+          "executablePath": "Z:\\Fixture\\10\\Game.exe",
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-10",
+      "status": "planned",
+      "personalRating": 0,
+      "favorite": true,
+      "categories": [
+        "周末",
+        "case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1010,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-11T00:00:00.000Z",
+      "lastPlayedAt": null,
+      "nameIsCustom": true
+    },
+    {
+      "id": "entry-11",
+      "name": "无评分",
+      "metadata": {
+        "id": "111",
+        "title": "中文目录名",
+        "originalTitle": "Original",
+        "aliases": [
+          "よつのもの",
+          "９－ｎｉｎｅ"
+        ],
+        "coverUrl": null,
+        "bannerUrl": null,
+        "description": "仅用于原生客户端验证。",
+        "releaseDate": null,
+        "releaseDatePrecision": null,
+        "developers": [
+          "Key Studio"
+        ],
+        "tags": [
+          "剧情"
+        ],
+        "ratings": [],
+        "characters": [],
+        "references": [],
+        "webUrl": null,
+        "contentRating": null,
+        "fetchedAt": "2026-10-04T00:00:00.000Z"
+      },
+      "installations": [
+        {
+          "id": "install-11",
+          "folderPath": "Z:\\Fixture\\11",
+          "executablePath": null,
+          "arguments": []
+        }
+      ],
+      "preferredInstallationId": "install-11",
+      "status": "playing",
+      "personalRating": null,
+      "favorite": false,
+      "categories": [
+        "周末",
+        "Case"
+      ],
+      "customTags": [
+        "Steam",
+        "个人"
+      ],
+      "notes": "虚构笔记",
+      "totalPlaySeconds": 1011,
+      "playCount": 2,
+      "sessions": [],
+      "addedAt": "2026-10-12T00:00:00.000Z",
+      "lastPlayedAt": "2026-10-04T00:00:00.000Z",
+      "nameIsCustom": true
+    }
+  ],
+  "queries": [
+    {
+      "name": "sort-added",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "sort-recent",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "recent",
+      "ids": [
+        "entry-1",
+        "entry-11",
+        "entry-5",
+        "entry-3",
+        "entry-9",
+        "entry-7",
+        "entry-10",
+        "entry-4",
+        "entry-0",
+        "entry-2",
+        "entry-6",
+        "entry-8"
+      ]
+    },
+    {
+      "name": "sort-name",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-0",
+        "entry-5",
+        "entry-3",
+        "entry-2",
+        "entry-6",
+        "entry-8",
+        "entry-9",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "sort-rating",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "rating",
+      "ids": [
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-10",
+        "entry-0",
+        "entry-11"
+      ]
+    },
+    {
+      "name": "sort-playtime",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "playtime",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "view-all",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "view-local",
+      "filters": {
+        "query": "",
+        "view": "local",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-8",
+        "entry-7",
+        "entry-5",
+        "entry-4",
+        "entry-2",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "view-wishlist",
+      "filters": {
+        "query": "",
+        "view": "wishlist",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-9",
+        "entry-6",
+        "entry-3",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "view-unmatched",
+      "filters": {
+        "query": "",
+        "view": "unmatched",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-7",
+        "entry-5",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "view-unconfigured",
+      "filters": {
+        "query": "",
+        "view": "unconfigured",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-7",
+        "entry-5",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "status-planned",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "planned",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-10",
+        "entry-5",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "status-playing",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "playing",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-6",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "status-completed",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "completed",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-7",
+        "entry-2"
+      ]
+    },
+    {
+      "name": "status-paused",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "paused",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-8",
+        "entry-3"
+      ]
+    },
+    {
+      "name": "status-dropped",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "dropped",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-9",
+        "entry-4"
+      ]
+    },
+    {
+      "name": "search-15",
+      "filters": {
+        "query": "中文目录名",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-5",
+        "entry-2",
+        "entry-8",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-16",
+      "filters": {
+        "query": "9-nine",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-5",
+        "entry-2",
+        "entry-8",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-17",
+      "filters": {
+        "query": "中文 Key Steam",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-5",
+        "entry-2",
+        "entry-8",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-18",
+      "filters": {
+        "query": "Key unrelated",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": []
+    },
+    {
+      "name": "search-19",
+      "filters": {
+        "query": "İSTANBUL",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-6"
+      ]
+    },
+    {
+      "name": "search-20",
+      "filters": {
+        "query": "istanbul",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-6"
+      ]
+    },
+    {
+      "name": "search-21",
+      "filters": {
+        "query": "ΟΣ",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-22",
+      "filters": {
+        "query": "ος",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-23",
+      "filters": {
+        "query": "よつ",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-5",
+        "entry-2",
+        "entry-8",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-24",
+      "filters": {
+        "query": "Z Fixture 2",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-2"
+      ]
+    },
+    {
+      "name": "search-25",
+      "filters": {
+        "query": "!!!",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-0",
+        "entry-5",
+        "entry-3",
+        "entry-2",
+        "entry-6",
+        "entry-8",
+        "entry-9",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-26",
+      "filters": {
+        "query": "Alpha﻿Steam",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-3",
+        "entry-2"
+      ]
+    },
+    {
+      "name": "search-27",
+      "filters": {
+        "query": "个人\n周末",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": [
+        "entry-1",
+        "entry-10",
+        "entry-4",
+        "entry-11",
+        "entry-0",
+        "entry-5",
+        "entry-3",
+        "entry-2",
+        "entry-6",
+        "entry-8",
+        "entry-9",
+        "entry-7"
+      ]
+    },
+    {
+      "name": "search-28",
+      "filters": {
+        "query": "not present",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "name",
+      "ids": []
+    },
+    {
+      "name": "filter-29",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": true,
+        "category": "",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-10",
+        "entry-8",
+        "entry-6",
+        "entry-4",
+        "entry-2",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "filter-30",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "Case",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-9",
+        "entry-7",
+        "entry-5",
+        "entry-3",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "filter-31",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "case",
+        "tag": "",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-10",
+        "entry-8",
+        "entry-6",
+        "entry-4",
+        "entry-2",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "filter-32",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "剧情",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-8",
+        "entry-7",
+        "entry-5",
+        "entry-4",
+        "entry-2",
+        "entry-1"
+      ]
+    },
+    {
+      "name": "filter-33",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "Steam",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-10",
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "filter-34",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": "0"
+      },
+      "sort": "added",
+      "ids": [
+        "entry-10",
+        "entry-9",
+        "entry-8",
+        "entry-7",
+        "entry-6",
+        "entry-5",
+        "entry-4",
+        "entry-3",
+        "entry-2",
+        "entry-1",
+        "entry-0"
+      ]
+    },
+    {
+      "name": "filter-35",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": "8"
+      },
+      "sort": "added",
+      "ids": [
+        "entry-9",
+        "entry-8"
+      ]
+    },
+    {
+      "name": "filter-36",
+      "filters": {
+        "query": "",
+        "view": "all",
+        "status": "all",
+        "favorites": false,
+        "category": "",
+        "tag": "",
+        "minRating": "invalid"
+      },
+      "sort": "added",
+      "ids": []
+    },
+    {
+      "name": "filter-37",
+      "filters": {
+        "query": "",
+        "view": "local",
+        "status": "playing",
+        "favorites": false,
+        "category": "",
+        "tag": "剧情",
+        "minRating": ""
+      },
+      "sort": "added",
+      "ids": [
+        "entry-11",
+        "entry-1"
+      ]
+    }
+  ],
+  "labels": [
+    {
+      "input": " 周末，Steam,周末\n剧情 ",
+      "result": [
+        "周末",
+        "Steam",
+        "剧情"
+      ]
+    },
+    {
+      "input": "Case,case,Case",
+      "result": [
+        "Case",
+        "case"
+      ]
+    },
+    {
+      "input": ",，\n",
+      "result": []
+    },
+    {
+      "input": "﻿hello﻿,hello",
+      "result": [
+        "hello"
+      ]
+    },
+    {
+      "input": "a,b",
+      "result": [
+        "a",
+        "b"
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "name": "append-remove",
+      "ids": [
+        "entry-0",
+        "entry-1"
+      ],
+      "patch": {
+        "status": "completed",
+        "favorite": true,
+        "addCategories": [
+          " New ",
+          "New"
+        ],
+        "removeCategories": [
+          "周末"
+        ],
+        "addTags": [
+          " A ",
+          "a"
+        ],
+        "removeTags": [
+          "Steam"
+        ]
+      },
+      "accepted": true,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "completed",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "case",
+            "New"
+          ],
+          "customTags": [
+            "个人",
+            "A",
+            "a"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "completed",
+          "personalRating": 1,
+          "favorite": true,
+          "categories": [
+            "Case",
+            "New"
+          ],
+          "customTags": [
+            "个人",
+            "A",
+            "a"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "order-case",
+      "ids": [
+        "entry-0",
+        "entry-1"
+      ],
+      "patch": {
+        "addCategories": [
+          "case",
+          "Case"
+        ],
+        "addTags": [
+          "个人",
+          "new"
+        ]
+      },
+      "accepted": true,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人",
+            "new"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人",
+            "new"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "conflict-label",
+      "ids": [
+        "entry-0"
+      ],
+      "patch": {
+        "addTags": [
+          " x "
+        ],
+        "removeTags": [
+          "x"
+        ]
+      },
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "empty-label",
+      "ids": [
+        "entry-0"
+      ],
+      "patch": {
+        "addTags": [
+          " "
+        ]
+      },
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "missing-id",
+      "ids": [
+        "entry-0",
+        "missing"
+      ],
+      "patch": {
+        "favorite": false
+      },
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "duplicate-id",
+      "ids": [
+        "entry-0",
+        "entry-0"
+      ],
+      "patch": {
+        "status": "playing"
+      },
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "empty-patch",
+      "ids": [
+        "entry-0"
+      ],
+      "patch": {},
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "invalid-status",
+      "ids": [
+        "entry-0"
+      ],
+      "patch": {
+        "status": "invalid"
+      },
+      "accepted": false,
+      "after": [
+        {
+          "nameIsCustom": true,
+          "id": "entry-0",
+          "name": "中文正式名",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1000,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-01T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-1",
+          "name": "９－ｎｉｎｅ",
+          "metadata": {
+            "id": "101",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-1",
+              "folderPath": "Z:\\Fixture\\1",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-1",
+          "status": "playing",
+          "personalRating": 1,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1001,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-02T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-2",
+          "name": "Alpha",
+          "metadata": {
+            "id": "102",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-2",
+              "folderPath": "Z:\\Fixture\\2",
+              "executablePath": "Z:\\Fixture\\2\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-2",
+          "status": "completed",
+          "personalRating": 2,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1002,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-03T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-3",
+          "name": "alpha",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "paused",
+          "personalRating": 3,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1003,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-04T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-4",
+          "name": "苹果",
+          "metadata": {
+            "id": "104",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-4",
+              "folderPath": "Z:\\Fixture\\4",
+              "executablePath": "Z:\\Fixture\\4\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-4",
+          "status": "dropped",
+          "personalRating": 4,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1004,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-05T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-5",
+          "name": "重逢",
+          "metadata": {
+            "id": "105",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-5",
+              "folderPath": "Z:\\Fixture\\5",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-5",
+          "status": "planned",
+          "personalRating": 5,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1005,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-06T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-6",
+          "name": "İSTANBUL",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "playing",
+          "personalRating": 6,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1006,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-07T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-7",
+          "name": "ΟΣ",
+          "metadata": {
+            "id": "107",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-7",
+              "folderPath": "Z:\\Fixture\\7",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-7",
+          "status": "completed",
+          "personalRating": 7,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1007,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-08T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-8",
+          "name": "Part 10",
+          "metadata": {
+            "id": "108",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-8",
+              "folderPath": "Z:\\Fixture\\8",
+              "executablePath": "Z:\\Fixture\\8\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-8",
+          "status": "paused",
+          "personalRating": 8,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1008,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-09T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-9",
+          "name": "Part 2",
+          "metadata": null,
+          "installations": [],
+          "preferredInstallationId": null,
+          "status": "dropped",
+          "personalRating": 9,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1009,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-10T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-10",
+          "name": "零评分",
+          "metadata": {
+            "id": "110",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": "https://example.invalid/cover.png",
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-10",
+              "folderPath": "Z:\\Fixture\\10",
+              "executablePath": "Z:\\Fixture\\10\\Game.exe",
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-10",
+          "status": "planned",
+          "personalRating": 0,
+          "favorite": true,
+          "categories": [
+            "周末",
+            "case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1010,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-11T00:00:00.000Z",
+          "lastPlayedAt": null
+        },
+        {
+          "nameIsCustom": true,
+          "id": "entry-11",
+          "name": "无评分",
+          "metadata": {
+            "id": "111",
+            "title": "中文目录名",
+            "originalTitle": "Original",
+            "aliases": [
+              "よつのもの",
+              "９－ｎｉｎｅ"
+            ],
+            "coverUrl": null,
+            "bannerUrl": null,
+            "description": "仅用于原生客户端验证。",
+            "releaseDate": null,
+            "releaseDatePrecision": null,
+            "developers": [
+              "Key Studio"
+            ],
+            "tags": [
+              "剧情"
+            ],
+            "ratings": [],
+            "characters": [],
+            "references": [],
+            "webUrl": null,
+            "contentRating": null,
+            "fetchedAt": "2026-10-04T00:00:00.000Z"
+          },
+          "installations": [
+            {
+              "id": "install-11",
+              "folderPath": "Z:\\Fixture\\11",
+              "executablePath": null,
+              "arguments": []
+            }
+          ],
+          "preferredInstallationId": "install-11",
+          "status": "playing",
+          "personalRating": null,
+          "favorite": false,
+          "categories": [
+            "周末",
+            "Case"
+          ],
+          "customTags": [
+            "Steam",
+            "个人"
+          ],
+          "notes": "虚构笔记",
+          "totalPlaySeconds": 1011,
+          "playCount": 2,
+          "sessions": [],
+          "addedAt": "2026-10-12T00:00:00.000Z",
+          "lastPlayedAt": "2026-10-04T00:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}

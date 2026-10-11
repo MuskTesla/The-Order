@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Markdig": {
+        "type": "Direct",
+        "requested": "[1.4.0, )",
+        "resolved": "1.4.0",
+        "contentHash": "lLhaiI/mNDTNzgLqnmknhf4LjgTqOAyjx5+GNz0X3AxYMxUhmFppF2WVMdER+SDqwhE5wUF1pzs/cuLwFxs7xA=="
+      },
+      "theorder.application": {
+        "type": "Project",
+        "dependencies": {
+          "TheOrder.Domain": "[1.0.0, )"
+        }
+      },
+      "theorder.domain": {
+        "type": "Project"
+      }
+    }
+  }
+}

@@ -1,0 +1,412 @@
+/* A Liquid Glass-inspired material for the Windows renderer, not Apple's native
+   optical compositor. The optional --liquid-optics filter refracts the live app
+   backdrop near a surface's edge; tint and bevels keep foreground labels clear.
+   Controls share a material instead of filtering each nested button. Covers
+   remain sharp. No wallpaper capture or continuously animated background. */
+:root[data-appearance="glass"] {
+  --app-bg:#e9eef5;
+  --surface:#f7f9fd;
+  --ink:#192b40;
+  --muted:#506279;
+  --line:#a6b9cc66;
+  --blue:#1268bd;
+  --blue-soft:#deebfb;
+  --hover:#e2ecf7;
+  --glass-tint:#f8fbffb0;
+  --glass-dialog-tint:#f6faffb8;
+  --glass-content:#f9fbfcd9;
+  --glass-field:#ffffff69;
+  --glass-selected:#ffffffad;
+  --glass-edge:#ffffffb5;
+  --glass-rim:#ffffffe8;
+  --glass-bottom:#98b2d68c;
+  --glass-shadow:0 8px 32px #294b7029,0 2px 7px #294b7014;
+  --glass-bevel:inset 1px 1px 0 var(--glass-rim),inset -1px -1px 0 var(--glass-bottom),inset 3px 3px 6px #ffffff69,inset -3px -4px 8px #6694c41a;
+  --glass-sheen:linear-gradient(136deg,#ffffff85 0%,#ffffff12 22%,#ffffff00 54%,#b9d5ff0d 76%,#ffffff47 100%);
+  --glass-edge-light:linear-gradient(132deg,#ffffffed 1%,#def1ff85 18%,#ffffff00 34%,#ffffff00 65%,#d6c7ff82 81%,#ffffffbf 100%);
+  --glass-backdrop:blur(5px) saturate(1.45);
+  --glass-ambient:radial-gradient(ellipse at 9% 18%,#a7d5ef85 0%,transparent 47%),radial-gradient(ellipse at 90% 14%,#c8baf263 0%,transparent 46%),radial-gradient(ellipse at 65% 88%,#c3e8e863 0%,transparent 45%);
+  --windows-control:var(--glass-field);
+  --windows-control-hover:#ffffffe8;
+  --windows-selected:var(--glass-selected);
+  --windows-placeholder:#d8e2ed;
+  --windows-accent-on:#fff;
+  --background:0.946 0.011 255;
+  --foreground:0.284 0.047 252;
+  --foreground-muted:0.491 0.043 252;
+  --content1:0.981 0.006 254;
+  --content2:0.957 0.012 254;
+  --primary-accent:0.518 0.149 252;
+  --primary-text:0.518 0.149 252;
+  --kun-radius-scale:1;
+}
+/* Each optional optical field belongs to its own geometry. A child surface
+   must never inherit a parent's differently sized displacement map. */
+:root[data-appearance="glass"] :is(.sidebar.compact-sidebar,.compact-library-topbar,.expanded-filters,.kun-modal-panel,.detail-aside-controls,.settings-save-bar) { --liquid-optics:initial; }
+:root[data-appearance="glass"].kun-dark-mode {
+  --app-bg:#111923;
+  --surface:#202c3d;
+  --ink:#f1f6ff;
+  --muted:#bfcee0;
+  --line:#a8c5e038;
+  --blue:#8bc7ff;
+  --blue-soft:#2a4667;
+  --hover:#32455d;
+  --glass-tint:#1b2a40bf;
+  --glass-dialog-tint:#20324dcc;
+  --glass-content:#202d3ed9;
+  --glass-field:#c4dcff14;
+  --glass-selected:#b0d3ff2e;
+  --glass-edge:#c6e2ff40;
+  --glass-rim:#e2f1ff73;
+  --glass-bottom:#536d8b70;
+  --glass-shadow:0 10px 36px #02081163,0 2px 8px #00000030;
+  --glass-bevel:inset 1px 1px 0 var(--glass-rim),inset -1px -1px 0 var(--glass-bottom),inset 3px 3px 6px #d2eaff1f,inset -3px -4px 8px #06172c4d;
+  --glass-sheen:linear-gradient(136deg,#d2eaff1f 0%,#bbdcff03 24%,#ffffff00 54%,#ad9bff0a 76%,#bedaff1f 100%);
+  --glass-edge-light:linear-gradient(132deg,#e9f7ffb3 1%,#aae2ff4a 18%,#ffffff00 34%,#ffffff00 65%,#d6baff66 81%,#d0eaff85 100%);
+  --glass-ambient:radial-gradient(ellipse at 6% 16%,#1e63765c 0%,transparent 48%),radial-gradient(ellipse at 88% 13%,#5349824a 0%,transparent 48%),radial-gradient(ellipse at 70% 92%,#185b7242 0%,transparent 44%);
+  --windows-control-hover:#42618070;
+  --windows-placeholder:#25374b;
+  --windows-accent-on:#092746;
+  --background:0.208 0.023 254;
+  --foreground:0.971 0.014 253;
+  --foreground-muted:0.844 0.03 250;
+  --content1:0.294 0.037 255;
+  --content2:0.324 0.04 253;
+  --primary-accent:0.811 0.099 249;
+  --primary-text:0.811 0.099 249;
+}
+:root[data-appearance="glass"] body {
+  background-color:var(--app-bg);
+  background-image:var(--glass-ambient);
+  background-attachment:fixed;
+}
+:root[data-appearance="glass"] .app-shell { background:transparent; }
+:root[data-appearance="glass"] .app-shell .library-workspace,
+:root[data-appearance="glass"] .kun-modal-panel { --muted:#506279; --blue:#1268bd; }
+:root[data-appearance="glass"].kun-dark-mode .app-shell .library-workspace,
+:root[data-appearance="glass"].kun-dark-mode .kun-modal-panel { --muted:#bfcee0; --blue:#8bc7ff; }
+
+/* A slim floating rail preserves the familiar labelled Windows destinations. */
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar {
+  left:8px;
+  top:calc(var(--desktop-titlebar-height) + 12px);
+  bottom:12px;
+  width:72px;
+  height:calc(100dvh - var(--desktop-titlebar-height) - 24px);
+  min-height:0;
+  padding:10px 6px;
+  gap:10px;
+  border:1px solid var(--glass-edge);
+  border-bottom-color:var(--glass-bottom);
+  border-radius:24px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--liquid-optics,var(--glass-backdrop));
+  box-shadow:var(--glass-shadow),var(--glass-bevel);
+}
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item {
+  border:1px solid transparent;
+  border-radius:17px;
+  min-height:58px;
+  padding:8px 3px;
+  gap:5px;
+  color:var(--muted);
+  transition:background-color .18s,box-shadow .18s,transform .18s;
+}
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item:hover {
+  color:var(--ink);
+  background:var(--glass-field);
+}
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item.active {
+  color:var(--ink);
+  background:var(--glass-selected);
+  border-color:var(--glass-edge);
+  box-shadow:inset 0 1px 0 var(--glass-rim),0 2px 5px #132b4112;
+}
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item.active::before {
+  left:1px;
+  height:14px;
+  top:calc(50% - 7px);
+}
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item:active { transform:scale(.97); }
+:root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .sidebar-bottom { padding-top:8px; }
+
+/* The toolbar is a single, thicker lens. Its inner controls use simple fills. */
+:root[data-appearance="glass"] .app-shell .topbar,
+:root[data-appearance="glass"] .app-shell .library-workspace .compact-library-topbar {
+  top:calc(var(--desktop-titlebar-height) + 12px);
+  min-height:84px;
+  height:auto;
+  margin:12px 32px 0;
+  padding:16px 22px;
+  gap:16px;
+  border:1px solid var(--glass-edge);
+  border-bottom-color:var(--glass-bottom);
+  border-radius:24px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--liquid-optics,var(--glass-backdrop));
+  box-shadow:var(--glass-shadow),var(--glass-bevel);
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .library-heading h1 {
+  font-size:26px;
+  line-height:34px;
+  font-weight:600;
+  letter-spacing:-.4px;
+}
+:root[data-appearance="glass"] .app-shell .section-signature { letter-spacing:1.3px; font-size:11px; }
+:root[data-appearance="glass"] .app-shell .heading-count { border-radius:8px; background:var(--glass-field); }
+:root[data-appearance="glass"] .app-shell .library-workspace .library-tools .search-field {
+  height:36px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--glass-field);
+  box-shadow:inset 0 1px 2px #18293b06;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .library-tools .search-field:focus-within {
+  border:1px solid var(--blue);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 18%,transparent);
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .library-tools .sort-select,
+:root[data-appearance="glass"] .app-shell .library-workspace .library-view-actions>button,
+:root[data-appearance="glass"] .app-shell .library-workspace .filter-button,
+:root[data-appearance="glass"] .app-shell button[role=button],
+:root[data-appearance="glass"] .kun-modal-panel button[role=button] { border-radius:10px; }
+:root[data-appearance="glass"] .app-shell .library-workspace .library-view-actions>button:is(.active,[aria-pressed=true]) {
+  background:var(--glass-selected);
+  border-color:var(--glass-edge);
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .library-tools .sort-select {
+  background:var(--glass-field);
+  border-color:var(--line);
+  box-shadow:inset 0 1px 0 var(--glass-rim);
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .filter-button {
+  border:1px solid var(--glass-edge);
+  background:var(--glass-sheen),var(--glass-tint);
+  box-shadow:inset 0 1px 0 var(--glass-rim),0 2px 5px #11263e10;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .filter-button.selected { background:var(--glass-selected); border-color:var(--blue); }
+:root[data-appearance="glass"] .app-shell .topbar-actions>button[role=button],
+:root[data-appearance="glass"] .app-shell .preferences-settings .preferences-actions .preferences-save,
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .detail-aside-controls>button[role=button] {
+  background:linear-gradient(175deg,#ffffff20,#ffffff00),var(--blue);
+  color:var(--windows-accent-on);
+  border:1px solid transparent;
+  box-shadow:inset 0 1px 0 #ffffff45,0 2px 5px #122f5421;
+  border-radius:11px;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .library-main { padding-top:22px; }
+:root[data-appearance="glass"] .app-shell .library-workspace .library-smart-views {
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--glass-backdrop);
+  box-shadow:inset 0 1px 0 var(--glass-rim),0 2px 8px #133a5a0b;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button) { border-radius:8px; }
+:root[data-appearance="glass"] .app-shell .library-workspace :is(.library-smart-views>button,.status-tabs>button).active {
+  color:var(--blue);
+  background:var(--glass-selected);
+  box-shadow:inset 0 0 0 1px var(--glass-edge),0 1px 3px #1b355310;
+  font-weight:600;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .expanded-filters {
+  position:relative;
+  background:var(--glass-sheen),var(--glass-dialog-tint);
+  backdrop-filter:var(--liquid-optics,var(--glass-backdrop));
+  border:1px solid var(--glass-edge);
+  border-bottom-color:var(--glass-bottom);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:var(--glass-shadow),var(--glass-bevel);
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .expanded-filters select { border-radius:8px; background:var(--glass-field); }
+:root[data-appearance="glass"] .app-shell .library-workspace .active-filter-chips>button {
+  border:1px solid var(--glass-edge);
+  border-radius:10px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--glass-backdrop);
+  box-shadow:inset 0 1px 0 var(--glass-rim),0 2px 7px #12365112;
+}
+
+/* Covers stay opaque and sharp, with a fine edge instead of a frosted card. */
+:root[data-appearance="glass"] .app-shell .library-workspace .game-card.library-card.compact-card .card-image {
+  border-radius:12px;
+  box-shadow:0 3px 12px #0d24451c;
+  outline:1px solid #ffffff23;
+  outline-offset:-1px;
+}
+:root[data-appearance="glass"] .app-shell .library-workspace .game-card.library-card.compact-card.is-selected .card-image { outline:3px solid var(--blue); outline-offset:2px; }
+:root[data-appearance="glass"] .app-shell .library-workspace .game-card.library-card.compact-card .card-copy { padding-top:10px; }
+:root[data-appearance="glass"] .app-shell .library-workspace .game-card.library-card.compact-card .card-title { font-weight:500; }
+:root[data-appearance="glass"] .app-shell .library-workspace :is(.library-overview,.library-session) {
+  border-radius:16px;
+  background:var(--glass-content);
+  box-shadow:0 2px 10px #102c4508;
+}
+
+/* Dialogs float as one material; editable/readable content inside stays quiet. */
+:root[data-appearance="glass"] .kun-modal-panel {
+  border:1px solid var(--glass-edge);
+  border-bottom-color:var(--glass-bottom);
+  border-radius:24px;
+  background:var(--glass-sheen),var(--glass-dialog-tint);
+  backdrop-filter:var(--liquid-optics,blur(8px) saturate(1.45));
+  box-shadow:0 24px 80px #04152345,var(--glass-bevel);
+}
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .detail-aside-controls {
+  position:relative;
+  border:1px solid var(--glass-edge);
+  border-bottom-color:var(--glass-bottom);
+  border-radius:17px;
+  padding:12px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--liquid-optics,var(--glass-backdrop));
+  box-shadow:0 5px 16px #0c2b4621,var(--glass-bevel);
+}
+:root[data-appearance="glass"] .kun-modal-panel.quick-collections-modal .collection-link {
+  border:1px solid transparent;
+  border-radius:12px;
+}
+:root[data-appearance="glass"] .kun-modal-panel.quick-collections-modal .collection-link:hover {
+  background:var(--glass-selected);
+  border-color:var(--glass-edge);
+  box-shadow:inset 0 1px 0 var(--glass-rim);
+}
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal :is(.detail-artwork,.ratings-row,.personal-record,.cover-picker) { border-radius:14px; }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal :is(.ratings-row,.personal-record,.cover-picker) { background:var(--glass-field); }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .detail-artwork { box-shadow:0 4px 16px #102b431a; }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal :is(.detail-cover-settings,.detail-favorite,.detail-tags button,.personal-record .record-save) { border-radius:10px; }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea),
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .cover-picker .picker-display select {
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--glass-field);
+}
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .field-label :is(input,select,textarea):focus,
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .cover-picker .picker-display select:focus { border:1px solid var(--blue); }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .cover-picker .picker-option { border-radius:10px; }
+:root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .cover-picker .picker-option.selected { background:var(--glass-selected); }
+:root[data-appearance="glass"] .app-shell .preferences-settings .settings-panel {
+  background:var(--glass-content);
+  border-color:var(--glass-edge);
+  border-radius:20px;
+  box-shadow:0 3px 18px #1b3b5d0a,inset 0 1px 0 var(--glass-rim);
+  backdrop-filter:blur(10px) saturate(1.12);
+}
+:root[data-appearance="glass"] .app-shell .preferences-settings .field-label :is(input,select) { border:1px solid var(--line); border-radius:9px; background:var(--glass-field); }
+:root[data-appearance="glass"] .app-shell .preferences-settings .field-label :is(input,select):focus { border:1px solid var(--blue); }
+:root[data-appearance="glass"] .app-shell .preferences-settings .preferences-actions button { border-radius:10px; }
+:root[data-appearance="glass"] .app-shell .preferences-settings .settings-save-bar {
+  border:1px solid var(--glass-edge);
+  border-radius:18px;
+  background:var(--glass-sheen),var(--glass-tint);
+  backdrop-filter:var(--liquid-optics,var(--glass-backdrop));
+  box-shadow:var(--glass-shadow),var(--glass-bevel);
+}
+
+/* A narrow highlight travels around each silhouette, rather than placing glare
+   over text. Mask support is optional: the inset bevel remains the fallback. */
+@supports(mask-composite:exclude) {
+  :root[data-appearance="glass"] :is(.sidebar.compact-sidebar,.compact-library-topbar,.expanded-filters,.kun-modal-panel,.detail-aside-controls,.settings-save-bar)::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    padding:1.5px;
+    background:var(--glass-edge-light);
+    mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+    mask-composite:exclude;
+    pointer-events:none;
+  }
+}
+
+@media(max-width:1200px) {
+  :root[data-appearance="glass"] .app-shell .topbar,
+  :root[data-appearance="glass"] .app-shell .library-workspace .compact-library-topbar { margin-inline:24px; padding-inline:18px; gap:12px; }
+}
+@media(max-width:700px) {
+  :root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar { left:6px; width:60px; padding:8px 4px; border-radius:20px; }
+  :root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item { min-height:54px; border-radius:14px; }
+  :root[data-appearance="glass"] .app-shell .topbar,
+  :root[data-appearance="glass"] .app-shell .library-workspace .compact-library-topbar { margin:10px 16px 0; padding:14px; gap:12px; border-radius:20px; }
+  :root[data-appearance="glass"] .app-shell .library-workspace .library-heading h1 { font-size:24px; line-height:32px; }
+  :root[data-appearance="glass"] .app-shell .library-workspace .library-main { padding-top:18px; }
+  :root[data-appearance="glass"] .kun-modal-panel { border-radius:18px; }
+  :root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .detail-aside-controls { padding:10px; border-radius:14px; }
+  :root[data-appearance="glass"] .app-shell .preferences-settings .settings-panel { border-radius:16px; }
+}
+
+/* Respect OS accessibility preferences. The material must not be required to
+   identify a control, and the app remains readable without GPU backdrop blur. */
+@media(prefers-reduced-motion:reduce) {
+  :root[data-appearance="glass"] .app-shell .sidebar.compact-sidebar .nav-item:active { transform:none; }
+}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more) {
+  :root[data-appearance="glass"],:root[data-appearance="glass"].kun-dark-mode {
+    --glass-tint:var(--surface);
+    --glass-dialog-tint:var(--surface);
+    --glass-content:var(--surface);
+    --glass-field:var(--surface);
+    --glass-selected:var(--blue-soft);
+    --glass-edge:var(--line);
+    --glass-ambient:none;
+    --glass-sheen:none;
+    --glass-backdrop:none;
+    --glass-edge-light:none;
+    --glass-bevel:none;
+  }
+  :root[data-appearance="glass"] :is(.sidebar.compact-sidebar,.topbar,.expanded-filters,.library-smart-views,.active-filter-chips>button,.kun-modal-panel,.detail-aside-controls,.settings-save-bar,.settings-panel) {
+    backdrop-filter:none !important;
+  }
+}
+@supports not (backdrop-filter:blur(1px)) {
+  :root[data-appearance="glass"],:root[data-appearance="glass"].kun-dark-mode {
+    --glass-tint:var(--surface);
+    --glass-dialog-tint:var(--surface);
+    --glass-content:var(--surface);
+    --glass-sheen:none;
+  }
+}
+@media(forced-colors:active) {
+  :root[data-appearance="glass"],:root[data-appearance="glass"].kun-dark-mode {
+    --app-bg:Canvas;
+    --surface:Canvas;
+    --ink:CanvasText;
+    --muted:CanvasText;
+    --line:ButtonBorder;
+    --blue:Highlight;
+    --blue-soft:Canvas;
+    --hover:Canvas;
+    --glass-tint:Canvas;
+    --glass-dialog-tint:Canvas;
+    --glass-content:Canvas;
+    --glass-field:ButtonFace;
+    --glass-selected:Canvas;
+    --glass-edge:ButtonBorder;
+    --glass-bottom:ButtonBorder;
+    --glass-shadow:none;
+    --glass-ambient:none;
+    --glass-sheen:none;
+    --glass-backdrop:none;
+    --glass-edge-light:none;
+    --glass-bevel:none;
+  }
+  :root[data-appearance="glass"] .app-shell .library-workspace,
+  :root[data-appearance="glass"] .kun-modal-panel,
+  :root[data-appearance="glass"].kun-dark-mode .app-shell .library-workspace,
+  :root[data-appearance="glass"].kun-dark-mode .kun-modal-panel { --muted:CanvasText; --blue:Highlight; }
+  :root[data-appearance="glass"] :is(.sidebar.compact-sidebar,.topbar,.expanded-filters,.library-smart-views,.active-filter-chips>button,.kun-modal-panel,.detail-aside-controls,.settings-save-bar,.settings-panel) {
+    backdrop-filter:none !important;
+  }
+  :root[data-appearance="glass"] .app-shell .topbar-actions>button[role=button],
+  :root[data-appearance="glass"] .app-shell .topbar-actions>button[role=button]:hover:not(:disabled),
+  :root[data-appearance="glass"] .app-shell .preferences-settings .preferences-actions .preferences-save,
+  :root[data-appearance="glass"] .app-shell .preferences-settings .preferences-actions .preferences-save:hover:not(:disabled),
+  :root[data-appearance="glass"] .kun-modal-panel.game-detail-modal .detail-aside-controls>button[role=button] {
+    color:ButtonText;
+    background:ButtonFace;
+    border:1px solid ButtonBorder;
+  }
+}

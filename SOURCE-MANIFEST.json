@@ -1,0 +1,3276 @@
+{
+  "schema": 1,
+  "purpose": "Complete current source, including inherited dirty work; not a single-task integration patch",
+  "utc": "2026-10-11T07:37:23.3948368+00:00",
+  "branch": "codex/library-ui-refinement",
+  "head": "7facc502fde52532518171384cd77b45c9a60c9c",
+  "dirty": true,
+  "count": 653,
+  "items": [
+    {
+      "path": ".gitattributes",
+      "bytes": 117,
+      "sha256": "70347B16EBD9AE4316D08FB4CCC035E3EAA14A7B7523691D69E983B3B9D8C7D2"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 967,
+      "sha256": "500B7E1E21C73B63629FD02CC4FF5F25436E8AB18E20B87858CAB79A8D4228EF"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 9996,
+      "sha256": "291181C72704344E852FCC3F017EB7150C20BBEEB4DA75766BD9737D6894CF5D"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 1991,
+      "sha256": "7E719929594143E1988AB82E3E0B42FEAA3D7E1BBD21B98E03AE114CBAF74990"
+    },
+    {
+      "path": "data/LICENSE-PotatoDBMapper.txt",
+      "bytes": 11357,
+      "sha256": "C71D239DF91726FC519C6EB72D318EC65820627232B2F796219E87DCF35D0AB4"
+    },
+    {
+      "path": "data/NOTICE-PPOCRv3.md",
+      "bytes": 782,
+      "sha256": "C6985A2B6A67DA727256E07E779FBC48CDDEF383CD0A14F0511BB3A4B47C0B95"
+    },
+    {
+      "path": "data/NOTICE-VNDB-artwork.md",
+      "bytes": 1571,
+      "sha256": "0FE146D08E2514D965EECF24BE931A2E0077BEC0B10BBB4E0D980EC71982CA79"
+    },
+    {
+      "path": "data/ppocrv3-text-detector.onnx",
+      "bytes": 2423490,
+      "sha256": "03F550C6B406FDA8BF54BD8327815F6C7E2EDD98CEA02348C93D879254366587"
+    },
+    {
+      "path": "data/title-index.json.gz",
+      "bytes": 2024873,
+      "sha256": "3DA1720FA598AB71E5015A51B8CC8459C7EC82B7BB586DD28806E8ABE55A1DC2"
+    },
+    {
+      "path": "data/vndb-banner-hints.json",
+      "bytes": 306454,
+      "sha256": "CFF1AD42E55532132C75AFF9CBA2B1E493D7932EEFE751E23A3F8826DE8BF93F"
+    },
+    {
+      "path": "DEVELOPMENT.md",
+      "bytes": 341037,
+      "sha256": "23104AD2572B898044024FADA2D25EB71720B499D2B7F9BC7E3F7E1D42D05527"
+    },
+    {
+      "path": "docs/ai/BRIEF.md",
+      "bytes": 217326,
+      "sha256": "2CCFF0A96AC0FBBD8E2BF3BFE7970670C9B7B7C950E245CAC6E7C5B376784940"
+    },
+    {
+      "path": "docs/ai/ITERATION.md",
+      "bytes": 131190,
+      "sha256": "6935FFFEE709589B8B3407A3E59DDCAFEECB16DE6EFE9D0FD42D7F84ED2A32E3"
+    },
+    {
+      "path": "docs/ai/OVERNIGHT.md",
+      "bytes": 97763,
+      "sha256": "EB901DCC747EFE4D8D3B44E853E35CE1261717CE0D8231DB0C2CBA9202389826"
+    },
+    {
+      "path": "docs/ai/PHASE5B_SESSION_SEMANTICS.md",
+      "bytes": 64373,
+      "sha256": "719A04B3D81101F2D0FC6C0279E32D1CDDA1B3903E5CAD718AE1332900E6EC94"
+    },
+    {
+      "path": "docs/ai/PHASE6_MIGRATION_AND_STORE.md",
+      "bytes": 54357,
+      "sha256": "02054E3D2B8E948C0FBEBFFEAE5122E1D105E2CB0FFFE82864D680AAE9EF3A1F"
+    },
+    {
+      "path": "docs/ai/PHASE6_PRODUCTION_PROFILE_BOOTSTRAP.md",
+      "bytes": 10922,
+      "sha256": "5802147E594CE7ECB341B2C162FF4E179901EF9975F9CAA16B478FFB656086E9"
+    },
+    {
+      "path": "docs/ai/PHASE7_2A_VISUAL_REVIEW.md",
+      "bytes": 22821,
+      "sha256": "98EDA371ABAAB52F343781B0F53AD372DFF24987E4DC2188E17CE4FC715D6C7C"
+    },
+    {
+      "path": "docs/ai/PHASE7_FINALIZATION.md",
+      "bytes": 33985,
+      "sha256": "F645DCB0B0071A99C6A0AD494FA1A26F1C7A62A2ACF846AB43868D48ED0EA309"
+    },
+    {
+      "path": "docs/ai/PHASE7_PERFORMANCE_AND_RELIABILITY.md",
+      "bytes": 24498,
+      "sha256": "F7ED96A95914F118584F4FB032CF6C50999BF53685C161BEDEE6A2E94E7E2ACD"
+    },
+    {
+      "path": "docs/design/claude-phase7/01_CREATIVE_DIRECTION.md",
+      "bytes": 3862,
+      "sha256": "8B331DA1517FA37EBDB784D06472916585467284B874B330295F7DC37C1E3B7C"
+    },
+    {
+      "path": "docs/design/claude-phase7/02_UI_LAYOUT_SPECIFICATION.md",
+      "bytes": 11217,
+      "sha256": "B8CD99389A05B1C1CED304D3DB8D9CF196A0362458ECE81C702E6A414FDBC844"
+    },
+    {
+      "path": "docs/design/claude-phase7/03_MATERIAL_AND_DESIGN_SYSTEM.md",
+      "bytes": 9290,
+      "sha256": "F9C0B13488BD6655AD45C0ADCDCF21157DC2456AE1111384DCFF198666F4B120"
+    },
+    {
+      "path": "docs/design/claude-phase7/04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md",
+      "bytes": 9215,
+      "sha256": "BA0AB9CBAB69981C6101759E454CCA7D157B4C902F50EB93E3E08810C7AF6CD3"
+    },
+    {
+      "path": "docs/design/claude-phase7/05_GLASS_ENGINEERING_REPORT.md",
+      "bytes": 8407,
+      "sha256": "F63E0E3DB683946F3DF8895DFDAF10AA73777CB8BC092DD720B7B412981A9905"
+    },
+    {
+      "path": "docs/design/claude-phase7/06_IMPLEMENTATION_RESULTS.md",
+      "bytes": 11831,
+      "sha256": "2F5F44DD4FD3E115270193D9134F9902586A9D31536B907DFC6A51D3AB7D7F8F"
+    },
+    {
+      "path": "docs/design/claude-phase7/07_INDEPENDENT_REVIEW.md",
+      "bytes": 48270,
+      "sha256": "732C0248BA269158B39448E9565874AACC66F10DFA8EE59312DF6A8A119A31E3"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/direction-r2.html",
+      "bytes": 31097,
+      "sha256": "30A7FAFC4B21492399144FF7F7788D7D295339A5A8FDA5D23757F0761B246F4C"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/fluent.js",
+      "bytes": 4486,
+      "sha256": "5EB23C3B2E7F70E04D2522F916AD67B285125931ED4114588CA807AE09B706E8"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/kit.js",
+      "bytes": 15620,
+      "sha256": "84B269923831A684FDD786ABB9D8000D49FA429B663090CA01CDAFC1928A1A59"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/render.ps1",
+      "bytes": 1345,
+      "sha256": "636B25B8C430BE9FDF8223F15435EAE22A244D94B4B8875571B60314ED1CCA1D"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/rev1-concepts.html",
+      "bytes": 13478,
+      "sha256": "A605BA9E461C09CDDEEDA44C05152885657B8B6AE4F534F6557E00DFEF3A6392"
+    },
+    {
+      "path": "docs/design/claude-phase7/previews/rev1-direction-b.html",
+      "bytes": 34254,
+      "sha256": "1EB14E9F9D77C479950C19F29C5E1815DE31F73DBF34FA8EC40FECD736B2320A"
+    },
+    {
+      "path": "docs/design/claude-phase7/README.md",
+      "bytes": 1851,
+      "sha256": "F394B641A186BB7C1E98A22872F29E58462B6EFB4B878E0A13AC6FE56EA9F2FF"
+    },
+    {
+      "path": "docs/design/claude-phase7/rev1/01_CREATIVE_DIRECTION.md",
+      "bytes": 9733,
+      "sha256": "A0B66A1FBE99FAD38227F9A8A326E9345922EDF495ED756B6558DEDDA2B0D7D5"
+    },
+    {
+      "path": "docs/design/claude-phase7/rev1/02_UI_LAYOUT_SPECIFICATION.md",
+      "bytes": 15739,
+      "sha256": "8E00AA18726766C5CE0CB9D11E6F9E45FB5B3902E3044030E7FC8A35058E3CB0"
+    },
+    {
+      "path": "docs/design/claude-phase7/rev1/03_MATERIAL_AND_DESIGN_SYSTEM.md",
+      "bytes": 11093,
+      "sha256": "0EEE484FB31DB8E04AABEDD82163EDF4B863414D64AC3805D112833E559DEEB2"
+    },
+    {
+      "path": "docs/design/claude-phase7/rev1/04_IMPLEMENTATION_AND_REVIEW_HANDOFF.md",
+      "bytes": 12344,
+      "sha256": "23B64B009C22D9EBEA80FE9CE5A69ADAF78524D5092AD10839520AF24D79496A"
+    },
+    {
+      "path": "docs/design/claude-phase7/rev1/05_GLASS_ENGINEERING_REPORT.md",
+      "bytes": 8629,
+      "sha256": "9DF83505412206A7B06DFD49E0F6938470B8960F09A448D1B6D96815C8FEF03F"
+    },
+    {
+      "path": "docs/release/1.0.0/BUILD.md",
+      "bytes": 2135,
+      "sha256": "59761AFEE1E06A467E7457F472DF6DD67F4787B1F7D4159342D9A972CEEB6283"
+    },
+    {
+      "path": "docs/release/1.0.0/CHANGELOG.md",
+      "bytes": 1457,
+      "sha256": "2EF7F5236BE5D96FCCF45347DFE54C8B300A5250E686DE80F6F66DB0608D7277"
+    },
+    {
+      "path": "docs/release/1.0.0/README.md",
+      "bytes": 3927,
+      "sha256": "9C8D10C932E1F185E5D710987FBD7CB70C7ED573DC646C32D1894F5BD3F62A93"
+    },
+    {
+      "path": "electron/evidence-matching.ts",
+      "bytes": 16317,
+      "sha256": "43BB725DB4779FC0F42D8B70BEF01EE11C7B4E5B72525B4551D395742F354816"
+    },
+    {
+      "path": "electron/game-identification.ts",
+      "bytes": 20323,
+      "sha256": "65DA4282762F007FD22A60C7E5A56C36F677282BEB401BAE078D84477E54C07E"
+    },
+    {
+      "path": "electron/installation-attachment.ts",
+      "bytes": 4204,
+      "sha256": "B796CF6F521F68224C9C6CB6A2F71234228BE0E055C84D1CCC2878D80F006883"
+    },
+    {
+      "path": "electron/library.ts",
+      "bytes": 49322,
+      "sha256": "651D3C627F755E547E6D4C45F0C1E4A53B8DDF84D46AA25C936B97310FF7F447"
+    },
+    {
+      "path": "electron/local-cover.ts",
+      "bytes": 10814,
+      "sha256": "B588D5F87535E00E8B9B4DC3BC528FF0CEF1CEE2F5DC1A26D5E6F7CD91CFFF07"
+    },
+    {
+      "path": "electron/local-game-evidence.ts",
+      "bytes": 20708,
+      "sha256": "0D9E33FE32786F073B9160370A0B5FD6143A83C5E3308F7AC5AEF072DF5B6A01"
+    },
+    {
+      "path": "electron/local-text-evidence.ts",
+      "bytes": 12342,
+      "sha256": "7A3DAC5AF2FBE5584711A063009ABD95CB1E000B7D138352BA97652F4BD0043A"
+    },
+    {
+      "path": "electron/main.ts",
+      "bytes": 29855,
+      "sha256": "D6E5B4EC582B8ED843B54FB789E74001D125896F23C7EF8DCC2A38DDE682204D"
+    },
+    {
+      "path": "electron/metadata-matching.ts",
+      "bytes": 31412,
+      "sha256": "EEEA4D33513DF04C45BC32EB72199157F67509FEB41D34344C5AA952F58078A6"
+    },
+    {
+      "path": "electron/nextmoe.ts",
+      "bytes": 30606,
+      "sha256": "EA2A1BBA30DC044B06D44B8D86237108CFBE787B2DCA3C016157DB0FD6FF1430"
+    },
+    {
+      "path": "electron/playtime.ts",
+      "bytes": 11953,
+      "sha256": "136F75ECCC28219A68C803313F286F73A208F1DC58532035F793C43BB79D7FF9"
+    },
+    {
+      "path": "electron/preload.ts",
+      "bytes": 2787,
+      "sha256": "0D69BD67AB12CF66DAAD9BA7CDF60567C66A5D25BFA463C8D5AB731909034473"
+    },
+    {
+      "path": "electron/settings.ts",
+      "bytes": 6178,
+      "sha256": "C2F3F6E6511D813CC9B5EEF17A35502FB23973F59BE7EE10506E4D6D4C01F206"
+    },
+    {
+      "path": "electron/title-matching.ts",
+      "bytes": 15776,
+      "sha256": "F6729BC9112C1976872FEA250D87144E494182003CC09DE9F9AD7286C347C485"
+    },
+    {
+      "path": "electron/window-appearance.ts",
+      "bytes": 2152,
+      "sha256": "F0201911C114518DD2B54685EFA04132A7B3CE01503439062FC946305B8D531D"
+    },
+    {
+      "path": "index.html",
+      "bytes": 415,
+      "sha256": "736542595CB5F8C16D7BB0304B846735183359710DE4DE13542BC96AACC3FD0C"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 34523,
+      "sha256": "8486A10C4393CEE1C25392769DDD3B2D6C242D6EC7928E1414EFFF7DFB2F07EF"
+    },
+    {
+      "path": "native/Directory.Build.props",
+      "bytes": 799,
+      "sha256": "6DB603E851E0AF8F9A82600827B8201B7CCEF6D74A9AE6D46F28D85897A1B534"
+    },
+    {
+      "path": "native/fixtures/accepted-c1-shader.h",
+      "bytes": 2369,
+      "sha256": "2EBB75E8329A439EDE99CBBDFF0D47153B26F8119652D7351A4A1EF12849C042"
+    },
+    {
+      "path": "native/fixtures/compatibility-vectors.json",
+      "bytes": 109746,
+      "sha256": "C998881FC0A98C5C7273D2129DD12002F6039802319638DF68D4BC47D9DDAF80"
+    },
+    {
+      "path": "native/fixtures/corrupt/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/corrupt/library.json",
+      "bytes": 50,
+      "sha256": "1A2C61B787D9321BA7F4A53A1FE621C8856EAC60A473611F7F3A1E269E977593"
+    },
+    {
+      "path": "native/fixtures/empty/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/empty/library.json",
+      "bytes": 92,
+      "sha256": "89833B24E43C1A1D31928DF6447C8CF33A7C5C335CB232D00A8113A2899E4BF7"
+    },
+    {
+      "path": "native/fixtures/filesystem-oracle.json",
+      "bytes": 17506,
+      "sha256": "A402C91B1A5622B8442F0E10132BCA4E878E53302F6FF035E270C85CB025A632"
+    },
+    {
+      "path": "native/fixtures/fingerprints.json",
+      "bytes": 11683,
+      "sha256": "CA22E7480EF5C5726BB46E99F86DBEC230185560B0D5A814EDB53842E2E8C053"
+    },
+    {
+      "path": "native/fixtures/launch-oracle.json",
+      "bytes": 3345,
+      "sha256": "C3285CDACF66050B5ACEA9DA46067880CCD06C594F9037FB0BF5BD99970E130B"
+    },
+    {
+      "path": "native/fixtures/normal/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/normal/library.json",
+      "bytes": 3158,
+      "sha256": "623E9CCF60E519532E4D5BBBA032BB1EBB314A21D93CBF5E94630EAC74A1EBAA"
+    },
+    {
+      "path": "native/fixtures/offline-ui-oracle.json",
+      "bytes": 159377,
+      "sha256": "3976306FDB91346643C642CC2F509687B094EE8F9D4210E5EE6C302B01BAE5B7"
+    },
+    {
+      "path": "native/fixtures/online-oracle.json",
+      "bytes": 85008,
+      "sha256": "9BD8754FCD6137ED74E992025CD3C1A73DC72248473AA4D0C0C08C532D8C26F5"
+    },
+    {
+      "path": "native/fixtures/optical-source-regression.cpp",
+      "bytes": 24429,
+      "sha256": "265CFDF1FABF8FAFB4ECC1CCC03E72BF9FECD1377DDEBA72AB6EB78CD4A990FE"
+    },
+    {
+      "path": "native/fixtures/recognition-evidence-oracle.json",
+      "bytes": 58691,
+      "sha256": "880CB2E18191FDF17B3F5DBCF09B9C49FAA316F7D39F13590565C990DBEC5338"
+    },
+    {
+      "path": "native/fixtures/recognition-oracle.json",
+      "bytes": 442463,
+      "sha256": "FD0166C1A63C7FE28758C0BF4E263211FA4AD690ACFDF3F055032629943B25C0"
+    },
+    {
+      "path": "native/fixtures/transaction-oracle.json",
+      "bytes": 791517,
+      "sha256": "70692D488F4F5A1268566572B700B4DAC254C38C093C8B9B0BAB9E7FBC965334"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/packages.lock.json",
+      "bytes": 598,
+      "sha256": "65DE5D420725DAEEDE99A43BAAC9473D12205BDE06F1680EBE16E45426127F22"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/Program.cs",
+      "bytes": 2389,
+      "sha256": "478AD2F88A92319E3A8DCF526C76C7919FE0E05E9A74C05F0713A631FE951BF1"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/UiExperienceProfile.csproj",
+      "bytes": 407,
+      "sha256": "28696CBAE68B9A644C1866692854DB692AA84EA8C5A0E2CDF686DAEE26AE709C"
+    },
+    {
+      "path": "native/global.json",
+      "bytes": 91,
+      "sha256": "C700761A8DA9E52EE1DA80751B38B9A9C36A72F5CBCBFA3C6C0EC006ED29262B"
+    },
+    {
+      "path": "native/licenses/MARKDIG-LICENSE.txt",
+      "bytes": 1318,
+      "sha256": "7423242B4AE72BCCDF19A06CD3C20790DF8519A164A08F37B31CB4A40034D827"
+    },
+    {
+      "path": "native/licenses/PotatoVN-LICENSE.txt",
+      "bytes": 11833,
+      "sha256": "2B3F1ACA1AF27CE5222519496543EC0B416ED9A03537C2AAAAD322BF048A4614"
+    },
+    {
+      "path": "native/licenses/PP-OCRv3-LICENSE.txt",
+      "bytes": 11437,
+      "sha256": "609AAAC97719DA6B71CD3FFD08B5DE08B75F582E5C50A196FAB522B6D5087714"
+    },
+    {
+      "path": "native/licenses/UNICODE-LICENSE.txt",
+      "bytes": 1995,
+      "sha256": "E7A93B009565CFCE55919A381437AC4DB883E9DA2126FA28B91D12732BC53D96"
+    },
+    {
+      "path": "native/NuGet.Config",
+      "bytes": 180,
+      "sha256": "EF18AAE73F086BB5FC3E982CE9B14CD85951B0C85871C7F3459DFA7041D5158B"
+    },
+    {
+      "path": "native/scripts/build-material-effects.ps1",
+      "bytes": 1389,
+      "sha256": "7F9D883281F2F8BA638AD68D4B9F81059CBF0DFB2D07E39508A0A631374636E2"
+    },
+    {
+      "path": "native/scripts/build-optical-material.ps1",
+      "bytes": 2011,
+      "sha256": "5ADFC0EB46F5237C41680389FB5F14D076A1468E76B38A781DB317B0949CAE23"
+    },
+    {
+      "path": "native/scripts/capture-ui-evidence.mjs",
+      "bytes": 3868,
+      "sha256": "0BDDE71E0E6D7C8318C95059815EF40F5B2535A9AA1E4610F48EBDE7CA15BBCD"
+    },
+    {
+      "path": "native/scripts/capture-ui-evidence.test.mjs",
+      "bytes": 4128,
+      "sha256": "DE892C7CD159B29A9465A59F8CDDE7A8D95D5E06839B5B7179B39EE14D17802F"
+    },
+    {
+      "path": "native/scripts/check-performance-results.py",
+      "bytes": 12670,
+      "sha256": "D5CBB7B0464E80AD2F85DF6EC66E4877FD38AAE3AE105F364F757D05B98274B6"
+    },
+    {
+      "path": "native/scripts/check-published-runner.ps1",
+      "bytes": 2186,
+      "sha256": "30173DBDD52C9B3CC2747DFE3698B60716BDA0185A0DC4D24C67C61E18E7A57F"
+    },
+    {
+      "path": "native/scripts/create-filesystem-lab.ps1",
+      "bytes": 3260,
+      "sha256": "33266C84F252315B472E2157DE5E45003A749FBAED185BFE2A22A8E8538A045D"
+    },
+    {
+      "path": "native/scripts/generate-compatibility-vectors.mjs",
+      "bytes": 8582,
+      "sha256": "1BA6FC7721CC64DF581C1E523E20D7A87580CAA565070E0B06713E8FEBF2C913"
+    },
+    {
+      "path": "native/scripts/generate-filesystem-oracle.mjs",
+      "bytes": 7121,
+      "sha256": "1645E2841DDDDC7117C01A5247F9960FAC9D6DEE78E763ECE18C3D558F9FDF10"
+    },
+    {
+      "path": "native/scripts/generate-fixtures.mjs",
+      "bytes": 5292,
+      "sha256": "46E5E7FC6BEC72F279B39551C3EC354083D2B802DE084A715D7331A758453AF2"
+    },
+    {
+      "path": "native/scripts/generate-launch-oracle.mjs",
+      "bytes": 5770,
+      "sha256": "48921A6111EA7F8FC4C6AC2D6D514096F5062EA6066884478340DC9BA7934A79"
+    },
+    {
+      "path": "native/scripts/generate-offline-library.mjs",
+      "bytes": 3548,
+      "sha256": "6693847A61FEE00F42B4ADE2523272176978E636715D48C51568A762B50610B4"
+    },
+    {
+      "path": "native/scripts/generate-offline-ui-oracle.mjs",
+      "bytes": 6347,
+      "sha256": "5AC69094F889ECF23FCA0369964009DB943E5DDA0932D85C4B5DB42E06229719"
+    },
+    {
+      "path": "native/scripts/generate-online-oracle.mjs",
+      "bytes": 5253,
+      "sha256": "4D3659EEB2A23B19D268C320633BA02E8260E130A79E538950E1304D2708C185"
+    },
+    {
+      "path": "native/scripts/generate-performance-covers.py",
+      "bytes": 3253,
+      "sha256": "6373CA8EC6A4DA49B73DA8621BA5CA12B627009E8265D7746AC3A63FFAB14D8A"
+    },
+    {
+      "path": "native/scripts/generate-recognition-evidence-oracle.mjs",
+      "bytes": 5945,
+      "sha256": "43286ECB94A5E2088FDE7B468A15C094B347EB6FAC083B56E781383334724956"
+    },
+    {
+      "path": "native/scripts/generate-recognition-oracle.mjs",
+      "bytes": 3136,
+      "sha256": "6EDACAC4660884BADFF06A6C38F62694B1591B1EAB095C8080216A49E709F03F"
+    },
+    {
+      "path": "native/scripts/generate-recognition-profile.mjs",
+      "bytes": 1672,
+      "sha256": "111CF09BA4620400BA0EEF1F3003CD24689E0A573B97AB2549A9DDE9AD529A1E"
+    },
+    {
+      "path": "native/scripts/generate-recognition-remediation-profile.mjs",
+      "bytes": 2533,
+      "sha256": "23256E53E1A606B7E41794EBCB47CDA9E027CDADFED73B3F427423CD24338EF6"
+    },
+    {
+      "path": "native/scripts/generate-transaction-oracle.mjs",
+      "bytes": 15267,
+      "sha256": "DFB5CFB9AC57F2E9E061D3B1B80191ED7136529F9D56A708F47A29B4AA1AA404"
+    },
+    {
+      "path": "native/scripts/launch-native-release.ps1",
+      "bytes": 5134,
+      "sha256": "EAC46486630B1E685CC5064A284E83C2918297AFE041F7A27DBEF28A02D64D84"
+    },
+    {
+      "path": "native/scripts/launch-portable-test.ps1",
+      "bytes": 3476,
+      "sha256": "88E349440727E27A1B47B368152ACAE71F366D619C16BE36C9093DE417F8C4CF"
+    },
+    {
+      "path": "native/scripts/native.ps1",
+      "bytes": 6102,
+      "sha256": "46835D2C20F1786BBF00A048255EF2615497CAD25E0AEB16C04C3E5AEB0E9828"
+    },
+    {
+      "path": "native/scripts/package-native-rc.ps1",
+      "bytes": 7339,
+      "sha256": "63B3A97BB0AAB71D6E755FF6EF05AC14B3816213DB1EC56A3FFCE7C9D16477FB"
+    },
+    {
+      "path": "native/scripts/package-native-release.ps1",
+      "bytes": 7715,
+      "sha256": "39C4C2365E47F867017828E2F06A0D05393D34BC5A5C1F039DFE540060E41433"
+    },
+    {
+      "path": "native/scripts/prepare-launch-smoke.ps1",
+      "bytes": 2659,
+      "sha256": "BA52EDB631A715240E00791B1871986270D827681D828B928DE621DC37FF3685"
+    },
+    {
+      "path": "native/scripts/request-test-tray-menu.ps1",
+      "bytes": 1239,
+      "sha256": "4EEBAD94D92089A60E4C52D1CB2E6AF6B395929524C6891173FEC2E3758D53CE"
+    },
+    {
+      "path": "native/scripts/run-astra-material-review.ps1",
+      "bytes": 1400,
+      "sha256": "6132C7FF4E8D0291CE326785D3BFB30EB5A1D4D07E43E77D6B679D7F8611CD21"
+    },
+    {
+      "path": "native/scripts/run-dispersion-review.ps1",
+      "bytes": 1233,
+      "sha256": "EF9221F902AFD01ADCD8AFF31FD73171A28392E018FE4052B13B535D08B03A62"
+    },
+    {
+      "path": "native/scripts/run-integrated-ui-diagnostics.ps1",
+      "bytes": 409,
+      "sha256": "CC5D1399C3194B0E096E7D501F1388B5A358ACB50F5FC2251B5EE9A4A8F786F7"
+    },
+    {
+      "path": "native/scripts/run-integrated-ui.ps1",
+      "bytes": 4181,
+      "sha256": "46F899370419C48313AAB202E0E9D18F50DB953C6C5D9949BAB73BB7E76C33FC"
+    },
+    {
+      "path": "native/scripts/run-material-review.ps1",
+      "bytes": 977,
+      "sha256": "C08DBE47C8685DF87E390D6BE19E39CB02DDD0029FA098B143C180DF840526A6"
+    },
+    {
+      "path": "native/scripts/run-performance-ui.ps1",
+      "bytes": 3985,
+      "sha256": "10B58354D10F9E09DD29B499577D7D58A3D510A44988BFC1DAA664B94D198E6D"
+    },
+    {
+      "path": "native/scripts/run-visual-review.ps1",
+      "bytes": 3529,
+      "sha256": "2908084A25973F7A89A9A6F9B5ABD59BBC50F157A63F8F0E8623ABC0C9469B7D"
+    },
+    {
+      "path": "native/scripts/safe-storage-probe.cjs",
+      "bytes": 1110,
+      "sha256": "621C265B5CAC15236B94846B7D3B4E23D4D0F19F839F886BC999DF7202491255"
+    },
+    {
+      "path": "native/scripts/test-native-release-launcher.ps1",
+      "bytes": 6863,
+      "sha256": "2B920A96CC3FA6D6343F22DB09A3982627EB693507CF86F93B83DE3480DC455D"
+    },
+    {
+      "path": "native/scripts/test-optical-lifecycle.ps1",
+      "bytes": 5305,
+      "sha256": "D58520DA24702662ED9146498A2B2C7BE39BA15C54B975DA4A114AD1084203BD"
+    },
+    {
+      "path": "native/scripts/test-optical-source.ps1",
+      "bytes": 1739,
+      "sha256": "B4ED002D0DAD3633D3933A9637E3CE3ECAF858A3A642C2A6B490B8594CF4C855"
+    },
+    {
+      "path": "native/scripts/test-rc-off-isolation.ps1",
+      "bytes": 9137,
+      "sha256": "95B489EF2DB0298FB7FB3237FFF4387D1147B418CD4C752DD4B008785C575F9E"
+    },
+    {
+      "path": "native/scripts/visual-command.ps1",
+      "bytes": 1544,
+      "sha256": "6FEA9769550060641B5A6A7A9C54F3A5AD34D6B655CAFAE05EFC9EBCAA56BE70"
+    },
+    {
+      "path": "native/scripts/watch-performance-resources.ps1",
+      "bytes": 3016,
+      "sha256": "74BC8C7544E56C4FF51684919671A0C1C280ADC15FEB312CBDA1E4610397221F"
+    },
+    {
+      "path": "native/scripts/write-performance-binding.ps1",
+      "bytes": 2967,
+      "sha256": "78589D032FE24B8911C1C2E371685A91C11E2470ADD47D2A5DC1FA4AA3786ECB"
+    },
+    {
+      "path": "native/TheOrder.Application/AppSessionHost.cs",
+      "bytes": 7171,
+      "sha256": "997A0EBFEA3DECBB7E3571DBBFDAF6D36542D3F4CC44654AD017929A2F9E28C7"
+    },
+    {
+      "path": "native/TheOrder.Application/ArtworkReadability.cs",
+      "bytes": 2499,
+      "sha256": "2D43EE994E69B0AF297DC081C5BCE3AEFA2B58457872EB44023B0C1725EBB9ED"
+    },
+    {
+      "path": "native/TheOrder.Application/ArtworkSizing.cs",
+      "bytes": 723,
+      "sha256": "8775CC95F97BF844ABF51D29E19FA79367909C2CF4D5F2956547A80E2ADFFE2F"
+    },
+    {
+      "path": "native/TheOrder.Application/ArtworkSources.cs",
+      "bytes": 1390,
+      "sha256": "B9634A09C909AFDF2D12AA99D806EAE4588BD85F18DEEDB2DC91FCB1F8800FF1"
+    },
+    {
+      "path": "native/TheOrder.Application/ArtworkTextDetection.cs",
+      "bytes": 1252,
+      "sha256": "F84251DFA02B38A85917A9B5BB724D7D0F3F9EFC029F4846260A8ADF18136009"
+    },
+    {
+      "path": "native/TheOrder.Application/AutomaticRecognitionPolicy.cs",
+      "bytes": 1339,
+      "sha256": "612E51823D7BCACC34A1EA9F469D2ACB417AA5D86530588E457206ECDFAF3F02"
+    },
+    {
+      "path": "native/TheOrder.Application/BannerAesthetics.cs",
+      "bytes": 6477,
+      "sha256": "4B8605B6E9402F8E4857CAF0F8134C4DCA2BDA71DFF7825E0C58A507690BDCC0"
+    },
+    {
+      "path": "native/TheOrder.Application/BannerLayout.cs",
+      "bytes": 1246,
+      "sha256": "39AEF7187DE4F10472E84B276B0E3432A3DDB3F85FC4C734E3C412531616D438"
+    },
+    {
+      "path": "native/TheOrder.Application/BannerSelection.cs",
+      "bytes": 19147,
+      "sha256": "7912F7716CE3A5EA1CF15335DC16A434913D1F05D611E373D5C1B97B57BA88FA"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogBrowsing.cs",
+      "bytes": 3617,
+      "sha256": "BFFC9389D5694C93A5C806709768F65DA451945CB1166CB52793A0A42366927A"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogLanguage.cs",
+      "bytes": 6103,
+      "sha256": "10C2C838A770A7B6F1C9F9E8FE1489EF94671CFFA33BE62558EBBD408C3593E6"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogPresentationArtwork.cs",
+      "bytes": 3549,
+      "sha256": "E044812FE3749E4108E13625B613E47D4BD975A99AA23658A7135BCC72E3567C"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogPresentationCache.cs",
+      "bytes": 19272,
+      "sha256": "C3CBB1F091D95C1A9F7BE97CF22274DE1BE64474CE671BC4032EF9DEDFA835DF"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogPresentationCovers.cs",
+      "bytes": 4791,
+      "sha256": "A8E6A8C0EB05E7B3E6F647F5ADBBE59A42D599C053680060FADAFAEA087F132E"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogPresentationMedia.cs",
+      "bytes": 5753,
+      "sha256": "5EE8A60FD02DD8408411FDD6C8FD5D3AF0C57391413F0C93F24E944CE2EBDB2D"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogReferences.cs",
+      "bytes": 1024,
+      "sha256": "DA7B040B1F7B3F736BB0ED2F8D2F3FD9EFCE5A259C11C852DB9352A2981A38FE"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogRelatedWorks.cs",
+      "bytes": 787,
+      "sha256": "FA652803CBC32B9F10D5C219D0704B93F2A5E9C5663800CAD063FA9AC91E7DE4"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogStaffRoles.cs",
+      "bytes": 1961,
+      "sha256": "80509D04562956965DEBAD47FB3B09900471E5A0927129CE9463CFD5716E7662"
+    },
+    {
+      "path": "native/TheOrder.Application/CatalogVocabulary.cs",
+      "bytes": 2122,
+      "sha256": "E6784A03CEE2EDB720B3D6AF27202D6BC6B174C6E434BF420D58B304D538CDAA"
+    },
+    {
+      "path": "native/TheOrder.Application/CoverAesthetics.cs",
+      "bytes": 6082,
+      "sha256": "0FC1C1B36BE20CE49862EC552272C75D475FA416EBBBBEF432EFA78F4C3A96B3"
+    },
+    {
+      "path": "native/TheOrder.Application/CoverCropping.cs",
+      "bytes": 5082,
+      "sha256": "89C84370D9FBAE0FF60378064D3726559C7CEB7453BD42D067235FE719EC2142"
+    },
+    {
+      "path": "native/TheOrder.Application/CoverQuality.cs",
+      "bytes": 2780,
+      "sha256": "6CB89F316C71630D1037BF255DAF7692377743EDD23421792026EA34F7FDE8A6"
+    },
+    {
+      "path": "native/TheOrder.Application/CoverSources.cs",
+      "bytes": 1088,
+      "sha256": "059471231F234C8EBF6998D066160AAD3A5CA13548509D069D710B1A6E15D0A6"
+    },
+    {
+      "path": "native/TheOrder.Application/EntityCatalog.cs",
+      "bytes": 433,
+      "sha256": "2FE4E47AA0CBA2983ED835E700D4B8189D655D83E1B19FD05ED09FE7FCC2EE70"
+    },
+    {
+      "path": "native/TheOrder.Application/FilesystemContracts.cs",
+      "bytes": 6703,
+      "sha256": "0B1B0C6B63814993DD56BCADCD0EDD3EFFABFB0EB79B4FC1EB2AEE2A5CABD0F5"
+    },
+    {
+      "path": "native/TheOrder.Application/GameLaunchService.cs",
+      "bytes": 27777,
+      "sha256": "1D4C832343DF3B780B27614BEDB310C3F550AB0B0981706EEC7C64F826C01B67"
+    },
+    {
+      "path": "native/TheOrder.Application/Images.cs",
+      "bytes": 12522,
+      "sha256": "6BE2F6C8A1B81BA315FFE01916005A21C0822EF5620CC135FEA95491700994BB"
+    },
+    {
+      "path": "native/TheOrder.Application/InstallationEditing.cs",
+      "bytes": 9980,
+      "sha256": "408D8B454194C21BC9FBE227F9D01848BAE65DADBBD8B3C39F52C5F7BE67F2C9"
+    },
+    {
+      "path": "native/TheOrder.Application/LanguagePreferences.cs",
+      "bytes": 451,
+      "sha256": "0A8A4905B32BF4BA3E33EE36D6DA02187D1C08D2D8C424DE4433F49FFAEE09B2"
+    },
+    {
+      "path": "native/TheOrder.Application/LaunchContracts.cs",
+      "bytes": 6700,
+      "sha256": "3DA71A12F6C2A821C501275FC1F05EC7373C614C30FDC4E40891878F3C7A9496"
+    },
+    {
+      "path": "native/TheOrder.Application/LaunchFileDiscovery.cs",
+      "bytes": 4848,
+      "sha256": "53054675BFA909B469E76DEC8DECEB03C04B45EE39D51079FEC49455A75BD83C"
+    },
+    {
+      "path": "native/TheOrder.Application/LaunchLibrary.cs",
+      "bytes": 1825,
+      "sha256": "2BA804145C1B9368A748816DF1579BFBA4EFA433F468D705BE4B61AE25046763"
+    },
+    {
+      "path": "native/TheOrder.Application/LibraryContracts.cs",
+      "bytes": 1338,
+      "sha256": "F46A86BA5BAA3B0CBA4F934F88CB1A0A6C6DB3CEC5BAC3154707C1734C4061C1"
+    },
+    {
+      "path": "native/TheOrder.Application/Localization/catalog-staff-roles.json",
+      "bytes": 3547,
+      "sha256": "AE17AA9E35A8546207FDE82F061153DE34ED0803A1C82E2D85E1F9F7287114B3"
+    },
+    {
+      "path": "native/TheOrder.Application/Localization/catalog-vocabulary.json",
+      "bytes": 87693,
+      "sha256": "DEAEBD36CF86FAA257C9BDABEE111C8B7CE90987DCC402CC179AF3222AD03418"
+    },
+    {
+      "path": "native/TheOrder.Application/Localization/en.json",
+      "bytes": 81092,
+      "sha256": "1F05A37A2D332E52F6A6D33ABC8F88A3F5F191BC3B1DE3B12F7EB35B155930E1"
+    },
+    {
+      "path": "native/TheOrder.Application/Localization/ja.json",
+      "bytes": 97821,
+      "sha256": "654B01C981251D716E990B83400074C4FB55A4FD738C7750A6B48849F968D195"
+    },
+    {
+      "path": "native/TheOrder.Application/Localization/zh-Hant.json",
+      "bytes": 79717,
+      "sha256": "4E2FDF93E6400F974F2876DCEAEDA24A32CE6C1B281A50537EBCB16B90F68319"
+    },
+    {
+      "path": "native/TheOrder.Application/MaterialPreferences.cs",
+      "bytes": 944,
+      "sha256": "12A931C2C6A7D712559E1A97FABA3DD8F9814B78685FCDDB7321B086FD005909"
+    },
+    {
+      "path": "native/TheOrder.Application/NativeProfileContracts.cs",
+      "bytes": 855,
+      "sha256": "288DFA7E52EAA3EC02A77F2FFA851B0A1F2F221D89CF1BB8A11FA6682182A7B9"
+    },
+    {
+      "path": "native/TheOrder.Application/OfflineContracts.cs",
+      "bytes": 5075,
+      "sha256": "770FCA6903A1C2B5FA619C48872C016FE960250FD10A7BC781FA22F2556D62CE"
+    },
+    {
+      "path": "native/TheOrder.Application/OfflineFilesClient.cs",
+      "bytes": 9671,
+      "sha256": "A13BFEEA007F8FB308C2598C80D3D4FE2117629EBEDA22DD6C2C9163771D0775"
+    },
+    {
+      "path": "native/TheOrder.Application/OfflineLibraryClient.cs",
+      "bytes": 14120,
+      "sha256": "3DADDC5521D913F31B3DE27233D37367944F17348D68AAC590296D52BECF7125"
+    },
+    {
+      "path": "native/TheOrder.Application/OnlineAuthContext.cs",
+      "bytes": 3786,
+      "sha256": "31C5F9B3757692EC6D606F21375A00F93DADCD38D570E7D9F0EF91E5CE9CFAB0"
+    },
+    {
+      "path": "native/TheOrder.Application/OnlineContracts.cs",
+      "bytes": 4443,
+      "sha256": "B4058AE08CC19888F1B7F44980272963861C3DA1103985C04E4F5756C6717E85"
+    },
+    {
+      "path": "native/TheOrder.Application/OnlineCoverSelectionClient.cs",
+      "bytes": 3594,
+      "sha256": "0F0C9458F91DFE0F8D7ABC303D5272778BD5190F62D2D9F31289340C41895B34"
+    },
+    {
+      "path": "native/TheOrder.Application/OnlineLibraryClient.cs",
+      "bytes": 4672,
+      "sha256": "A87424D4871C6647ABAB496BE6A9A35D8C1290CDD15174F9560EB485A596C5B4"
+    },
+    {
+      "path": "native/TheOrder.Application/packages.lock.json",
+      "bytes": 127,
+      "sha256": "D5F62A77B81618ACFE3980F7034C1ADFA9440FC0F96B3325B3D3432291B0298E"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalBanners.cs",
+      "bytes": 1454,
+      "sha256": "E5D0A14E8CA76025100D7E13234EAAD9D3EDBA7B4717645BCD442F718A5DADA7"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalEditing.cs",
+      "bytes": 9720,
+      "sha256": "15524D9C1F3EEEA0BF9C7955AA2558EC71D6B343BA8D23B6966A187E53307C55"
+    },
+    {
+      "path": "native/TheOrder.Application/PreferenceValidation.cs",
+      "bytes": 1989,
+      "sha256": "408D9D789C1570E6D648952D8C849F1EA55FE90EB1C23898A973F7E78D92B385"
+    },
+    {
+      "path": "native/TheOrder.Application/PublicArtwork.cs",
+      "bytes": 449,
+      "sha256": "75DA55F398D1F7BC918EAA4E1ACDE0658A2FD18F3187177650B3F8648CE94FE2"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionContracts.cs",
+      "bytes": 6017,
+      "sha256": "B0A84C90479157C4D8817ADDBDB9114BD56C0F99435FB36125996815CFB53A15"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionPreferences.cs",
+      "bytes": 486,
+      "sha256": "BBED37566FC8343F051700D780330C656B8D75134CCFEBF969FF5D54C22A156A"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionQueue.cs",
+      "bytes": 14357,
+      "sha256": "DBC56E3B78D9C375803F51E4BD7599442E75CD35FAF867D57E589712CA5F2CD2"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionReviewContracts.cs",
+      "bytes": 1554,
+      "sha256": "8A806ED644AB455B8A3ECF24CB9B40AF6307E47E6FCE71DFD8045C60E3A86501"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionReviewService.cs",
+      "bytes": 21067,
+      "sha256": "2BB6EF33814993AFF7239A392464DF7D72E12BA97C1D65C4725FC0706CAB92D8"
+    },
+    {
+      "path": "native/TheOrder.Application/RecognitionSnapshots.cs",
+      "bytes": 3104,
+      "sha256": "DF911590E7461812F629BD9DC8DDD47ACBC08E166B1BDA447963E10EEA45CDC9"
+    },
+    {
+      "path": "native/TheOrder.Application/Scanning.cs",
+      "bytes": 12145,
+      "sha256": "06FF6D787E7E9AF159E7FC45ED5C33EB05FD7490FF3ABFF37827508BF907B692"
+    },
+    {
+      "path": "native/TheOrder.Application/SessionContracts.cs",
+      "bytes": 3051,
+      "sha256": "451CE4C3A1E335D45A2ABAD18C463875DA5A102E9986220C94C609E2EDE8383B"
+    },
+    {
+      "path": "native/TheOrder.Application/SessionEngine.cs",
+      "bytes": 33756,
+      "sha256": "425546DD723A0E5652A8A6D3FA8184212C9EE33DE4DCC9BE17066224BA77BAC3"
+    },
+    {
+      "path": "native/TheOrder.Application/SessionTransactions.cs",
+      "bytes": 8954,
+      "sha256": "C82C12C79A3D89B907BEBED1A6CCF26B409EAE2AE5561ED5E704171553B6055B"
+    },
+    {
+      "path": "native/TheOrder.Application/TheOrder.Application.csproj",
+      "bytes": 292,
+      "sha256": "32E469A8A6C4EB0315E44CD5BB27EFBDFBD3129CE109BDBD1D516E63B98232B1"
+    },
+    {
+      "path": "native/TheOrder.Application/Transactions.cs",
+      "bytes": 26584,
+      "sha256": "69E9A53B8975D5A07277DFFA6DF6AF47243EF1287FAC3EE8F9081A6C0C19A33F"
+    },
+    {
+      "path": "native/TheOrder.Application/UiText.cs",
+      "bytes": 3861,
+      "sha256": "F2D7F0040F52F9CB8D31558A61846F8BF4EF5FCA7C415DA411D6A2D745C02B63"
+    },
+    {
+      "path": "native/TheOrder.Domain/CatalogPresentation.cs",
+      "bytes": 3151,
+      "sha256": "0269E03D2D9AC8D04B9F46A9554AC09292D1C9CED8490A4057E15A7F5709CAB0"
+    },
+    {
+      "path": "native/TheOrder.Domain/Library.cs",
+      "bytes": 3459,
+      "sha256": "8510B26A2EB30F16FF697298F3159F3B7A6EDC35EC29F526944EFE98A165E5EF"
+    },
+    {
+      "path": "native/TheOrder.Domain/packages.lock.json",
+      "bytes": 61,
+      "sha256": "A29C6AA8CFB81874FF8BB78DC369D7416F28C9B8CC47E99592BFC019B20C41EB"
+    },
+    {
+      "path": "native/TheOrder.Domain/Sessions.cs",
+      "bytes": 3113,
+      "sha256": "5A1D7C17311C67C3755040F95E695D810633547145B74E30282E022334B0550C"
+    },
+    {
+      "path": "native/TheOrder.Domain/TheOrder.Domain.csproj",
+      "bytes": 36,
+      "sha256": "8D654C44B7BEBB6B31A9F2F606927F45B5072193ADC4EEF8CCE3F3CF3B278DF3"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyClientTextRules.cs",
+      "bytes": 1631,
+      "sha256": "89B3AAF8F24ACCD9050A9238177ACEDACB18A60EC331B3E31CA3AD684754D5DF"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyDtos.cs",
+      "bytes": 2165,
+      "sha256": "03AD9853F445F281AC0A436EF3A0ABC2484A8EB1ECADB3A9B1E29E840899B0B7"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyJson.cs",
+      "bytes": 3114,
+      "sha256": "BAE134CA9F87925A17DE7400DA8A2B3AF2AF477C2874B93531FCB4BE63236B5A"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyLibraryCodec.cs",
+      "bytes": 10864,
+      "sha256": "DDC793C182F3D5DD59D33C7DEC98295849902874C49E8109D3C39DAFFE9DE577"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyLibraryReader.cs",
+      "bytes": 3685,
+      "sha256": "CD43080CF1F404E997DAA575184B3552656ADE3FCA30FC12B59D450AE6F009CF"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyMapping.cs",
+      "bytes": 2029,
+      "sha256": "01FD3713D7034F1C3837D34381DCF70C14BE8B3191A57CAE125ADA29A5370A17"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyPathCase.cs",
+      "bytes": 2899,
+      "sha256": "FA41501F971940E376FC4B221CAA7A146779D97038AA0512EE04A8F612CEA054"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyPathIdentity.cs",
+      "bytes": 3754,
+      "sha256": "1FE8C20EA5F2D166191D827C9398E39BD9F896912A59ED6588127D5D5C58606E"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyTitleProtection.cs",
+      "bytes": 3226,
+      "sha256": "CEC2A935E7624D25AA943EEF0AD835DADDAFFB41155190AD7DA497A856025007"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyUnicodeData.json",
+      "bytes": 27743,
+      "sha256": "7FBA1E7FC7CE8CB104C57CE6BFA6D6F0BE37D649D10145073598A7FD17F61E9B"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/LegacyValidation.cs",
+      "bytes": 11305,
+      "sha256": "1D942EC0594A37C22520D975F385EF3733B120C344B781942DECC7752DA20C6E"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/NativeLibraryCodec.cs",
+      "bytes": 5281,
+      "sha256": "DB032A15C0FE386344F50399EBF2980F3956CFBAE7FE78B3206503E35841251B"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Legacy/NativeSessionCodec.cs",
+      "bytes": 3776,
+      "sha256": "4F289B858BC581E2E650E7D382D03FD8E118CBF0D708C44190555E05FC2E746A"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/CatalogDisplayDto.cs",
+      "bytes": 8745,
+      "sha256": "188E7C23E88ED2DF8E6C613BF0BFF82D6520C90D8578DA686B656A8845C450B7"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/CatalogRosterDto.cs",
+      "bytes": 4418,
+      "sha256": "A7641A6DAB0CB4F16E3A4B967F3F65380AE1A9FDDB54F7344867D6A562AAB1C8"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/CatalogTransport.cs",
+      "bytes": 10958,
+      "sha256": "DB7FCB1DE4701334B38119276F0182F48B2245AC36E38F84ECB339F3CEA35A83"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NetworkOwnership.cs",
+      "bytes": 1328,
+      "sha256": "B31A7C497CC2AE8D45A8DE4B0B41BB4000AAE581143764ECD6540DB3B187AA62"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.Browsing.cs",
+      "bytes": 3568,
+      "sha256": "0F613369A355E991EBC29154C8C98C4C832C3A41FA226A3E848945A8635D147E"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.cs",
+      "bytes": 8327,
+      "sha256": "6B4F5F39D1EAA576A8242D14695231F649AB49B1B99488493BA7A05D2C032062"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.Entities.cs",
+      "bytes": 6981,
+      "sha256": "F6DBB83842D06977540E2E3406FE34CB4EDB8E23F3C21F2D61FD8FF24E0589AF"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/RecognitionCatalog.cs",
+      "bytes": 6517,
+      "sha256": "CDF4CDF8076420188241434F2ECD921AA388265E114F0A0F04B0EC11325CA42E"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/RemoteCoverSource.cs",
+      "bytes": 7789,
+      "sha256": "1260A89F4787601B99851C92456BE0920DBA8842B63E6D54BC9EF298512BEFD4"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/RemoteWorkDto.cs",
+      "bytes": 10038,
+      "sha256": "7C6447CBA9961A8FF70DF50770945D16B1589ED40DF8741224459394FFEA0097"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/SteamArtworkSource.cs",
+      "bytes": 6814,
+      "sha256": "8E96688AC86CF67A7CF24DF2D544E25A062A457A9EBB918330EFAD4CB5B925B1"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/VndbArtworkSource.cs",
+      "bytes": 6591,
+      "sha256": "7FFB6B8634768F955E09212781383960084915C7BE572640B2E54FC10F015590"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/packages.lock.json",
+      "bytes": 272,
+      "sha256": "C01B4D2063485985ABDA33E4921B4FAB89A9B83D7C64954F2261E4ED7E9F098F"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/EvidenceRanking.cs",
+      "bytes": 13650,
+      "sha256": "63922339B90F8C88A5AFA311C21E75FBEA46D2D3A787814F110960D60BEA3814"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/ExecutableEvidenceParser.cs",
+      "bytes": 16702,
+      "sha256": "E785AD5E6DF6EADE7B2540E15A1DB76BE4706C6115415D1BE0B891A0D305B521"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/LocalEvidenceParser.cs",
+      "bytes": 13718,
+      "sha256": "89CAF1C6D0496937C7A02888B14827A10B3CB079DAE082538A477293E87A9432"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/LocalQueryVariants.cs",
+      "bytes": 3389,
+      "sha256": "C5FE67D793678DDDDF43EB840C91A4CBD105CF9D039C6B5B60ED6AD81709EFDB"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/LocalTitleCleaner.cs",
+      "bytes": 2745,
+      "sha256": "6B033E4ABD726F1FA339CD29EE87658C2DADC80BE2EB13EF7B352A564C302942"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/RecognitionEngine.cs",
+      "bytes": 9489,
+      "sha256": "294036F8A24F74DD5489C56E4739C7D64A8FB3AE59135A644A31E5763CEA9D4F"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/RecognitionFingerprint.cs",
+      "bytes": 1438,
+      "sha256": "CCE7AF7B7B8EF056CAFA6BCEBB471C0CF26EAAA5A1EB3323244E3BBFD4C60E27"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/RecognitionIdentityBuilder.cs",
+      "bytes": 7717,
+      "sha256": "F23FC45CA577A4E520E393B9E6EDE62541CF8065FB219D5C924D4F5A60646EAA"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/RecognitionReviewCodec.cs",
+      "bytes": 14488,
+      "sha256": "3F982581550EDB3AC8D58791E3CFC7E771A24AECAD293348775772D273DF427C"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/RecognitionUnicode.json",
+      "bytes": 11620,
+      "sha256": "B169AF42718C3FFF55188EE21622C67F8FDAB5C6262DE8EDF56419229E46579B"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/ReleaseAwareRanking.cs",
+      "bytes": 28124,
+      "sha256": "237E9F382D533CBB2ACEE4BE5FD26596E8B4F073A9009FD1645DA10BCBD467B3"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/ReviewSafeRanking.cs",
+      "bytes": 2134,
+      "sha256": "2B32CB55F2277B42F9ACAE7CF6C0BC38EE90E0B5AF547C5AE71A676D9B3F835B"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/TitleIndex.cs",
+      "bytes": 6351,
+      "sha256": "6889DC0637EB0118E8FF3B00306F80E2D95E6C7D20C0860BDD69F1D48DDBA2FD"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/TitleIndex.Retrieval.cs",
+      "bytes": 4128,
+      "sha256": "9E6933F2C46B9A1087926405557DDB2E9796E8F2F766ACD08FC57D346954DE54"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/TitleMatching.cs",
+      "bytes": 16322,
+      "sha256": "014BBE6DC62F34777E601BA6A16B7C9ADEAB823308947C7F1E6BD8F7E92CACB5"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/TheOrder.Infrastructure.csproj",
+      "bytes": 404,
+      "sha256": "D2504997C19F003C647F9AE530B14D5F1D7CC2B249EFD097323B1AF0764C73D3"
+    },
+    {
+      "path": "native/TheOrder.LaunchFixture/packages.lock.json",
+      "bytes": 79,
+      "sha256": "BD9CA0E4E85B9AD2C5937D42F577A6B6C31FCE3819986DCD2D4C36D9734EE82F"
+    },
+    {
+      "path": "native/TheOrder.LaunchFixture/Program.cs",
+      "bytes": 5345,
+      "sha256": "3335CC901C940EE6CD74F3EA03C33BD86BD61B003E26174B1F33354AB5F0A886"
+    },
+    {
+      "path": "native/TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj",
+      "bytes": 263,
+      "sha256": "50142477370023B0321BFAC91D69A209EE8B25FD506D21859BBB430D54FFCEAF"
+    },
+    {
+      "path": "native/TheOrder.Performance/packages.lock.json",
+      "bytes": 1023,
+      "sha256": "A7B8C1AFC924C77806A28C92AC7AD15002BA606571B14A107E6C8712AEAD531E"
+    },
+    {
+      "path": "native/TheOrder.Performance/Program.cs",
+      "bytes": 26103,
+      "sha256": "F1C73AED6327A44DD414316CDB7932B6C741464852C2944C9C0C5F8074D23DFB"
+    },
+    {
+      "path": "native/TheOrder.Performance/SessionAppends.cs",
+      "bytes": 9925,
+      "sha256": "35B9D362725FF4B527E8BE7A90218AE01CDD0C6206048F06F4757D48F9CDF93B"
+    },
+    {
+      "path": "native/TheOrder.Performance/TheOrder.Performance.csproj",
+      "bytes": 490,
+      "sha256": "2EAB1E484BB05C9E8280F2DAEBB91485B3A18CD5F57B751049783749451586B3"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/CatalogBrowsePreferencesStore.cs",
+      "bytes": 5723,
+      "sha256": "096E35415A8CF0A40FAEC8E54EFC2C123063D5AAD18D23C1FB24606D174CFCB0"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedArtworkCache.cs",
+      "bytes": 3887,
+      "sha256": "402255D502B4A2364E1E8D8911F7C678CFC99263451B582F6F44436290F53DC0"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedCatalogPresentationCache.cs",
+      "bytes": 6264,
+      "sha256": "9D9E3EDC089064894FB9A05FD2107BAC37D0D093CD46610B1F4AC51E6D8A515F"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedCredentialStore.cs",
+      "bytes": 4545,
+      "sha256": "488544F069872E6065F646BACDA01499386BB480326EC368E4CC9E13BAAD7CEC"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedLaunchPositionStore.cs",
+      "bytes": 5777,
+      "sha256": "FA66D40732CCC571590AA187818BDCB22E407DCC99C3433A7A964C21D499737D"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedLibraryFactory.cs",
+      "bytes": 679,
+      "sha256": "6650632916F8F4B2C7AE4DF4018985BD34598D8BEB687EAA30B7F245FD53DCF0"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedLibraryPersistence.cs",
+      "bytes": 4800,
+      "sha256": "F0E44849FAFF302E0A31374B3D638ABA1FD3A5EDAD1F678980AA836A811F34BF"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedLibrarySource.cs",
+      "bytes": 3937,
+      "sha256": "F01962CFD2D5B3128A100F850AAF6A16A118DCF9EB29C3FAC1EFB6425531701C"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedPersonalBannerStore.cs",
+      "bytes": 8780,
+      "sha256": "F6A08BD47DFFB85ECF375DA177C65758CC44370F21FF62C6D503E5419E074774"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedRecognitionReviewStorage.cs",
+      "bytes": 3003,
+      "sha256": "867BDD0FDBBBDBD26E415D5C56A3F57CFDAD81E53ED125E9455BE29509468AB0"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedThumbnailCache.cs",
+      "bytes": 4478,
+      "sha256": "7700438625D13BD010F8B44414BA556F8E6883291A85A030ADB3B6B4D1042185"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/IsolatedUiPreferencesStore.cs",
+      "bytes": 5252,
+      "sha256": "FBFAEC1104D42883432D0DC48C55401B2813FF55A78FA2CF79F47C4D9BBA3551"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/LanguagePreferencesStore.cs",
+      "bytes": 5873,
+      "sha256": "C1135C51F9D920C4AE7EB91E49B7D6634C4C9937F187398712ECB2EE52379105"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/MaterialPreferencesStore.cs",
+      "bytes": 5966,
+      "sha256": "58432270A4D85EFC29AF5ECC75834C296F746C264AD900611D104B0A9D1616F1"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/NativeInstanceIdentity.cs",
+      "bytes": 1307,
+      "sha256": "D21BD39BCF1A989E6C2B9114F23247CC2F600D92B9F3503FF092C755F0B5DF3B"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/NativeLifecycleJournal.cs",
+      "bytes": 1682,
+      "sha256": "1B30C2536545347333D7F7622D8864EE11E5D0DBA9D5A0508D6AE7A3162E9002"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/NativeProfilePaths.cs",
+      "bytes": 4179,
+      "sha256": "4AC367351AE7692E9EDE1A7BE379271153CDDE609895B160A354FC59F66D8803"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/NativeProfileStore.cs",
+      "bytes": 25872,
+      "sha256": "00794CCEF3C2F9699DB289B0FDC96F28F915A31DD3465F1BC7D3233888D584F7"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/packages.lock.json",
+      "bytes": 290,
+      "sha256": "6D0E101025A240C4BEDE4F865E57155E11A0C2B2632274897606F7C6074B1DE8"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/ProcessSnapshotGeneration.cs",
+      "bytes": 2730,
+      "sha256": "2BA9A7822BBBB9DC0D8A08F6EBE622274279D7D99188F083D22D6FD7149BBCE7"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/ProfilePathGuard.cs",
+      "bytes": 3265,
+      "sha256": "FB241725C10BFA34F2946B9C9247D708B26E0AF283699B6D8BD0525C3FEE0EB3"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/RecognitionPreferencesStore.cs",
+      "bytes": 5789,
+      "sha256": "B6688AB1890D4FC249F1A8B0483AF27DEEE4586BFFD372D0B6B4CE5310451046"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj",
+      "bytes": 322,
+      "sha256": "462EBC512AFAA5201292EC20AAF274C1514A34B3AB2B1A33695A4B8E096B3BD0"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsArtworkTextDetector.cs",
+      "bytes": 5231,
+      "sha256": "08CBF5C1E81822A79D93D00A7D86A3AF0BC16EAACE2FE7987D2FCC438C39A7C7"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsAtomicFile.cs",
+      "bytes": 2978,
+      "sha256": "ACC04AEF204095A9500193AE8424C81AFD7975FF00CFEEDFE1E13D3CA40E644C"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsBrandIcons.cs",
+      "bytes": 5292,
+      "sha256": "80CF5AA649EA14FB5613E339FCF11712A50C7D51741247B898CDE5BC5B84323B"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsCommandScript.cs",
+      "bytes": 2673,
+      "sha256": "BDF29660474B443EDF8827BC72E7CDB45A10A4B402E5F575FD9438EA585F8243"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsDataProtection.cs",
+      "bytes": 1904,
+      "sha256": "EFB7818D871E158E718F0B493F2888B53AC74595339D7891CC5A02E3BDD55077"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsFilesystemIdentity.cs",
+      "bytes": 6989,
+      "sha256": "466DA29C8D54B66901CD7244428E0AA7B715EFA21243621A48D2F93A4C326FB3"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsGameProcesses.cs",
+      "bytes": 15548,
+      "sha256": "1B3AC815E897918DA93A0ECAFBFCA058603942F26F6F83997709E42E264BFB21"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsProcessLifetimeScope.cs",
+      "bytes": 8380,
+      "sha256": "E58CB5F0EA3913C03F11208AC24EF5C589D3430552A7A7296752DD1A09C91E5F"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsRasterCodec.cs",
+      "bytes": 8932,
+      "sha256": "CC746AD6B72450F29B380F88E907B5D8C160B56607088EA3F98AB5412A8E2BFD"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsRecognitionEvidence.cs",
+      "bytes": 15534,
+      "sha256": "60EFEF67E5BBFDA9C124CAE7A89764692F7819B21DE80519A224946BA50F2FAC"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsScanFilesystem.cs",
+      "bytes": 3412,
+      "sha256": "B90F0CAA25FB7BB8A7E71805902E07536ECFD2421DB83D97F7FD48CE18B222EC"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsSessionClock.cs",
+      "bytes": 1919,
+      "sha256": "FE3BCAA40A65B23B50FAA730A399FB5E8D03A274E2063192A50200D61851DCD9"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsSessionPowerEvents.cs",
+      "bytes": 1970,
+      "sha256": "FE86CA129A014439BE0499683163A055297856012B96A365667C247624E73CB5"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsSessionRecoveryTokens.cs",
+      "bytes": 2837,
+      "sha256": "6C0A098ED1A0348810E11D0A31D1496E29D8AA76FB820079718A2613C0CA6840"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsTrayLifecycle.cs",
+      "bytes": 7886,
+      "sha256": "BD16306331B701AD5A45DBBB6E0AAC8BEAB14D91CCDB732BEF45EB2C9F26FC50"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsUiLanguage.cs",
+      "bytes": 437,
+      "sha256": "1CCF2718546898EAA2B6047E19F8736ECB55E013C210EFBE7A9E2B8EE5D95BE9"
+    },
+    {
+      "path": "native/TheOrder.Presentation/CandidateDetailLinks.cs",
+      "bytes": 2082,
+      "sha256": "544B0E04289B8B3E26B609AB757CC64E5B00A3174B70D04348CDB7233D9D27B8"
+    },
+    {
+      "path": "native/TheOrder.Presentation/CatalogBrowseSettings.cs",
+      "bytes": 2020,
+      "sha256": "CB03B29F1B258FF939D88740C774B42FD1C609F328F704F778D7EE077A7754E8"
+    },
+    {
+      "path": "native/TheOrder.Presentation/CatalogShelfMembership.cs",
+      "bytes": 938,
+      "sha256": "03BA34A5148B179C704A488436FBDE0BC990A0B22C43586BEC6F78DC06A3E9BB"
+    },
+    {
+      "path": "native/TheOrder.Presentation/DecodedSurfaceCache.cs",
+      "bytes": 1140,
+      "sha256": "02BF53BF16F128E75E3C4D198E032D07CFDCD2463B1E1F6D3CE30C70F6785273"
+    },
+    {
+      "path": "native/TheOrder.Presentation/FilesViewModel.cs",
+      "bytes": 9932,
+      "sha256": "BAA2833FE9F48CDF37927AE9D664B6A2DBDE1903C695804612FAF03025051A39"
+    },
+    {
+      "path": "native/TheOrder.Presentation/ImageRequestSlot.cs",
+      "bytes": 782,
+      "sha256": "B812CE88A95A5A33B3B3A98B096F0BD5081BA4F1AEAF022A92E876352C09B457"
+    },
+    {
+      "path": "native/TheOrder.Presentation/InstallationNavigation.cs",
+      "bytes": 593,
+      "sha256": "2C5F385A065EDE55DCCAF1E2447BA423E19776579A69C36ECEA2032EC1035B9A"
+    },
+    {
+      "path": "native/TheOrder.Presentation/KunGalNavigation.cs",
+      "bytes": 1305,
+      "sha256": "5E4E6F2498018BCEE429F4A3E1E8ADBE915893C8C8F15D91F9AAAF0D0200DEC5"
+    },
+    {
+      "path": "native/TheOrder.Presentation/LanguageSettings.cs",
+      "bytes": 3051,
+      "sha256": "81410B4DD309D9E97F08E134A66BC11B5C30B839D334E79BE338CE00FFF856CF"
+    },
+    {
+      "path": "native/TheOrder.Presentation/LaunchViewModel.cs",
+      "bytes": 8070,
+      "sha256": "898134CEEB10E527421DEA2168CC5FFABC58F045D59B3979392E0DD4E7070FA8"
+    },
+    {
+      "path": "native/TheOrder.Presentation/MarkdownContent.cs",
+      "bytes": 1163,
+      "sha256": "0687339C585BD9D2CB815E05CC09AF6ED0E7040FEA2702AFD79649C22E3FF009"
+    },
+    {
+      "path": "native/TheOrder.Presentation/ObservableState.cs",
+      "bytes": 588,
+      "sha256": "A41A6AEE6C11E05B6C0B3032D3C6ACCA08DC82C0984E347FCBC324D282E513EA"
+    },
+    {
+      "path": "native/TheOrder.Presentation/OnlineViewModel.cs",
+      "bytes": 16746,
+      "sha256": "4D9DD5223210534E70A6170EFB27825AE82CF3F727003955EE29239105D23EAB"
+    },
+    {
+      "path": "native/TheOrder.Presentation/packages.lock.json",
+      "bytes": 524,
+      "sha256": "5F9701FCCF1FB217834520CABC40194F7872322E3AB48582C1D5ACBC3AD33178"
+    },
+    {
+      "path": "native/TheOrder.Presentation/PersonalDraft.cs",
+      "bytes": 1829,
+      "sha256": "6BDE273F9E65ADDDD449539B3D836C5EA8C29162169B6DF0D773CEE219FC73EF"
+    },
+    {
+      "path": "native/TheOrder.Presentation/RecognitionDisplayText.cs",
+      "bytes": 791,
+      "sha256": "68840B5688E7486449A030327DB2EEF883723F5C52C5C4D0E6C4A9F51BDA14EF"
+    },
+    {
+      "path": "native/TheOrder.Presentation/RecognitionViewModel.cs",
+      "bytes": 28705,
+      "sha256": "A1493F2D93C59EF57739D1DC73E526BBDA0CD67A165A2CAF34E5BE323BD4A716"
+    },
+    {
+      "path": "native/TheOrder.Presentation/SessionPresentation.cs",
+      "bytes": 2766,
+      "sha256": "99953A298511D33953F7D3C41AC1E2110A09DC0D3E16DD4F9491A6D6FC17FFFB"
+    },
+    {
+      "path": "native/TheOrder.Presentation/TheOrder.Presentation.csproj",
+      "bytes": 233,
+      "sha256": "3564CCD21F418A5AC9B2DE6AE3F468C986666659ECE02C2FACD1FAACD3C0E05C"
+    },
+    {
+      "path": "native/TheOrder.Presentation/ThumbnailSizing.cs",
+      "bytes": 548,
+      "sha256": "51F75DB9D80E8FBD0A884A86848328FC3E5A981C2AA9429D64B4204D0F8C12B5"
+    },
+    {
+      "path": "native/TheOrder.Presentation/WorkspaceViewModel.cs",
+      "bytes": 24566,
+      "sha256": "A424B8DDFB4F85EFA45DBE7AFF3FBD3F10E151962DF6D0B0E0B12E1D8C476F74"
+    },
+    {
+      "path": "native/TheOrder.ProfileProbe/packages.lock.json",
+      "bytes": 598,
+      "sha256": "65DE5D420725DAEEDE99A43BAAC9473D12205BDE06F1680EBE16E45426127F22"
+    },
+    {
+      "path": "native/TheOrder.ProfileProbe/Program.cs",
+      "bytes": 2195,
+      "sha256": "73353881B896D8BF45C73B672FEA6B9FC51A1B3A1C1B20255626F8E1B6816257"
+    },
+    {
+      "path": "native/TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj",
+      "bytes": 388,
+      "sha256": "555D4BBA241692D2EBBE86CEFDD2B24393D51C0938B3FCC1CDFE5D7DA21D87CD"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Engines.cs",
+      "bytes": 1712,
+      "sha256": "ABC4E12601ACF69F79C88F85C5F3C984AD3BA1FD47EBC92DF67F048A2B9A3ECE"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Engines.V2.cs",
+      "bytes": 9059,
+      "sha256": "6F92752629960571A75D8C28F5023D513FD203C9FB3C95B16B764CE2CE572D38"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Live.Artwork.cs",
+      "bytes": 1808,
+      "sha256": "DFA043119D367890F67EC5F7D07A0B03822172C2950AA5CC74DE086454C7A8D5"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Live.Capture.cs",
+      "bytes": 5781,
+      "sha256": "549472D1AA5A8A6FC26E120A1DCA1E269B9F0B7CB3B8E3AA948C1F27ABE5B64A"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Live.cs",
+      "bytes": 13700,
+      "sha256": "009685462134629FF6EF34D8462A27ADB3F37E2B1A168FCD3E29C035716FE6ED"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Live.EntityCovers.cs",
+      "bytes": 5217,
+      "sha256": "8D5A6AA0E4A90526C153283A7014A02C403409C6B11FE7061C01498F536BD354"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/packages.lock.json",
+      "bytes": 625,
+      "sha256": "F1D554FB1F1CEFCCFC0F78AA989A6F58BB8E8BB1EDA35014DF26DB8513E13733"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Program.cs",
+      "bytes": 8038,
+      "sha256": "B5AA1A075F05B9502C33B860BEB0A3EFE93FB26C1B9B8B96EA689227F0572921"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Replay.cs",
+      "bytes": 8130,
+      "sha256": "419595E8CCEBF4708874D40FE11518C9931BDCF6F96C587B145E0823CE92EFB0"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/ReplayCatalog.cs",
+      "bytes": 11419,
+      "sha256": "186843B67BAB49B6492C496A385D26623AA61F988EF1B8839B378FEE8DA9A542"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/RetrievalBench.cs",
+      "bytes": 2202,
+      "sha256": "75436D97522714DD85104298A8622782FAB23068698457FCA2960192CAFE8C23"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/TheOrder.RecognitionLab.csproj",
+      "bytes": 502,
+      "sha256": "BD7AB7CF52869A2F066E07A9248B91E8ADEC938ED971A7D186FD75CBC00B7ED3"
+    },
+    {
+      "path": "native/TheOrder.slnx",
+      "bytes": 713,
+      "sha256": "10BFC99C5672DADFABEBA036B9DC9253C59622869C84F658241B057B0DC0AD5D"
+    },
+    {
+      "path": "native/TheOrder.Tests/AppLifecycleTests.cs",
+      "bytes": 13024,
+      "sha256": "A9B29AACAB1798DA94D5747C324C3DD3BA4123248E7AF7D84F661A73146E9FE2"
+    },
+    {
+      "path": "native/TheOrder.Tests/AppLifecycleWindowsTests.cs",
+      "bytes": 10450,
+      "sha256": "3C6BA0565AE69E5086833B7D5ED4F52A034FAC9F1F75E64D4803095804CB4EF7"
+    },
+    {
+      "path": "native/TheOrder.Tests/ArtworkCacheTests.cs",
+      "bytes": 4383,
+      "sha256": "DF6F22E4BDC1F1BFDD3D86020F08A4070880C19A0D64135E7DD0D57F540F17EA"
+    },
+    {
+      "path": "native/TheOrder.Tests/ArtworkQualityTests.cs",
+      "bytes": 8729,
+      "sha256": "C32F6333D7D1ACC9D2AA6FCCBB2E13CAE798215FAC584FB513190645426A2141"
+    },
+    {
+      "path": "native/TheOrder.Tests/ArtworkReadabilityTests.cs",
+      "bytes": 2019,
+      "sha256": "63616603535E73D054FD9E132CB603E7B1373A4313C7EFD43B441EDCDACFFACB"
+    },
+    {
+      "path": "native/TheOrder.Tests/AutomaticRecognitionTests.cs",
+      "bytes": 18522,
+      "sha256": "1380AF5C1C9AFB898A513FE7C9D9AA8C4AC99ABE5BD526D042D3E8162B680704"
+    },
+    {
+      "path": "native/TheOrder.Tests/BannerAestheticsTests.cs",
+      "bytes": 4053,
+      "sha256": "74FAB43D9F87DD8494E04A7A3AA0B0116EF8BF81CA5DF9AE1406B6EE9DBA1722"
+    },
+    {
+      "path": "native/TheOrder.Tests/BannerSelectionTests.cs",
+      "bytes": 14470,
+      "sha256": "CAEF1F6D4BC6D514AF84AAAF09753B83D5618C799BC5AF52BCF865F4EBFB2A74"
+    },
+    {
+      "path": "native/TheOrder.Tests/CandidateDetailLinkTests.cs",
+      "bytes": 1517,
+      "sha256": "5CE48079036173A7B8B607B474C59D89AC57B5D3EDD6B749DD3E57855C80FC42"
+    },
+    {
+      "path": "native/TheOrder.Tests/CatalogBrowseTests.cs",
+      "bytes": 11303,
+      "sha256": "B06338DD0E3064BFE2603CF2CB395E6BAB7CAB31BAABBECC617771E00D7E54F2"
+    },
+    {
+      "path": "native/TheOrder.Tests/CatalogEntityTests.cs",
+      "bytes": 7593,
+      "sha256": "B5B7C0E3D301B13F601912FBD2A8AF29F173920B969169B3D44AA1F680CA13C0"
+    },
+    {
+      "path": "native/TheOrder.Tests/CatalogMediaTests.cs",
+      "bytes": 13591,
+      "sha256": "9FA43B10C9F53BDDE0C24048464D3E378E01297FE44DAF809AA86C75F7475CFA"
+    },
+    {
+      "path": "native/TheOrder.Tests/CatalogPreparationTests.cs",
+      "bytes": 27010,
+      "sha256": "547B81EB31530D710720198245E288D6D4A98DA3714CB41D83D5465A17832445"
+    },
+    {
+      "path": "native/TheOrder.Tests/CatalogRefinementTests.cs",
+      "bytes": 15904,
+      "sha256": "33A51DAC4BC796C6C6D89B8BF5C891A9B25144C2918F40FA9C806E43FB910917"
+    },
+    {
+      "path": "native/TheOrder.Tests/CoverAestheticsTests.cs",
+      "bytes": 6203,
+      "sha256": "FD613D41890583B1E8071A91E85FFA85A793DD452E2BFC4495E1A5F36C9FCC5F"
+    },
+    {
+      "path": "native/TheOrder.Tests/CoverCroppingTests.cs",
+      "bytes": 2164,
+      "sha256": "1D021F86520B7FBBF1D585A1915FEB9A9D6B064FCBC09F19B0DB779FD22884C3"
+    },
+    {
+      "path": "native/TheOrder.Tests/DecodedSurfaceCacheTests.cs",
+      "bytes": 1548,
+      "sha256": "8928777D11D8726654CE34004F1BB942BA2631287CF6659BD968299A2A907F5E"
+    },
+    {
+      "path": "native/TheOrder.Tests/ElectronCoverParityTests.cs",
+      "bytes": 11356,
+      "sha256": "35E13981CCAB7F05E6092DD04D2D131887BFE904D988CA1F82E118F677486198"
+    },
+    {
+      "path": "native/TheOrder.Tests/FilesPresentationTests.cs",
+      "bytes": 14458,
+      "sha256": "D5527D63E3C56DCF0F619A95407D35BBDB86C80DE3481B6A8053359FD814C6FD"
+    },
+    {
+      "path": "native/TheOrder.Tests/FilesystemBoundaryTests.cs",
+      "bytes": 20496,
+      "sha256": "DDBB592CF9D62165613F6796E6188D449CE42D84A171ECA641AC5307FEA317DC"
+    },
+    {
+      "path": "native/TheOrder.Tests/FilesystemDifferentialTests.cs",
+      "bytes": 7688,
+      "sha256": "86A9584BDBF6BD9BD56D37DE31060CFFAF252650141FF91444757A490003094F"
+    },
+    {
+      "path": "native/TheOrder.Tests/FilesystemIdentityTests.cs",
+      "bytes": 10146,
+      "sha256": "CC433F7D4CE4079831370978F116ADEE3DF3EDB30CB0F193FD552C74ADF61359"
+    },
+    {
+      "path": "native/TheOrder.Tests/FingerprintExperimentTests.cs",
+      "bytes": 7466,
+      "sha256": "637238EA38C48ACC1E83E09BF52ECFFD5C8DB358FDE8D5A00713F58568BBADAF"
+    },
+    {
+      "path": "native/TheOrder.Tests/ImagePipelineTests.cs",
+      "bytes": 10813,
+      "sha256": "5E2286707A7D29189221EBA1ADE6CDD7637B81953F3EA42EF8F3C85DA1F99A37"
+    },
+    {
+      "path": "native/TheOrder.Tests/IsolationTests.cs",
+      "bytes": 3051,
+      "sha256": "DA21EDA155ECE048DB2927950BFB3A7E0CE8B8BEB305B68A35340059E46CDF6C"
+    },
+    {
+      "path": "native/TheOrder.Tests/KunGalRelatedWorksTests.cs",
+      "bytes": 9917,
+      "sha256": "4EB60CB9ABA1A03E57A700EF747F2985D8CD6EA419442A535F95BF7369D13A98"
+    },
+    {
+      "path": "native/TheOrder.Tests/LanguageTests.cs",
+      "bytes": 21637,
+      "sha256": "845A868E8E27B6F3D96F2330ED73348EDBF24FA64EBE4F45C8A67BC3E552B77E"
+    },
+    {
+      "path": "native/TheOrder.Tests/LastPlayedPresentationTests.cs",
+      "bytes": 2697,
+      "sha256": "3D0999FF24614AACBC2C73439ACAF261CCFAE87D6D6BB940A923BFF4B3108331"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchDifferentialTests.cs",
+      "bytes": 5082,
+      "sha256": "2905407CF7A700A497AA298402B6AA9CD7E52FF7AA26CE6C48D6046FA422B919"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchFixtureObservation.cs",
+      "bytes": 9836,
+      "sha256": "7B4018C75A051F8571D3C299D79F31D35369BA77000F5652DA4FBD6086668CB3"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchPathTests.cs",
+      "bytes": 8890,
+      "sha256": "1E8FB8AAA26534E8CB4B70DBCE83C25629BDF9DCB8A432859C6D202198653544"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchSafetyTests.cs",
+      "bytes": 14024,
+      "sha256": "731BA95E37390AA9D8DBF951392B4FC888D2A8022B7E664230A397846525FEA8"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchSetupTests.cs",
+      "bytes": 5083,
+      "sha256": "0B57F86AA9B2A746D514EBCFAC8F2F0BE9BE47C2DD185F346ADAABE2DD90AD4D"
+    },
+    {
+      "path": "native/TheOrder.Tests/LaunchTests.cs",
+      "bytes": 19638,
+      "sha256": "958EECA74621B7DF98BCCB29272875F00545D3805116AB72E806293EF350ED5D"
+    },
+    {
+      "path": "native/TheOrder.Tests/LegacyCompatibilityTests.cs",
+      "bytes": 6866,
+      "sha256": "33E0D9C2D4CEC9829EED40CE212938D8F7722FADA3C665147C763822262EE9C1"
+    },
+    {
+      "path": "native/TheOrder.Tests/LegacyRemediationTests.cs",
+      "bytes": 7697,
+      "sha256": "033AB09915E02705DFAA4B39F8B62BB0FB55D54C93150BBF85E0689A2418726B"
+    },
+    {
+      "path": "native/TheOrder.Tests/LensOpticsTests.cs",
+      "bytes": 2214,
+      "sha256": "9858F83C06BB470BE7C836168DA352D95E99C4B3CBB8E6532E352C587BEFBBF7"
+    },
+    {
+      "path": "native/TheOrder.Tests/LifecyclePersistenceRetryTests.cs",
+      "bytes": 18214,
+      "sha256": "73809331B0ED224E4C639083524B8F228C2EAD988B43E9934E8DA0C96E45C73D"
+    },
+    {
+      "path": "native/TheOrder.Tests/LiveSessionLibraryTests.cs",
+      "bytes": 9152,
+      "sha256": "350C89ED35B7A2473BFC7068FE48ED0B9BCA48524691BE9EBDF418F84701989D"
+    },
+    {
+      "path": "native/TheOrder.Tests/MaterialPreferencesTests.cs",
+      "bytes": 5971,
+      "sha256": "F29458C5A21E2AF64EEE37C8AF79A5417BC848F5BF6E1FE97C072D67051BF09F"
+    },
+    {
+      "path": "native/TheOrder.Tests/MaterialResourceTests.cs",
+      "bytes": 3383,
+      "sha256": "456BF5EEA19B1F9EC78FB929D7C5D62E7C4AAC488E2F46637EAD58755CE7A5E0"
+    },
+    {
+      "path": "native/TheOrder.Tests/MaterialTreeProbeTests.cs",
+      "bytes": 1213,
+      "sha256": "B24240A4F72ABD4E91FBA49782AB451B574173956928E03E4910A2A15C04330D"
+    },
+    {
+      "path": "native/TheOrder.Tests/MediaNetworkStressTests.cs",
+      "bytes": 6115,
+      "sha256": "71022D530E828C80EF320F4476D7BE7EA6BB9B6DC37B87AAA9FEF7622ECB971A"
+    },
+    {
+      "path": "native/TheOrder.Tests/NativeProfileBoundaryTests.cs",
+      "bytes": 9561,
+      "sha256": "6B4344CF19CC06091BBAA2161775A4B2A979609799B3F682A40DE2F050548B8F"
+    },
+    {
+      "path": "native/TheOrder.Tests/NativeProfileIntegrationTests.cs",
+      "bytes": 9345,
+      "sha256": "8403F281AE1B146E33E79914BB6C38ADFC2D7FC9894809A72AC64174E298840C"
+    },
+    {
+      "path": "native/TheOrder.Tests/NativeProfileTests.cs",
+      "bytes": 22302,
+      "sha256": "8FBAAF590A4396C3CCB99CB4427ED099D402CDBCB05EF925468B95737F20E92D"
+    },
+    {
+      "path": "native/TheOrder.Tests/NativeReadProvenanceTests.cs",
+      "bytes": 15914,
+      "sha256": "06DF34EC5D6A115630B402684C4D41ED40D04EF267D27F91C5D308E6AA6976E2"
+    },
+    {
+      "path": "native/TheOrder.Tests/OfflineClientPerformanceTests.cs",
+      "bytes": 7575,
+      "sha256": "12448AFF821AC1831A96E1BA1317DB912E7C3F7FE802E212C42C3C336C67B9E2"
+    },
+    {
+      "path": "native/TheOrder.Tests/OfflineClientTests.cs",
+      "bytes": 24689,
+      "sha256": "67D6FF7FCCA3DACF54D809B42F178D99D5A807801BE3FE13CD8DAC2EB6AB229D"
+    },
+    {
+      "path": "native/TheOrder.Tests/OfflineFilesystemTests.cs",
+      "bytes": 12003,
+      "sha256": "573F16DF1B5311429C0FCC995861CAE5E8D6B2A6C83FD4758A1B5282FFE6BDC9"
+    },
+    {
+      "path": "native/TheOrder.Tests/OnlineAcceptanceTests.cs",
+      "bytes": 23167,
+      "sha256": "B0C9C5E7A55ED41A22B235827E9AC3C5E4CB16D2CEADBEA12224A968FEB2BE93"
+    },
+    {
+      "path": "native/TheOrder.Tests/OnlineStateTests.cs",
+      "bytes": 10654,
+      "sha256": "95EFC66E05C2D1C51779075BC2DBFCAB80DC56EE3C787ECE31EEDF87D72C2BF4"
+    },
+    {
+      "path": "native/TheOrder.Tests/OnlineTransportTests.cs",
+      "bytes": 17300,
+      "sha256": "AE60C86B8CD7255188A777A4703FE4FB0E009BE1B5C9AFE9044745C7A9813E6F"
+    },
+    {
+      "path": "native/TheOrder.Tests/packages.lock.json",
+      "bytes": 5001,
+      "sha256": "C70E897507471E905DC322AD84C69718EA549CA41BEC8575D4C70DAA0029C34E"
+    },
+    {
+      "path": "native/TheOrder.Tests/PerformanceHardeningTests.cs",
+      "bytes": 13703,
+      "sha256": "554D77E86827C17C8B7EBDF6197B7E1BEFCB46625EEDD634C91127C276B718AF"
+    },
+    {
+      "path": "native/TheOrder.Tests/PersonalBannerTests.cs",
+      "bytes": 6643,
+      "sha256": "284CF528E1B0732F6DEF2E3DF1B3DE2339F096FC11A752EB8A8A02CB8226A054"
+    },
+    {
+      "path": "native/TheOrder.Tests/PresentationRemediationTests.cs",
+      "bytes": 23506,
+      "sha256": "BDE4A280DB65550091BFD4ADF3595AD854F1DB501F05228B9DAA03B8DC676C7D"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProcessFactRemediationTests.cs",
+      "bytes": 16808,
+      "sha256": "73B977D73D925DB117BF3D900E3046F8C0BA47C09761ACF1E51DA19FC4BFEFDB"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProcessGenerationTests.cs",
+      "bytes": 3679,
+      "sha256": "97D3D32C8361D4DE0167F1FC7C7199568262812E6D39144DBD4D5E3A6E226676"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProcessScopeObservationTests.cs",
+      "bytes": 2350,
+      "sha256": "3C49FD5382CBC0A823EAA8FBEBDF9BC2908CCB1CA27181DFC3393BA4A6A0686C"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProductionAuthorizationTests.cs",
+      "bytes": 3766,
+      "sha256": "5238253E768579735206C772165476062911B713D83FCB683E3D55E409F4A395"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProfilePathGuardTests.cs",
+      "bytes": 10260,
+      "sha256": "02BD7DC4B1DB3D5460B520023079CC315E490296190430A1CDA0109934537F59"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProfileValidationPerformanceTests.cs",
+      "bytes": 2341,
+      "sha256": "9869A07E0EF96851EE95360287607327A6FB88DD20E47726245FF6ED7FEC4388"
+    },
+    {
+      "path": "native/TheOrder.Tests/ProfileWriterRecoveryTests.cs",
+      "bytes": 14662,
+      "sha256": "D5946E755114C73299864C823B6DAEC30B0D12F881E5DFED3A0AEE4CB9508EF0"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionAcceptanceTests.cs",
+      "bytes": 10195,
+      "sha256": "F2B719560B94077A3A22D82FF61295527D0F170813FE9675AE7B1D3D6560BE9F"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionBoundaryTests.cs",
+      "bytes": 9210,
+      "sha256": "6C1C1FBBD84F442A9B6E7D94D953635B5A929E99E6841C56307CA36CE8ACD5AB"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionCoreTests.cs",
+      "bytes": 4651,
+      "sha256": "648747C4DD881419469DEA5A1649E38119CFD6A4D300700FBB5B026318D9F54D"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionEvidenceDifferentialTests.cs",
+      "bytes": 4508,
+      "sha256": "018C3B5C75D11AB3BFE87A66EDD9DCEEF029785702C7EC5698AB1E14DBDBCDDE"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionFinalGateTests.cs",
+      "bytes": 21844,
+      "sha256": "D2D82916A3507DE8A6A73B42E6A7BD8B35A1F494B7134D1137A430FD5CA734F9"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionOnlineTests.cs",
+      "bytes": 8603,
+      "sha256": "662C7F351FFD5D7DFC3F4FDE142AC2D020FD50B5F06DE97446B72B3E73CAB419"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionPresentationTests.cs",
+      "bytes": 8921,
+      "sha256": "DB42B59EAA05DB9B1E46C9AA6AA2F634DFAF981A4EB1C60F5E8F93AB3523DAD4"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionQueueTests.cs",
+      "bytes": 7923,
+      "sha256": "D2EC735400D19F1E99757463CE3C29CB4AA44CB0D327A93DC0418A58ABAC242E"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionRemediationTests.cs",
+      "bytes": 26932,
+      "sha256": "385F5A5AB18301E88F224DD4D9F035704C20B959CB382A9607053C8313C03914"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionRetrievalTests.cs",
+      "bytes": 6066,
+      "sha256": "1027CE9A1B5E2B7D543C56B5DD44447CB325C18B0FBE6195D517250D131A39B9"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionReviewTests.cs",
+      "bytes": 13422,
+      "sha256": "8AB9BC1FF41D656745D5DC1BBEE25A8889A0BA5AC5EBF3D05AE6B10D3BE9766F"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionV2Tests.cs",
+      "bytes": 23039,
+      "sha256": "45C3F7113814145F4CD1EA88F53DC60B8118628B463286293CC99770356F14C4"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionV4Tests.cs",
+      "bytes": 13484,
+      "sha256": "9C6099ED1AEB648DE53426FC865305F3105A73CBB65892631EF1FD8B39FF754A"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecognitionV5Tests.cs",
+      "bytes": 13915,
+      "sha256": "B5937F047C81E477EEED48C2C41965B45626BCC8E2F54BB5F49867A5E4E4E7C8"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecoveredOccupancyTests.cs",
+      "bytes": 11560,
+      "sha256": "8B385B08C83CA7F6AC5E606F99EA63668C2DEBBF55993BDB54883DF84BD9EFEA"
+    },
+    {
+      "path": "native/TheOrder.Tests/RecoveredOccupancyWindowsTests.cs",
+      "bytes": 4020,
+      "sha256": "6929566EA31FEC6AD13BB56C18333AB20E13893ECDAE3EDFB400E9C5575C7F15"
+    },
+    {
+      "path": "native/TheOrder.Tests/RemoteCoverTests.cs",
+      "bytes": 5647,
+      "sha256": "847C1817FA20DCAFB304804B519395CEE9572A0BBF65BE325A0861D2DF36A187"
+    },
+    {
+      "path": "native/TheOrder.Tests/SafeStorageExperimentTests.cs",
+      "bytes": 4691,
+      "sha256": "00CE6A74258D3151EBB0B368185D5D327582C6B1D59BA53B69955741649F085C"
+    },
+    {
+      "path": "native/TheOrder.Tests/SessionCoreTests.cs",
+      "bytes": 18502,
+      "sha256": "62ABA59FDE1CCC0B100DE730E0EF5C1B687731953E77566D4DD7E0590EF8426E"
+    },
+    {
+      "path": "native/TheOrder.Tests/SessionHardeningTests.cs",
+      "bytes": 11838,
+      "sha256": "0E461AF065DB7B79A3E4CB740C09C67C0B9537EDF9CBCC0C922A66A79CEE5B68"
+    },
+    {
+      "path": "native/TheOrder.Tests/SessionPersistenceTests.cs",
+      "bytes": 11321,
+      "sha256": "0BA9A8A620C14CC248DFEF4CCBABDC113951A762E8FDC4253CD7386F0E5D1305"
+    },
+    {
+      "path": "native/TheOrder.Tests/SessionTestRig.cs",
+      "bytes": 8845,
+      "sha256": "0033DA2D3063561348899D54E27FAE4BA8D4BBB11D2590CDA22ECA842D2B04FD"
+    },
+    {
+      "path": "native/TheOrder.Tests/SessionWindowsTests.cs",
+      "bytes": 8932,
+      "sha256": "F6DE3AD024F7BB65A072C8330850CCCAE11722CD0A1093E90B53D71BA112D42A"
+    },
+    {
+      "path": "native/TheOrder.Tests/SteamArtworkTests.cs",
+      "bytes": 10080,
+      "sha256": "CB53C8DF2DA10C90EA6EB6F53EE3A4CFD11DE77AFE4136DE8B6F5EC94B8C44B2"
+    },
+    {
+      "path": "native/TheOrder.Tests/TheOrder.Tests.csproj",
+      "bytes": 2330,
+      "sha256": "0808DB8DF95E00BB8F7620BEA5D2C283984A38632F8DC51F14B435ACA86C1A2A"
+    },
+    {
+      "path": "native/TheOrder.Tests/TransactionDifferentialTests.cs",
+      "bytes": 12739,
+      "sha256": "2426BB4716ABF66232D45C378BD66D1ACB4440333BAF1226C3FDD2FD28975E37"
+    },
+    {
+      "path": "native/TheOrder.Tests/TransactionRemediationTests.cs",
+      "bytes": 21930,
+      "sha256": "901A6E59FC4AA59C8709353914E2CADE522A2E3E7D9397E42C7943A355CE376E"
+    },
+    {
+      "path": "native/TheOrder.Tests/TransactionSafetyTests.cs",
+      "bytes": 21515,
+      "sha256": "78E9DD2CA002C6035070F81DAE7ED44B03A4985A9295C4BD7C6941662EDC27B4"
+    },
+    {
+      "path": "native/TheOrder.Tests/TransientLaunchObservationTests.cs",
+      "bytes": 9770,
+      "sha256": "8D00828854E2ABAD725722CE23C16621ECDD9F0D7803106FAAB8D50AB737B6EE"
+    },
+    {
+      "path": "native/TheOrder.Tests/UiRefinementTests.cs",
+      "bytes": 3987,
+      "sha256": "9CFFD6B6A2EDB5D8B930210644826760B2FDBDCF4A578ABF91060FA8B4938971"
+    },
+    {
+      "path": "native/TheOrder.Tests/WebpCompatibilityTests.cs",
+      "bytes": 3583,
+      "sha256": "29395900629E5492A5F0D00BA154ABC7A1D4F694062CECCB921BB7219D33F618"
+    },
+    {
+      "path": "native/TheOrder.WinUI/app.manifest",
+      "bytes": 579,
+      "sha256": "3B24D2B54FB9CDD408571A0586458A03FA338E84E3E8F0D89B6E753AB034C9F7"
+    },
+    {
+      "path": "native/TheOrder.WinUI/App.xaml",
+      "bytes": 474,
+      "sha256": "0368C489025A34DB43C6F24B986FB524A0F6EA17DCEB219B02A7F53D978DA144"
+    },
+    {
+      "path": "native/TheOrder.WinUI/App.xaml.cs",
+      "bytes": 8512,
+      "sha256": "3E869E91472C7AB9C27DD66DD71F3B6532C41AA9AB9A7EAF57828EC63053B750"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/Brand.Dark.ico",
+      "bytes": 372526,
+      "sha256": "C8BDD2A5C9C6FCB2B66A73C5196CFD287F669CAB60BDAD44278EEE4E5C89BF26"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/Brand.Dark.png",
+      "bytes": 28832,
+      "sha256": "A256F5B369B25A5A188FA5C096ACF4B3ADDA4424455B457BD967741A687CBABF"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/Brand.Light.ico",
+      "bytes": 372526,
+      "sha256": "9A505DE92AA6B5B728CF5C31E3FB8DC7043866BB8823D455AE16E4CB8B3292FA"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/Brand.Light.png",
+      "bytes": 18901,
+      "sha256": "68EA9D8A834F10A6E0724E808D27F715AF67606848E3E60895EDA216B272A76A"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/Brand.png",
+      "bytes": 660089,
+      "sha256": "018762A3E64AE6F97D7C25B9C763C8EB9B22909BAEB0D2A55270F3B8C841FC3B"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Assets/KunGal.png",
+      "bytes": 3144,
+      "sha256": "2B392E3F0CDD6BF0E679585153D6B34FDCF72E7DE33148A34DB1643618D13758"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Localization/Localize.cs",
+      "bytes": 5278,
+      "sha256": "EFDA1A1BF5501B6399141AA25C469A16D44E50299EFF3740192E8E26C3857685"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Accessibility.cs",
+      "bytes": 2381,
+      "sha256": "88B9761A702C14FE9711CF235369A0BF80232C6D06086F01508ED2352ECF6DAF"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Covers.cs",
+      "bytes": 2544,
+      "sha256": "EE119191E661B03C2C8238EDD813E45658DCDEA10213B336D5AE86CC675268FF"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.HeroFrameAudit.cs",
+      "bytes": 1285,
+      "sha256": "9814941C7E34129BC02B58DCBDCA4C36B68EF86CEBB86DF5FC7D9172EA29ACA3"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Launch.cs",
+      "bytes": 5064,
+      "sha256": "C8A3A2D4951CF6B0C8825EDA83057E3F74778BC1AF2B66A6BDE2C9D3F3868E50"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.MaterialTest.cs",
+      "bytes": 6645,
+      "sha256": "F8BDBF9ADB88C53FC31DD62EB1A2A6852B6DB34570DEB7CBD7BFA6EDB13E747B"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Performance.cs",
+      "bytes": 7115,
+      "sha256": "9C1D4DAB2B5EF663F405A457C8527DFD03A3F424485865FE619230BB84D27288"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.RecognitionPreferences.cs",
+      "bytes": 1921,
+      "sha256": "212818DD5E516A8789435A9CA2141596545401169BE9DB9408FACA75770FC97E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Shell.cs",
+      "bytes": 14350,
+      "sha256": "823D620BF930E8C05A67D720A8EEC79338D8AC8104D4F2C70CDB847A3E989FE0"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Visual.cs",
+      "bytes": 24733,
+      "sha256": "DA0E14F9EAE9B094B57239DAA8FD5BB28A9682B6BB28E93B6B494AE60AC4281C"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.VisualRound3.cs",
+      "bytes": 2696,
+      "sha256": "2C363022F327B1E6875F8B5437F53BC58DE819C6FB65AFEE81AD80AE79E775EE"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.xaml",
+      "bytes": 9791,
+      "sha256": "EA33D41615163895F9EE7A1522D39AFCBAE35EA8D4A12D95841AED5282FBF1DE"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.xaml.cs",
+      "bytes": 30314,
+      "sha256": "61C70CF1EDC4B63661FFDCCBEB6D8C78FE6F969D1137A373679D0F541E7CC82A"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/ChannelEffect.cs",
+      "bytes": 1315,
+      "sha256": "AF9409CFB10DAA973564B715A7A229CB804359244736260C07B4F4FD2145A220"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/GalleryScene.cs",
+      "bytes": 4224,
+      "sha256": "E487517201F336B1BA8F2F70D413DBF899DB1C25E0004BEC7BDF8F7ED156929E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/LensOptics.cs",
+      "bytes": 1191,
+      "sha256": "53C817B87892C439BB4C7D1CA975A0DE1F99E775CBB75A94153AF0DD667B8F57"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/MaterialPolicy.cs",
+      "bytes": 13491,
+      "sha256": "E4045A47DC85C04682828AA1D5A301B1AC7E0B964F09767398E1D3CBE34B6F4D"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/MaterialResources.cs",
+      "bytes": 854,
+      "sha256": "5E9F7B594F1B855D0ED72B7FA7000E27049CFB787421761FA2243A26DCAB06F4"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/MaterialTreeProbe.cs",
+      "bytes": 645,
+      "sha256": "BAE101A0F2C4586D822682B74297EAD921A083A6A2625498A9E856FBEDC65728"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/Native/ChannelEffects.cpp",
+      "bytes": 4213,
+      "sha256": "CE2B3AFB423B2854427681A45E5A17886C2857749AF29DC6E2544E2CC6A694DA"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/Native/GallerySource.h",
+      "bytes": 9663,
+      "sha256": "1692530F4ED19732114265927B6800AA639A1BB60E0BEC3B0685827E2146D3A9"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/Native/OpticalRenderer.cpp",
+      "bytes": 19880,
+      "sha256": "88122D6C73CC5E7F35ABF1F17DA499326E93B32EDE7D5B090D7776AAC2FDD1A8"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/OpticalProfile.cs",
+      "bytes": 375,
+      "sha256": "2C567B37BD25E4BF9F2132471E63CADB7F0B32138E79A7F65DE211F088885418"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/OpticalRenderer.cs",
+      "bytes": 12907,
+      "sha256": "A9C527523884BD78AC0B4020F0449DBDBD543220A6C1735BF65603A475FF3426"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/RefractionGallery.Optical.cs",
+      "bytes": 17679,
+      "sha256": "D61FF6953E6E278B8DDCBBEEF504660809C4CCF3F37D84CF26D79B92A88089D5"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/RefractionGallery.xaml",
+      "bytes": 8542,
+      "sha256": "193CC02C0077C01A021D441B46C4AB0ABC6E7C73268419A04DA96F1E41A56B21"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/RefractionGallery.xaml.cs",
+      "bytes": 41181,
+      "sha256": "C03658E25B465B40FA011B90B2CA1AC0800AFDEF26D560B9BD626419DF96DF4A"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Materials/RefractionLens.cs",
+      "bytes": 8444,
+      "sha256": "47377D32739744DEC9AA151E913569AFE900CE72D95C36DB665754FF2F0524DB"
+    },
+    {
+      "path": "native/TheOrder.WinUI/packages.lock.json",
+      "bytes": 11758,
+      "sha256": "63EFBA784162D0CA5F358DE8925F2A8A4C642410D4ADBD36494ED3B67D025DD7"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Program.cs",
+      "bytes": 4804,
+      "sha256": "A3E7D3BC7A32D7A906667DB74FBAD92878462F1EEE142D472192714346FCE90E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Resources/DesignTokens.xaml",
+      "bytes": 11482,
+      "sha256": "A389887A16FDC066A0B6DDE9F0B4CE4AB944B2E148AF352579E825DF6757A1A7"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/Composition.cs",
+      "bytes": 12905,
+      "sha256": "33E246BF645547548D64BF46076928F49AD4FE75445B7173157A55B0868E12AC"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/NativeLifecycleLog.cs",
+      "bytes": 1299,
+      "sha256": "DF46D455AF971A279B2987775CA73A71B27352B4D831A2886B58BA1061258C98"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/PerformanceImageFixture.cs",
+      "bytes": 1781,
+      "sha256": "8D2E40213185D75991F240871644B4212AB67AE9D8747A051C93C85F2C6E5159"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/SyntheticOnline.cs",
+      "bytes": 8615,
+      "sha256": "C44A96E4D513DDB146E87E6806567A9AED0987A8F6E883B2A55EAC590A88612A"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/SyntheticScenario.cs",
+      "bytes": 8714,
+      "sha256": "24739E1B7EB85AF50EE95430A57AD12329D3BAA0036BA2065D183D863F68B9B7"
+    },
+    {
+      "path": "native/TheOrder.WinUI/TheOrder.WinUI.csproj",
+      "bytes": 7435,
+      "sha256": "90592771E6B21ACECB26B4F3ACF9B9B0C30E124BF39C16202ACF5621CFE5FAAD"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/ArtworkStage.Audit.cs",
+      "bytes": 3882,
+      "sha256": "8273B9E41AEA9F048184AE53AC254357DAC31EC639D0762C0B1A3C0B886BE3EA"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/ArtworkStage.cs",
+      "bytes": 30976,
+      "sha256": "1CD583E9909AC12F995E208E4F48AE791113C8C423399EC6B6CC88BB2ABCA73E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/BannerFrameLayout.cs",
+      "bytes": 3302,
+      "sha256": "31CFF5FAEF7444F23480C4884909CD594603FD7C9C400CCEAE41A202C025438E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/BannerPresentation.cs",
+      "bytes": 1919,
+      "sha256": "00D85EE46C635CADFD28440BFC8C5CDC2D9EAB8000DFF1BA5E0A1995A85EA5D1"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/BannerView.cs",
+      "bytes": 4635,
+      "sha256": "E56E1AD5C11F6B5107D5E059741FFBDA218EA384A424D4643F58DE6685212845"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CatalogBrowserView.cs",
+      "bytes": 21334,
+      "sha256": "DE98AD0F3DF96DE1D99A15AAFB9A9337F03206949B5F66EF2FB41417FC19DE8E"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CatalogContentView.cs",
+      "bytes": 15244,
+      "sha256": "AF0E41AAE07D4E5AD1B43A1D4002A3AB843FDE8DCE06DA5A75530A7AD2801F15"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CatalogFactsView.cs",
+      "bytes": 7065,
+      "sha256": "5FE00B1B0C5C0569CCC99D86B53C0B7C044DC34379C1F813C86FBF9AEEC7FC15"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CatalogTagChip.cs",
+      "bytes": 1338,
+      "sha256": "F771E0D92343DD5D39452E00AFC2FBCB57F55C390335874153829729C242BEA1"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CoverPresenter.cs",
+      "bytes": 7966,
+      "sha256": "658C415AF4A5B02CC0847179C797DAE773004A3BB6720D71FBEB7DD799563AD1"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CoverSelectionDialog.xaml",
+      "bytes": 1837,
+      "sha256": "B0624D13E58B6D002B250C6D72B6207B4588F00094E3F3490BC7398A1590E911"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CoverSelectionDialog.xaml.cs",
+      "bytes": 1930,
+      "sha256": "BB1DC12A7C3E82332CEAFA12CB3566CA877ED8671B2044ACCFA0DDC426691B05"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/CreditColumnsPanel.cs",
+      "bytes": 1679,
+      "sha256": "6299E08FBD13FD48A17BEDBA6E606E125DC355838A28B172D74F4DCD9973DD35"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/DetailsPage.Catalog.cs",
+      "bytes": 10024,
+      "sha256": "6C4D3C75036CBC2F3BA11906E40237CB9DE9D0BDADEE131FBEC71A157FF75B0D"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml",
+      "bytes": 15526,
+      "sha256": "ABA4E7C593701773F72E2037C242CD3456885B4F75D0B04D17FC597C5D92D8FF"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml.cs",
+      "bytes": 17559,
+      "sha256": "FE4118E38F01C88166734105F8015A1E1F8567A13767FFF2FEB90974B928521B"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/DisplayBitmaps.cs",
+      "bytes": 1280,
+      "sha256": "BF21679A2102F04FB418C51F7DC5C8BE46B2D32E6A2A9A836E0C34B8CD19F631"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/HeroTitleLayout.cs",
+      "bytes": 2051,
+      "sha256": "F0728D532D32F535BD18032737AB7EE19A2B39DD87A0688BD3227F7025F2862D"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/ImportPage.xaml",
+      "bytes": 3733,
+      "sha256": "030688C3E8044966C40EA7936B7BA3E11ADEF6F0AA8DEA4A845C91CF8E0FE82F"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/ImportPage.xaml.cs",
+      "bytes": 2447,
+      "sha256": "C07D3AD5DEBB49369D89D0369853B6EDD8BA6F4A6D44417B933AC8705EA4E201"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/InstallationsPage.xaml",
+      "bytes": 5404,
+      "sha256": "B2CAB0A386EBBAA78FF0EDBD76C8CB4170EA35A29FE22494FC7355AFF433A07D"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/InstallationsPage.xaml.cs",
+      "bytes": 3098,
+      "sha256": "3C6F9F4D2571AEDCCA54DD603DB61E76D357160E0BE180E686B1A37F76127216"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/LibraryPage.xaml",
+      "bytes": 19572,
+      "sha256": "90463E46F428B15A0B41C2D1EFC21D4EF7A4C66885D0BF53FD4BBF8FCB26FC3D"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/LibraryPage.xaml.cs",
+      "bytes": 43269,
+      "sha256": "02AE9F3A37D434C6AD24586793B025FF7478CAC664A8A00520F48D78D0CD20F9"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/MarkdownView.cs",
+      "bytes": 7107,
+      "sha256": "4145A5B0F562B5E7C3406A0F1B39E591F2D3028570111E8FBB4DDD4AF64EABCD"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/OnlinePage.xaml",
+      "bytes": 4633,
+      "sha256": "82F109D8259B142B23E2D88823CB6B3B830BBA14615086989F62005FAA1A6064"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/OnlinePage.xaml.cs",
+      "bytes": 4894,
+      "sha256": "3E105A549963BB3E5144F62149782E08693985772EF8C2165618F68B12C85178"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/RecognitionPage.xaml",
+      "bytes": 10341,
+      "sha256": "1B4200B513C9F3B2EB9A12082041B6F38E7B1402CFCF6F2A9CE29F73494245A3"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/RecognitionPage.xaml.cs",
+      "bytes": 2991,
+      "sha256": "09F282C192173A32247D39FEB63933AB1468ADE850BB1BFFFF7FDEF27EF2F30C"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/RecognitionReview.xaml",
+      "bytes": 4774,
+      "sha256": "E6C77EB4EBBEABC2AD03CF031F6102683A23B1A0DD3F2315FE5323201944C45A"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/RecognitionReview.xaml.cs",
+      "bytes": 2232,
+      "sha256": "6616E84382008BC0CA6A5BE9D3912B75C1D591AB320FA1D9FA0AAEC5FF07D48C"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml",
+      "bytes": 8162,
+      "sha256": "EC2984FCC49B3DBC2E4458AB6BB522C6CE385524502708616201D862AD3BE7C8"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml.cs",
+      "bytes": 7132,
+      "sha256": "B7C24942EA1C89528823FE84CE1BC7935804954F6BA11605EAC5C4EEF56E00CA"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Views/TagFlowPanel.cs",
+      "bytes": 2407,
+      "sha256": "DE71A7C3FDAA7C76F1995DE5DFB86846EFB1C0188D574523E04B6FA8FB107D2E"
+    },
+    {
+      "path": "native/tools/BrandIcons/BrandIcons.csproj",
+      "bytes": 281,
+      "sha256": "3769CB18BF603D9F4677F964D59FDE5377808870697CDBB68802F1986F3A2147"
+    },
+    {
+      "path": "native/tools/BrandIcons/packages.lock.json",
+      "bytes": 466,
+      "sha256": "47327C6560825BA8AE4431DA82A9A7CBCA838ADF2F148D22C6E6A461C25E3634"
+    },
+    {
+      "path": "native/tools/BrandIcons/Program.cs",
+      "bytes": 2940,
+      "sha256": "81E5AF7E3D1E1023D63B8F46C53A7CB91E06A08B524C91664370489AD13E60A3"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 225417,
+      "sha256": "E16FBCE3F8B9770BF96B03E523A1FB555CD716203F21578DF5DC2A5C6E6907C1"
+    },
+    {
+      "path": "package.json",
+      "bytes": 3020,
+      "sha256": "DBE23E60A9C35201E26B4A96C88351F2AD9C36DEB1DA8D905F331CC40A5271A0"
+    },
+    {
+      "path": "public/icon.ico",
+      "bytes": 90803,
+      "sha256": "DE5CB98280B8FA03F51FDD790A175BF24C70124FBA493E1D744998094FBA0E49"
+    },
+    {
+      "path": "public/icon.png",
+      "bytes": 660089,
+      "sha256": "018762A3E64AE6F97D7C25B9C763C8EB9B22909BAEB0D2A55270F3B8C841FC3B"
+    },
+    {
+      "path": "public/preview-data.json",
+      "bytes": 46933,
+      "sha256": "DF24F19A143FDFBB663C2B0DF40D738E8BB3BCD6B4C10EC1F11B5BB371027879"
+    },
+    {
+      "path": "public/the-order.png",
+      "bytes": 660089,
+      "sha256": "018762A3E64AE6F97D7C25B9C763C8EB9B22909BAEB0D2A55270F3B8C841FC3B"
+    },
+    {
+      "path": "README.md",
+      "bytes": 28967,
+      "sha256": "E4ED04704C7CC86FD38D7CD735F6F8991871CBF386D217FABAE0949990739C24"
+    },
+    {
+      "path": "scripts/build-electron.mjs",
+      "bytes": 424,
+      "sha256": "1CF1F9BCA6F452D133D112E7EF917A32A72C5E40551F2BDCB3A13DCF4F2720AD"
+    },
+    {
+      "path": "scripts/build-icons.mjs",
+      "bytes": 1465,
+      "sha256": "3373B31A90EB92C096E5041090F16C0D218D4A06CCCAED842CE5754BF349D7F3"
+    },
+    {
+      "path": "scripts/build-title-index-vndb.py",
+      "bytes": 4130,
+      "sha256": "092333482498CA647A5F131D84CAAA0E8F9202D4094CDF472DC13F0E3FBE9237"
+    },
+    {
+      "path": "scripts/build-title-index.py",
+      "bytes": 1908,
+      "sha256": "B3DA26002FBD8F5DFF286744F64B6D8D7BBF3109EBCC76B6A194CDE156D9EC30"
+    },
+    {
+      "path": "scripts/dev.mjs",
+      "bytes": 766,
+      "sha256": "BC0907D2074B8D0C47DE5E01BD412A5C0CDD3AEF2BF697C7459197620EC04E7D"
+    },
+    {
+      "path": "scripts/overnight-guard.mjs",
+      "bytes": 4180,
+      "sha256": "E5156542D7ACBCBC0F4E856A923073AB7618B7A01B0EDFDE489E20F7723B7B76"
+    },
+    {
+      "path": "scripts/overnight-trial-data.mjs",
+      "bytes": 12202,
+      "sha256": "C420D11D303F944E9880B9C466E79A8755F235F0C822F2AA08C3B22A38D63E19"
+    },
+    {
+      "path": "scripts/start-iteration-candidate.ps1",
+      "bytes": 1451,
+      "sha256": "883D0E4EC93338AAC2C30D10BD84EFC0108C121E14A365209FD79574609F7D6F"
+    },
+    {
+      "path": "scripts/start-overnight-candidate.ps1",
+      "bytes": 1690,
+      "sha256": "43FADE24B98C0D3F66C1C7330F303F9C74A21077265CF8104EA1DD148F0F636F"
+    },
+    {
+      "path": "src/App.vue",
+      "bytes": 114406,
+      "sha256": "214089A3AB8728525DFB38BD4B840D4458361A17C0B093B0CB0AC2A8ACCBDF82"
+    },
+    {
+      "path": "src/bridge.ts",
+      "bytes": 7611,
+      "sha256": "B4D86BC1212C82DD5E286D2BC6C70A437B27E1D70A263C9087F840E45A9E9745"
+    },
+    {
+      "path": "src/components/CoverPicker.vue",
+      "bytes": 17206,
+      "sha256": "E2D32ACD1463AF5DDE45C1D51C6E560216546E697D66ABD00509CDFC2BC691EA"
+    },
+    {
+      "path": "src/components/DesktopTitlebar.vue",
+      "bytes": 1191,
+      "sha256": "597C33B4C96B4870C79CFE95CF250C31346BD7E3873284DF714C909FC011883F"
+    },
+    {
+      "path": "src/components/DetailCover.vue",
+      "bytes": 2999,
+      "sha256": "6DCE5596B46E5A79AD059F719488136B5AF8B0D7DB86071649688F092D31672D"
+    },
+    {
+      "path": "src/components/GameCard.vue",
+      "bytes": 9107,
+      "sha256": "E6EBFAB96B4AAD15C9BD66551A3C500281AC3EF8BFDC6052FB8D38CC4D2CC9C1"
+    },
+    {
+      "path": "src/components/ImportCandidates.vue",
+      "bytes": 12667,
+      "sha256": "EB81BD9AC63072C49CFC82E2809AE2352C5C6E034F5621113D3E3684971F9936"
+    },
+    {
+      "path": "src/components/LibraryCollections.vue",
+      "bytes": 9851,
+      "sha256": "561FD8DB1D6A0983285945BFD4E1FDCE7F7F9E264D5003B7AECD94675B3D6AE5"
+    },
+    {
+      "path": "src/components/LibraryMaintenance.vue",
+      "bytes": 4315,
+      "sha256": "410D2F2745754BF103C9C6F1AD533B440991A9F4ED886469944AE109D3446625"
+    },
+    {
+      "path": "src/components/LibraryOverview.vue",
+      "bytes": 2378,
+      "sha256": "EE32894BD958B826EE7385B34E8F3906A7CFAB5EBDD35D01C8D89023B348F49B"
+    },
+    {
+      "path": "src/components/LibrarySavedViews.vue",
+      "bytes": 9348,
+      "sha256": "6B735CF0F026E0AEA2D28385D3B227E0CC4C5B69D23B6846A54731E579FCFF22"
+    },
+    {
+      "path": "src/components/LiquidGlassMaterial.vue",
+      "bytes": 317,
+      "sha256": "D10BDE33535700240213A1B7819C46E89F90B50E9D4E85C2D562C1F41F4BCB11"
+    },
+    {
+      "path": "src/components/MatchReviewWorkspace.vue",
+      "bytes": 24828,
+      "sha256": "34D0E7DCF6EC7517EF0A0FBE8AFFD4372577BAD13BF3EF11C01942DE0AD78D74"
+    },
+    {
+      "path": "src/components/OrderMark.vue",
+      "bytes": 215,
+      "sha256": "E08F1F29B3EF9C0DCBE3B85C73CAD24DAFC25743FF282AE50838DB2356CCC701"
+    },
+    {
+      "path": "src/components/PersonalRecord.vue",
+      "bytes": 4483,
+      "sha256": "24A869D12F9CFD930D7F8F1346E3F86A7B295FC6D3A8AF7373843D06D881EB02"
+    },
+    {
+      "path": "src/components/PlayStatistics.vue",
+      "bytes": 14630,
+      "sha256": "8F49AE5640A56C64709CEA7EF75D78AAB517CF5C4D86803C8FB343490C96F1ED"
+    },
+    {
+      "path": "src/components/PreferencesSettings.vue",
+      "bytes": 17071,
+      "sha256": "5BA10A357E9B4F4B24D9CA7D59E9128F660D753F4725D4439FA5414C756875A3"
+    },
+    {
+      "path": "src/components/SectionSignature.vue",
+      "bytes": 427,
+      "sha256": "04DAF5086EE4EEE5696C6250EB593E6F2FC77D89B1B55C5BA32D981B545113C8"
+    },
+    {
+      "path": "src/components/WhaleMark.vue",
+      "bytes": 445,
+      "sha256": "976291EE8FE404781107C0894EA8C9C7A8C8A9A6CBFE5CA2877F2FB2E7BC59B0"
+    },
+    {
+      "path": "src/cover-display.ts",
+      "bytes": 2500,
+      "sha256": "5210B27AB1C388B885064B2022E1A2AC702A778F603973087F569FF8E8A2ED49"
+    },
+    {
+      "path": "src/desktop-bridge.ts",
+      "bytes": 1374,
+      "sha256": "9DC3D207E657F57A779A73AB5013C1CBE7FBBE7CD54675E1BC1A3EDA3C1D94AA"
+    },
+    {
+      "path": "src/desktop-caption.css",
+      "bytes": 1897,
+      "sha256": "14991AFC278CF9AE038066B94470DAD6F076623B130D5B646E97D2FB5BE7A998"
+    },
+    {
+      "path": "src/detail-drafts.css",
+      "bytes": 1108,
+      "sha256": "8DBA6AFE8FA8E67587627FBAE08E3A2A2C1EFDA9EBCB18CB48D662F6B7BAD7BE"
+    },
+    {
+      "path": "src/glass-theme.css",
+      "bytes": 20334,
+      "sha256": "835A1C5E79AD9F2297365077D0C6D16C48A511B8CE1B287E5A40FBC37CC58627"
+    },
+    {
+      "path": "src/import-workspace.ts",
+      "bytes": 4611,
+      "sha256": "6FB2A8F63533522C2F3052449DE6D7B49E3D47CCD1C942D066D315BC9D063E13"
+    },
+    {
+      "path": "src/library-collections.ts",
+      "bytes": 2514,
+      "sha256": "F125215389215969BA98D4A7F3BC15D7445E458C813ADBA44B9076D64CB03462"
+    },
+    {
+      "path": "src/library-insights.ts",
+      "bytes": 7193,
+      "sha256": "5C8FD80F2DAFEA85F7C4C47C307781E2D7E8A7BCCCF11E88607B94E889286DF2"
+    },
+    {
+      "path": "src/library-layout.css",
+      "bytes": 5785,
+      "sha256": "4A71719D20C3295E0B48C5DD729A8CBF9FCBC4A895CB570E80ED8E2EFBD0F153"
+    },
+    {
+      "path": "src/library-refresh.css",
+      "bytes": 10569,
+      "sha256": "8613E6EF8FF9812F916EF962AC68DB0E520B98BA518C5B3F6B2959E6B0C372C6"
+    },
+    {
+      "path": "src/library-workspace.ts",
+      "bytes": 5331,
+      "sha256": "2940207F41ED443C4AB321DDD5C932DC31B0E93583DE5BC4E7CB34E9231EF3B2"
+    },
+    {
+      "path": "src/liquid-glass.ts",
+      "bytes": 7764,
+      "sha256": "E2C9E3C657DB821D4B995B9AD6F898828F37AECB610D0BE0822CABDA0EB48C7C"
+    },
+    {
+      "path": "src/main.ts",
+      "bytes": 348,
+      "sha256": "31AE4B3AC3AD13413B849135711BB4E8071F20E9F8743F0EBD8DCFAB2E61273B"
+    },
+    {
+      "path": "src/order-theme.css",
+      "bytes": 41067,
+      "sha256": "BD88115130B89C13A9B3E61B12527651616C67DF353896F26CCD6FF3A3A4AADA"
+    },
+    {
+      "path": "src/saved-library-views.ts",
+      "bytes": 5505,
+      "sha256": "43B17A9F0DC464B5D21AB468B64E891339C62270BCB71726EB67318B8D932A30"
+    },
+    {
+      "path": "src/shared/types.ts",
+      "bytes": 7345,
+      "sha256": "03EBE95CAB06316EE64AEF0945E5779E61A7364B4E2685475CE7E48AA07D000C"
+    },
+    {
+      "path": "src/style.css",
+      "bytes": 38964,
+      "sha256": "6A207C301DC153046E11284AE0E769BF7DD0ADDB3F748C24DBA27FF5B94C4FF4"
+    },
+    {
+      "path": "src/windows-theme.css",
+      "bytes": 34587,
+      "sha256": "8347DAFF1A428474B6ECE5D104D2A0881D794A208EB2EFB6B8C662C5707AA412"
+    },
+    {
+      "path": "src/workspace-refresh.css",
+      "bytes": 13743,
+      "sha256": "021147D81999C87DAED2CD45297D40DED546DBCEDF16397BF6CCEC4BF459300E"
+    },
+    {
+      "path": "Start-The-Order-Test.cmd",
+      "bytes": 241,
+      "sha256": "8B28BB1EC964272F0B7F82C76BAD30BAEF56D94195468537B18A675952FD19F0"
+    },
+    {
+      "path": "tests/binding-pagination.test.ts",
+      "bytes": 6916,
+      "sha256": "399376EDBBBD7801B6AF253B782B806ED8E2EE78388204DBEE9CB05440D22FD3"
+    },
+    {
+      "path": "tests/browser-settings.test.ts",
+      "bytes": 2556,
+      "sha256": "4774371456E5D6A2F2A3B3F8B7FBCB297FC03CD34DEE57EC36631472571EEF2B"
+    },
+    {
+      "path": "tests/bulk-library.test.ts",
+      "bytes": 16349,
+      "sha256": "E320B6851302AE604A889DB4C11796DD1023D9260F76F07CA95CE3044B2C2729"
+    },
+    {
+      "path": "tests/cover-display.test.ts",
+      "bytes": 7092,
+      "sha256": "079FA0336FE676DC89014044459C7BB888B206ABCC5FDBFF2B4496439B193C7A"
+    },
+    {
+      "path": "tests/cover-picker.test.ts",
+      "bytes": 18940,
+      "sha256": "5CB20F5D6B1367093883D819D2AD574163637FD2E1C1002141E60E157009D76F"
+    },
+    {
+      "path": "tests/desktop-appearance-styles.mjs",
+      "bytes": 38433,
+      "sha256": "DC45F077F31C754CA12A876B05D42148A01A2C73032A0FDB8E3C7A1D32D7A774"
+    },
+    {
+      "path": "tests/desktop-binding-pagination.mjs",
+      "bytes": 9732,
+      "sha256": "3CFDF2EA4D865C674C642A96DF6D4433271B4868E2D1111A965427A3F096A8BD"
+    },
+    {
+      "path": "tests/desktop-bridge.test.ts",
+      "bytes": 8398,
+      "sha256": "6F8DDF9D78357553834E72436F8BF7894445F86E38560AD272A6F3EFB9626B61"
+    },
+    {
+      "path": "tests/desktop-cancel-queue-bootstrap.cjs",
+      "bytes": 910,
+      "sha256": "1CC5DEC6D9C78FECBB34667416A7142059E200AFAA8BEED11F20373440D1FA12"
+    },
+    {
+      "path": "tests/desktop-cancel-queue.mjs",
+      "bytes": 8087,
+      "sha256": "DE9B3BE218EDF9DFF0EFCD2C081AA230A0137514CFD132996FC9EEB812DDB646"
+    },
+    {
+      "path": "tests/desktop-collections.mjs",
+      "bytes": 16819,
+      "sha256": "6398F7AB1387A3DBDF49D99FFEE18E716BCE9B53DCC14BD09AAA5FEE9BCAEEF8"
+    },
+    {
+      "path": "tests/desktop-compact-library.mjs",
+      "bytes": 29134,
+      "sha256": "EC90297340FDC93B2B8985033FE068B0AABCEC6EA9543A2A735876F211AAFCC7"
+    },
+    {
+      "path": "tests/desktop-concurrency.mjs",
+      "bytes": 12078,
+      "sha256": "2BFD93E51EEC78F9DFE21CAAB714B0EDBD1A49A14F23E84E08E538667100F4D7"
+    },
+    {
+      "path": "tests/desktop-cover-personalization.mjs",
+      "bytes": 40119,
+      "sha256": "649C87C2B00B46CC3B10F2752A862BBA4CEEF08CFA036FCDF6B1924FCAAA0123"
+    },
+    {
+      "path": "tests/desktop-cover-preferences.mjs",
+      "bytes": 31297,
+      "sha256": "F27BB4C7DE889722009731201F25583C35B6352898A21CE48C9F6D726B3CFEB1"
+    },
+    {
+      "path": "tests/desktop-cover-selection.mjs",
+      "bytes": 16768,
+      "sha256": "589BD0929A3F1D5F0F7D67CEA772A9D1D2A52C9D9240EB6ACB43BD922F3E34F9"
+    },
+    {
+      "path": "tests/desktop-detail-drafts-bootstrap.cjs",
+      "bytes": 1066,
+      "sha256": "747155A857E7C787FF830E1171148D918C5BBA781FA4F1CE6466EB0AD4F0ED09"
+    },
+    {
+      "path": "tests/desktop-detail-drafts.mjs",
+      "bytes": 26555,
+      "sha256": "5642F25CA25386670C44716FE92DB1A2002893DA72460D5A5B03D5341D46DEA0"
+    },
+    {
+      "path": "tests/desktop-detail-workspace.mjs",
+      "bytes": 22984,
+      "sha256": "D056765552DE3C65414CF195A2A38F458B5FF9B7F1E23CD4CD49BA475D2BFF7E"
+    },
+    {
+      "path": "tests/desktop-details-bootstrap.cjs",
+      "bytes": 950,
+      "sha256": "C150A3D6F9C982A418E98B296A07D9379025A085C04FE4FAD90D1817D949EFEF"
+    },
+    {
+      "path": "tests/desktop-details.mjs",
+      "bytes": 10761,
+      "sha256": "778C5A5E4A212AA6C516BC4A8366CB2C237F8DFB537B769904E094F912E3181D"
+    },
+    {
+      "path": "tests/desktop-glass-optics.mjs",
+      "bytes": 7801,
+      "sha256": "65185F14CE5D0301F72680421C06358DD7D6B9047790651A9A8596DF4CCB0E03"
+    },
+    {
+      "path": "tests/desktop-import-workspace.mjs",
+      "bytes": 18162,
+      "sha256": "98334FD6C2CD5D9222DB79FE7752EE2432846ED7D66408B5E2E18CE5ABE7454F"
+    },
+    {
+      "path": "tests/desktop-import.mjs",
+      "bytes": 9488,
+      "sha256": "AED1C2A022C51473A9498075FA27C02D08947E2A571874FBAAD102A6D87A52B0"
+    },
+    {
+      "path": "tests/desktop-iteration-installation.mjs",
+      "bytes": 27574,
+      "sha256": "4229F04889126D49EDCE646B1109D0F5D391253A73DDA9F2607781B49C281FE4"
+    },
+    {
+      "path": "tests/desktop-iteration-review.mjs",
+      "bytes": 29486,
+      "sha256": "2F848B78A6263D85A29C5C22A5BCA0FE54FE5C3A122AD7F7610F1445D80ABC28"
+    },
+    {
+      "path": "tests/desktop-local-cover-codec.mjs",
+      "bytes": 14200,
+      "sha256": "B87E529443EDA22028C61707F0318F6ABF80439ECCAC81E14CB9536E036225D1"
+    },
+    {
+      "path": "tests/desktop-matching.mjs",
+      "bytes": 20589,
+      "sha256": "2DD523B1E69973A221DF876301F2AE126BBB715007018FDE64309809C2356D6E"
+    },
+    {
+      "path": "tests/desktop-preservation.mjs",
+      "bytes": 11890,
+      "sha256": "1A6E4613D12C9740DD69472B23E7204C7D42D322CE54A6A0611E626BBC686147"
+    },
+    {
+      "path": "tests/desktop-production-origin.mjs",
+      "bytes": 3165,
+      "sha256": "4EE257248B94523ADF34E05210B884F43F0B4FEE79FC97023DFDD8EBEF364EA3"
+    },
+    {
+      "path": "tests/desktop-reidentification.mjs",
+      "bytes": 18311,
+      "sha256": "F0F10BF64EE2C5BE76F0D847D1FD4B9EF57E4CEFCF4520893FBB08168B422A4E"
+    },
+    {
+      "path": "tests/desktop-reload-bootstrap.cjs",
+      "bytes": 1385,
+      "sha256": "B51EC259F40EE8526E94C6B15D76D941A0611563C5AF48AC5C92431BB8409C0F"
+    },
+    {
+      "path": "tests/desktop-reload.mjs",
+      "bytes": 5732,
+      "sha256": "62424F8C3551487EDAC0021E9C447EEC00C4B1A00C57F2417F90269866A8BA68"
+    },
+    {
+      "path": "tests/desktop-review-workspace.mjs",
+      "bytes": 18936,
+      "sha256": "F80127A6AB2CC96B92F844A9E94A9A8E2E60B81EA3AFFB32AF8AF5B9F2CD22A4"
+    },
+    {
+      "path": "tests/desktop-saved-views.mjs",
+      "bytes": 22410,
+      "sha256": "CA24B92EF23DE10542C5E08A524F8C0E2045A64EEFD98BEA9EFB639D85AB2B6C"
+    },
+    {
+      "path": "tests/desktop-settings-matching-bootstrap.cjs",
+      "bytes": 880,
+      "sha256": "FE6DD2B1DB1C53E76EE5266F522468DFA6CC3C339691582D3624B59E228D6868"
+    },
+    {
+      "path": "tests/desktop-settings-matching.mjs",
+      "bytes": 21448,
+      "sha256": "424F2C6063DBE5904D483C4A6DAA8AE86BFFD131B4023EC4679BD780BCCAAC8C"
+    },
+    {
+      "path": "tests/desktop-settings-workspace.mjs",
+      "bytes": 17366,
+      "sha256": "8C5C845CE74D5F645834552EA27265FD580A5CFCD74EA72495AD589D4CE4D907"
+    },
+    {
+      "path": "tests/desktop-windows-experience.mjs",
+      "bytes": 41598,
+      "sha256": "FB4D3615B6F137A63672666C1B7397FF70316213D5FE6C589CAC148AA27B9D9E"
+    },
+    {
+      "path": "tests/desktop-workspace.mjs",
+      "bytes": 14918,
+      "sha256": "72C8D431E237B18707BD101B9285F487DC375188BE178B74382616DA31EBBC3F"
+    },
+    {
+      "path": "tests/detail-concurrency.test.ts",
+      "bytes": 15611,
+      "sha256": "31716D874FEBBACAD9FB3ED83561267D6FB70B15BAB91B2BA33652AACFD961BB"
+    },
+    {
+      "path": "tests/detail-drafts.test.ts",
+      "bytes": 28703,
+      "sha256": "BC1931269D90B67F402827F2AF04D7E2717BC365704A75BB0A977017D6611672"
+    },
+    {
+      "path": "tests/discovery-pagination.test.ts",
+      "bytes": 7934,
+      "sha256": "C0C7D5EE0143A70C031D72FD2C39741F3A63C561F912543340056C3335A22996"
+    },
+    {
+      "path": "tests/editor-concurrency.test.ts",
+      "bytes": 7391,
+      "sha256": "489F9BE19B240A4AC103833C9363D7FC492FC0346ADEBEFBDFE469BE0FC15058"
+    },
+    {
+      "path": "tests/evidence-matching.test.ts",
+      "bytes": 33208,
+      "sha256": "D050F4FA6C7D12AB38DFE142EC14C5C2E1CAF44EB8F29C598ED2F575B9140F16"
+    },
+    {
+      "path": "tests/game-card.test.ts",
+      "bytes": 19260,
+      "sha256": "6CF27AE863A2122D190A07D0A43213CCC1B806A5BB52B508B11C76885B538B6F"
+    },
+    {
+      "path": "tests/game-identification.test.ts",
+      "bytes": 20251,
+      "sha256": "CB876DD9AD5FC7A6095AC48E0F8879866EAD33A29B7EF8A25CE0086A32D279A4"
+    },
+    {
+      "path": "tests/import-workspace.test.ts",
+      "bytes": 8548,
+      "sha256": "A5D054F9B7CFAEF27E63B2C66861DCE6B5ABF74062A7096F03AD8D8DBC1EEE26"
+    },
+    {
+      "path": "tests/installation-attachment.test.ts",
+      "bytes": 19067,
+      "sha256": "1EBA08BAEF4B1366BB2A6FDE559A762A13C4FCBD1901F5F1A578A69BE66F8045"
+    },
+    {
+      "path": "tests/installation-evidence.test.ts",
+      "bytes": 10731,
+      "sha256": "E8247637AA3DCA6762B5229ACF673DF95DCAD6A628F814FB0608D230C6063171"
+    },
+    {
+      "path": "tests/iteration-candidate-smoke.mjs",
+      "bytes": 3574,
+      "sha256": "8CEA8352DCED17C0CEB103D3372BAAEA4B3C1BD31558F12857D4EB1CA7F81602"
+    },
+    {
+      "path": "tests/iteration-trial-data.mjs",
+      "bytes": 5279,
+      "sha256": "6BD265DE0F6587A5A7CB95361FC211ED9F34EF0AD9FC85EC0B0F7E564F426897"
+    },
+    {
+      "path": "tests/iteration-visual-bootstrap.cjs",
+      "bytes": 2716,
+      "sha256": "3DC8E0C6C1F70D5E89FCFE217B5E28EB063F5F8D27E3A358AB383D23C71B8236"
+    },
+    {
+      "path": "tests/iteration-visual.mjs",
+      "bytes": 21844,
+      "sha256": "57AEF1F7DED9667E294488BE68A0A3FB57F634FB169272111DC19FA6DF18F75B"
+    },
+    {
+      "path": "tests/library-collections.test.ts",
+      "bytes": 4033,
+      "sha256": "588BFCEF846C41E0DB39D1526D2354525CDE616043DBE4773E0037554653C9DF"
+    },
+    {
+      "path": "tests/library-cover.test.ts",
+      "bytes": 13190,
+      "sha256": "64E548E746BBDEA42F44F650B5169E1EEB71C9545DB88C0B2AA50DF0E0074824"
+    },
+    {
+      "path": "tests/library-insights.test.ts",
+      "bytes": 9675,
+      "sha256": "8EA7F57533E91C105792CCE99AC1059D0AA8E37E3F2E3AC8235E3C0130F96BCD"
+    },
+    {
+      "path": "tests/library-local-cover.test.ts",
+      "bytes": 9765,
+      "sha256": "B8D2907EEF6B8F0AE047F0FF2D9D5E42DCD372B2B8FAEF311A39519BCD859133"
+    },
+    {
+      "path": "tests/library-workspace.test.ts",
+      "bytes": 5330,
+      "sha256": "6E5522AF109138A1138F98E45533EC032FF3F642950294E0A254E5B039E707F7"
+    },
+    {
+      "path": "tests/library.test.ts",
+      "bytes": 29979,
+      "sha256": "201059F31520C7BEFE7B24C0651343C34C9BABFE7AA6FC616900403B401BB253"
+    },
+    {
+      "path": "tests/liquid-glass.test.ts",
+      "bytes": 1966,
+      "sha256": "313C7EF56971CC1EF8C6C55BF9BFBBDE24C4EBA58B1221899663E5719C8DC040"
+    },
+    {
+      "path": "tests/local-cover-fixtures.ts",
+      "bytes": 680,
+      "sha256": "7E4575AB85D2F6C350F7324187CE07FBDC831F2FEF2E86063215353FC8D3A008"
+    },
+    {
+      "path": "tests/local-cover.test.ts",
+      "bytes": 7060,
+      "sha256": "4299CBD626394847CC2149ACE7B3574CADD35AF73E55AB1771E35238ABEEEA49"
+    },
+    {
+      "path": "tests/local-game-evidence.test.ts",
+      "bytes": 32696,
+      "sha256": "D34DE72A543C9DAEBC0F22159B744BE66C073A53C86F6528E7985EDDBF803B36"
+    },
+    {
+      "path": "tests/local-text-evidence.test.ts",
+      "bytes": 9894,
+      "sha256": "D1A9385C5E25BAA2CAB4272F7D3E826D2FBDE45DAD53B71FB613EA02E219AB1A"
+    },
+    {
+      "path": "tests/metadata-concurrency.test.ts",
+      "bytes": 29814,
+      "sha256": "4355F42212AE17AFDD1B038BC6DD9ED4F7BBD90675299422498BFBBD6C0ED8DA"
+    },
+    {
+      "path": "tests/metadata-matching.test.ts",
+      "bytes": 69213,
+      "sha256": "B402FA97FF81ECDEB4C25B247D03D1EBE531D3DC47DA731977E1E24F07C6678E"
+    },
+    {
+      "path": "tests/nextmoe.test.ts",
+      "bytes": 51482,
+      "sha256": "5D3826F10B1A9D5393BCA993F6830506100D8E76B4CEB98AD478DD0939A2DC66"
+    },
+    {
+      "path": "tests/overnight-guard.test.mjs",
+      "bytes": 5663,
+      "sha256": "18BD58C7FEBBE3C7FE2C4D1C5DC4DF755EB1FD62C9203D6B149363E834A7DBEE"
+    },
+    {
+      "path": "tests/overnight-trial-data.test.mjs",
+      "bytes": 5679,
+      "sha256": "E6BF9C536B91B79E6FFDE428A4D95146DE1E06B0B36950E6D6C53D21A4B00297"
+    },
+    {
+      "path": "tests/packaged-b-smoke.mjs",
+      "bytes": 1550,
+      "sha256": "85AED5627399C6F674BBF54B8EBDABF82B69DB2617E5D475CB1E9B30A3FBA30C"
+    },
+    {
+      "path": "tests/packaged-overnight.mjs",
+      "bytes": 21653,
+      "sha256": "F0C634857FC7059A1A2B92698CA9AC4C7BEA035E02D624C63D60BA0EA3F04E06"
+    },
+    {
+      "path": "tests/playtime.test.ts",
+      "bytes": 6907,
+      "sha256": "DD3E1E18E0977A86B3E271D45829F667EDD770084A646BDD3D52C09FA09E4DF3"
+    },
+    {
+      "path": "tests/private-library-compat.mjs",
+      "bytes": 8562,
+      "sha256": "C426F8ECBBD5951233C309EFB6A5CEB38432795873C27799A4C4BD22A4966CB1"
+    },
+    {
+      "path": "tests/review-workspace-concurrency.test.ts",
+      "bytes": 20533,
+      "sha256": "B3142942AC539FAA4ED6416D549B96E9F82C60DB094F03C7E8FA8580BE0A724A"
+    },
+    {
+      "path": "tests/saved-library-views.test.ts",
+      "bytes": 5796,
+      "sha256": "86D09C69F138B0D25F8FAF39DC95F5836162D877C53E5D509AAEC15E972A3F92"
+    },
+    {
+      "path": "tests/settings-workspace.test.ts",
+      "bytes": 15420,
+      "sha256": "DE514C394995AC481C7B4126FF86C51FC1FCCF64BD7FA56098021C6EA70CADA5"
+    },
+    {
+      "path": "tests/settings.test.ts",
+      "bytes": 14531,
+      "sha256": "73EBEDA15E3AAC34FED033984267C8E05D6DA97B3E5428CD753B57A7CD93C564"
+    },
+    {
+      "path": "tests/title-matching.test.ts",
+      "bytes": 11404,
+      "sha256": "5211BF6DE199B9DFC35307E08593EEAEE237B53BCDAC3D8BC7E471BE8C56C2AB"
+    },
+    {
+      "path": "tests/ui-b-bootstrap.cjs",
+      "bytes": 2796,
+      "sha256": "339274D9D54135D1270F47D8C9A456F77CC0B7644213FFD1583FB4EA3A38773B"
+    },
+    {
+      "path": "tests/ui-b.mjs",
+      "bytes": 23406,
+      "sha256": "1552CF1CDD30F5AF4A920D8B8DACE423C9777995C38223E457B83AB96D124136"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-0.svg",
+      "bytes": 2475,
+      "sha256": "FFA1274A5D3CA999E24C577DD878B2C001AEF308AC2AE4DCA4AC7FBA75EB90F2"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-1.svg",
+      "bytes": 2462,
+      "sha256": "CE29D6F35F89E534A979BE6B6993233B0B5A4C2FD67402D8A8DB4ABD889C87DC"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-2.svg",
+      "bytes": 3901,
+      "sha256": "741356BEC1176C3F811D3687FEA6AACA82B74A779AB355E6E2265A389D9FE460"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-3.svg",
+      "bytes": 2817,
+      "sha256": "BBFF6CC365C78752488E297ECDC7A846897282724FF17FAB55DAF604AD7F2E26"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-4.svg",
+      "bytes": 2941,
+      "sha256": "1194929F58A85C34C10391486606672453A7908B9F81FD72615EFE403F7AAE72"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-5.svg",
+      "bytes": 2463,
+      "sha256": "C1156DD59D70607A394B05CEAEA36A283BBC0D72E86D9357A47920B068C85B5E"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-6.svg",
+      "bytes": 3973,
+      "sha256": "ED5637F2E030F169B73287459126E9C7F4BFB448C70EBBB9DD5229ECA7AB5EEB"
+    },
+    {
+      "path": "tests/ui-fixtures/cover-7.svg",
+      "bytes": 2477,
+      "sha256": "83396584CAA227D75BE9D61FFC707671500FC519728C9F5D27984670BF9546F7"
+    },
+    {
+      "path": "tests/ui-fixtures/delayed.svg",
+      "bytes": 2817,
+      "sha256": "BBFF6CC365C78752488E297ECDC7A846897282724FF17FAB55DAF604AD7F2E26"
+    },
+    {
+      "path": "tests/ui-fixtures/LICENSE.txt",
+      "bytes": 192,
+      "sha256": "8F2DA218B4E41E5A60E5E61CD729DC42E4D0236D4B615B42911D8A4C375CE8C1"
+    },
+    {
+      "path": "tests/window-appearance.test.ts",
+      "bytes": 4166,
+      "sha256": "C3875D877B525002A2F0447D1757736306F2FC71AD9FD4F23DD6BA3B6D10C83F"
+    },
+    {
+      "path": "tests/workspace-concurrency.test.ts",
+      "bytes": 52602,
+      "sha256": "EEFE53A098B491703A05B862562CA46F7AA6993DD63EA1B9CC5199D2E9458AE2"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 9012,
+      "sha256": "B76A07753F5293D192CA33751A579BEFC0D37BDE17DE57A13A4A210D538802A3"
+    },
+    {
+      "path": "tsconfig.electron.json",
+      "bytes": 338,
+      "sha256": "20B3D75E95B2B907907118B0B477998A7FFD1A1442EFCE6F98B1155EAE83C1F4"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 387,
+      "sha256": "EF876A04BEE61E05689D1D6CDD302E593ED9428CCEDED5C6B5B9DC734E0222EB"
+    },
+    {
+      "path": "vite.config.ts",
+      "bytes": 283,
+      "sha256": "53268EA896698B7C042F593B86EE7D33D9BA2BB02A5539600A2B4EE35EE2F2C4"
+    }
+  ]
+}

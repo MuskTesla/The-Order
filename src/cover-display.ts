@@ -1,0 +1,45 @@
+import type { LibraryGame, NonPortraitCoverDisplay, WorkMetadata } from './shared/types'
+
+function permittedUrl(url: string | null | undefined, work: WorkMetadata | null | undefined, includeNsfw: boolean): string | null {
+  if (!url) return null
+  if (!includeNsfw && work?.covers?.some(cover => cover.url === url && cover.sexual === 'explicit')) return null
+  return url
+}
+
+/** Unknown legacy cover classifications retain their previous display behavior. */
+export function workCoverUrl(work: WorkMetadata | null | undefined, includeNsfw = true): string | null {
+  return permittedUrl(work?.coverUrl, work, includeNsfw)
+}
+
+/** A personal selection belongs to one work, never to a later reassociation. */
+export function gameCoverUrl(game: LibraryGame, includeNsfw = true): string | null {
+  // The user explicitly chose this local image. It has no remote classification.
+  if (game.localCover) return game.localCover.dataUrl
+  const work = game.metadata
+  const choice = work && game.coverChoice && game.coverChoice.workId === work.id ? game.coverChoice.cover : null
+  if (choice && (includeNsfw || choice.sexual !== 'explicit')) {
+    const selected = permittedUrl(choice.url, work, includeNsfw)
+    if (selected) return selected
+  }
+  // A saved explicit selection is also known evidence if the default uses the
+  // identical image, even when the older metadata has no covers collection.
+  if (!includeNsfw && choice?.sexual === 'explicit' && choice.url === work?.coverUrl) return null
+  return workCoverUrl(work, includeNsfw)
+}
+
+/** Missing per-game preferences follow the current global default. */
+export function gameCoverDisplay(game: LibraryGame | null | undefined, globalDisplay: NonPortraitCoverDisplay = 'blur'): NonPortraitCoverDisplay {
+  return game?.nonPortraitCoverDisplay ?? globalDisplay
+}
+
+export function shouldPreserveCover(imageRatio: number, frameRatio: number, display: NonPortraitCoverDisplay = 'blur'): boolean {
+  if (!Number.isFinite(imageRatio) || !Number.isFinite(frameRatio) || imageRatio <= 0 || frameRatio <= 0) return false
+  if (display === 'crop') return false
+  if (imageRatio >= 1) return true
+  // Complete-image modes still fit ordinary portraits with bounded cropping.
+  return Math.min(imageRatio / frameRatio, frameRatio / imageRatio) < .8
+}
+
+export function shouldBlurCover(imageRatio: number, frameRatio: number, display: NonPortraitCoverDisplay = 'blur'): boolean {
+  return display === 'blur' && shouldPreserveCover(imageRatio, frameRatio, display)
+}

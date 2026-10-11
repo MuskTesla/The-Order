@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <DefineConstants Condition="'$(NativeProductionCandidate)' == 'true'">$(DefineConstants);NATIVE_PRODUCTION_CANDIDATE</DefineConstants>
+    <DefineConstants Condition="'$(NativeMultilingualEnabled)' == 'true'">$(DefineConstants);NATIVE_MULTILINGUAL_ENABLED</DefineConstants>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishSingleFile>false</PublishSingleFile>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/Brand.Light.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Update="Assets/Brand.Light.ico;Assets/Brand.Dark.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Update="Assets/Brand.png;Assets/Brand.Light.png;Assets/Brand.Dark.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Update="Assets/KunGal.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../LICENSE" Link="LICENSE-TheOrder.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/ppocrv3-text-detector.onnx" Link="data/ppocrv3-text-detector.onnx" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/NOTICE-PPOCRv3.md" Link="data/NOTICE-PPOCRv3.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/vndb-banner-hints.json" Link="data/vndb-banner-hints.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/NOTICE-VNDB-artwork.md" Link="data/NOTICE-VNDB-artwork.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../licenses/PotatoVN-LICENSE.txt" Link="LICENSE-PotatoVN.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../licenses/PP-OCRv3-LICENSE.txt" Link="LICENSE-PP-OCRv3.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/title-index.json.gz" Link="data/title-index.json.gz" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../data/LICENSE-PotatoDBMapper.txt" Link="data/LICENSE-PotatoDBMapper.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../licenses/UNICODE-LICENSE.txt" Link="LICENSE-Unicode.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../licenses/MARKDIG-LICENSE.txt" Link="LICENSE-Markdig.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
+    <ProjectReference Include="../TheOrder.Infrastructure/TheOrder.Infrastructure.csproj" />
+    <ProjectReference Include="../TheOrder.Presentation/TheOrder.Presentation.csproj" />
+    <ProjectReference Include="../TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj" />
+  </ItemGroup>
+  <!-- SDK 2.5.1 copies generated XAML/PRI to build output but omits them from
+       this unpackaged dotnet publish pipeline. Declare publish inputs explicitly;
+       never repair a shipped folder by manually copying files after publication. -->
+  <Target Name="RequireNativePublishIdentity" BeforeTargets="PrepareForPublish">
+    <Error Condition="'$(NativeProductionCandidate)' != 'true'" Text="Publish requires -p:NativeProductionCandidate=true. Its real production path remains authorization-guarded." />
+  </Target>
+  <Target Name="IncludeNativeXamlResources" AfterTargets="ComputeFilesToPublish">
+    <Error Condition="!Exists('$(TargetDir)$(AssemblyName).pri')" Text="Missing generated application PRI; refusing an incomplete native publish." />
+    <ItemGroup>
+      <NativeXamlResource Include="$(TargetDir)**/*.xbf;$(TargetDir)$(AssemblyName).pri" />
+      <ResolvedFileToPublish Include="@(NativeXamlResource)">
+        <RelativePath>%(NativeXamlResource.RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+  <Target Name="BuildMaterialEffectMetadata" BeforeTargets="CoreCompile">
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../scripts/build-material-effects.ps1&quot; -Source &quot;$(MSBuildProjectDirectory)/Materials/Native/ChannelEffects.cpp&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)/$(IntermediateOutputPath)material-native&quot;" />
+  </Target>
+  <Target Name="CopyMaterialEffectMetadata" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)material-native/TheOrder.MaterialEffects.dll" DestinationFolder="$(TargetDir)" />
+  </Target>
+  <Target Name="PublishMaterialEffectMetadata" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup><ResolvedFileToPublish Include="$(IntermediateOutputPath)material-native/TheOrder.MaterialEffects.dll"><RelativePath>TheOrder.MaterialEffects.dll</RelativePath><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></ResolvedFileToPublish></ItemGroup>
+  </Target>
+  <Target Name="BuildOpticalMaterial" BeforeTargets="CoreCompile">
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../scripts/build-optical-material.ps1&quot; -Source &quot;$(MSBuildProjectDirectory)/Materials/Native/OpticalRenderer.cpp&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)/$(IntermediateOutputPath)material-native&quot; -Packages &quot;$(NuGetPackageRoot).&quot;" />
+  </Target>
+  <Target Name="CopyOpticalMaterial" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)material-native/TheOrder.OpticalMaterial.dll" DestinationFolder="$(TargetDir)" />
+  </Target>
+  <Target Name="PublishOpticalMaterial" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup><ResolvedFileToPublish Include="$(IntermediateOutputPath)material-native/TheOrder.OpticalMaterial.dll"><RelativePath>TheOrder.OpticalMaterial.dll</RelativePath><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></ResolvedFileToPublish></ItemGroup>
+  </Target>
+</Project>

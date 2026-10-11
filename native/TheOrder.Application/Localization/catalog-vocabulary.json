@@ -1,0 +1,4658 @@
+[
+  [
+    "天使",
+    "天使",
+    "天使",
+    "Angels"
+  ],
+  [
+    "全年龄",
+    "全年齡",
+    "全年齢",
+    "All ages"
+  ],
+  [
+    "无色情内容",
+    "無色情內容",
+    "性的描写なし",
+    "No sexual content"
+  ],
+  [
+    "暖人心田/泣",
+    "暖人心田/泣",
+    "感動・泣きゲー",
+    "Heartwarming / tearjerker"
+  ],
+  [
+    "大量选项",
+    "大量選項",
+    "選択肢が多い",
+    "Many choices"
+  ],
+  [
+    "失忆症",
+    "失憶癥",
+    "記憶喪失",
+    "Amnesia"
+  ],
+  [
+    "主人公露过正脸",
+    "主人公露過正臉",
+    "主人公の顔が表示される",
+    "Visible protagonist face"
+  ],
+  [
+    "回忆倒叙",
+    "回憶倒敘",
+    "回想",
+    "Flashbacks"
+  ],
+  [
+    "地图移动",
+    "地圖移動",
+    "マップ移動",
+    "Map movement"
+  ],
+  [
+    "恋爱",
+    "戀愛",
+    "恋愛",
+    "Romance"
+  ],
+  [
+    "朋友团体",
+    "朋友團體",
+    "友人グループ",
+    "Group of friends"
+  ],
+  [
+    "生死剧",
+    "生死劇",
+    "生と死のドラマ",
+    "Life-and-death drama"
+  ],
+  [
+    "超过七位男主角",
+    "超過七位男主角",
+    "男性攻略対象が8人以上",
+    "More than seven male leads"
+  ],
+  [
+    "超过七位女主角",
+    "超過七位女主角",
+    "ヒロインが8人以上",
+    "More than seven heroines"
+  ],
+  [
+    "动作",
+    "動作",
+    "アクション",
+    "Action"
+  ],
+  [
+    "裸体立绘",
+    "裸體立繪",
+    "裸の立ち絵",
+    "Nude sprites"
+  ],
+  [
+    "主人公的老板作为女主角",
+    "主人公的老板作為女主角",
+    "主人公の上司がヒロイン",
+    "Protagonist's boss as a heroine"
+  ],
+  [
+    "多选选择",
+    "多選選擇",
+    "複数回答の選択肢",
+    "Multiple-answer choices"
+  ],
+  [
+    "插入歌曲",
+    "插入歌曲",
+    "挿入歌",
+    "Insert songs"
+  ],
+  [
+    "主人公的学妹/后辈女主角",
+    "主人公的學妹/后輩女主角",
+    "主人公の後輩がヒロイン",
+    "Protagonist's junior as a heroine"
+  ],
+  [
+    "学生会主席女主角",
+    "學生會主席女主角",
+    "生徒会長のヒロイン",
+    "Student council president heroine"
+  ],
+  [
+    "没有常识的女主角",
+    "沒有常識的女主角",
+    "常識に欠けるヒロイン",
+    "Heroine lacking common sense"
+  ],
+  [
+    "幼稚暴力女主角",
+    "幼稚暴力女主角",
+    "子供っぽく暴力的なヒロイン",
+    "Childishly violent heroine"
+  ],
+  [
+    "棒球",
+    "棒球",
+    "野球",
+    "Baseball"
+  ],
+  [
+    "其他人视角",
+    "其他人視角",
+    "別視点",
+    "Other viewpoints"
+  ],
+  [
+    "友谊终结",
+    "友誼終結",
+    "友情の終わり",
+    "Friendship ending"
+  ],
+  [
+    "有呆毛的女主角",
+    "有呆毛的女主角",
+    "アホ毛のヒロイン",
+    "Ahoge heroine"
+  ],
+  [
+    "有绝对领域的女主角",
+    "有絕對領域的女主角",
+    "絶対領域のヒロイン",
+    "Zettai ryouiki heroine"
+  ],
+  [
+    "紧身裤女主角",
+    "緊身褲女主角",
+    "レギンス姿のヒロイン",
+    "Leggings-wearing heroine"
+  ],
+  [
+    "友谊线路",
+    "友誼線路",
+    "友情ルート",
+    "Friendship route"
+  ],
+  [
+    "基于动画改编",
+    "基于動畫改編",
+    "アニメ原作",
+    "Based on an anime"
+  ],
+  [
+    "遮眼发型的女主角",
+    "遮眼發型的女主角",
+    "目隠れヒロイン",
+    "Heroine with hair over her eyes"
+  ],
+  [
+    "分支剧情",
+    "分支劇情",
+    "分岐する物語",
+    "Branching story"
+  ],
+  [
+    "学生会成员女主角",
+    "學生會成員女主角",
+    "生徒会役員のヒロイン",
+    "Student council member heroine"
+  ],
+  [
+    "坏结局",
+    "壞結局",
+    "バッドエンド",
+    "Bad endings"
+  ],
+  [
+    "成就系统",
+    "成就系統",
+    "実績",
+    "Achievements"
+  ],
+  [
+    "来世",
+    "來世",
+    "死後の世界",
+    "Afterlife"
+  ],
+  [
+    "音乐欣赏",
+    "音樂欣賞",
+    "音楽鑑賞",
+    "Music gallery"
+  ],
+  [
+    "回溯跳转",
+    "回溯跳轉",
+    "巻き戻し",
+    "Rollback"
+  ],
+  [
+    "男/女主角选择",
+    "男/女主角選擇",
+    "男女の攻略対象選択",
+    "Male / female lead selection"
+  ],
+  [
+    "美食讨论",
+    "美食討論",
+    "食べ物の話題",
+    "Food discussions"
+  ],
+  [
+    "只有纯文字色情内容",
+    "只有純文字色情內容",
+    "性的描写は文章のみ",
+    "Text-only sexual content"
+  ],
+  [
+    "多分支结局",
+    "多分支結局",
+    "マルチエンディング",
+    "Multiple endings"
+  ],
+  [
+    "文本框旁副立绘",
+    "文本框旁副立繪",
+    "テキストボックス横の立ち絵",
+    "Portrait beside the text box"
+  ],
+  [
+    "高中",
+    "高中",
+    "高校",
+    "High school"
+  ],
+  [
+    "荒诞喜剧",
+    "荒誕喜劇",
+    "不条理コメディ",
+    "Absurd comedy"
+  ],
+  [
+    "学校/学园",
+    "學校/學園",
+    "学校・学園",
+    "School"
+  ],
+  [
+    "科幻",
+    "科幻",
+    "SF",
+    "Science fiction"
+  ],
+  [
+    "剧情",
+    "劇情",
+    "ドラマ",
+    "Drama"
+  ],
+  [
+    "戏剧",
+    "戲劇",
+    "ドラマ",
+    "Drama"
+  ],
+  [
+    "喜剧",
+    "喜劇",
+    "コメディ",
+    "Comedy"
+  ],
+  [
+    "搞笑",
+    "搞笑",
+    "ユーモア",
+    "Humor"
+  ],
+  [
+    "悬疑",
+    "懸疑",
+    "ミステリー",
+    "Mystery"
+  ],
+  [
+    "惊悚",
+    "驚悚",
+    "スリラー",
+    "Thriller"
+  ],
+  [
+    "心理恐怖",
+    "心理恐怖",
+    "心理ホラー",
+    "Psychological horror"
+  ],
+  [
+    "奇幻",
+    "奇幻",
+    "ファンタジー",
+    "Fantasy"
+  ],
+  [
+    "高奇幻",
+    "高奇幻",
+    "ハイファンタジー",
+    "High fantasy"
+  ],
+  [
+    "低奇幻",
+    "低奇幻",
+    "ローファンタジー",
+    "Low fantasy"
+  ],
+  [
+    "现代奇幻",
+    "現代奇幻",
+    "現代ファンタジー",
+    "Contemporary fantasy"
+  ],
+  [
+    "都市奇幻",
+    "都市奇幻",
+    "都市ファンタジー",
+    "Urban fantasy"
+  ],
+  [
+    "中世纪奇幻",
+    "中世紀奇幻",
+    "中世ファンタジー",
+    "Medieval fantasy"
+  ],
+  [
+    "科幻奇幻",
+    "科幻奇幻",
+    "サイエンス・ファンタジー",
+    "Science fantasy"
+  ],
+  [
+    "硬科幻",
+    "硬科幻",
+    "ハードSF",
+    "Hard science fiction"
+  ],
+  [
+    "黑色喜剧",
+    "黑色喜劇",
+    "ブラックコメディ",
+    "Dark comedy"
+  ],
+  [
+    "日常/生活",
+    "日常/生活",
+    "日常",
+    "Slice of life"
+  ],
+  [
+    "日常片段",
+    "日常片段",
+    "日常",
+    "Slice of life"
+  ],
+  [
+    "生活片段剧",
+    "生活片段劇",
+    "日常ドラマ",
+    "Slice-of-life drama"
+  ],
+  [
+    "生活片段喜剧",
+    "生活片段喜劇",
+    "日常コメディ",
+    "Slice-of-life comedy"
+  ],
+  [
+    "校园生活喜剧",
+    "校園生活喜劇",
+    "学園コメディ",
+    "School-life comedy"
+  ],
+  [
+    "家庭生活喜剧",
+    "家庭生活喜劇",
+    "家庭コメディ",
+    "Family-life comedy"
+  ],
+  [
+    "家庭伦理",
+    "家庭倫理",
+    "家庭ドラマ",
+    "Family drama"
+  ],
+  [
+    "成长剧",
+    "成長劇",
+    "成長物語",
+    "Coming of age"
+  ],
+  [
+    "纯爱",
+    "純愛",
+    "純愛",
+    "Pure romance"
+  ],
+  [
+    "纯爱故事",
+    "純愛故事",
+    "純愛物語",
+    "Pure romance story"
+  ],
+  [
+    "三角恋",
+    "三角戀",
+    "三角関係",
+    "Love triangle"
+  ],
+  [
+    "戏剧性的三角恋",
+    "戲劇性的三角戀",
+    "波乱の三角関係",
+    "Dramatic love triangle"
+  ],
+  [
+    "亲情",
+    "親情",
+    "家族愛",
+    "Familial love"
+  ],
+  [
+    "家庭",
+    "家庭",
+    "家族",
+    "Family"
+  ],
+  [
+    "家族",
+    "家族",
+    "家族",
+    "Family"
+  ],
+  [
+    "友情",
+    "友情",
+    "友情",
+    "Friendship"
+  ],
+  [
+    "亲热/甜蜜",
+    "親熱/甜蜜",
+    "甘い恋愛",
+    "Affectionate romance"
+  ],
+  [
+    "甜作",
+    "甜作",
+    "甘い恋愛作品",
+    "Sweet romance"
+  ],
+  [
+    "感动",
+    "感動",
+    "感動",
+    "Moving story"
+  ],
+  [
+    "催泪",
+    "催淚",
+    "泣きゲー",
+    "Tearjerker"
+  ],
+  [
+    "泣きゲー",
+    "泣きゲー",
+    "泣きゲー",
+    "Tearjerker"
+  ],
+  [
+    "治愈",
+    "治愈",
+    "癒やし",
+    "Healing"
+  ],
+  [
+    "致郁",
+    "致郁",
+    "鬱展開",
+    "Depressing"
+  ],
+  [
+    "绝望",
+    "絕望",
+    "絶望",
+    "Despair"
+  ],
+  [
+    "严肃/沉重",
+    "嚴肅/沉重",
+    "シリアス・重い",
+    "Serious / dark"
+  ],
+  [
+    "哲学",
+    "哲學",
+    "哲学",
+    "Philosophy"
+  ],
+  [
+    "救赎",
+    "救贖",
+    "救済",
+    "Redemption"
+  ],
+  [
+    "命运",
+    "命運",
+    "運命",
+    "Fate"
+  ],
+  [
+    "时间循环",
+    "時間循環",
+    "タイムループ",
+    "Time loop"
+  ],
+  [
+    "秘密身份",
+    "秘密身份",
+    "秘密の正体",
+    "Secret identity"
+  ],
+  [
+    "心理创伤",
+    "心理創傷",
+    "心的外傷",
+    "Psychological trauma"
+  ],
+  [
+    "临床抑郁症",
+    "臨床抑郁癥",
+    "うつ病",
+    "Clinical depression"
+  ],
+  [
+    "存在危机",
+    "存在危機",
+    "実存的危機",
+    "Existential crisis"
+  ],
+  [
+    "嫉妒",
+    "嫉妒",
+    "嫉妬",
+    "Jealousy"
+  ],
+  [
+    "歧视",
+    "歧視",
+    "差別",
+    "Discrimination"
+  ],
+  [
+    "欺凌",
+    "欺凌",
+    "いじめ",
+    "Bullying"
+  ],
+  [
+    "自然灾害",
+    "自然災害",
+    "自然災害",
+    "Natural disaster"
+  ],
+  [
+    "不死生物",
+    "不死生物",
+    "アンデッド",
+    "Undead"
+  ],
+  [
+    "超能力",
+    "超能力",
+    "超能力",
+    "Superpowers"
+  ],
+  [
+    "超感知能力（ESP）",
+    "超感知能力（ESP）",
+    "超感覚",
+    "Extrasensory perception"
+  ],
+  [
+    "人工智能",
+    "人工智能",
+    "人工知能",
+    "Artificial intelligence"
+  ],
+  [
+    "魔法",
+    "魔法",
+    "魔法",
+    "Magic"
+  ],
+  [
+    "吸血鬼",
+    "吸血鬼",
+    "吸血鬼",
+    "Vampires"
+  ],
+  [
+    "恶魔",
+    "惡魔",
+    "悪魔",
+    "Demons"
+  ],
+  [
+    "怪物",
+    "怪物",
+    "怪物",
+    "Monsters"
+  ],
+  [
+    "动物",
+    "動物",
+    "動物",
+    "Animals"
+  ],
+  [
+    "会说话的动物",
+    "會說話的動物",
+    "話す動物",
+    "Talking animals"
+  ],
+  [
+    "猫",
+    "貓",
+    "猫",
+    "Cats"
+  ],
+  [
+    "狗",
+    "狗",
+    "犬",
+    "Dogs"
+  ],
+  [
+    "蝴蝶",
+    "蝴蝶",
+    "蝶",
+    "Butterflies"
+  ],
+  [
+    "鸟类",
+    "鳥類",
+    "鳥類",
+    "Birds"
+  ],
+  [
+    "恐龙",
+    "恐龍",
+    "恐竜",
+    "Dinosaurs"
+  ],
+  [
+    "超现实主义",
+    "超現實主義",
+    "シュールレアリスム",
+    "Surrealism"
+  ],
+  [
+    "梦境",
+    "夢境",
+    "夢",
+    "Dreams"
+  ],
+  [
+    "转世/轮回/投胎/转生",
+    "轉世/輪回/投胎/轉生",
+    "転生・輪廻",
+    "Reincarnation"
+  ],
+  [
+    "隐形",
+    "隱形",
+    "透明化",
+    "Invisibility"
+  ],
+  [
+    "诅咒",
+    "詛咒",
+    "呪い",
+    "Curses"
+  ],
+  [
+    "日本神话",
+    "日本神話",
+    "日本神話",
+    "Japanese mythology"
+  ],
+  [
+    "现代",
+    "現代",
+    "現代",
+    "Modern setting"
+  ],
+  [
+    "现代日本",
+    "現代日本",
+    "現代日本",
+    "Modern Japan"
+  ],
+  [
+    "现代东京",
+    "現代東京",
+    "現代の東京",
+    "Modern Tokyo"
+  ],
+  [
+    "现代四国",
+    "現代四國",
+    "現代の四国",
+    "Modern Shikoku"
+  ],
+  [
+    "未来日本",
+    "未來日本",
+    "未来の日本",
+    "Future Japan"
+  ],
+  [
+    "近未来",
+    "近未來",
+    "近未来",
+    "Near future"
+  ],
+  [
+    "末日后的地球",
+    "末日后的地球",
+    "終末後の地球",
+    "Post-apocalyptic Earth"
+  ],
+  [
+    "乡村",
+    "鄉村",
+    "田舎",
+    "Countryside"
+  ],
+  [
+    "岛",
+    "島",
+    "島",
+    "Island"
+  ],
+  [
+    "虚构的未来日本附近的岛屿",
+    "虛構的未來日本附近的島嶼",
+    "未来の日本近海の架空の島",
+    "Fictional island near future Japan"
+  ],
+  [
+    "虚构的现代日本乡村",
+    "虛構的現代日本鄉村",
+    "現代日本の架空の村",
+    "Fictional modern Japanese village"
+  ],
+  [
+    "虚构的现代日本城镇",
+    "虛構的現代日本城鎮",
+    "現代日本の架空の町",
+    "Fictional modern Japanese town"
+  ],
+  [
+    "虚构的现代日本岛屿",
+    "虛構的現代日本島嶼",
+    "現代日本の架空の島",
+    "Fictional modern Japanese island"
+  ],
+  [
+    "类似过去的虚构世界",
+    "類似過去的虛構世界",
+    "過去に似た架空の世界",
+    "Fictional historical world"
+  ],
+  [
+    "学校",
+    "學校",
+    "学校",
+    "School"
+  ],
+  [
+    "校园",
+    "校園",
+    "学園",
+    "Campus"
+  ],
+  [
+    "女子学校",
+    "女子學校",
+    "女子校",
+    "Girls' school"
+  ],
+  [
+    "前女校",
+    "前女校",
+    "元女子校",
+    "Former girls' school"
+  ],
+  [
+    "大学",
+    "大學",
+    "大学",
+    "University"
+  ],
+  [
+    "学生会",
+    "學生會",
+    "生徒会",
+    "Student council"
+  ],
+  [
+    "学校宿舍",
+    "學校宿舍",
+    "学生寮",
+    "School dormitory"
+  ],
+  [
+    "学校节日庆典",
+    "學校節日慶典",
+    "学園祭",
+    "School festival"
+  ],
+  [
+    "天文社团",
+    "天文社團",
+    "天文部",
+    "Astronomy club"
+  ],
+  [
+    "音乐社团",
+    "音樂社團",
+    "音楽部",
+    "Music club"
+  ],
+  [
+    "戏剧社团",
+    "戲劇社團",
+    "演劇部",
+    "Drama club"
+  ],
+  [
+    "学校美术社团",
+    "學校美術社團",
+    "美術部",
+    "School art club"
+  ],
+  [
+    "射箭社团",
+    "射箭社團",
+    "弓道部",
+    "Archery club"
+  ],
+  [
+    "神秘社团",
+    "神秘社團",
+    "オカルト研究部",
+    "Occult club"
+  ],
+  [
+    "咖啡馆",
+    "咖啡館",
+    "喫茶店",
+    "Café"
+  ],
+  [
+    "医院",
+    "醫院",
+    "病院",
+    "Hospital"
+  ],
+  [
+    "监狱",
+    "監獄",
+    "刑務所",
+    "Prison"
+  ],
+  [
+    "森林",
+    "森林",
+    "森",
+    "Forest"
+  ],
+  [
+    "沙滩",
+    "沙灘",
+    "浜辺",
+    "Beach"
+  ],
+  [
+    "水下",
+    "水下",
+    "水中",
+    "Underwater"
+  ],
+  [
+    "水域",
+    "水域",
+    "水域",
+    "Bodies of water"
+  ],
+  [
+    "船",
+    "船",
+    "船",
+    "Ships"
+  ],
+  [
+    "潜水艇",
+    "潛水艇",
+    "潜水艦",
+    "Submarines"
+  ],
+  [
+    "城堡",
+    "城堡",
+    "城",
+    "Castle"
+  ],
+  [
+    "寺庙",
+    "寺廟",
+    "寺",
+    "Temple"
+  ],
+  [
+    "神社",
+    "神社",
+    "神社",
+    "Shrine"
+  ],
+  [
+    "教堂",
+    "教堂",
+    "教会",
+    "Church"
+  ],
+  [
+    "基督教堂",
+    "基督教堂",
+    "キリスト教会",
+    "Christian church"
+  ],
+  [
+    "图书馆",
+    "圖書館",
+    "図書館",
+    "Library"
+  ],
+  [
+    "公寓楼",
+    "公寓樓",
+    "集合住宅",
+    "Apartment building"
+  ],
+  [
+    "旅馆",
+    "旅館",
+    "旅館",
+    "Inn"
+  ],
+  [
+    "酒吧",
+    "酒吧",
+    "バー",
+    "Bar"
+  ],
+  [
+    "赌场",
+    "賭場",
+    "カジノ",
+    "Casino"
+  ],
+  [
+    "大都市区",
+    "大都市區",
+    "大都市",
+    "Metropolitan area"
+  ],
+  [
+    "墓地",
+    "墓地",
+    "墓地",
+    "Cemetery"
+  ],
+  [
+    "鬼屋",
+    "鬼屋",
+    "幽霊屋敷",
+    "Haunted house"
+  ],
+  [
+    "住所里",
+    "住所里",
+    "自宅",
+    "At home"
+  ],
+  [
+    "西方风格城堡",
+    "西方風格城堡",
+    "西洋風の城",
+    "Western-style castle"
+  ],
+  [
+    "西方风格庄园",
+    "西方風格莊園",
+    "洋館",
+    "Western-style mansion"
+  ],
+  [
+    "亚洲风格庄园",
+    "亞洲風格莊園",
+    "アジア風の屋敷",
+    "Asian-style mansion"
+  ],
+  [
+    "夏天",
+    "夏天",
+    "夏",
+    "Summer"
+  ],
+  [
+    "春天",
+    "春天",
+    "春",
+    "Spring"
+  ],
+  [
+    "秋天",
+    "秋天",
+    "秋",
+    "Autumn"
+  ],
+  [
+    "冬天",
+    "冬天",
+    "冬",
+    "Winter"
+  ],
+  [
+    "雪",
+    "雪",
+    "雪",
+    "Snow"
+  ],
+  [
+    "樱花",
+    "櫻花",
+    "桜",
+    "Cherry blossoms"
+  ],
+  [
+    "节日",
+    "節日",
+    "祭り",
+    "Festival"
+  ],
+  [
+    "情人节",
+    "情人節",
+    "バレンタイン",
+    "Valentine's Day"
+  ],
+  [
+    "假日季",
+    "假日季",
+    "ホリデーシーズン",
+    "Holiday season"
+  ],
+  [
+    "战国时期",
+    "戰國時期",
+    "戦国時代",
+    "Sengoku period"
+  ],
+  [
+    "昭和时代",
+    "昭和時代",
+    "昭和時代",
+    "Showa era"
+  ],
+  [
+    "平成时代",
+    "平成時代",
+    "平成時代",
+    "Heisei era"
+  ],
+  [
+    "令和时代",
+    "令和時代",
+    "令和時代",
+    "Reiwa era"
+  ],
+  [
+    "80年代",
+    "80年代",
+    "1980年代",
+    "1980s"
+  ],
+  [
+    "2000年代",
+    "2000年代",
+    "2000年代",
+    "2000s"
+  ],
+  [
+    "2010年代",
+    "2010年代",
+    "2010年代",
+    "2010s"
+  ],
+  [
+    "音乐主题",
+    "音樂主題",
+    "音楽がテーマ",
+    "Music theme"
+  ],
+  [
+    "音乐环境",
+    "音樂環境",
+    "音楽に関する舞台",
+    "Musical setting"
+  ],
+  [
+    "制服",
+    "制服",
+    "制服",
+    "Uniforms"
+  ],
+  [
+    "学生",
+    "學生",
+    "学生",
+    "Students"
+  ],
+  [
+    "少女",
+    "少女",
+    "少女",
+    "Young women"
+  ],
+  [
+    "女王/公主",
+    "女王/公主",
+    "女王・姫",
+    "Queens / princesses"
+  ],
+  [
+    "人外娘/魔物娘",
+    "人外娘/魔物娘",
+    "人外ヒロイン",
+    "Monster girls"
+  ],
+  [
+    "傲娇",
+    "傲嬌",
+    "ツンデレ",
+    "Tsundere"
+  ],
+  [
+    "天然呆",
+    "天然呆",
+    "天然",
+    "Airhead"
+  ],
+  [
+    "大小姐",
+    "大小姐",
+    "お嬢様",
+    "Rich girl"
+  ],
+  [
+    "主从/主仆",
+    "主從/主仆",
+    "主従",
+    "Master / servant"
+  ],
+  [
+    "主人与仆人",
+    "主人與仆人",
+    "主人と使用人",
+    "Master and servant"
+  ],
+  [
+    "男性朋友",
+    "男性朋友",
+    "男友達",
+    "Male friends"
+  ],
+  [
+    "女性朋友",
+    "女性朋友",
+    "女友達",
+    "Female friends"
+  ],
+  [
+    "兼职工作",
+    "兼職工作",
+    "アルバイト",
+    "Part-time work"
+  ],
+  [
+    "债务",
+    "債務",
+    "借金",
+    "Debt"
+  ],
+  [
+    "包办婚姻",
+    "包辦婚姻",
+    "政略結婚",
+    "Arranged marriage"
+  ],
+  [
+    "同居",
+    "同居",
+    "同居",
+    "Cohabitation"
+  ],
+  [
+    "同窗会",
+    "同窗會",
+    "同窓会",
+    "School reunion"
+  ],
+  [
+    "校友回归",
+    "校友回歸",
+    "卒業生の帰還",
+    "Returning alumni"
+  ],
+  [
+    "家庭间纷争",
+    "家庭間紛爭",
+    "家族間の争い",
+    "Family conflict"
+  ],
+  [
+    "感情危机",
+    "感情危機",
+    "恋愛の危機",
+    "Relationship crisis"
+  ],
+  [
+    "缓慢升温的恋情",
+    "緩慢升溫的戀情",
+    "ゆっくり育つ恋",
+    "Slow-burn romance"
+  ],
+  [
+    "禁忌之爱",
+    "禁忌之愛",
+    "禁断の恋",
+    "Forbidden love"
+  ],
+  [
+    "兄弟姐妹恋情",
+    "兄弟姐妹戀情",
+    "兄弟姉妹の恋愛",
+    "Sibling romance"
+  ],
+  [
+    "堂兄弟姐妹恋情",
+    "堂兄弟姐妹戀情",
+    "いとこ同士の恋愛",
+    "Cousin romance"
+  ],
+  [
+    "跨种族/跨物种恋情",
+    "跨種族/跨物種戀情",
+    "異種族間の恋愛",
+    "Interspecies romance"
+  ],
+  [
+    "战斗",
+    "戰斗",
+    "戦闘",
+    "Combat"
+  ],
+  [
+    "智斗",
+    "智斗",
+    "頭脳戦",
+    "Battle of wits"
+  ],
+  [
+    "决斗",
+    "決斗",
+    "決闘",
+    "Duels"
+  ],
+  [
+    "用剑战斗",
+    "用劍戰斗",
+    "剣による戦闘",
+    "Sword combat"
+  ],
+  [
+    "刀/匕首战斗",
+    "刀/匕首戰斗",
+    "ナイフによる戦闘",
+    "Knife combat"
+  ],
+  [
+    "手枪战斗",
+    "手槍戰斗",
+    "拳銃による戦闘",
+    "Handgun combat"
+  ],
+  [
+    "射箭战斗",
+    "射箭戰斗",
+    "弓による戦闘",
+    "Archery combat"
+  ],
+  [
+    "徒手战斗",
+    "徒手戰斗",
+    "格闘",
+    "Unarmed combat"
+  ],
+  [
+    "用矛战斗",
+    "用矛戰斗",
+    "槍による戦闘",
+    "Spear combat"
+  ],
+  [
+    "魔法/超能力战斗",
+    "魔法/超能力戰斗",
+    "魔法・超能力による戦闘",
+    "Magic / psychic combat"
+  ],
+  [
+    "个人武装战斗",
+    "個人武裝戰斗",
+    "武装戦闘",
+    "Armed combat"
+  ],
+  [
+    "大逃杀",
+    "大逃殺",
+    "バトルロイヤル",
+    "Battle royale"
+  ],
+  [
+    "凶杀",
+    "兇殺",
+    "殺人",
+    "Murder"
+  ],
+  [
+    "暴力",
+    "暴力",
+    "暴力",
+    "Violence"
+  ],
+  [
+    "监禁",
+    "監禁",
+    "監禁",
+    "Confinement"
+  ],
+  [
+    "绑架",
+    "綁架",
+    "誘拐",
+    "Kidnapping"
+  ],
+  [
+    "敲诈勒索",
+    "敲詐勒索",
+    "脅迫",
+    "Blackmail"
+  ],
+  [
+    "赌博",
+    "賭博",
+    "賭博",
+    "Gambling"
+  ],
+  [
+    "侦探工作",
+    "偵探工作",
+    "探偵活動",
+    "Detective work"
+  ],
+  [
+    "竞赛",
+    "競賽",
+    "競争",
+    "Competition"
+  ],
+  [
+    "竞技场",
+    "競技場",
+    "競技場",
+    "Arena"
+  ],
+  [
+    "互联网",
+    "互聯網",
+    "インターネット",
+    "Internet"
+  ],
+  [
+    "社交网络服务",
+    "社交網絡服務",
+    "SNS",
+    "Social networks"
+  ],
+  [
+    "推特",
+    "推特",
+    "Twitter",
+    "Twitter"
+  ],
+  [
+    "漫展",
+    "漫展",
+    "同人イベント",
+    "Fan convention"
+  ],
+  [
+    "同人",
+    "同人",
+    "同人",
+    "Doujin"
+  ],
+  [
+    "同人小说",
+    "同人小說",
+    "同人小説",
+    "Doujin novel"
+  ],
+  [
+    "恶搞",
+    "惡搞",
+    "パロディ",
+    "Parody"
+  ],
+  [
+    "闹剧",
+    "鬧劇",
+    "ドタバタ喜劇",
+    "Farce"
+  ],
+  [
+    "打破第四面墙",
+    "打破第四面墻",
+    "第四の壁を破る",
+    "Breaking the fourth wall"
+  ],
+  [
+    "故事从中间开始",
+    "故事從中間開始",
+    "物語の途中から始まる",
+    "In medias res"
+  ],
+  [
+    "第三人称叙事",
+    "第三人稱敘事",
+    "三人称視点",
+    "Third-person narration"
+  ],
+  [
+    "叙述他人的思维",
+    "敘述他人的思維",
+    "他者の内心描写",
+    "Other characters' thoughts"
+  ],
+  [
+    "大段说明",
+    "大段說明",
+    "長い説明",
+    "Exposition"
+  ],
+  [
+    "单元事件故事",
+    "單元事件故事",
+    "エピソード形式",
+    "Episodic story"
+  ],
+  [
+    "多线解密",
+    "多線解密",
+    "複数ルートで謎を解く",
+    "Multiple-route mystery"
+  ],
+  [
+    "单结局",
+    "單結局",
+    "単一エンディング",
+    "Single ending"
+  ],
+  [
+    "唯一真结局",
+    "唯一真結局",
+    "唯一のトゥルーエンド",
+    "Single true ending"
+  ],
+  [
+    "多个真结局",
+    "多個真結局",
+    "複数のトゥルーエンド",
+    "Multiple true endings"
+  ],
+  [
+    "只有GoodEnd",
+    "只有GoodEnd",
+    "グッドエンドのみ",
+    "Only good endings"
+  ],
+  [
+    "只有一个坏结局",
+    "只有一個壞結局",
+    "バッドエンドが一つ",
+    "One bad ending"
+  ],
+  [
+    "多于七个结局",
+    "多于七個結局",
+    "エンディングが8種類以上",
+    "More than seven endings"
+  ],
+  [
+    "阶梯结构",
+    "階梯結構",
+    "階段型ルート構造",
+    "Ladder structure"
+  ],
+  [
+    "长共同路线",
+    "長共同路線",
+    "長い共通ルート",
+    "Long common route"
+  ],
+  [
+    "短共同路线",
+    "短共同路線",
+    "短い共通ルート",
+    "Short common route"
+  ],
+  [
+    "仅简短的分支路线",
+    "僅簡短的分支路線",
+    "短い分岐ルート",
+    "Short branching routes"
+  ],
+  [
+    "无分支/选项无影响",
+    "無分支/選項無影響",
+    "分岐なし",
+    "No branching"
+  ],
+  [
+    "选项少",
+    "選項少",
+    "選択肢が少ない",
+    "Few choices"
+  ],
+  [
+    "无意义的选项",
+    "無意義的選項",
+    "意味のない選択肢",
+    "Meaningless choices"
+  ],
+  [
+    "虚假选择",
+    "虛假選擇",
+    "見せかけの選択肢",
+    "False choices"
+  ],
+  [
+    "盲目选择",
+    "盲目選擇",
+    "結果が不明な選択肢",
+    "Blind choices"
+  ],
+  [
+    "拥有4个或更多选项的选择",
+    "擁有4個或更多選項的選擇",
+    "4択以上の選択肢",
+    "Four or more options"
+  ],
+  [
+    "强制游玩顺序",
+    "強制游玩順序",
+    "ルート順固定",
+    "Enforced route order"
+  ],
+  [
+    "可解锁路线",
+    "可解鎖路線",
+    "解放式ルート",
+    "Unlockable routes"
+  ],
+  [
+    "可解锁画廊",
+    "可解鎖畫廊",
+    "解放式ギャラリー",
+    "Unlockable gallery"
+  ],
+  [
+    "可解锁奖励内容",
+    "可解鎖獎勵內容",
+    "解放式おまけ",
+    "Unlockable extras"
+  ],
+  [
+    "内置攻略",
+    "內置攻略",
+    "内蔵攻略",
+    "Built-in walkthrough"
+  ],
+  [
+    "内置百科全书",
+    "內置百科全書",
+    "内蔵用語集",
+    "Built-in encyclopedia"
+  ],
+  [
+    "游戏时间计数器",
+    "游戲時間計數器",
+    "プレイ時間表示",
+    "Playtime counter"
+  ],
+  [
+    "日期显示",
+    "日期顯示",
+    "日付表示",
+    "Date display"
+  ],
+  [
+    "完成状态指示器",
+    "完成狀態指示器",
+    "達成状況表示",
+    "Completion indicator"
+  ],
+  [
+    "结局收集列表",
+    "結局收集列表",
+    "エンディング一覧",
+    "Ending checklist"
+  ],
+  [
+    "工作人员评论",
+    "工作人員評論",
+    "スタッフコメント",
+    "Staff commentary"
+  ],
+  [
+    "已读文本标记",
+    "已讀文本標記",
+    "既読表示",
+    "Read-text marking"
+  ],
+  [
+    "标记已选择选项",
+    "標記已選擇選項",
+    "選択済み選択肢表示",
+    "Chosen-option marking"
+  ],
+  [
+    "语音保存",
+    "語音保存",
+    "ボイス保存",
+    "Voice bookmarks"
+  ],
+  [
+    "有配音的主人公",
+    "有配音的主人公",
+    "主人公ボイス",
+    "Voiced protagonist"
+  ],
+  [
+    "有声叙述",
+    "有聲敘述",
+    "ナレーションボイス",
+    "Voiced narration"
+  ],
+  [
+    "有声思维",
+    "有聲思維",
+    "内心ボイス",
+    "Voiced thoughts"
+  ],
+  [
+    "环境声音",
+    "環境聲音",
+    "環境音",
+    "Ambient sounds"
+  ],
+  [
+    "音轨显示",
+    "音軌顯示",
+    "曲名表示",
+    "Current track display"
+  ],
+  [
+    "老板键",
+    "老板鍵",
+    "ボスが来たキー",
+    "Boss key"
+  ],
+  [
+    "跳转到下一场景",
+    "跳轉到下一場景",
+    "次の場面へスキップ",
+    "Skip to next scene"
+  ],
+  [
+    "跳转到上一场景",
+    "跳轉到上一場景",
+    "前の場面へ移動",
+    "Return to previous scene"
+  ],
+  [
+    "跳转到下一个选择",
+    "跳轉到下一個選擇",
+    "次の選択肢へスキップ",
+    "Skip to next choice"
+  ],
+  [
+    "跳转到选择",
+    "跳轉到選擇",
+    "選択肢へ移動",
+    "Jump to choice"
+  ],
+  [
+    "跳转到未读部分",
+    "跳轉到未讀部分",
+    "未読へスキップ",
+    "Skip to unread text"
+  ],
+  [
+    "快进跳跃功能",
+    "快進跳躍功能",
+    "早送りジャンプ",
+    "Fast-forward jump"
+  ],
+  [
+    "文本占据大部分画面",
+    "文本占據大部分畫面",
+    "画面全体のテキスト",
+    "Text over most of the screen"
+  ],
+  [
+    "浮动的文本框",
+    "浮動的文本框",
+    "浮遊テキストボックス",
+    "Floating text box"
+  ],
+  [
+    "多样的文本框",
+    "多樣的文本框",
+    "複数のテキストボックス",
+    "Multiple text box styles"
+  ],
+  [
+    "姓名彩色标识",
+    "姓名彩色標識",
+    "名前の色分け",
+    "Color-coded names"
+  ],
+  [
+    "立绘查看器",
+    "立繪查看器",
+    "立ち絵鑑賞",
+    "Sprite viewer"
+  ],
+  [
+    "照片背景",
+    "照片背景",
+    "写真背景",
+    "Photographic backgrounds"
+  ],
+  [
+    "动画结局",
+    "動畫結局",
+    "アニメーションエンディング",
+    "Animated ending"
+  ],
+  [
+    "动态CG",
+    "動態CG",
+    "動くCG",
+    "Animated CGs"
+  ],
+  [
+    "Q版CG",
+    "Q版CG",
+    "SDのCG",
+    "Chibi CGs"
+  ],
+  [
+    "含有 SD CG",
+    "含有 SD CG",
+    "SDのCG",
+    "Chibi CGs"
+  ],
+  [
+    "大量事件CG",
+    "大量事件CG",
+    "イベントCGが多い",
+    "Many event CGs"
+  ],
+  [
+    "大量角色立绘",
+    "大量角色立繪",
+    "立ち絵が多い",
+    "Many character sprites"
+  ],
+  [
+    "多个开场动画",
+    "多個開場動畫",
+    "複数のオープニング",
+    "Multiple opening movies"
+  ],
+  [
+    "多样的结尾曲",
+    "多樣的結尾曲",
+    "複数のエンディング曲",
+    "Multiple ending songs"
+  ],
+  [
+    "多种标题画面",
+    "多種標題畫面",
+    "複数のタイトル画面",
+    "Multiple title screens"
+  ],
+  [
+    "非原创图",
+    "非原創圖",
+    "素材画像",
+    "Stock artwork"
+  ],
+  [
+    "汉化",
+    "漢化",
+    "中国語翻訳",
+    "Chinese translation"
+  ],
+  [
+    "AI汉化",
+    "AI漢化",
+    "AIによる中国語翻訳",
+    "AI Chinese translation"
+  ],
+  [
+    "游戏性",
+    "游戲性",
+    "ゲーム性",
+    "Gameplay"
+  ],
+  [
+    "角色扮演游戏（RPG）",
+    "角色扮演游戲（RPG）",
+    "ロールプレイングゲーム",
+    "Role-playing game"
+  ],
+  [
+    "地牢探险游戏（迷宫）",
+    "地牢探險游戲（迷宮）",
+    "ダンジョン探索",
+    "Dungeon crawler"
+  ],
+  [
+    "R18",
+    "R18",
+    "R18",
+    "R18"
+  ],
+  [
+    "RPG",
+    "RPG",
+    "RPG",
+    "RPG"
+  ],
+  [
+    "FD",
+    "FD",
+    "ファンディスク",
+    "Fan disc"
+  ],
+  [
+    "初体验",
+    "初體驗",
+    "初体験",
+    "First experience"
+  ],
+  [
+    "色情内容",
+    "色情內容",
+    "性的描写",
+    "Sexual content"
+  ],
+  [
+    "少量色情内容",
+    "少量色情內容",
+    "性的描写が少ない",
+    "Limited sexual content"
+  ],
+  [
+    "大量色情内容",
+    "大量色情內容",
+    "性的描写が多い",
+    "Frequent sexual content"
+  ],
+  [
+    "纯文字色情内容",
+    "純文字色情內容",
+    "文章のみの性的描写",
+    "Text-only sexual content"
+  ],
+  [
+    "性场景回忆",
+    "性場景回憶",
+    "性的シーン回想",
+    "Sexual scene replay"
+  ],
+  [
+    "裸体过滤器",
+    "裸體過濾器",
+    "裸体表示切替",
+    "Nudity filter"
+  ],
+  [
+    "游戏内色情内容开关",
+    "游戲內色情內容開關",
+    "性的描写の切替",
+    "Sexual content toggle"
+  ],
+  [
+    "后期色情内容",
+    "后期色情內容",
+    "終盤の性的描写",
+    "Late sexual content"
+  ],
+  [
+    "游戏前期出现色情内容",
+    "游戲前期出現色情內容",
+    "序盤の性的描写",
+    "Early sexual content"
+  ],
+  [
+    "性暗示",
+    "性暗示",
+    "性的な示唆",
+    "Sexual innuendo"
+  ],
+  [
+    "初中生女主角",
+    "初中生女主角",
+    "中学生ヒロイン",
+    "Middle school heroine"
+  ],
+  [
+    "小学生女主角",
+    "小學生女主角",
+    "小学生ヒロイン",
+    "Elementary school heroine"
+  ],
+  [
+    "萝莉女主角",
+    "蘿莉女主角",
+    "小柄な幼いヒロイン",
+    "Small-statured young heroine"
+  ],
+  [
+    "永生的女主角",
+    "永生的女主角",
+    "不老不死のヒロイン",
+    "Immortal heroine"
+  ],
+  [
+    "永生的男主角",
+    "永生的男主角",
+    "不老不死の男性攻略対象",
+    "Immortal male lead"
+  ],
+  [
+    "永生的主人公",
+    "永生的主人公",
+    "不老不死の主人公",
+    "Immortal protagonist"
+  ],
+  [
+    "永生的配角",
+    "永生的配角",
+    "不老不死の脇役",
+    "Immortal supporting character"
+  ],
+  [
+    "永生女主角",
+    "永生女主角",
+    "不老不死のヒロイン",
+    "Immortal heroine"
+  ],
+  [
+    "永生男主角",
+    "永生男主角",
+    "不老不死の男性攻略対象",
+    "Immortal male lead"
+  ],
+  [
+    "永生主人公",
+    "永生主人公",
+    "不老不死の主人公",
+    "Immortal protagonist"
+  ],
+  [
+    "永生配角",
+    "永生配角",
+    "不老不死の脇役",
+    "Immortal supporting character"
+  ],
+  [
+    "歌手女主角",
+    "歌手女主角",
+    "歌手のヒロイン",
+    "Singer heroine"
+  ],
+  [
+    "歌手男主角",
+    "歌手男主角",
+    "歌手の男性攻略対象",
+    "Singer male lead"
+  ],
+  [
+    "歌手主人公",
+    "歌手主人公",
+    "歌手の主人公",
+    "Singer protagonist"
+  ],
+  [
+    "歌手配角",
+    "歌手配角",
+    "歌手の脇役",
+    "Singer supporting character"
+  ],
+  [
+    "音乐家女主角",
+    "音樂家女主角",
+    "音楽家のヒロイン",
+    "Musician heroine"
+  ],
+  [
+    "音乐家男主角",
+    "音樂家男主角",
+    "音楽家の男性攻略対象",
+    "Musician male lead"
+  ],
+  [
+    "音乐家主人公",
+    "音樂家主人公",
+    "音楽家の主人公",
+    "Musician protagonist"
+  ],
+  [
+    "音乐家配角",
+    "音樂家配角",
+    "音楽家の脇役",
+    "Musician supporting character"
+  ],
+  [
+    "不良女主角",
+    "不良女主角",
+    "不良のヒロイン",
+    "Delinquent heroine"
+  ],
+  [
+    "不良男主角",
+    "不良男主角",
+    "不良の男性攻略対象",
+    "Delinquent male lead"
+  ],
+  [
+    "不良主人公",
+    "不良主人公",
+    "不良の主人公",
+    "Delinquent protagonist"
+  ],
+  [
+    "不良配角",
+    "不良配角",
+    "不良の脇役",
+    "Delinquent supporting character"
+  ],
+  [
+    "戴眼镜女主角",
+    "戴眼鏡女主角",
+    "眼鏡のヒロイン",
+    "Glasses-wearing heroine"
+  ],
+  [
+    "戴眼镜男主角",
+    "戴眼鏡男主角",
+    "眼鏡の男性攻略対象",
+    "Glasses-wearing male lead"
+  ],
+  [
+    "戴眼镜主人公",
+    "戴眼鏡主人公",
+    "眼鏡の主人公",
+    "Glasses-wearing protagonist"
+  ],
+  [
+    "戴眼镜配角",
+    "戴眼鏡配角",
+    "眼鏡の脇役",
+    "Glasses-wearing supporting character"
+  ],
+  [
+    "眼镜娘女主角",
+    "眼鏡娘女主角",
+    "眼鏡のヒロイン",
+    "Glasses-wearing heroine"
+  ],
+  [
+    "眼镜娘男主角",
+    "眼鏡娘男主角",
+    "眼鏡の男性攻略対象",
+    "Glasses-wearing male lead"
+  ],
+  [
+    "眼镜娘主人公",
+    "眼鏡娘主人公",
+    "眼鏡の主人公",
+    "Glasses-wearing protagonist"
+  ],
+  [
+    "眼镜娘配角",
+    "眼鏡娘配角",
+    "眼鏡の脇役",
+    "Glasses-wearing supporting character"
+  ],
+  [
+    "双性恋女主角",
+    "雙性戀女主角",
+    "バイセクシュアルのヒロイン",
+    "Bisexual heroine"
+  ],
+  [
+    "双性恋男主角",
+    "雙性戀男主角",
+    "バイセクシュアルの男性攻略対象",
+    "Bisexual male lead"
+  ],
+  [
+    "双性恋主人公",
+    "雙性戀主人公",
+    "バイセクシュアルの主人公",
+    "Bisexual protagonist"
+  ],
+  [
+    "双性恋配角",
+    "雙性戀配角",
+    "バイセクシュアルの脇役",
+    "Bisexual supporting character"
+  ],
+  [
+    "男性女主角",
+    "男性女主角",
+    "男性のヒロイン",
+    "Male heroine"
+  ],
+  [
+    "男性男主角",
+    "男性男主角",
+    "男性の男性攻略対象",
+    "Male male lead"
+  ],
+  [
+    "男性主人公",
+    "男性主人公",
+    "男性の主人公",
+    "Male protagonist"
+  ],
+  [
+    "男性配角",
+    "男性配角",
+    "男性の脇役",
+    "Male supporting character"
+  ],
+  [
+    "女性女主角",
+    "女性女主角",
+    "女性のヒロイン",
+    "Female heroine"
+  ],
+  [
+    "女性男主角",
+    "女性男主角",
+    "女性の男性攻略対象",
+    "Female male lead"
+  ],
+  [
+    "女性主人公",
+    "女性主人公",
+    "女性の主人公",
+    "Female protagonist"
+  ],
+  [
+    "女性配角",
+    "女性配角",
+    "女性の脇役",
+    "Female supporting character"
+  ],
+  [
+    "没有感情的女主角",
+    "沒有感情的女主角",
+    "感情を表さないヒロイン",
+    "Emotionless heroine"
+  ],
+  [
+    "没有感情的男主角",
+    "沒有感情的男主角",
+    "感情を表さない男性攻略対象",
+    "Emotionless male lead"
+  ],
+  [
+    "没有感情的主人公",
+    "沒有感情的主人公",
+    "感情を表さない主人公",
+    "Emotionless protagonist"
+  ],
+  [
+    "没有感情的配角",
+    "沒有感情的配角",
+    "感情を表さない脇役",
+    "Emotionless supporting character"
+  ],
+  [
+    "没有感情女主角",
+    "沒有感情女主角",
+    "感情を表さないヒロイン",
+    "Emotionless heroine"
+  ],
+  [
+    "没有感情男主角",
+    "沒有感情男主角",
+    "感情を表さない男性攻略対象",
+    "Emotionless male lead"
+  ],
+  [
+    "没有感情主人公",
+    "沒有感情主人公",
+    "感情を表さない主人公",
+    "Emotionless protagonist"
+  ],
+  [
+    "没有感情配角",
+    "沒有感情配角",
+    "感情を表さない脇役",
+    "Emotionless supporting character"
+  ],
+  [
+    "三无女主角",
+    "三無女主角",
+    "感情を表さないヒロイン",
+    "Emotionless heroine"
+  ],
+  [
+    "三无男主角",
+    "三無男主角",
+    "感情を表さない男性攻略対象",
+    "Emotionless male lead"
+  ],
+  [
+    "三无主人公",
+    "三無主人公",
+    "感情を表さない主人公",
+    "Emotionless protagonist"
+  ],
+  [
+    "三无配角",
+    "三無配角",
+    "感情を表さない脇役",
+    "Emotionless supporting character"
+  ],
+  [
+    "滑稽女主角",
+    "滑稽女主角",
+    "滑稽なヒロイン",
+    "Comical heroine"
+  ],
+  [
+    "滑稽男主角",
+    "滑稽男主角",
+    "滑稽な男性攻略対象",
+    "Comical male lead"
+  ],
+  [
+    "滑稽主人公",
+    "滑稽主人公",
+    "滑稽な主人公",
+    "Comical protagonist"
+  ],
+  [
+    "滑稽配角",
+    "滑稽配角",
+    "滑稽な脇役",
+    "Comical supporting character"
+  ],
+  [
+    "笨蛋系女主角",
+    "笨蛋系女主角",
+    "おバカなヒロイン",
+    "Idiot heroine"
+  ],
+  [
+    "笨蛋系男主角",
+    "笨蛋系男主角",
+    "おバカな男性攻略対象",
+    "Idiot male lead"
+  ],
+  [
+    "笨蛋系主人公",
+    "笨蛋系主人公",
+    "おバカな主人公",
+    "Idiot protagonist"
+  ],
+  [
+    "笨蛋系配角",
+    "笨蛋系配角",
+    "おバカな脇役",
+    "Idiot supporting character"
+  ],
+  [
+    "策略家女主角",
+    "策略家女主角",
+    "策士のヒロイン",
+    "Strategist heroine"
+  ],
+  [
+    "策略家男主角",
+    "策略家男主角",
+    "策士の男性攻略対象",
+    "Strategist male lead"
+  ],
+  [
+    "策略家主人公",
+    "策略家主人公",
+    "策士の主人公",
+    "Strategist protagonist"
+  ],
+  [
+    "策略家配角",
+    "策略家配角",
+    "策士の脇役",
+    "Strategist supporting character"
+  ],
+  [
+    "双马尾女主角",
+    "雙馬尾女主角",
+    "ツインテールのヒロイン",
+    "Twin-tailed heroine"
+  ],
+  [
+    "双马尾男主角",
+    "雙馬尾男主角",
+    "ツインテールの男性攻略対象",
+    "Twin-tailed male lead"
+  ],
+  [
+    "双马尾主人公",
+    "雙馬尾主人公",
+    "ツインテールの主人公",
+    "Twin-tailed protagonist"
+  ],
+  [
+    "双马尾配角",
+    "雙馬尾配角",
+    "ツインテールの脇役",
+    "Twin-tailed supporting character"
+  ],
+  [
+    "白毛女主角",
+    "白毛女主角",
+    "白髪のヒロイン",
+    "White-haired heroine"
+  ],
+  [
+    "白毛男主角",
+    "白毛男主角",
+    "白髪の男性攻略対象",
+    "White-haired male lead"
+  ],
+  [
+    "白毛主人公",
+    "白毛主人公",
+    "白髪の主人公",
+    "White-haired protagonist"
+  ],
+  [
+    "白毛配角",
+    "白毛配角",
+    "白髪の脇役",
+    "White-haired supporting character"
+  ],
+  [
+    "白发女主角",
+    "白發女主角",
+    "白髪のヒロイン",
+    "White-haired heroine"
+  ],
+  [
+    "白发男主角",
+    "白發男主角",
+    "白髪の男性攻略対象",
+    "White-haired male lead"
+  ],
+  [
+    "白发主人公",
+    "白發主人公",
+    "白髪の主人公",
+    "White-haired protagonist"
+  ],
+  [
+    "白发配角",
+    "白發配角",
+    "白髪の脇役",
+    "White-haired supporting character"
+  ],
+  [
+    "黑发女主角",
+    "黑發女主角",
+    "黒髪のヒロイン",
+    "Black-haired heroine"
+  ],
+  [
+    "黑发男主角",
+    "黑發男主角",
+    "黒髪の男性攻略対象",
+    "Black-haired male lead"
+  ],
+  [
+    "黑发主人公",
+    "黑發主人公",
+    "黒髪の主人公",
+    "Black-haired protagonist"
+  ],
+  [
+    "黑发配角",
+    "黑發配角",
+    "黒髪の脇役",
+    "Black-haired supporting character"
+  ],
+  [
+    "金发女主角",
+    "金發女主角",
+    "金髪のヒロイン",
+    "Blond heroine"
+  ],
+  [
+    "金发男主角",
+    "金發男主角",
+    "金髪の男性攻略対象",
+    "Blond male lead"
+  ],
+  [
+    "金发主人公",
+    "金發主人公",
+    "金髪の主人公",
+    "Blond protagonist"
+  ],
+  [
+    "金发配角",
+    "金發配角",
+    "金髪の脇役",
+    "Blond supporting character"
+  ],
+  [
+    "长发女主角",
+    "長發女主角",
+    "長髪のヒロイン",
+    "Long-haired heroine"
+  ],
+  [
+    "长发男主角",
+    "長發男主角",
+    "長髪の男性攻略対象",
+    "Long-haired male lead"
+  ],
+  [
+    "长发主人公",
+    "長發主人公",
+    "長髪の主人公",
+    "Long-haired protagonist"
+  ],
+  [
+    "长发配角",
+    "長發配角",
+    "長髪の脇役",
+    "Long-haired supporting character"
+  ],
+  [
+    "长统袜女主角",
+    "長統襪女主角",
+    "ストッキング姿のヒロイン",
+    "Stockings-wearing heroine"
+  ],
+  [
+    "长统袜男主角",
+    "長統襪男主角",
+    "ストッキング姿の男性攻略対象",
+    "Stockings-wearing male lead"
+  ],
+  [
+    "长统袜主人公",
+    "長統襪主人公",
+    "ストッキング姿の主人公",
+    "Stockings-wearing protagonist"
+  ],
+  [
+    "长统袜配角",
+    "長統襪配角",
+    "ストッキング姿の脇役",
+    "Stockings-wearing supporting character"
+  ],
+  [
+    "傲娇女主角",
+    "傲嬌女主角",
+    "ツンデレのヒロイン",
+    "Tsundere heroine"
+  ],
+  [
+    "傲娇男主角",
+    "傲嬌男主角",
+    "ツンデレの男性攻略対象",
+    "Tsundere male lead"
+  ],
+  [
+    "傲娇主人公",
+    "傲嬌主人公",
+    "ツンデレの主人公",
+    "Tsundere protagonist"
+  ],
+  [
+    "傲娇配角",
+    "傲嬌配角",
+    "ツンデレの脇役",
+    "Tsundere supporting character"
+  ],
+  [
+    "古典傲娇女主角",
+    "古典傲嬌女主角",
+    "古典的ツンデレのヒロイン",
+    "Classic tsundere heroine"
+  ],
+  [
+    "古典傲娇男主角",
+    "古典傲嬌男主角",
+    "古典的ツンデレの男性攻略対象",
+    "Classic tsundere male lead"
+  ],
+  [
+    "古典傲娇主人公",
+    "古典傲嬌主人公",
+    "古典的ツンデレの主人公",
+    "Classic tsundere protagonist"
+  ],
+  [
+    "古典傲娇配角",
+    "古典傲嬌配角",
+    "古典的ツンデレの脇役",
+    "Classic tsundere supporting character"
+  ],
+  [
+    "现代傲娇女主角",
+    "現代傲嬌女主角",
+    "現代的ツンデレのヒロイン",
+    "Modern tsundere heroine"
+  ],
+  [
+    "现代傲娇男主角",
+    "現代傲嬌男主角",
+    "現代的ツンデレの男性攻略対象",
+    "Modern tsundere male lead"
+  ],
+  [
+    "现代傲娇主人公",
+    "現代傲嬌主人公",
+    "現代的ツンデレの主人公",
+    "Modern tsundere protagonist"
+  ],
+  [
+    "现代傲娇配角",
+    "現代傲嬌配角",
+    "現代的ツンデレの脇役",
+    "Modern tsundere supporting character"
+  ],
+  [
+    "中二病女主角",
+    "中二病女主角",
+    "中二病のヒロイン",
+    "Chuunibyou heroine"
+  ],
+  [
+    "中二病男主角",
+    "中二病男主角",
+    "中二病の男性攻略対象",
+    "Chuunibyou male lead"
+  ],
+  [
+    "中二病主人公",
+    "中二病主人公",
+    "中二病の主人公",
+    "Chuunibyou protagonist"
+  ],
+  [
+    "中二病配角",
+    "中二病配角",
+    "中二病の脇役",
+    "Chuunibyou supporting character"
+  ],
+  [
+    "假小子女主角",
+    "假小子女主角",
+    "ボーイッシュなヒロイン",
+    "Tomboy heroine"
+  ],
+  [
+    "假小子男主角",
+    "假小子男主角",
+    "ボーイッシュな男性攻略対象",
+    "Tomboy male lead"
+  ],
+  [
+    "假小子主人公",
+    "假小子主人公",
+    "ボーイッシュな主人公",
+    "Tomboy protagonist"
+  ],
+  [
+    "假小子配角",
+    "假小子配角",
+    "ボーイッシュな脇役",
+    "Tomboy supporting character"
+  ],
+  [
+    "书呆子女主角",
+    "書呆子女主角",
+    "本好きのヒロイン",
+    "Bookworm heroine"
+  ],
+  [
+    "书呆子男主角",
+    "書呆子男主角",
+    "本好きの男性攻略対象",
+    "Bookworm male lead"
+  ],
+  [
+    "书呆子主人公",
+    "書呆子主人公",
+    "本好きの主人公",
+    "Bookworm protagonist"
+  ],
+  [
+    "书呆子配角",
+    "書呆子配角",
+    "本好きの脇役",
+    "Bookworm supporting character"
+  ],
+  [
+    "体弱女主角",
+    "體弱女主角",
+    "病弱なヒロイン",
+    "Frail heroine"
+  ],
+  [
+    "体弱男主角",
+    "體弱男主角",
+    "病弱な男性攻略対象",
+    "Frail male lead"
+  ],
+  [
+    "体弱主人公",
+    "體弱主人公",
+    "病弱な主人公",
+    "Frail protagonist"
+  ],
+  [
+    "体弱配角",
+    "體弱配角",
+    "病弱な脇役",
+    "Frail supporting character"
+  ],
+  [
+    "作家女主角",
+    "作家女主角",
+    "作家のヒロイン",
+    "Writer heroine"
+  ],
+  [
+    "作家男主角",
+    "作家男主角",
+    "作家の男性攻略対象",
+    "Writer male lead"
+  ],
+  [
+    "作家主人公",
+    "作家主人公",
+    "作家の主人公",
+    "Writer protagonist"
+  ],
+  [
+    "作家配角",
+    "作家配角",
+    "作家の脇役",
+    "Writer supporting character"
+  ],
+  [
+    "教师女主角",
+    "教師女主角",
+    "教師のヒロイン",
+    "Teacher heroine"
+  ],
+  [
+    "教师男主角",
+    "教師男主角",
+    "教師の男性攻略対象",
+    "Teacher male lead"
+  ],
+  [
+    "教师主人公",
+    "教師主人公",
+    "教師の主人公",
+    "Teacher protagonist"
+  ],
+  [
+    "教师配角",
+    "教師配角",
+    "教師の脇役",
+    "Teacher supporting character"
+  ],
+  [
+    "科学家女主角",
+    "科學家女主角",
+    "科学者のヒロイン",
+    "Scientist heroine"
+  ],
+  [
+    "科学家男主角",
+    "科學家男主角",
+    "科学者の男性攻略対象",
+    "Scientist male lead"
+  ],
+  [
+    "科学家主人公",
+    "科學家主人公",
+    "科学者の主人公",
+    "Scientist protagonist"
+  ],
+  [
+    "科学家配角",
+    "科學家配角",
+    "科学者の脇役",
+    "Scientist supporting character"
+  ],
+  [
+    "程序员女主角",
+    "程序員女主角",
+    "プログラマーのヒロイン",
+    "Programmer heroine"
+  ],
+  [
+    "程序员男主角",
+    "程序員男主角",
+    "プログラマーの男性攻略対象",
+    "Programmer male lead"
+  ],
+  [
+    "程序员主人公",
+    "程序員主人公",
+    "プログラマーの主人公",
+    "Programmer protagonist"
+  ],
+  [
+    "程序员配角",
+    "程序員配角",
+    "プログラマーの脇役",
+    "Programmer supporting character"
+  ],
+  [
+    "黑客女主角",
+    "黑客女主角",
+    "ハッカーのヒロイン",
+    "Hacker heroine"
+  ],
+  [
+    "黑客男主角",
+    "黑客男主角",
+    "ハッカーの男性攻略対象",
+    "Hacker male lead"
+  ],
+  [
+    "黑客主人公",
+    "黑客主人公",
+    "ハッカーの主人公",
+    "Hacker protagonist"
+  ],
+  [
+    "黑客配角",
+    "黑客配角",
+    "ハッカーの脇役",
+    "Hacker supporting character"
+  ],
+  [
+    "漫画家女主角",
+    "漫畫家女主角",
+    "漫画家のヒロイン",
+    "Manga artist heroine"
+  ],
+  [
+    "漫画家男主角",
+    "漫畫家男主角",
+    "漫画家の男性攻略対象",
+    "Manga artist male lead"
+  ],
+  [
+    "漫画家主人公",
+    "漫畫家主人公",
+    "漫画家の主人公",
+    "Manga artist protagonist"
+  ],
+  [
+    "漫画家配角",
+    "漫畫家配角",
+    "漫画家の脇役",
+    "Manga artist supporting character"
+  ],
+  [
+    "画家女主角",
+    "畫家女主角",
+    "画家のヒロイン",
+    "Painter heroine"
+  ],
+  [
+    "画家男主角",
+    "畫家男主角",
+    "画家の男性攻略対象",
+    "Painter male lead"
+  ],
+  [
+    "画家主人公",
+    "畫家主人公",
+    "画家の主人公",
+    "Painter protagonist"
+  ],
+  [
+    "画家配角",
+    "畫家配角",
+    "画家の脇役",
+    "Painter supporting character"
+  ],
+  [
+    "艺术家女主角",
+    "藝術家女主角",
+    "芸術家のヒロイン",
+    "Artist heroine"
+  ],
+  [
+    "艺术家男主角",
+    "藝術家男主角",
+    "芸術家の男性攻略対象",
+    "Artist male lead"
+  ],
+  [
+    "艺术家主人公",
+    "藝術家主人公",
+    "芸術家の主人公",
+    "Artist protagonist"
+  ],
+  [
+    "艺术家配角",
+    "藝術家配角",
+    "芸術家の脇役",
+    "Artist supporting character"
+  ],
+  [
+    "声优女主角",
+    "聲優女主角",
+    "声優のヒロイン",
+    "Voice actor heroine"
+  ],
+  [
+    "声优男主角",
+    "聲優男主角",
+    "声優の男性攻略対象",
+    "Voice actor male lead"
+  ],
+  [
+    "声优主人公",
+    "聲優主人公",
+    "声優の主人公",
+    "Voice actor protagonist"
+  ],
+  [
+    "声优配角",
+    "聲優配角",
+    "声優の脇役",
+    "Voice actor supporting character"
+  ],
+  [
+    "服务员女主角",
+    "服務員女主角",
+    "ウェイトレスのヒロイン",
+    "Waitress heroine"
+  ],
+  [
+    "服务员男主角",
+    "服務員男主角",
+    "ウェイトレスの男性攻略対象",
+    "Waitress male lead"
+  ],
+  [
+    "服务员主人公",
+    "服務員主人公",
+    "ウェイトレスの主人公",
+    "Waitress protagonist"
+  ],
+  [
+    "服务员配角",
+    "服務員配角",
+    "ウェイトレスの脇役",
+    "Waitress supporting character"
+  ],
+  [
+    "面包师女主角",
+    "面包師女主角",
+    "パン職人のヒロイン",
+    "Baker heroine"
+  ],
+  [
+    "面包师男主角",
+    "面包師男主角",
+    "パン職人の男性攻略対象",
+    "Baker male lead"
+  ],
+  [
+    "面包师主人公",
+    "面包師主人公",
+    "パン職人の主人公",
+    "Baker protagonist"
+  ],
+  [
+    "面包师配角",
+    "面包師配角",
+    "パン職人の脇役",
+    "Baker supporting character"
+  ],
+  [
+    "学生女主角",
+    "學生女主角",
+    "学生のヒロイン",
+    "Student heroine"
+  ],
+  [
+    "学生男主角",
+    "學生男主角",
+    "学生の男性攻略対象",
+    "Student male lead"
+  ],
+  [
+    "学生主人公",
+    "學生主人公",
+    "学生の主人公",
+    "Student protagonist"
+  ],
+  [
+    "学生配角",
+    "學生配角",
+    "学生の脇役",
+    "Student supporting character"
+  ],
+  [
+    "高中生女主角",
+    "高中生女主角",
+    "高校生のヒロイン",
+    "High school student heroine"
+  ],
+  [
+    "高中生男主角",
+    "高中生男主角",
+    "高校生の男性攻略対象",
+    "High school student male lead"
+  ],
+  [
+    "高中生主人公",
+    "高中生主人公",
+    "高校生の主人公",
+    "High school student protagonist"
+  ],
+  [
+    "高中生配角",
+    "高中生配角",
+    "高校生の脇役",
+    "High school student supporting character"
+  ],
+  [
+    "大学生女主角",
+    "大學生女主角",
+    "大学生のヒロイン",
+    "University student heroine"
+  ],
+  [
+    "大学生男主角",
+    "大學生男主角",
+    "大学生の男性攻略対象",
+    "University student male lead"
+  ],
+  [
+    "大学生主人公",
+    "大學生主人公",
+    "大学生の主人公",
+    "University student protagonist"
+  ],
+  [
+    "大学生配角",
+    "大學生配角",
+    "大学生の脇役",
+    "University student supporting character"
+  ],
+  [
+    "转校生女主角",
+    "轉校生女主角",
+    "転校生のヒロイン",
+    "Transfer student heroine"
+  ],
+  [
+    "转校生男主角",
+    "轉校生男主角",
+    "転校生の男性攻略対象",
+    "Transfer student male lead"
+  ],
+  [
+    "转校生主人公",
+    "轉校生主人公",
+    "転校生の主人公",
+    "Transfer student protagonist"
+  ],
+  [
+    "转校生配角",
+    "轉校生配角",
+    "転校生の脇役",
+    "Transfer student supporting character"
+  ],
+  [
+    "学生会主席男主角",
+    "學生會主席男主角",
+    "生徒会長の男性攻略対象",
+    "Student council president male lead"
+  ],
+  [
+    "学生会主席主人公",
+    "學生會主席主人公",
+    "生徒会長の主人公",
+    "Student council president protagonist"
+  ],
+  [
+    "学生会主席配角",
+    "學生會主席配角",
+    "生徒会長の脇役",
+    "Student council president supporting character"
+  ],
+  [
+    "学生会成员男主角",
+    "學生會成員男主角",
+    "生徒会役員の男性攻略対象",
+    "Student council member male lead"
+  ],
+  [
+    "学生会成员主人公",
+    "學生會成員主人公",
+    "生徒会役員の主人公",
+    "Student council member protagonist"
+  ],
+  [
+    "学生会成员配角",
+    "學生會成員配角",
+    "生徒会役員の脇役",
+    "Student council member supporting character"
+  ],
+  [
+    "学生社团成员女主角",
+    "學生社團成員女主角",
+    "部員のヒロイン",
+    "School club member heroine"
+  ],
+  [
+    "学生社团成员男主角",
+    "學生社團成員男主角",
+    "部員の男性攻略対象",
+    "School club member male lead"
+  ],
+  [
+    "学生社团成员主人公",
+    "學生社團成員主人公",
+    "部員の主人公",
+    "School club member protagonist"
+  ],
+  [
+    "学生社团成员配角",
+    "學生社團成員配角",
+    "部員の脇役",
+    "School club member supporting character"
+  ],
+  [
+    "班长女主角",
+    "班長女主角",
+    "委員長のヒロイン",
+    "Class representative heroine"
+  ],
+  [
+    "班长男主角",
+    "班長男主角",
+    "委員長の男性攻略対象",
+    "Class representative male lead"
+  ],
+  [
+    "班长主人公",
+    "班長主人公",
+    "委員長の主人公",
+    "Class representative protagonist"
+  ],
+  [
+    "班长配角",
+    "班長配角",
+    "委員長の脇役",
+    "Class representative supporting character"
+  ],
+  [
+    "天才女主角",
+    "天才女主角",
+    "天才のヒロイン",
+    "Genius heroine"
+  ],
+  [
+    "天才男主角",
+    "天才男主角",
+    "天才の男性攻略対象",
+    "Genius male lead"
+  ],
+  [
+    "天才主人公",
+    "天才主人公",
+    "天才の主人公",
+    "Genius protagonist"
+  ],
+  [
+    "天才配角",
+    "天才配角",
+    "天才の脇役",
+    "Genius supporting character"
+  ],
+  [
+    "机器人女主角",
+    "機器人女主角",
+    "ロボットのヒロイン",
+    "Robot heroine"
+  ],
+  [
+    "机器人男主角",
+    "機器人男主角",
+    "ロボットの男性攻略対象",
+    "Robot male lead"
+  ],
+  [
+    "机器人主人公",
+    "機器人主人公",
+    "ロボットの主人公",
+    "Robot protagonist"
+  ],
+  [
+    "机器人配角",
+    "機器人配角",
+    "ロボットの脇役",
+    "Robot supporting character"
+  ],
+  [
+    "AI女主角",
+    "AI女主角",
+    "AIのヒロイン",
+    "AI heroine"
+  ],
+  [
+    "AI男主角",
+    "AI男主角",
+    "AIの男性攻略対象",
+    "AI male lead"
+  ],
+  [
+    "AI主人公",
+    "AI主人公",
+    "AIの主人公",
+    "AI protagonist"
+  ],
+  [
+    "AI配角",
+    "AI配角",
+    "AIの脇役",
+    "AI supporting character"
+  ],
+  [
+    "吸血鬼女主角",
+    "吸血鬼女主角",
+    "吸血鬼のヒロイン",
+    "Vampire heroine"
+  ],
+  [
+    "吸血鬼男主角",
+    "吸血鬼男主角",
+    "吸血鬼の男性攻略対象",
+    "Vampire male lead"
+  ],
+  [
+    "吸血鬼主人公",
+    "吸血鬼主人公",
+    "吸血鬼の主人公",
+    "Vampire protagonist"
+  ],
+  [
+    "吸血鬼配角",
+    "吸血鬼配角",
+    "吸血鬼の脇役",
+    "Vampire supporting character"
+  ],
+  [
+    "幽灵女主角",
+    "幽靈女主角",
+    "幽霊のヒロイン",
+    "Ghost heroine"
+  ],
+  [
+    "幽灵男主角",
+    "幽靈男主角",
+    "幽霊の男性攻略対象",
+    "Ghost male lead"
+  ],
+  [
+    "幽灵主人公",
+    "幽靈主人公",
+    "幽霊の主人公",
+    "Ghost protagonist"
+  ],
+  [
+    "幽灵配角",
+    "幽靈配角",
+    "幽霊の脇役",
+    "Ghost supporting character"
+  ],
+  [
+    "天使女主角",
+    "天使女主角",
+    "天使のヒロイン",
+    "Angel heroine"
+  ],
+  [
+    "天使男主角",
+    "天使男主角",
+    "天使の男性攻略対象",
+    "Angel male lead"
+  ],
+  [
+    "天使主人公",
+    "天使主人公",
+    "天使の主人公",
+    "Angel protagonist"
+  ],
+  [
+    "天使配角",
+    "天使配角",
+    "天使の脇役",
+    "Angel supporting character"
+  ],
+  [
+    "法师女主角",
+    "法師女主角",
+    "魔法使いのヒロイン",
+    "Mage heroine"
+  ],
+  [
+    "法师男主角",
+    "法師男主角",
+    "魔法使いの男性攻略対象",
+    "Mage male lead"
+  ],
+  [
+    "法师主人公",
+    "法師主人公",
+    "魔法使いの主人公",
+    "Mage protagonist"
+  ],
+  [
+    "法师配角",
+    "法師配角",
+    "魔法使いの脇役",
+    "Mage supporting character"
+  ],
+  [
+    "女巫女主角",
+    "女巫女主角",
+    "魔女のヒロイン",
+    "Witch heroine"
+  ],
+  [
+    "女巫男主角",
+    "女巫男主角",
+    "魔女の男性攻略対象",
+    "Witch male lead"
+  ],
+  [
+    "女巫主人公",
+    "女巫主人公",
+    "魔女の主人公",
+    "Witch protagonist"
+  ],
+  [
+    "女巫配角",
+    "女巫配角",
+    "魔女の脇役",
+    "Witch supporting character"
+  ],
+  [
+    "巫女女主角",
+    "巫女女主角",
+    "巫女のヒロイン",
+    "Shrine maiden heroine"
+  ],
+  [
+    "巫女男主角",
+    "巫女男主角",
+    "巫女の男性攻略対象",
+    "Shrine maiden male lead"
+  ],
+  [
+    "巫女主人公",
+    "巫女主人公",
+    "巫女の主人公",
+    "Shrine maiden protagonist"
+  ],
+  [
+    "巫女配角",
+    "巫女配角",
+    "巫女の脇役",
+    "Shrine maiden supporting character"
+  ],
+  [
+    "女仆女主角",
+    "女仆女主角",
+    "メイドのヒロイン",
+    "Maid heroine"
+  ],
+  [
+    "女仆男主角",
+    "女仆男主角",
+    "メイドの男性攻略対象",
+    "Maid male lead"
+  ],
+  [
+    "女仆主人公",
+    "女仆主人公",
+    "メイドの主人公",
+    "Maid protagonist"
+  ],
+  [
+    "女仆配角",
+    "女仆配角",
+    "メイドの脇役",
+    "Maid supporting character"
+  ],
+  [
+    "公主女主角",
+    "公主女主角",
+    "姫のヒロイン",
+    "Princess heroine"
+  ],
+  [
+    "公主男主角",
+    "公主男主角",
+    "姫の男性攻略対象",
+    "Princess male lead"
+  ],
+  [
+    "公主主人公",
+    "公主主人公",
+    "姫の主人公",
+    "Princess protagonist"
+  ],
+  [
+    "公主配角",
+    "公主配角",
+    "姫の脇役",
+    "Princess supporting character"
+  ],
+  [
+    "奴隶女主角",
+    "奴隸女主角",
+    "奴隷のヒロイン",
+    "Slave heroine"
+  ],
+  [
+    "奴隶男主角",
+    "奴隸男主角",
+    "奴隷の男性攻略対象",
+    "Slave male lead"
+  ],
+  [
+    "奴隶主人公",
+    "奴隸主人公",
+    "奴隷の主人公",
+    "Slave protagonist"
+  ],
+  [
+    "奴隶配角",
+    "奴隸配角",
+    "奴隷の脇役",
+    "Slave supporting character"
+  ],
+  [
+    "孤儿女主角",
+    "孤兒女主角",
+    "孤児のヒロイン",
+    "Orphaned heroine"
+  ],
+  [
+    "孤儿男主角",
+    "孤兒男主角",
+    "孤児の男性攻略対象",
+    "Orphaned male lead"
+  ],
+  [
+    "孤儿主人公",
+    "孤兒主人公",
+    "孤児の主人公",
+    "Orphaned protagonist"
+  ],
+  [
+    "孤儿配角",
+    "孤兒配角",
+    "孤児の脇役",
+    "Orphaned supporting character"
+  ],
+  [
+    "半孤儿女主角",
+    "半孤兒女主角",
+    "片親のヒロイン",
+    "Single-parent heroine"
+  ],
+  [
+    "半孤儿男主角",
+    "半孤兒男主角",
+    "片親の男性攻略対象",
+    "Single-parent male lead"
+  ],
+  [
+    "半孤儿主人公",
+    "半孤兒主人公",
+    "片親の主人公",
+    "Single-parent protagonist"
+  ],
+  [
+    "半孤儿配角",
+    "半孤兒配角",
+    "片親の脇役",
+    "Single-parent supporting character"
+  ],
+  [
+    "游戏玩家女主角",
+    "游戲玩家女主角",
+    "ゲーマーのヒロイン",
+    "Gamer heroine"
+  ],
+  [
+    "游戏玩家男主角",
+    "游戲玩家男主角",
+    "ゲーマーの男性攻略対象",
+    "Gamer male lead"
+  ],
+  [
+    "游戏玩家主人公",
+    "游戲玩家主人公",
+    "ゲーマーの主人公",
+    "Gamer protagonist"
+  ],
+  [
+    "游戏玩家配角",
+    "游戲玩家配角",
+    "ゲーマーの脇役",
+    "Gamer supporting character"
+  ],
+  [
+    "宅女女主角",
+    "宅女女主角",
+    "オタクのヒロイン",
+    "Otaku heroine"
+  ],
+  [
+    "宅女男主角",
+    "宅女男主角",
+    "オタクの男性攻略対象",
+    "Otaku male lead"
+  ],
+  [
+    "宅女主人公",
+    "宅女主人公",
+    "オタクの主人公",
+    "Otaku protagonist"
+  ],
+  [
+    "宅女配角",
+    "宅女配角",
+    "オタクの脇役",
+    "Otaku supporting character"
+  ],
+  [
+    "宅系女主角",
+    "宅系女主角",
+    "オタクのヒロイン",
+    "Otaku heroine"
+  ],
+  [
+    "宅系男主角",
+    "宅系男主角",
+    "オタクの男性攻略対象",
+    "Otaku male lead"
+  ],
+  [
+    "宅系主人公",
+    "宅系主人公",
+    "オタクの主人公",
+    "Otaku protagonist"
+  ],
+  [
+    "宅系配角",
+    "宅系配角",
+    "オタクの脇役",
+    "Otaku supporting character"
+  ],
+  [
+    "黑帮女主角",
+    "黑幫女主角",
+    "ギャングのヒロイン",
+    "Gangster heroine"
+  ],
+  [
+    "黑帮男主角",
+    "黑幫男主角",
+    "ギャングの男性攻略対象",
+    "Gangster male lead"
+  ],
+  [
+    "黑帮主人公",
+    "黑幫主人公",
+    "ギャングの主人公",
+    "Gangster protagonist"
+  ],
+  [
+    "黑帮配角",
+    "黑幫配角",
+    "ギャングの脇役",
+    "Gangster supporting character"
+  ],
+  [
+    "狙击手女主角",
+    "狙擊手女主角",
+    "狙撃手のヒロイン",
+    "Sniper heroine"
+  ],
+  [
+    "狙击手男主角",
+    "狙擊手男主角",
+    "狙撃手の男性攻略対象",
+    "Sniper male lead"
+  ],
+  [
+    "狙击手主人公",
+    "狙擊手主人公",
+    "狙撃手の主人公",
+    "Sniper protagonist"
+  ],
+  [
+    "狙击手配角",
+    "狙擊手配角",
+    "狙撃手の脇役",
+    "Sniper supporting character"
+  ],
+  [
+    "武术家女主角",
+    "武術家女主角",
+    "武術家のヒロイン",
+    "Martial artist heroine"
+  ],
+  [
+    "武术家男主角",
+    "武術家男主角",
+    "武術家の男性攻略対象",
+    "Martial artist male lead"
+  ],
+  [
+    "武术家主人公",
+    "武術家主人公",
+    "武術家の主人公",
+    "Martial artist protagonist"
+  ],
+  [
+    "武术家配角",
+    "武術家配角",
+    "武術家の脇役",
+    "Martial artist supporting character"
+  ],
+  [
+    "佩剑女主角",
+    "佩劍女主角",
+    "剣を持つヒロイン",
+    "Sword-wielding heroine"
+  ],
+  [
+    "佩剑男主角",
+    "佩劍男主角",
+    "剣を持つ男性攻略対象",
+    "Sword-wielding male lead"
+  ],
+  [
+    "佩剑主人公",
+    "佩劍主人公",
+    "剣を持つ主人公",
+    "Sword-wielding protagonist"
+  ],
+  [
+    "佩剑配角",
+    "佩劍配角",
+    "剣を持つ脇役",
+    "Sword-wielding supporting character"
+  ],
+  [
+    "记者女主角",
+    "記者女主角",
+    "記者のヒロイン",
+    "Journalist heroine"
+  ],
+  [
+    "记者男主角",
+    "記者男主角",
+    "記者の男性攻略対象",
+    "Journalist male lead"
+  ],
+  [
+    "记者主人公",
+    "記者主人公",
+    "記者の主人公",
+    "Journalist protagonist"
+  ],
+  [
+    "记者配角",
+    "記者配角",
+    "記者の脇役",
+    "Journalist supporting character"
+  ],
+  [
+    "间谍女主角",
+    "間諜女主角",
+    "スパイのヒロイン",
+    "Spy heroine"
+  ],
+  [
+    "间谍男主角",
+    "間諜男主角",
+    "スパイの男性攻略対象",
+    "Spy male lead"
+  ],
+  [
+    "间谍主人公",
+    "間諜主人公",
+    "スパイの主人公",
+    "Spy protagonist"
+  ],
+  [
+    "间谍配角",
+    "間諜配角",
+    "スパイの脇役",
+    "Spy supporting character"
+  ],
+  [
+    "大小姐女主角",
+    "大小姐女主角",
+    "お嬢様のヒロイン",
+    "Rich heroine"
+  ],
+  [
+    "大小姐男主角",
+    "大小姐男主角",
+    "お嬢様の男性攻略対象",
+    "Rich male lead"
+  ],
+  [
+    "大小姐主人公",
+    "大小姐主人公",
+    "お嬢様の主人公",
+    "Rich protagonist"
+  ],
+  [
+    "大小姐配角",
+    "大小姐配角",
+    "お嬢様の脇役",
+    "Rich supporting character"
+  ],
+  [
+    "娇羞女主角",
+    "嬌羞女主角",
+    "恥ずかしがりのヒロイン",
+    "Shy heroine"
+  ],
+  [
+    "娇羞男主角",
+    "嬌羞男主角",
+    "恥ずかしがりの男性攻略対象",
+    "Shy male lead"
+  ],
+  [
+    "娇羞主人公",
+    "嬌羞主人公",
+    "恥ずかしがりの主人公",
+    "Shy protagonist"
+  ],
+  [
+    "娇羞配角",
+    "嬌羞配角",
+    "恥ずかしがりの脇役",
+    "Shy supporting character"
+  ],
+  [
+    "害羞的女主角",
+    "害羞的女主角",
+    "恥ずかしがりのヒロイン",
+    "Shy heroine"
+  ],
+  [
+    "害羞的男主角",
+    "害羞的男主角",
+    "恥ずかしがりの男性攻略対象",
+    "Shy male lead"
+  ],
+  [
+    "害羞的主人公",
+    "害羞的主人公",
+    "恥ずかしがりの主人公",
+    "Shy protagonist"
+  ],
+  [
+    "害羞的配角",
+    "害羞的配角",
+    "恥ずかしがりの脇役",
+    "Shy supporting character"
+  ],
+  [
+    "胆小女主角",
+    "膽小女主角",
+    "臆病なヒロイン",
+    "Timid heroine"
+  ],
+  [
+    "胆小男主角",
+    "膽小男主角",
+    "臆病な男性攻略対象",
+    "Timid male lead"
+  ],
+  [
+    "胆小主人公",
+    "膽小主人公",
+    "臆病な主人公",
+    "Timid protagonist"
+  ],
+  [
+    "胆小配角",
+    "膽小配角",
+    "臆病な脇役",
+    "Timid supporting character"
+  ],
+  [
+    "懒惰女主角",
+    "懶惰女主角",
+    "怠惰なヒロイン",
+    "Lazy heroine"
+  ],
+  [
+    "懒惰男主角",
+    "懶惰男主角",
+    "怠惰な男性攻略対象",
+    "Lazy male lead"
+  ],
+  [
+    "懒惰主人公",
+    "懶惰主人公",
+    "怠惰な主人公",
+    "Lazy protagonist"
+  ],
+  [
+    "懒惰配角",
+    "懶惰配角",
+    "怠惰な脇役",
+    "Lazy supporting character"
+  ],
+  [
+    "懒散女主角",
+    "懶散女主角",
+    "怠惰なヒロイン",
+    "Lazy heroine"
+  ],
+  [
+    "懒散男主角",
+    "懶散男主角",
+    "怠惰な男性攻略対象",
+    "Lazy male lead"
+  ],
+  [
+    "懒散主人公",
+    "懶散主人公",
+    "怠惰な主人公",
+    "Lazy protagonist"
+  ],
+  [
+    "懒散配角",
+    "懶散配角",
+    "怠惰な脇役",
+    "Lazy supporting character"
+  ],
+  [
+    "有呆毛的男主角",
+    "有呆毛的男主角",
+    "アホ毛の男性攻略対象",
+    "Ahoge male lead"
+  ],
+  [
+    "有呆毛的主人公",
+    "有呆毛的主人公",
+    "アホ毛の主人公",
+    "Ahoge protagonist"
+  ],
+  [
+    "有呆毛的配角",
+    "有呆毛的配角",
+    "アホ毛の脇役",
+    "Ahoge supporting character"
+  ],
+  [
+    "马尾女主角",
+    "馬尾女主角",
+    "ポニーテールのヒロイン",
+    "Ponytailed heroine"
+  ],
+  [
+    "马尾男主角",
+    "馬尾男主角",
+    "ポニーテールの男性攻略対象",
+    "Ponytailed male lead"
+  ],
+  [
+    "马尾主人公",
+    "馬尾主人公",
+    "ポニーテールの主人公",
+    "Ponytailed protagonist"
+  ],
+  [
+    "马尾配角",
+    "馬尾配角",
+    "ポニーテールの脇役",
+    "Ponytailed supporting character"
+  ],
+  [
+    "双胞胎女主角",
+    "雙胞胎女主角",
+    "双子のヒロイン",
+    "Twin heroine"
+  ],
+  [
+    "双胞胎男主角",
+    "雙胞胎男主角",
+    "双子の男性攻略対象",
+    "Twin male lead"
+  ],
+  [
+    "双胞胎主人公",
+    "雙胞胎主人公",
+    "双子の主人公",
+    "Twin protagonist"
+  ],
+  [
+    "双胞胎配角",
+    "雙胞胎配角",
+    "双子の脇役",
+    "Twin supporting character"
+  ],
+  [
+    "成人女主角",
+    "成人女主角",
+    "成人のヒロイン",
+    "Adult heroine"
+  ],
+  [
+    "成人男主角",
+    "成人男主角",
+    "成人の男性攻略対象",
+    "Adult male lead"
+  ],
+  [
+    "成人主人公",
+    "成人主人公",
+    "成人の主人公",
+    "Adult protagonist"
+  ],
+  [
+    "成人配角",
+    "成人配角",
+    "成人の脇役",
+    "Adult supporting character"
+  ],
+  [
+    "成年女主角",
+    "成年女主角",
+    "成人のヒロイン",
+    "Adult heroine"
+  ],
+  [
+    "成年男主角",
+    "成年男主角",
+    "成人の男性攻略対象",
+    "Adult male lead"
+  ],
+  [
+    "成年主人公",
+    "成年主人公",
+    "成人の主人公",
+    "Adult protagonist"
+  ],
+  [
+    "成年配角",
+    "成年配角",
+    "成人の脇役",
+    "Adult supporting character"
+  ],
+  [
+    "外国女主角",
+    "外國女主角",
+    "外国出身のヒロイン",
+    "Foreign heroine"
+  ],
+  [
+    "外国男主角",
+    "外國男主角",
+    "外国出身の男性攻略対象",
+    "Foreign male lead"
+  ],
+  [
+    "外国主人公",
+    "外國主人公",
+    "外国出身の主人公",
+    "Foreign protagonist"
+  ],
+  [
+    "外国配角",
+    "外國配角",
+    "外国出身の脇役",
+    "Foreign supporting character"
+  ],
+  [
+    "务实女主角",
+    "務實女主角",
+    "現実的なヒロイン",
+    "Pragmatic heroine"
+  ],
+  [
+    "务实男主角",
+    "務實男主角",
+    "現実的な男性攻略対象",
+    "Pragmatic male lead"
+  ],
+  [
+    "务实主人公",
+    "務實主人公",
+    "現実的な主人公",
+    "Pragmatic protagonist"
+  ],
+  [
+    "务实配角",
+    "務實配角",
+    "現実的な脇役",
+    "Pragmatic supporting character"
+  ],
+  [
+    "务实的女主角",
+    "務實的女主角",
+    "現実的なヒロイン",
+    "Pragmatic heroine"
+  ],
+  [
+    "务实的男主角",
+    "務實的男主角",
+    "現実的な男性攻略対象",
+    "Pragmatic male lead"
+  ],
+  [
+    "务实的主人公",
+    "務實的主人公",
+    "現実的な主人公",
+    "Pragmatic protagonist"
+  ],
+  [
+    "务实的配角",
+    "務實的配角",
+    "現実的な脇役",
+    "Pragmatic supporting character"
+  ],
+  [
+    "好色女主角",
+    "好色女主角",
+    "好色なヒロイン",
+    "Lecherous heroine"
+  ],
+  [
+    "好色男主角",
+    "好色男主角",
+    "好色な男性攻略対象",
+    "Lecherous male lead"
+  ],
+  [
+    "好色主人公",
+    "好色主人公",
+    "好色な主人公",
+    "Lecherous protagonist"
+  ],
+  [
+    "好色配角",
+    "好色配角",
+    "好色な脇役",
+    "Lecherous supporting character"
+  ],
+  [
+    "好色的女主角",
+    "好色的女主角",
+    "好色なヒロイン",
+    "Lecherous heroine"
+  ],
+  [
+    "好色的男主角",
+    "好色的男主角",
+    "好色な男性攻略対象",
+    "Lecherous male lead"
+  ],
+  [
+    "好色的主人公",
+    "好色的主人公",
+    "好色な主人公",
+    "Lecherous protagonist"
+  ],
+  [
+    "好色的配角",
+    "好色的配角",
+    "好色な脇役",
+    "Lecherous supporting character"
+  ],
+  [
+    "吸烟者女主角",
+    "吸煙者女主角",
+    "喫煙者のヒロイン",
+    "Smoker heroine"
+  ],
+  [
+    "吸烟者男主角",
+    "吸煙者男主角",
+    "喫煙者の男性攻略対象",
+    "Smoker male lead"
+  ],
+  [
+    "吸烟者主人公",
+    "吸煙者主人公",
+    "喫煙者の主人公",
+    "Smoker protagonist"
+  ],
+  [
+    "吸烟者配角",
+    "吸煙者配角",
+    "喫煙者の脇役",
+    "Smoker supporting character"
+  ],
+  [
+    "吸烟女主角",
+    "吸煙女主角",
+    "喫煙者のヒロイン",
+    "Smoker heroine"
+  ],
+  [
+    "吸烟男主角",
+    "吸煙男主角",
+    "喫煙者の男性攻略対象",
+    "Smoker male lead"
+  ],
+  [
+    "吸烟主人公",
+    "吸煙主人公",
+    "喫煙者の主人公",
+    "Smoker protagonist"
+  ],
+  [
+    "吸烟配角",
+    "吸煙配角",
+    "喫煙者の脇役",
+    "Smoker supporting character"
+  ],
+  [
+    "上班族女主角",
+    "上班族女主角",
+    "会社員のヒロイン",
+    "Office worker heroine"
+  ],
+  [
+    "上班族男主角",
+    "上班族男主角",
+    "会社員の男性攻略対象",
+    "Office worker male lead"
+  ],
+  [
+    "上班族主人公",
+    "上班族主人公",
+    "会社員の主人公",
+    "Office worker protagonist"
+  ],
+  [
+    "上班族配角",
+    "上班族配角",
+    "会社員の脇役",
+    "Office worker supporting character"
+  ],
+  [
+    "反英雄女主角",
+    "反英雄女主角",
+    "アンチヒーローのヒロイン",
+    "Antihero heroine"
+  ],
+  [
+    "反英雄男主角",
+    "反英雄男主角",
+    "アンチヒーローの男性攻略対象",
+    "Antihero male lead"
+  ],
+  [
+    "反英雄主人公",
+    "反英雄主人公",
+    "アンチヒーローの主人公",
+    "Antihero protagonist"
+  ],
+  [
+    "反英雄配角",
+    "反英雄配角",
+    "アンチヒーローの脇役",
+    "Antihero supporting character"
+  ],
+  [
+    "残疾女主角",
+    "殘疾女主角",
+    "障害を持つヒロイン",
+    "Disabled heroine"
+  ],
+  [
+    "残疾男主角",
+    "殘疾男主角",
+    "障害を持つ男性攻略対象",
+    "Disabled male lead"
+  ],
+  [
+    "残疾主人公",
+    "殘疾主人公",
+    "障害を持つ主人公",
+    "Disabled protagonist"
+  ],
+  [
+    "残疾配角",
+    "殘疾配角",
+    "障害を持つ脇役",
+    "Disabled supporting character"
+  ],
+  [
+    "跛脚女主角",
+    "跛腳女主角",
+    "足が不自由なヒロイン",
+    "Limping heroine"
+  ],
+  [
+    "跛脚男主角",
+    "跛腳男主角",
+    "足が不自由な男性攻略対象",
+    "Limping male lead"
+  ],
+  [
+    "跛脚主人公",
+    "跛腳主人公",
+    "足が不自由な主人公",
+    "Limping protagonist"
+  ],
+  [
+    "跛脚配角",
+    "跛腳配角",
+    "足が不自由な脇役",
+    "Limping supporting character"
+  ],
+  [
+    "父亲女主角",
+    "父親女主角",
+    "父親のヒロイン",
+    "Father heroine"
+  ],
+  [
+    "父亲男主角",
+    "父親男主角",
+    "父親の男性攻略対象",
+    "Father male lead"
+  ],
+  [
+    "父亲主人公",
+    "父親主人公",
+    "父親の主人公",
+    "Father protagonist"
+  ],
+  [
+    "父亲配角",
+    "父親配角",
+    "父親の脇役",
+    "Father supporting character"
+  ],
+  [
+    "母亲型女主角",
+    "母親型女主角",
+    "母性的なヒロイン",
+    "Motherly heroine"
+  ],
+  [
+    "母亲型男主角",
+    "母親型男主角",
+    "母性的な男性攻略対象",
+    "Motherly male lead"
+  ],
+  [
+    "母亲型主人公",
+    "母親型主人公",
+    "母性的な主人公",
+    "Motherly protagonist"
+  ],
+  [
+    "母亲型配角",
+    "母親型配角",
+    "母性的な脇役",
+    "Motherly supporting character"
+  ],
+  [
+    "儿童女主角",
+    "兒童女主角",
+    "子供のヒロイン",
+    "Child heroine"
+  ],
+  [
+    "儿童男主角",
+    "兒童男主角",
+    "子供の男性攻略対象",
+    "Child male lead"
+  ],
+  [
+    "儿童主人公",
+    "兒童主人公",
+    "子供の主人公",
+    "Child protagonist"
+  ],
+  [
+    "儿童配角",
+    "兒童配角",
+    "子供の脇役",
+    "Child supporting character"
+  ],
+  [
+    "宠物女主角",
+    "寵物女主角",
+    "ペットのヒロイン",
+    "Pet heroine"
+  ],
+  [
+    "宠物男主角",
+    "寵物男主角",
+    "ペットの男性攻略対象",
+    "Pet male lead"
+  ],
+  [
+    "宠物主人公",
+    "寵物主人公",
+    "ペットの主人公",
+    "Pet protagonist"
+  ],
+  [
+    "宠物配角",
+    "寵物配角",
+    "ペットの脇役",
+    "Pet supporting character"
+  ],
+  [
+    "导师女主角",
+    "導師女主角",
+    "指導者のヒロイン",
+    "Mentor heroine"
+  ],
+  [
+    "导师男主角",
+    "導師男主角",
+    "指導者の男性攻略対象",
+    "Mentor male lead"
+  ],
+  [
+    "导师主人公",
+    "導師主人公",
+    "指導者の主人公",
+    "Mentor protagonist"
+  ],
+  [
+    "导师配角",
+    "導師配角",
+    "指導者の脇役",
+    "Mentor supporting character"
+  ],
+  [
+    "修女女主角",
+    "修女女主角",
+    "修道女のヒロイン",
+    "Nun heroine"
+  ],
+  [
+    "修女男主角",
+    "修女男主角",
+    "修道女の男性攻略対象",
+    "Nun male lead"
+  ],
+  [
+    "修女主人公",
+    "修女主人公",
+    "修道女の主人公",
+    "Nun protagonist"
+  ],
+  [
+    "修女配角",
+    "修女配角",
+    "修道女の脇役",
+    "Nun supporting character"
+  ],
+  [
+    "牧师女主角",
+    "牧師女主角",
+    "聖職者のヒロイン",
+    "Priest heroine"
+  ],
+  [
+    "牧师男主角",
+    "牧師男主角",
+    "聖職者の男性攻略対象",
+    "Priest male lead"
+  ],
+  [
+    "牧师主人公",
+    "牧師主人公",
+    "聖職者の主人公",
+    "Priest protagonist"
+  ],
+  [
+    "牧师配角",
+    "牧師配角",
+    "聖職者の脇役",
+    "Priest supporting character"
+  ],
+  [
+    "佣兵女主角",
+    "傭兵女主角",
+    "傭兵のヒロイン",
+    "Mercenary heroine"
+  ],
+  [
+    "佣兵男主角",
+    "傭兵男主角",
+    "傭兵の男性攻略対象",
+    "Mercenary male lead"
+  ],
+  [
+    "佣兵主人公",
+    "傭兵主人公",
+    "傭兵の主人公",
+    "Mercenary protagonist"
+  ],
+  [
+    "佣兵配角",
+    "傭兵配角",
+    "傭兵の脇役",
+    "Mercenary supporting character"
+  ],
+  [
+    "奶奶女主角",
+    "奶奶女主角",
+    "祖母のヒロイン",
+    "Grandmother heroine"
+  ],
+  [
+    "奶奶男主角",
+    "奶奶男主角",
+    "祖母の男性攻略対象",
+    "Grandmother male lead"
+  ],
+  [
+    "奶奶主人公",
+    "奶奶主人公",
+    "祖母の主人公",
+    "Grandmother protagonist"
+  ],
+  [
+    "奶奶配角",
+    "奶奶配角",
+    "祖母の脇役",
+    "Grandmother supporting character"
+  ],
+  [
+    "爷爷女主角",
+    "爺爺女主角",
+    "祖父のヒロイン",
+    "Grandfather heroine"
+  ],
+  [
+    "爷爷男主角",
+    "爺爺男主角",
+    "祖父の男性攻略対象",
+    "Grandfather male lead"
+  ],
+  [
+    "爷爷主人公",
+    "爺爺主人公",
+    "祖父の主人公",
+    "Grandfather protagonist"
+  ],
+  [
+    "爷爷配角",
+    "爺爺配角",
+    "祖父の脇役",
+    "Grandfather supporting character"
+  ],
+  [
+    "罪犯女主角",
+    "罪犯女主角",
+    "犯罪者のヒロイン",
+    "Criminal heroine"
+  ],
+  [
+    "罪犯男主角",
+    "罪犯男主角",
+    "犯罪者の男性攻略対象",
+    "Criminal male lead"
+  ],
+  [
+    "罪犯主人公",
+    "罪犯主人公",
+    "犯罪者の主人公",
+    "Criminal protagonist"
+  ],
+  [
+    "罪犯配角",
+    "罪犯配角",
+    "犯罪者の脇役",
+    "Criminal supporting character"
+  ],
+  [
+    "热血女主角",
+    "熱血女主角",
+    "熱血のヒロイン",
+    "Hot-blooded heroine"
+  ],
+  [
+    "热血男主角",
+    "熱血男主角",
+    "熱血の男性攻略対象",
+    "Hot-blooded male lead"
+  ],
+  [
+    "热血主人公",
+    "熱血主人公",
+    "熱血の主人公",
+    "Hot-blooded protagonist"
+  ],
+  [
+    "热血配角",
+    "熱血配角",
+    "熱血の脇役",
+    "Hot-blooded supporting character"
+  ],
+  [
+    "绅士女主角",
+    "紳士女主角",
+    "紳士的なヒロイン",
+    "Gentleman heroine"
+  ],
+  [
+    "绅士男主角",
+    "紳士男主角",
+    "紳士的な男性攻略対象",
+    "Gentleman male lead"
+  ],
+  [
+    "绅士主人公",
+    "紳士主人公",
+    "紳士的な主人公",
+    "Gentleman protagonist"
+  ],
+  [
+    "绅士配角",
+    "紳士配角",
+    "紳士的な脇役",
+    "Gentleman supporting character"
+  ],
+  [
+    "积极主动的女主角",
+    "積極主動的女主角",
+    "積極的なヒロイン",
+    "Proactive heroine"
+  ],
+  [
+    "积极主动的男主角",
+    "積極主動的男主角",
+    "積極的な男性攻略対象",
+    "Proactive male lead"
+  ],
+  [
+    "积极主动的主人公",
+    "積極主動的主人公",
+    "積極的な主人公",
+    "Proactive protagonist"
+  ],
+  [
+    "积极主动的配角",
+    "積極主動的配角",
+    "積極的な脇役",
+    "Proactive supporting character"
+  ],
+  [
+    "迟钝系女主角",
+    "遲鈍系女主角",
+    "鈍感なヒロイン",
+    "Oblivious heroine"
+  ],
+  [
+    "迟钝系男主角",
+    "遲鈍系男主角",
+    "鈍感な男性攻略対象",
+    "Oblivious male lead"
+  ],
+  [
+    "迟钝系主人公",
+    "遲鈍系主人公",
+    "鈍感な主人公",
+    "Oblivious protagonist"
+  ],
+  [
+    "迟钝系配角",
+    "遲鈍系配角",
+    "鈍感な脇役",
+    "Oblivious supporting character"
+  ],
+  [
+    "傲慢的女主角",
+    "傲慢的女主角",
+    "傲慢なヒロイン",
+    "Arrogant heroine"
+  ],
+  [
+    "傲慢的男主角",
+    "傲慢的男主角",
+    "傲慢な男性攻略対象",
+    "Arrogant male lead"
+  ],
+  [
+    "傲慢的主人公",
+    "傲慢的主人公",
+    "傲慢な主人公",
+    "Arrogant protagonist"
+  ],
+  [
+    "傲慢的配角",
+    "傲慢的配角",
+    "傲慢な脇役",
+    "Arrogant supporting character"
+  ],
+  [
+    "魅娇女主角",
+    "魅嬌女主角",
+    "妖艶なヒロイン",
+    "Seductive heroine"
+  ],
+  [
+    "魅娇男主角",
+    "魅嬌男主角",
+    "妖艶な男性攻略対象",
+    "Seductive male lead"
+  ],
+  [
+    "魅娇主人公",
+    "魅嬌主人公",
+    "妖艶な主人公",
+    "Seductive protagonist"
+  ],
+  [
+    "魅娇配角",
+    "魅嬌配角",
+    "妖艶な脇役",
+    "Seductive supporting character"
+  ]
+]
