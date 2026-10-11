@@ -2,6 +2,8 @@
 
 Windows 本地 Galgame 书架，当前版本使用 C# / WinUI 3 原生界面，提供简体中文。
 
+**[下载正式版 1.0.0](https://github.com/MuskTesla/The-Order/releases/tag/v1.0.0)** · [完整程序 ZIP](https://github.com/MuskTesla/The-Order/releases/download/v1.0.0/The-Order-1.0.0-win-x64.zip) · [完整对应源码 ZIP](https://github.com/MuskTesla/The-Order/releases/download/v1.0.0/The-Order-1.0.0-source.zip)
+
 首版面向 Windows 11 x64（最低系统版本 22000），完整程序包包含运行时，无需安装开发工具。解压后使用 `Start-The-Order.cmd`；独立试用使用 `Start-Test.cmd`。普通资料与试用资料分开，旧 Electron 资料不会自动迁移。
 
 - [使用、备份与升级说明](docs/release/1.0.0/README.md)
@@ -12,7 +14,7 @@ Windows 本地 Galgame 书架，当前版本使用 C# / WinUI 3 原生界面，�
 
 程序提供书架导入、多安装与启动管理、游玩计时、在线资料、发现搜索、封面与横幅选择。资料优先 KunGal，通过 NextMoe 获取；识别不确定时等待核对，保留个人编辑和准确版本身份。源码使用 AGPL-3.0-or-later，第三方依赖和数据保留各自许可；公开交付包含完整对应源码。
 
-当前 1.0.0 为发布准备版本，是否已公开发布以发布记录为准。下方保留历史 Electron 0.7.1 的说明，不能作为原生版本的启动或数据迁移操作指南。
+1.0.0 已于 2026-10-11 正式发布。完整对应源码固定在 `v1.0.0` 标签；公开发行身份与验收范围见 [PUBLICATION.md](PUBLICATION.md) 及 Release 附件。当前 main 的发行说明可以后续更新，程序包和对应源码包保持已发布身份。下方保留历史 Electron 0.7.1 的说明，不能作为原生版本的启动或数据迁移操作指南。
 
 <details>
 <summary>历史 Electron 0.7.1 实现说明</summary>
