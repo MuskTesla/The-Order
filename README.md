@@ -2,9 +2,17 @@
 
 Windows 本地 Galgame 书架，当前版本使用 C# / WinUI 3 原生界面，提供简体中文。
 
-**[下载正式版 1.0.0](https://github.com/MuskTesla/The-Order/releases/tag/v1.0.0)** · [完整程序 ZIP](https://github.com/MuskTesla/The-Order/releases/download/v1.0.0/The-Order-1.0.0-win-x64.zip) · [完整对应源码 ZIP](https://github.com/MuskTesla/The-Order/releases/download/v1.0.0/The-Order-1.0.0-source.zip)
+**[下载 Windows 安装版 Setup.exe（推荐）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-Setup-x64.exe)** · [全部发行附件](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0)
 
-首版面向 Windows 11 x64（最低系统版本 22000），完整程序包包含运行时，无需安装开发工具。解压后使用 `Start-The-Order.cmd`；独立试用使用 `Start-Test.cmd`。普通资料与试用资料分开，旧 Electron 资料不会自动迁移。
+首版面向 Windows 11 x64（最低系统版本 22000），所需运行依赖已随安装包提供，无需安装开发工具。双击 Setup.exe，按中文向导安装，以后从桌面或开始菜单打开即可。安装前请在托盘选择“退出”；可在 Windows“已安装的应用”中卸载，书架、设置、图片、游玩记录和游戏文件保留。
+
+[便携 ZIP（可选）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-win-x64.zip) 仍提供：完整解压后使用 `Start-The-Order.cmd`；独立试用使用 `Start-Test.cmd`。普通资料与试用资料分开，旧 Electron 资料不会自动迁移。已有原生正式资料继续使用。
+
+[应用完整对应源码](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-source.zip) · [安装器与启动入口源码](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-installer-source.zip) · [安装版校验文件](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/INSTALLER-SHA256SUMS.txt)
+
+安装版保持已发布 1.0.0 应用文件一致，新增安装向导与无终端窗口的启动入口。本机 49 项安装、修复、卸载及隔离 Test 启动检查通过。独立干净 Windows 和长期稳定性未在本轮重验，原验收边界仍适用。
+
+安装包目前未签名，首次下载可能显示“通常不会下载”等信誉提示。公开附件已重新下载核对 SHA-256，并使用本机 Microsoft Defender 扫描安装包、完整应用文件和新增启动入口，未发现威胁；这不等于微软认证，也不保证消除信誉提示。请从本项目发行页下载并保持系统防护开启。[微软对新应用下载信誉的说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
 
 - [使用、备份与升级说明](docs/release/1.0.0/README.md)
 - [1.0.0 发布说明](docs/release/1.0.0/CHANGELOG.md)
