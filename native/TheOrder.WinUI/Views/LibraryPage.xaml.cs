@@ -27,6 +27,21 @@ public sealed partial class LibraryPage : Page, IImageHost
     public Func<Task>? OpenImport { get; set; }
     public Func<GameSummary, Task>? QuickLaunch { get; set; }
     public Func<ImmutableArray<string>, Task>? RecognizeSelected { get; set; }
+    public Func<ImmutableArray<string>, Task>? RemoveSelected { get; set; }
+    public Func<Task>? OpenSettings { get; set; }
+    private RecognitionViewModel? recognition;
+    internal void ShowRecognition(RecognitionViewModel model)
+    {
+        recognition = model;
+        var p = model.Progress;
+        RecognitionStatus.Visibility = p.Total > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecognitionCounts.Text = model.ProgressText; RecognitionMessage.Text = model.Message;
+        RecognitionBar.Maximum = Math.Max(1, p.Total); RecognitionBar.Value = p.Processed;
+        CancelRecognition.Visibility = model.HasRecognitionWork ? Visibility.Visible : Visibility.Collapsed;
+    }
+    private void OnCancelRecognition(object sender, RoutedEventArgs e) => recognition?.CancelAll();
+    internal void ShowApiReminder(bool show) => ApiReminder.IsOpen = show;
+    private async void OnApiSettings(object sender, RoutedEventArgs e) { if (OpenSettings is { } open) await open(); }
     private bool synchronizing = true, selectionMode, keyboardOpen, restorePending;
     private string? scrollKey, lastOpenedId;
     private long returnRestorationVersion;
@@ -391,6 +406,7 @@ public sealed partial class LibraryPage : Page, IImageHost
         SelectionCountText.Text = count == 0 ? UiText.Get("选择作品") : UiText.Format($"已选择 {count} 项");
         RecognizeSelectedButton.IsEnabled = count > 0;
         BatchEditButton.IsEnabled = count > 0 && ViewModel.CanEdit;
+        RemoveSelectedButton.IsEnabled = count > 0 && ViewModel.CanEdit;
     }
     private void OnCardMenuOpening(object? sender, object e)
     {
@@ -410,17 +426,29 @@ public sealed partial class LibraryPage : Page, IImageHost
             menu.Items.Add(Entry(UiText.Get("启动游戏"), "", () => QuickLaunch?.Invoke(item) ?? Task.CompletedTask, item.InstallationCount > 0, "Ctrl+Enter"));
             menu.Items.Add(new MenuFlyoutSeparator());
             menu.Items.Add(Entry(UiText.Get("选择"), "", () => { SetSelectionMode(true); Active.SelectedItems.Add(item); return Task.CompletedTask; }));
+            menu.Items.Add(Entry("从书架移除", "", () => RemoveSelected?.Invoke([item.Id]) ?? Task.CompletedTask, ViewModel.CanEdit));
         }
         else
         {
             if (!Active.SelectedItems.Contains(item)) Active.SelectedItems.Add(item);
             menu.Items.Add(Entry(UiText.Get("识别所选"), "", RecognizeSelection));
             menu.Items.Add(Entry(UiText.Get("批量编辑"), "", BatchEdit, ViewModel.CanEdit));
+            menu.Items.Add(Entry("移除所选作品", "", RemoveSelection, ViewModel.CanEdit));
             menu.Items.Add(new MenuFlyoutSeparator());
             menu.Items.Add(Entry(UiText.Get("完成选择"), "", () => { SetSelectionMode(false); return Task.CompletedTask; }, accelerator: "Esc"));
         }
     }
     private async void OnRecognize(object sender, RoutedEventArgs e) => await RecognizeSelection();
+    private async void OnRemoveSelected(object sender, RoutedEventArgs e) => await RemoveSelection();
+    private async Task RemoveSelection()
+    {
+        try
+        {
+            var ids = Active.SelectedItems.OfType<GameSummary>().Select(g => g.Id).ToImmutableArray();
+            if (!ids.IsEmpty && RemoveSelected is { } remove) await remove(ids);
+        }
+        catch { ViewModel.ReportUnexpected(); }
+    }
     private async Task RecognizeSelection()
     {
         try { var selected = Active.SelectedItems.OfType<GameSummary>().Select(g => g.Id).ToImmutableArray(); if (!selected.IsEmpty && RecognizeSelected is not null) await RecognizeSelected(selected); }
@@ -451,12 +479,11 @@ public sealed partial class LibraryPage : Page, IImageHost
         if (Active.ContainerFromIndex(0) is Control first) first.Focus(FocusState.Keyboard); else Active.Focus(FocusState.Keyboard);
     }
 
-    // ---- 继续游玩 (连续玻璃 over the game's own ambient band) ------------------------------------------------
-    private readonly ArtworkStage continueStage = new() { Variant = StageVariant.Continuous, AmbientSigma = 6, StageCornerRadius = 8, Height = 196 };
+    // A small portrait cover preserves the selected artwork instead of magnifying it into a banner.
+    private readonly CoverPresenter continueCover = new() { Width = 84, Height = 112, ImageCornerRadius = 6, VerticalAlignment = VerticalAlignment.Center };
     private readonly Border continueHost = new() { Margin = new Thickness(6, 4, 6, 14) };
-    private readonly Border continuePlate = new() { Padding = new Thickness(22, 14, 22, 16), Margin = new Thickness(16), MaxWidth = 460, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock continueTitle = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap, MaxLines = 1 };
-    private readonly TextBlock continueMeta = new();
+    private readonly TextBlock continueTitle = new() { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap, MaxLines = 2 };
+    private readonly TextBlock continueMeta = new() { TextWrapping = TextWrapping.Wrap };
     private GameSummary? continueGame;
     private void BuildContinueBanner()
     {
@@ -478,19 +505,11 @@ public sealed partial class LibraryPage : Page, IImageHost
         actions.Children.Add(play); actions.Children.Add(details);
         var body = new StackPanel { Spacing = 2 };
         body.Children.Add(caption); body.Children.Add(continueTitle); body.Children.Add(continueMeta); body.Children.Add(actions);
-        continuePlate.Child = body;
-        continueStage.Images = Images; continueStage.Plate = continuePlate; continueStage.Overlay = continuePlate;
-        // A shared TextBlock style can keep the app theme's foreground even when the plate has the
-        // opposite theme. Bind the text to the stage's actual artwork polarity; clear the local value
-        // when art is unavailable/disabled so Fluent and HighContrast styles regain ownership.
-        continueStage.ForegroundChanged += brush =>
-        {
-            continuePlate.RequestedTheme = brush is null ? ElementTheme.Default
-                : continueStage.Polarity == StagePolarity.Deepen ? ElementTheme.Dark : ElementTheme.Light;
-            foreach (var text in new[] { caption, continueTitle, continueMeta })
-                if (brush is null) text.ClearValue(TextBlock.ForegroundProperty); else text.Foreground = brush;
-        };
-        continueHost.Child = continueStage;
+        continueCover.Pipeline = Images;
+        var layout = new Grid { ColumnSpacing = 20 };
+        layout.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); layout.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+        layout.Children.Add(continueCover); Grid.SetColumn(body, 1); body.VerticalAlignment = VerticalAlignment.Center; layout.Children.Add(body);
+        continueHost.Style = (Style)Resources["ContinueCardStyle"]; continueHost.Child = layout;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(continueHost, "ContinueBanner");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(continueHost, UiText.Get("继续游玩"));
     }
@@ -510,23 +529,21 @@ public sealed partial class LibraryPage : Page, IImageHost
         continueGame = candidate;
         var grid = ViewModel.Layout == "grid";
         object? gridHeader = candidate is not null && grid ? continueHost : null, listHeader = candidate is not null && !grid ? continueHost : null;
-        if ((gridHeader is null && ReferenceEquals(GameGrid.Header, continueHost)) || (listHeader is null && ReferenceEquals(GameList.Header, continueHost))) continueStage.ReleaseBeforeLeave();
+        if (candidate is null) continueCover.SourceKey = null;
         if (!ReferenceEquals(GameGrid.Header, gridHeader)) { if (gridHeader is null) GameGrid.Header = null; }
         if (!ReferenceEquals(GameList.Header, listHeader)) { if (listHeader is null) GameList.Header = null; }
-        var moved = false;
-        if (gridHeader is not null && !ReferenceEquals(GameGrid.Header, gridHeader)) { GameGrid.Header = gridHeader; moved = true; }
-        if (listHeader is not null && !ReferenceEquals(GameList.Header, listHeader)) { GameList.Header = listHeader; moved = true; }
-        if (moved) DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, continueStage.Reattach);
+        if (gridHeader is not null && !ReferenceEquals(GameGrid.Header, gridHeader)) GameGrid.Header = gridHeader;
+        if (listHeader is not null && !ReferenceEquals(GameList.Header, listHeader)) GameList.Header = listHeader;
         if (candidate is null) return;
         continueTitle.Text = candidate.Name;
         continueMeta.Text = UiText.Format($"上次游玩 {candidate.LastPlayedText} · 共 {LibraryFormat.PlayTime(candidate.PlaySeconds)}");
         continueHost.Margin = grid ? new Thickness(6, 4, 6, 14) : new Thickness(0, 4, 0, 14);
-        continueStage.CoverKey = candidate.CoverKey;
+        continueCover.SourceKey = candidate.CoverKey;
     }
-    internal void SetStagePolicy(bool effectsAllowed, bool highContrast, MaterialMode mode) => continueStage.SetPolicy(effectsAllowed, highContrast, mode);
-    internal void ReleaseStageBeforeLeave() => continueStage.ReleaseBeforeLeave();
-    internal object StageEvidence => new { placement = UiText.Get("Library 继续游玩"), visible = continueGame is not null, game = continueGame?.Id, selectionMode, stage = continueStage.Evidence };
-    internal Task<object> AuditStageAsync() => continueStage.AuditLifecycleAsync();
+    internal void SetStagePolicy(bool effectsAllowed, bool highContrast, MaterialMode mode) { } // Theme resources handle the ordinary card.
+    internal void ReleaseStageBeforeLeave() => continueCover.SourceKey = null;
+    internal object StageEvidence => new { placement = UiText.Get("Library 继续游玩"), visible = continueGame is not null, game = continueGame?.Id, selectionMode, layout = "cover-and-text", material = "none", cover = continueCover.SourceStatus };
+    internal Task<object> AuditStageAsync() => Task.FromResult(StageEvidence);
 
     // ---- Test and diagnostics ------------------------------------------------------------------------------
     internal void ScrollTest(double fraction)

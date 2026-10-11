@@ -1,11 +1,8 @@
 {
+  "version": "1.0.1",
   "schema": 1,
-  "purpose": "Complete current source, including inherited dirty work; not a single-task integration patch",
-  "utc": "2026-10-11T07:37:23.3948368+00:00",
-  "branch": "codex/library-ui-refinement",
-  "head": "7facc502fde52532518171384cd77b45c9a60c9c",
-  "dirty": true,
-  "count": 653,
+  "count": 669,
+  "purpose": "Publication source snapshot including inherited application implementation and installer",
   "items": [
     {
       "path": ".gitattributes",
@@ -218,6 +215,21 @@
       "sha256": "9C8D10C932E1F185E5D710987FBD7CB70C7ED573DC646C32D1894F5BD3F62A93"
     },
     {
+      "path": "docs/release/1.0.1/BUILD.md",
+      "bytes": 2389,
+      "sha256": "321B377484EAD432696B3ADD049DD8B134C906F7F8E7159B89801AA05D7A6792"
+    },
+    {
+      "path": "docs/release/1.0.1/CHANGELOG.md",
+      "bytes": 2859,
+      "sha256": "4C2504261D6F2FC1C292B5B6FF8B20D639C13145D1A3F179DD1F2A8A1BD15EC0"
+    },
+    {
+      "path": "docs/release/1.0.1/README.md",
+      "bytes": 2324,
+      "sha256": "74A5925BE4AD17B1BCD0BF64579186C91849AB8D680CBB0319133B916642654D"
+    },
+    {
       "path": "electron/evidence-matching.ts",
       "bytes": 16317,
       "sha256": "43BB725DB4779FC0F42D8B70BEF01EE11C7B4E5B72525B4551D395742F354816"
@@ -305,7 +317,7 @@
     {
       "path": "native/Directory.Build.props",
       "bytes": 799,
-      "sha256": "6DB603E851E0AF8F9A82600827B8201B7CCEF6D74A9AE6D46F28D85897A1B534"
+      "sha256": "FD7D834402F14B0A9199915A1303D90EFEDAC68F29D02B4A91DF1A18BF842F9A"
     },
     {
       "path": "native/fixtures/accepted-c1-shader.h",
@@ -411,6 +423,41 @@
       "path": "native/global.json",
       "bytes": 91,
       "sha256": "C700761A8DA9E52EE1DA80751B38B9A9C36A72F5CBCBFA3C6C0EC006ED29262B"
+    },
+    {
+      "path": "native/installer/BUILD.md",
+      "bytes": 2677,
+      "sha256": "EF264368063AE2077A78DA3374CBB22FC1572A6207D33B6973A21E6F985F0AC6"
+    },
+    {
+      "path": "native/installer/languages/ChineseSimplified.isl",
+      "bytes": 21516,
+      "sha256": "E0B0B350E2245F3C5E65586DFE43D574F6E7F06F2261149ABA284954B3FC9A8D"
+    },
+    {
+      "path": "native/installer/Launcher.cpp",
+      "bytes": 3145,
+      "sha256": "1ED21220C6F376102449614464AC64CEA01FE4ABF8F99BA2C9F10FA82D243D4D"
+    },
+    {
+      "path": "native/installer/Launcher.rc",
+      "bytes": 638,
+      "sha256": "7B5BA233E5C86EAE19A798760ED8BD1145CC03FF78A2C08D6C5D4FEDFA90EB25"
+    },
+    {
+      "path": "native/installer/LICENSE-InnoSetup.txt",
+      "bytes": 1521,
+      "sha256": "2E5346868C2A18434489824E11D65C3031620F792FEFC415D05F19CD441ABF5C"
+    },
+    {
+      "path": "native/installer/TheOrder.iss",
+      "bytes": 9409,
+      "sha256": "AE92952BCAB08EB158C28A4A11BEC6F4D0F305E5D2357CD9754A223FCFD7722A"
+    },
+    {
+      "path": "native/installer/安装版使用说明.txt",
+      "bytes": 1526,
+      "sha256": "A8AC4AEC66C092DF015E6C0E63D8165F35BE508918972C43C999146E3AD35EB8"
     },
     {
       "path": "native/licenses/MARKDIG-LICENSE.txt",
@@ -539,8 +586,8 @@
     },
     {
       "path": "native/scripts/launch-native-release.ps1",
-      "bytes": 5134,
-      "sha256": "EAC46486630B1E685CC5064A284E83C2918297AFE041F7A27DBEF28A02D64D84"
+      "bytes": 5193,
+      "sha256": "93022B648D0BB7B79E5EC11C2566C3F4F4E2EE3C1B56D5BFA964D09A477D4F12"
     },
     {
       "path": "native/scripts/launch-portable-test.ps1",
@@ -553,6 +600,11 @@
       "sha256": "46835D2C20F1786BBF00A048255EF2615497CAD25E0AEB16C04C3E5AEB0E9828"
     },
     {
+      "path": "native/scripts/package-native-installer.ps1",
+      "bytes": 8882,
+      "sha256": "E3FF41ADCCD6BBAFA9A97AD3B947774DF773E5B1B3437E846B92D4623911B5D1"
+    },
+    {
       "path": "native/scripts/package-native-rc.ps1",
       "bytes": 7339,
       "sha256": "63B3A97BB0AAB71D6E755FF6EF05AC14B3816213DB1EC56A3FFCE7C9D16477FB"
@@ -560,7 +612,7 @@
     {
       "path": "native/scripts/package-native-release.ps1",
       "bytes": 7715,
-      "sha256": "39C4C2365E47F867017828E2F06A0D05393D34BC5A5C1F039DFE540060E41433"
+      "sha256": "D3F431F3F830969C3E62175C9E09E1E794A50881339E01EF459E678E043831C9"
     },
     {
       "path": "native/scripts/prepare-launch-smoke.ps1",
@@ -613,9 +665,19 @@
       "sha256": "621C265B5CAC15236B94846B7D3B4E23D4D0F19F839F886BC999DF7202491255"
     },
     {
+      "path": "native/scripts/test-native-installer.ps1",
+      "bytes": 12987,
+      "sha256": "D0AB5D95A7BF2C779423D2352CFE050495213A223661DA70BBC9D097EC035E5F"
+    },
+    {
       "path": "native/scripts/test-native-release-launcher.ps1",
       "bytes": 6863,
       "sha256": "2B920A96CC3FA6D6343F22DB09A3982627EB693507CF86F93B83DE3480DC455D"
+    },
+    {
+      "path": "native/scripts/test-native-uninstall-data.ps1",
+      "bytes": 2669,
+      "sha256": "FA9107FFA8480F2D62A3A3C40BDE06D4A62032A1E05555B96F798C65F8AB3E98"
     },
     {
       "path": "native/scripts/test-optical-lifecycle.ps1",
@@ -859,8 +921,8 @@
     },
     {
       "path": "native/TheOrder.Application/OfflineLibraryClient.cs",
-      "bytes": 14120,
-      "sha256": "3DADDC5521D913F31B3DE27233D37367944F17348D68AAC590296D52BECF7125"
+      "bytes": 14430,
+      "sha256": "0F81BAC31273EFF40F521938F767F62FBDF6B1DF652BD45BBC061A1E3CD5975D"
     },
     {
       "path": "native/TheOrder.Application/OnlineAuthContext.cs",
@@ -964,8 +1026,8 @@
     },
     {
       "path": "native/TheOrder.Application/Transactions.cs",
-      "bytes": 26584,
-      "sha256": "69E9A53B8975D5A07277DFFA6DF6AF47243EF1287FAC3EE8F9081A6C0C19A33F"
+      "bytes": 27105,
+      "sha256": "FCCF30218FACBDBFADAFA6AC033D56494EC56449FFFDA0082D3E1F6DFB8FE368"
     },
     {
       "path": "native/TheOrder.Application/UiText.cs",
@@ -1428,6 +1490,11 @@
       "sha256": "6C0A098ED1A0348810E11D0A31D1496E29D8AA76FB820079718A2613C0CA6840"
     },
     {
+      "path": "native/TheOrder.Platform.Windows/WindowsShortcutTheme.cs",
+      "bytes": 2376,
+      "sha256": "958C8F8350DE8AC8FD9D7EC730E2ED1EF798B99F7F4F46FE1B16FC025F573439"
+    },
+    {
       "path": "native/TheOrder.Platform.Windows/WindowsTrayLifecycle.cs",
       "bytes": 7886,
       "sha256": "BD16306331B701AD5A45DBBB6E0AAC8BEAB14D91CCDB732BEF45EB2C9F26FC50"
@@ -1519,8 +1586,8 @@
     },
     {
       "path": "native/TheOrder.Presentation/RecognitionViewModel.cs",
-      "bytes": 28705,
-      "sha256": "A1493F2D93C59EF57739D1DC73E526BBDA0CD67A165A2CAF34E5BE323BD4A716"
+      "bytes": 32553,
+      "sha256": "6A8B04DD7FF561304B25D05401CAA91745ACF5E3EACD804C00F05FA08ACDC43C"
     },
     {
       "path": "native/TheOrder.Presentation/SessionPresentation.cs",
@@ -1649,8 +1716,8 @@
     },
     {
       "path": "native/TheOrder.Tests/AutomaticRecognitionTests.cs",
-      "bytes": 18522,
-      "sha256": "1380AF5C1C9AFB898A513FE7C9D9AA8C4AC99ABE5BD526D042D3E8162B680704"
+      "bytes": 25167,
+      "sha256": "D9F6E9E6BF73C4B65DB684D76D201DFDCBD352A0133F37916E516BB39E580A5C"
     },
     {
       "path": "native/TheOrder.Tests/BannerAestheticsTests.cs",
@@ -2039,8 +2106,8 @@
     },
     {
       "path": "native/TheOrder.Tests/SessionHardeningTests.cs",
-      "bytes": 11838,
-      "sha256": "0E461AF065DB7B79A3E4CB740C09C67C0B9537EDF9CBCC0C922A66A79CEE5B68"
+      "bytes": 11939,
+      "sha256": "4E9F26FD2714324CF8C222113D0302D9BB9AB7750EA378FD4CFD2EEB6FB91D04"
     },
     {
       "path": "native/TheOrder.Tests/SessionPersistenceTests.cs",
@@ -2056,6 +2123,11 @@
       "path": "native/TheOrder.Tests/SessionWindowsTests.cs",
       "bytes": 8932,
       "sha256": "F6DE3AD024F7BB65A072C8330850CCCAE11722CD0A1093E90B53D71BA112D42A"
+    },
+    {
+      "path": "native/TheOrder.Tests/ShortcutThemeTests.cs",
+      "bytes": 2054,
+      "sha256": "8FAA4C32C7E97CE49FFD3423BE275C691E5449EB23C012BF0DA56373A0AD5A28"
     },
     {
       "path": "native/TheOrder.Tests/SteamArtworkTests.cs",
@@ -2109,8 +2181,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/App.xaml.cs",
-      "bytes": 8512,
-      "sha256": "3E869E91472C7AB9C27DD66DD71F3B6532C41AA9AB9A7EAF57828EC63053B750"
+      "bytes": 8682,
+      "sha256": "7BBE701DD409E130E7D7AC5D665F7798AB882B522BCBA7D6EEA4F45DE5EACF7B"
     },
     {
       "path": "native/TheOrder.WinUI/Assets/Brand.Dark.ico",
@@ -2204,8 +2276,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.xaml.cs",
-      "bytes": 30314,
-      "sha256": "61C70CF1EDC4B63661FFDCCBEB6D8C78FE6F969D1137A373679D0F541E7CC82A"
+      "bytes": 32359,
+      "sha256": "0399E54FE1257DDC27DDC93B28EE951EEC9C9295CC43B230990D0F671102778A"
     },
     {
       "path": "native/TheOrder.WinUI/Materials/ChannelEffect.cs",
@@ -2399,8 +2471,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml",
-      "bytes": 15526,
-      "sha256": "ABA4E7C593701773F72E2037C242CD3456885B4F75D0B04D17FC597C5D92D8FF"
+      "bytes": 15564,
+      "sha256": "010D22BF38E335A0E315D8B10626D5F0D7B066C46BF6700EAEC1141E11C8E906"
     },
     {
       "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml.cs",
@@ -2439,13 +2511,13 @@
     },
     {
       "path": "native/TheOrder.WinUI/Views/LibraryPage.xaml",
-      "bytes": 19572,
-      "sha256": "90463E46F428B15A0B41C2D1EFC21D4EF7A4C66885D0BF53FD4BBF8FCB26FC3D"
+      "bytes": 21464,
+      "sha256": "6A776139C1376406C73F1C97C38FB545E9E67168475086DFA8470DFAF3FA85CA"
     },
     {
       "path": "native/TheOrder.WinUI/Views/LibraryPage.xaml.cs",
-      "bytes": 43269,
-      "sha256": "02AE9F3A37D434C6AD24586793B025FF7478CAC664A8A00520F48D78D0CD20F9"
+      "bytes": 44043,
+      "sha256": "BFF34DA0F25A3DC834E2B9562C303974070F96C35871B0E79152787DF5BD26F7"
     },
     {
       "path": "native/TheOrder.WinUI/Views/MarkdownView.cs",
@@ -2474,23 +2546,23 @@
     },
     {
       "path": "native/TheOrder.WinUI/Views/RecognitionReview.xaml",
-      "bytes": 4774,
-      "sha256": "E6C77EB4EBBEABC2AD03CF031F6102683A23B1A0DD3F2315FE5323201944C45A"
+      "bytes": 4849,
+      "sha256": "F706CC10A2A372AB5800E2FFB11E04215EB7A7613C9BF112488C24472F0F22B0"
     },
     {
       "path": "native/TheOrder.WinUI/Views/RecognitionReview.xaml.cs",
-      "bytes": 2232,
-      "sha256": "6616E84382008BC0CA6A5BE9D3912B75C1D591AB320FA1D9FA0AAEC5FF07D48C"
+      "bytes": 3681,
+      "sha256": "39E38FCDE4F5E956A43F147E6B8EC6E09DE2A64E1A1BF9FFDFEDD396C6BD6F05"
     },
     {
       "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml",
-      "bytes": 8162,
-      "sha256": "EC2984FCC49B3DBC2E4458AB6BB522C6CE385524502708616201D862AD3BE7C8"
+      "bytes": 8525,
+      "sha256": "1190D3D027FC4469FD46883F1107D42F55DDDD43E076474D541165914A2C2955"
     },
     {
       "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml.cs",
-      "bytes": 7132,
-      "sha256": "B7C24942EA1C89528823FE84CE1BC7935804954F6BA11605EAC5C4EEF56E00CA"
+      "bytes": 7275,
+      "sha256": "F1BEEBCE712311681FB3E1118E94AA2B92E60FBDA17616C1850C093393034E36"
     },
     {
       "path": "native/TheOrder.WinUI/Views/TagFlowPanel.cs",
@@ -2509,8 +2581,8 @@
     },
     {
       "path": "native/tools/BrandIcons/Program.cs",
-      "bytes": 2940,
-      "sha256": "81E5AF7E3D1E1023D63B8F46C53A7CB91E06A08B524C91664370489AD13E60A3"
+      "bytes": 2975,
+      "sha256": "AC82A03C198138CBE450C324EF9C7C804E921B92BC8219C657AABADDA0286C58"
     },
     {
       "path": "package-lock.json",
@@ -2543,9 +2615,14 @@
       "sha256": "018762A3E64AE6F97D7C25B9C763C8EB9B22909BAEB0D2A55270F3B8C841FC3B"
     },
     {
+      "path": "PUBLICATION.md",
+      "bytes": 1057,
+      "sha256": "190E879B490B63147B3E05D7461BEE44891839EA328768795A6F338A681961BE"
+    },
+    {
       "path": "README.md",
-      "bytes": 28967,
-      "sha256": "E4ED04704C7CC86FD38D7CD735F6F8991871CBF386D217FABAE0949990739C24"
+      "bytes": 30329,
+      "sha256": "5DBF803464E90683A4DA9F4A21562177B45CED4B8D0485ED034196AAE7A0E018"
     },
     {
       "path": "scripts/build-electron.mjs",

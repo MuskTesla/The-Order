@@ -41,7 +41,7 @@ foreach ($file in $manifest.files) {
     }
 }
 if ($ValidateOnly) {
-    [pscustomobject]@{version='1.0.0';files=@($manifest.files).Count;validated=$true;profileKind=$(if($Test){'Test'}else{'Production'});profileOpened=$false} | ConvertTo-Json
+    [pscustomobject]@{version=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion;files=@($manifest.files).Count;validated=$true;profileKind=$(if($Test){'Test'}else{'Production'});profileOpened=$false} | ConvertTo-Json
     return
 }
 $prior = @{}

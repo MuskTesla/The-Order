@@ -105,6 +105,11 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
     internal static ClientResult Present<T>(CommitResult<T> receipt) => receipt.Warning is not null
         ? new(ClientOutcome.CommittedWithWarning, UiText.Get("修改已经保存，但存在附加警告：") + receipt.Warning + UiText.Get(" 请勿重复提交。"))
         : new(ClientOutcome.Committed, receipt.CancellationAfterCommit ? UiText.Get("修改已经保存。取消发生在提交开始之后。") : UiText.Get("修改已经保存。"));
+    public async Task<ClientResult> RemoveEntriesAsync(ImmutableArray<string> ids, CancellationToken cancellation)
+    {
+        try { return Present(await Required().DeleteBatchAsync(ids, cancellation).ConfigureAwait(false)); }
+        catch (Exception e) when (Expected(e)) { return Failure(e); }
+    }
     internal static bool Expected(Exception e) => e is InvalidDataException or LibraryWriteLimitException or LibraryReadOnlyException or StaleLibraryRequestException or CandidateStaleException or OperationCanceledException or IOException or UnauthorizedAccessException or DataIsolationException;
     internal static ClientResult Failure(Exception e) => e switch
     {

@@ -1,5 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8"?><Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:views="using:TheOrder.WinUI.Views" xmlns:l="using:TheOrder.WinUI.Localization">
+<?xml version="1.0" encoding="utf-8"?><Page x:Class="TheOrder.WinUI.Views.LibraryPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:views="using:TheOrder.WinUI.Views" xmlns:l="using:TheOrder.WinUI.Localization">
  <Page.Resources>
+  <Style x:Key="ContinueCardStyle" TargetType="Border"><Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" /><Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="16" /></Style>
   <Style x:Key="CardContainerStyle" TargetType="GridViewItem" BasedOn="{StaticResource DefaultGridViewItemStyle}"><Setter Property="Margin" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="VerticalContentAlignment" Value="Stretch" /></Style>
   <Style x:Key="CollectionRowStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}"><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="MinHeight" Value="56" /><Setter Property="Padding" Value="12,0,12,0" /></Style>
   <!-- One shared context menu; items are rebuilt for the target card and the current mode. -->
@@ -21,9 +22,20 @@
   </DataTemplate>
  </Page.Resources>
  <Grid x:Name="LibraryCanvas" SizeChanged="OnLibrarySizeChanged" KeyDown="OnPageKeyDown">
-  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <StackPanel Grid.Row="0" Spacing="8" Margin="24,8">
+  <InfoBar x:Name="ApiReminder" IsOpen="False" IsClosable="False" Severity="Informational" Title="开始识别前，先填写 API 密钥" Message="前往 NextMoe 开发者平台获取 API 密钥，在设置中保存后会自动继续识别已导入但缺资料的作品。">
+   <InfoBar.ActionButton><Button Content="获取 API / 前往设置" Click="OnApiSettings" /></InfoBar.ActionButton>
+  </InfoBar>
+  <Border x:Name="RecognitionStatus" Visibility="Collapsed" Style="{StaticResource ContinueCardStyle}">
+   <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+    <StackPanel Spacing="6"><TextBlock Text="作品识别进度" FontWeight="SemiBold" /><TextBlock x:Name="RecognitionCounts" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryRecognitionProgress" /><ProgressBar x:Name="RecognitionBar" Minimum="0" /><TextBlock x:Name="RecognitionMessage" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" /></StackPanel>
+    <Button x:Name="CancelRecognition" Grid.Column="1" Content="取消识别" Click="OnCancelRecognition" VerticalAlignment="Center" />
+   </Grid>
+  </Border>
+  </StackPanel>
   <!-- Header: title + count, then sort · filter · view · select · import (labels collapse below 900). -->
-  <Grid x:Name="HeaderRow" Padding="32,16,24,8" ColumnSpacing="16"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+  <Grid x:Name="HeaderRow" Grid.Row="1" Padding="32,16,24,8" ColumnSpacing="16"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <StackPanel x:Name="HeaderIdentity" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
     <TextBlock Style="{StaticResource TitleTextBlockStyle}" l:Localize.Text="书架" />
     <TextBlock x:Name="CountText" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Bottom" Margin="0,0,0,6" AutomationProperties.AutomationId="LibraryStatus" />
@@ -79,25 +91,26 @@
    </StackPanel>
   </Grid>
   <!-- Active conditions: one chip each (× removes it) + 清除全部. Present only while filters are active. -->
-  <Grid x:Name="ActiveFilterRegion" Grid.Row="1" Visibility="Collapsed" Padding="32,0,24,8" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+  <Grid x:Name="ActiveFilterRegion" Grid.Row="2" Visibility="Collapsed" Padding="32,0,24,8" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
     <StackPanel x:Name="FilterChips" Orientation="Horizontal" Spacing="8" AutomationProperties.AutomationId="ActiveFilterSummary" l:Localize.Name="当前筛选条件" />
    </ScrollViewer>
    <HyperlinkButton Grid.Column="1" Click="OnClear" l:Localize.Content="清除全部" l:Localize.Name="清除全部筛选条件" />
   </Grid>
   <!-- Selection mode bar (replaces the header actions while selecting). -->
-  <Grid x:Name="SelectionContext" Grid.Row="2" Visibility="Collapsed" Margin="24,0,24,8" Padding="12,6" ColumnSpacing="8" CornerRadius="8" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
+  <Grid x:Name="SelectionContext" Grid.Row="3" Visibility="Collapsed" Margin="24,0,24,8" Padding="12,6" ColumnSpacing="8" CornerRadius="8" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <TextBlock x:Name="SelectionCountText" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" AutomationProperties.AutomationId="LibrarySelectionCount" AutomationProperties.LiveSetting="Polite" l:Localize.Text="已选择 0 项" />
    <StackPanel x:Name="ContextActions" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
     <Button x:Name="SelectAllButton" Style="{StaticResource SubtleButtonStyle}" Click="OnSelectAll" AutomationProperties.AutomationId="SelectAll"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="全选" /></StackPanel></Button>
     <Button x:Name="RecognizeSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRecognize" IsEnabled="False" AutomationProperties.AutomationId="RecognizeSelected" l:Localize.Name="识别所选作品"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="识别所选" /></StackPanel></Button>
     <Button x:Name="BatchEditButton" Style="{StaticResource SubtleButtonStyle}" Click="OnBatch" IsEnabled="False" AutomationProperties.AutomationId="BatchEdit" l:Localize.Name="批量编辑所选作品"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="批量编辑" /></StackPanel></Button>
+    <Button x:Name="RemoveSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRemoveSelected" IsEnabled="False" AutomationProperties.AutomationId="RemoveSelected" Content="移除所选" />
     <TextBlock x:Name="SelectionHint" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center" Margin="8,0,0,0" l:Localize.Text="Shift+单击选择范围 · Esc 退出" />
    </StackPanel>
    <Button Grid.Column="2" Click="OnSelectionDone" AutomationProperties.AutomationId="SelectionDone" l:Localize.Content="完成" l:Localize.Name="完成选择" />
   </Grid>
-  <Grid x:Name="BooksViewport" Grid.Row="3">
+  <Grid x:Name="BooksViewport" Grid.Row="4">
    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
    <ProgressBar Grid.RowSpan="2" IsIndeterminate="True" Height="2" VerticalAlignment="Top" Canvas.ZIndex="1" Visibility="{x:Bind Visible(ViewModel.IsSearching), Mode=OneWay}" l:Localize.Name="正在更新书架" />
     <!-- Sticky name header matches the poster/name rows. Other sort keys remain in the sort menu. -->
@@ -118,6 +131,6 @@
    </StackPanel>
    <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" l:Localize.Name="正在加载书架" />
   </Grid>
-  <TextBlock Grid.Row="4" x:Name="DiagnosticsText" Visibility="Collapsed" FontSize="11" Margin="24,0" AutomationProperties.AutomationId="VirtualizationProbe" />
+  <TextBlock Grid.Row="5" x:Name="DiagnosticsText" Visibility="Collapsed" FontSize="11" Margin="24,0" AutomationProperties.AutomationId="VirtualizationProbe" />
  </Grid>
 </Page>

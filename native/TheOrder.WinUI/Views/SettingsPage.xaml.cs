@@ -15,6 +15,7 @@ public sealed partial class SettingsPage : Page
     public string AppVersion => "The Order " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0");
     private bool editingCredential;
     private bool synchronizing;
+    public Func<Task>? CredentialSaved { get; set; }
     public Func<MaterialMode, Task>? ChangeMaterialMode { get; set; }
     // MainWindow owns persisted intent; system policy owns effective state.
     internal void ShowMaterialState(MaterialMode mode, bool effectsAllowed, bool highContrast,
@@ -56,7 +57,11 @@ public sealed partial class SettingsPage : Page
     private async void OnSaveCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         var secret = ApiCredential.Password;
-        if (await Online.SaveCredentialAsync(secret) && ApiCredential.Password == secret) { ApiCredential.Password = ""; editingCredential = false; SynchronizeCredential(); }
+        if (await Online.SaveCredentialAsync(secret))
+        {
+            if (ApiCredential.Password == secret) { ApiCredential.Password = ""; editingCredential = false; SynchronizeCredential(); }
+            if (CredentialSaved is { } saved) await saved();
+        }
     }
     private void OnCredentialState(object? sender, PropertyChangedEventArgs e)
     { if (e.PropertyName == nameof(OnlineViewModel.HasCredential)) SynchronizeCredential(); }
@@ -69,7 +74,7 @@ public sealed partial class SettingsPage : Page
     }
     private void OnChangeCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { editingCredential = true; SynchronizeCredential(); ApiCredential.Focus(Microsoft.UI.Xaml.FocusState.Programmatic); }
     private void OnCancelCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { ApiCredential.Password = ""; editingCredential = false; SynchronizeCredential(); ChangeCredentialButton.Focus(Microsoft.UI.Xaml.FocusState.Programmatic); }
-    private async void OnMissing(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await Recognition.StartAsync([], RecognitionMode.MissingMetadata);
+    private async void OnMissing(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await Recognition.StartUnidentifiedAsync(retryPending: true);
     private void OnCancelRecognition(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => Recognition.CancelAll();
     private async void OnClearCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { ApiCredential.Password = ""; await Online.ClearCredentialAsync(); }
     private async void OnTestConnection(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await Online.TestConnectionAsync();

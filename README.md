@@ -1,29 +1,25 @@
-# The Order 1.0.0
+# The Order 1.0.1
 
-Windows 本地 Galgame 书架，当前版本使用 C# / WinUI 3 原生界面，提供简体中文。
+Windows 本地 Galgame 书架，使用 C# / WinUI 3 原生界面，提供简体中文。
 
-**[下载 Windows 安装版 Setup.exe（推荐）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-Setup-x64.exe)** · [全部发行附件](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0)
+**[下载 Windows 安装版 Setup.exe（推荐）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.1/The-Order-1.0.1-Setup-x64.exe)** · [1.0.1 更新说明与附件](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.1)
 
-首版面向 Windows 11 x64（最低系统版本 22000），所需运行依赖已随安装包提供，无需安装开发工具。双击 Setup.exe，按中文向导安装，以后从桌面或开始菜单打开即可。安装前请在托盘选择“退出”；可在 Windows“已安装的应用”中卸载，书架、设置、图片、游玩记录和游戏文件保留。
+支持 Windows 11 x64（最低系统版本 22000），运行依赖已随包提供。双击 Setup.exe，按中文向导安装，以后从桌面或开始菜单打开即可。升级前请从系统托盘退出程序；升级保留书架、设置和游玩记录，无需先卸载。卸载时可选择保留或删除使用数据，默认保留，不删除游戏文件。
 
-[便携 ZIP（可选）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-win-x64.zip) 仍提供：完整解压后使用 `Start-The-Order.cmd`；独立试用使用 `Start-Test.cmd`。普通资料与试用资料分开，旧 Electron 资料不会自动迁移。已有原生正式资料继续使用。
+首次使用请到 [NextMoe 开发者平台](https://developer.nextmoe.dev/) 获取 API 密钥，在设置中保存。即使先导入了游戏，保存密钥后也会继续批量识别；首页可直接查看进度，有歧义的结果进入待核对队列。
 
-[应用完整对应源码](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-source.zip) · [安装器与启动入口源码](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/The-Order-1.0.0-installer-source.zip) · [安装版校验文件](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.0/INSTALLER-SHA256SUMS.txt)
+程序支持本地导入、书架搜索与筛选、多安装及启动管理、游玩计时、个人状态和笔记、在线资料与发现搜索、封面和横幅选择，以及单项／批量移除。1.0.1 还改进了连续核对、嵌套滚动、继续游玩卡片和系统主题图标。
 
-安装版保持已发布 1.0.0 应用文件一致，新增安装向导与无终端窗口的启动入口。本机 49 项安装、修复、卸载及隔离 Test 启动检查通过。独立干净 Windows 和长期稳定性未在本轮重验，原验收边界仍适用。
+[完整对应源码（含安装器）](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.1/The-Order-1.0.1-source.zip) · [SHA-256 校验](https://github.com/Ph-Rank/The-Order/releases/download/v1.0.1/SHA256SUMS.txt) · [构建说明](docs/release/1.0.1/BUILD.md)
 
-安装包目前未签名，首次下载可能显示“通常不会下载”等信誉提示。公开附件已重新下载核对 SHA-256，并使用本机 Microsoft Defender 扫描安装包、完整应用文件和新增启动入口，未发现威胁；这不等于微软认证，也不保证消除信誉提示。请从本项目发行页下载并保持系统防护开启。[微软对新应用下载信誉的说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
+安装包目前未签名，浏览器或 Windows 可能显示下载信誉提示；请保持系统防护开启。验证范围和未验证项见 [发行说明](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.1)。已有原生正式资料继续使用，旧 Electron 或独立试用资料不会自动迁移。
 
-- [使用、备份与升级说明](docs/release/1.0.0/README.md)
-- [1.0.0 发布说明](docs/release/1.0.0/CHANGELOG.md)
-- [对应源码与构建](docs/release/1.0.0/BUILD.md)
-- [维护入口与实际验收范围](docs/ai/BRIEF.md)
-- [开发与隔离验证](DEVELOPMENT.md)
+本项目为独立开发的开源工具，不代表 Kun、NextMoe 或 PotatoVN 官方。源码采用 AGPL-3.0-or-later，第三方依赖、索引和美术保留各自权利及许可，见 LICENSE、THIRD_PARTY_NOTICES.md、data 与 native/licenses。
 
-程序提供书架导入、多安装与启动管理、游玩计时、在线资料、发现搜索、封面与横幅选择。资料优先 KunGal，通过 NextMoe 获取；识别不确定时等待核对，保留个人编辑和准确版本身份。源码使用 AGPL-3.0-or-later，第三方依赖和数据保留各自许可；公开交付包含完整对应源码。
-
-1.0.0 已于 2026-10-11 正式发布。完整对应源码固定在 `v1.0.0` 标签；公开发行身份与验收范围见 [PUBLICATION.md](PUBLICATION.md) 及 Release 附件。当前 main 的发行说明可以后续更新，程序包和对应源码包保持已发布身份。下方保留历史 Electron 0.7.1 的说明，不能作为原生版本的启动或数据迁移操作指南。
-
+- [1.0.1 更新内容](docs/release/1.0.1/CHANGELOG.md)
+- [使用说明](docs/release/1.0.1/README.md)
+- [公开发行身份](PUBLICATION.md)
+- [旧版 1.0.0](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0)
 <details>
 <summary>历史 Electron 0.7.1 实现说明</summary>
 

@@ -79,6 +79,7 @@ public sealed class SessionHardeningTests
     {
         await using var f = new SessionTestRig(); f.Disk.Fail = true; await f.Start(); f.Disk.Fail = false;
         await Assert.ThrowsAsync<SessionConflictException>(() => f.Library.DeleteAsync("g"));
+        await Assert.ThrowsAsync<SessionConflictException>(() => f.Library.DeleteBatchAsync(["g"]));
         await f.Library.UpdateAsync("g", new() { Notes = "later edit" });
         await f.Engine.CheckpointAsync(); Assert.Equal("later edit", f.Library.Snapshot.Entries[0].Notes);
         Assert.Equal(6, f.Library.Snapshot.Entries[0].PlayCount);

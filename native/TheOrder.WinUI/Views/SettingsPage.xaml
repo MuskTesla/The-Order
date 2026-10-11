@@ -17,6 +17,8 @@
    <Border Height="1" Background="{ThemeResource DividerBrush}" />
    <StackPanel Spacing="16">
     <TextBlock Style="{StaticResource SectionTitleStyle}" l:Localize.Text="在线目录 · NextMoe" />
+    <HyperlinkButton Content="获取 API 密钥 · NextMoe 开发者平台" NavigateUri="https://developer.nextmoe.dev/" HorizontalAlignment="Left" />
+    <TextBlock Text="保存密钥后，将自动继续识别书架中尚未关联资料的本地作品；证据不足的结果仍需核对。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
      <ToggleSwitch x:Name="NsfwSwitch" Toggled="OnNsfw" AutomationProperties.AutomationId="CatalogNsfw" l:Localize.Header="显示 NSFW 内容" l:Localize.OnContent="显示" l:Localize.OffContent="隐藏" l:Localize.Name="显示 NSFW 内容" />
      <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" l:Localize.Text="仅影响搜索与标签相关作品，按 KunGal 分类过滤；书架中的作品和资料始终保留。" />
      <TextBlock Text="{x:Bind Browsing.Message, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="CatalogBrowseState" AutomationProperties.LiveSetting="Polite" />

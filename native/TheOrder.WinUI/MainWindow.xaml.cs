@@ -75,15 +75,28 @@ public sealed partial class MainWindow : Window
         libraryPage.RecognizeSelected = async ids => { if (await ResolveUnsavedAsync()) { await recognition.StartAsync(ids, RecognitionMode.Reidentify); if (!ids.IsEmpty) await Navigate(WorkspacePage.Details, ids[0]); } };
         detailsPage.Recognize = async () => { if (workspace.SelectedId is { } id && await ResolveUnsavedAsync()) { await recognition.StartAsync([id], RecognitionMode.Reidentify); } };
         libraryPage.OpenPendingReview = OpenPendingReviewAsync;
+        libraryPage.OpenSettings = () => Navigate(WorkspacePage.Settings);
+        libraryPage.RemoveSelected = ids => RemoveFromLibraryAsync(library, ids);
+        recognition.ReviewCompleted = async (completed, next) =>
+        {
+            if (workspace.Page == WorkspacePage.Details && workspace.SelectedId == completed)
+                await Navigate(next is null ? WorkspacePage.Library : WorkspacePage.Details, next);
+        };
         recognition.PropertyChanged += OnRecognitionState;
         settingsPage = new(workspace, online, recognition, browsingSettings, languages) { ChangeMaterialMode = SetMaterialModeAsync };
+        settingsPage.CredentialSaved = async () =>
+        {
+            libraryPage.ShowApiReminder(!online.HasCredential);
+            if (online.HasCredential && recognition.UseOnline) await recognition.StartUnidentifiedAsync(retryPending: true);
+        };
+        online.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(OnlineViewModel.HasCredential)) libraryPage.ShowApiReminder(!online.HasCredential); };
         browsingPolicy.Changed += OnBrowsingChanged;
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) {
             await online.RefreshEntryAsync(id);
             if (workspace.PersistenceResult?.IsCommitted == true && workspace.Draft?.Source.Metadata is { } fresh)
             { await presentations.GetAsync(fresh.Id, refresh: true); presentations.Queue([fresh.Id]); detailsPage.RefreshPrepared(fresh.Id); }
         } };
-        detailsPage.RemoveWishlist = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) { await online.RemoveWishlistAsync(id); if (workspace.PersistenceResult?.IsCommitted == true && workspace.SelectedId == id && workspace.Page == WorkspacePage.Details) await Navigate(WorkspacePage.Library); } };
+        detailsPage.RemoveWishlist = async () => { if (workspace.SelectedId is { } id) await RemoveFromLibraryAsync(library, [id]); };
         files.RecognizeImported = recognition.StartImportedAsync;
         importPage = new(files, workspace, recognition) { ChooseFolder = PickFolder };
         installationsPage = new(files, workspace) { ChooseFolder = PickFolder, ChooseExecutable = () => PickFile(".exe", ".cmd") };
@@ -116,7 +129,9 @@ public sealed partial class MainWindow : Window
         try
         {
             await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); await LoadMaterialPreferencesAsync(); await LoadRecognitionPreferencesAsync(); await browsingSettings.InitializeAsync();
-            if (ViewModel.CanEdit) await recognition.StartUnidentifiedAsync();
+            await online.CheckCredentialAsync();
+            libraryPage.ShowApiReminder(!online.HasCredential);
+            if (ViewModel.CanEdit && (online.HasCredential || !recognition.UseOnline)) await recognition.StartUnidentifiedAsync();
             if (recognition.UseOnline)
                 presentations.Queue(Sessions.Library?.Entries.Where(e => e.Metadata is not null).Select(e => e.Metadata!.Id) ?? []);
         }
@@ -202,11 +217,26 @@ public sealed partial class MainWindow : Window
     });
     private void OnRecognitionState(object? sender, PropertyChangedEventArgs e)
     { if (e.PropertyName == nameof(RecognitionViewModel.Reviews)) libraryPage.ShowPendingReviews(recognition.Reviews.Count);
+        if (e.PropertyName == nameof(RecognitionViewModel.ProgressText)) libraryPage.ShowRecognition(recognition);
         if (recognitionPreferencesLoaded && !recognitionPreferencesReadOnly && e.PropertyName is nameof(RecognitionViewModel.UseOnline) or nameof(RecognitionViewModel.IncludePe)) QueueRecognitionPreferences(); }
     private async Task OpenPendingReviewAsync()
     {
         recognition.RefreshIfDirty();
         if (recognition.Reviews.FirstOrDefault() is { } first) await Navigate(WorkspacePage.Details, first.GameId);
+    }
+    private async Task RemoveFromLibraryAsync(OfflineLibraryClient library, System.Collections.Immutable.ImmutableArray<string> ids)
+    {
+        if (ids.IsDefaultOrEmpty || !await ResolveUnsavedAsync()) return;
+        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme,
+            Title = $"从书架移除 {ids.Length} 部作品？", Content = "将移除所选作品的书架条目、个人编辑、安装和游玩记录。不会删除游戏文件。此操作不可撤销。",
+            PrimaryButtonText = "从书架移除", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        var result = await ViewModel.ExecuteFileMutationAsync(token => library.RemoveEntriesAsync(ids, token));
+        if (result.IsCommitted)
+        {
+            await recognition.ForgetRemovedAsync(ids);
+            if (ViewModel.SelectedId is { } selected && ids.Contains(selected)) await Navigate(WorkspacePage.Library);
+        }
     }
     private async Task GoBackAsync() { if (ViewModel.Page == WorkspacePage.Details && await detailsPage.GoBackCatalogAsync()) return; if (ViewModel.Page == WorkspacePage.Online && await onlinePage.GoBackAsync()) return; if (ViewModel.Page != WorkspacePage.Library) await Navigate(WorkspacePage.Library); }
     private async Task<UnsavedChoice> ChooseUnsaved()

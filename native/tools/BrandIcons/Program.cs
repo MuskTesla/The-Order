@@ -24,7 +24,10 @@ foreach(var light in new[]{true,false}) {
         var image=await codec.DecodeAsync(source,size,default);if(image.Width!=size||image.Height!=size)throw new InvalidDataException("Square brand asset required.");
         using var data=new MemoryStream();using var writer=new BinaryWriter(data);var maskStride=((size+31)/32)*4;
         writer.Write(40);writer.Write(size);writer.Write(size*2);writer.Write((short)1);writer.Write((short)32);writer.Write(0);writer.Write(size*size*4+maskStride*size);for(int n=0;n<4;n++)writer.Write(0);
-        for(int y=size-1;y>=0;y--)for(int x=0;x<size;x++){var a=image.Bgra[(y*size+x)*4+3];var value=light?(byte)0:(byte)245;writer.Write(value);writer.Write(value);writer.Write(value);writer.Write(a);}
+        for(int y=size-1;y>=0;y--)for(int x=0;x<size;x++){
+            var a=image.Bgra[(y*size+x)*4+3];var value=light?(byte)0:(byte)245;
+            writer.Write(value);writer.Write(value);writer.Write(value);writer.Write(a);
+        }
         writer.Write(new byte[maskStride*size]);frames.Add(data.ToArray());
     }
     using var output=File.Create(Path.Combine(root,light?"Brand.Light.ico":"Brand.Dark.ico"));using var icon=new BinaryWriter(output);icon.Write((short)0);icon.Write((short)1);icon.Write((short)sizes.Length);var offset=6+sizes.Length*16;

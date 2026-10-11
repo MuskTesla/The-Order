@@ -8,7 +8,31 @@ public sealed partial class RecognitionReview : UserControl, IImageHost
     public RecognitionViewModel ViewModel { get; }
     public IImagePipeline Images { get; }
     public RecognitionReview(RecognitionViewModel viewModel, IImagePipeline images)
-    { ViewModel = viewModel; Images = images; InitializeComponent(); RemoteRichFacts.Images = images; ManualIdBox.KeyDown += OnManualKey; }
+    {
+        ViewModel = viewModel; Images = images; InitializeComponent(); RemoteRichFacts.Images = images; ManualIdBox.KeyDown += OnManualKey;
+        CandidateList.AddHandler(PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnCandidateWheel), true);
+    }
+    private void OnCandidateWheel(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(CandidateList).Properties;
+        if (point.IsHorizontalMouseWheel || point.MouseWheelDelta == 0) return;
+        var inner = FindScroll(CandidateList);
+        if (inner is null || point.MouseWheelDelta > 0 && inner.VerticalOffset > .5 ||
+            point.MouseWheelDelta < 0 && inner.VerticalOffset < inner.ScrollableHeight - .5) return;
+        for (DependencyObject? parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(this); parent is not null; parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent))
+            if (parent is ScrollViewer outer)
+            {
+                outer.ChangeView(null, Math.Clamp(outer.VerticalOffset - point.MouseWheelDelta * .4, 0, outer.ScrollableHeight), null, true);
+                e.Handled = true; break;
+            }
+    }
+    private static ScrollViewer? FindScroll(DependencyObject root)
+    {
+        if (root is ScrollViewer scroll) return scroll;
+        for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+            if (FindScroll(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i)) is { } found) return found;
+        return null;
+    }
     private Func<string, Task>? openLink;
     public void ConfigureCatalog(IRemoteCoverRegistry registry, Func<string, Task> openLink) { this.openLink = openLink; RemoteRichFacts.Registry = registry; RemoteRichFacts.OpenLink = openLink; }
     private async void OnManualKey(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) { e.Handled = true; ViewModel.ManualId = ManualIdBox.Text; await ViewModel.OpenDetailsAsync(ViewModel.ManualId); } }

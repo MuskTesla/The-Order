@@ -229,6 +229,15 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
         }, cancellation);
     public Task<CommitResult<bool>> DeleteAsync(string id, CancellationToken cancellation = default)
         => Mutate(games => (games.Remove(Find(games, id)), true), cancellation);
+
+    public Task<CommitResult<int>> DeleteBatchAsync(ImmutableArray<string> ids, CancellationToken cancellation = default)
+        => Mutate(games =>
+        {
+            if (ids.IsDefaultOrEmpty) throw new InvalidDataException("请选择需要移除的作品。");
+            var selected = ids.ToHashSet(StringComparer.Ordinal);
+            foreach (var id in selected) _ = Find(games, id);
+            return (games.Where(e => !selected.Contains(e.Id)).ToImmutableArray(), selected.Count);
+        }, cancellation);
     // Installation is an already-authorized value, never an instruction to scan/open/execute a path.
     public Task<CommitResult<LibraryEntry>> AddInstallationAsync(string id, Installation installation, RequestToken token, CancellationToken cancellation = default)
         => Mutate(games =>

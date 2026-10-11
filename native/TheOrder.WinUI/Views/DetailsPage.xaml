@@ -25,7 +25,7 @@
            <MenuFlyoutItem x:Name="RecognizeButton" Click="OnRecognize" AutomationProperties.AutomationId="RecognizeOne" l:Localize.Text="重新识别"><MenuFlyoutItem.Icon><FontIcon Glyph="" /></MenuFlyoutItem.Icon></MenuFlyoutItem>
            <MenuFlyoutSeparator />
            <MenuFlyoutItem Click="OnRefreshOnline" l:Localize.Text="刷新在线资料"><MenuFlyoutItem.Icon><FontIcon Glyph="" /></MenuFlyoutItem.Icon></MenuFlyoutItem>
-           <MenuFlyoutItem x:Name="RemoveWishlistButton" Click="OnRemoveWishlist" l:Localize.Text="移除愿望条目"><MenuFlyoutItem.Icon><FontIcon Glyph="" /></MenuFlyoutItem.Icon></MenuFlyoutItem>
+           <MenuFlyoutItem x:Name="RemoveWishlistButton" Click="OnRemoveWishlist" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay}" Text="从书架移除"><MenuFlyoutItem.Icon><FontIcon Glyph="" /></MenuFlyoutItem.Icon></MenuFlyoutItem>
           </MenuFlyout></Button.Flyout>
          </Button>
         </views:TagFlowPanel>

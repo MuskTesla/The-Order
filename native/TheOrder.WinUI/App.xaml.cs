@@ -87,6 +87,8 @@ public partial class App : Microsoft.UI.Xaml.Application
         owner.Window.DispatcherQueue.TryEnqueue(() => {
             if (host != owner || brandWindow == IntPtr.Zero || brandIcons is null) return;
             bool light = WindowsBrandIcons.SystemLight(); brandIcons.Apply(brandWindow, light); tray?.SetIcon(brandIcons.Small(light));
+            if (Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Production)
+                WindowsShortcutTheme.Synchronize(AppContext.BaseDirectory, light);
         });
     }
     private async Task CheckpointHiddenAsync()

@@ -1,0 +1,26 @@
+The Order 1.0.1 — Windows 11 x64 安装版
+
+安装后，双击桌面或开始菜单中的 The Order 即可。
+程序和运行依赖由安装器自动管理，不需要从 DLL 列表中寻找入口。
+这份 1.0.1 候选包含导入识别、连续核对、移除和首次使用流程修复。
+
+首次使用，在书架中点击“导入”，选择游戏所在文件夹。
+在线搜索与资料识别需要在设置中填写自己的 NextMoe API 密钥。
+窗口右上角 × 隐藏到托盘；完全退出请在托盘菜单选择“退出”。
+
+升级与卸载
+升级或修复安装前，先正常退出 The Order。
+在 Windows“设置 → 应用 → 已安装的应用”中可卸载 The Order。
+卸载时可选择保留或删除默认资料中的书架、个人编辑、设置、API 密钥、图片和游玩记录。
+默认保留；静默卸载始终保留。游戏文件、自定义 Test/Development 资料和手动导出的备份不删除。
+普通资料位置：%LOCALAPPDATA%\TheOrder\Profiles\Production
+安装器不会自动迁移旧 Electron 或 Test 资料。
+
+程序包尚未取得代码签名证书，请从官方发行页下载并核对 SHA-256。
+发行页：https://github.com/Ph-Rank/The-Order/releases
+源码：https://github.com/Ph-Rank/The-Order
+应用许可证及第三方声明保留在安装目录中。
+安装程序使用 Inno Setup：https://jrsoftware.org/isinfo.php
+
+高级试用：TheOrder.exe --test-profile "绝对路径"
+该入口仍使用原隔离 Test 检查；不会打开正式书架。
