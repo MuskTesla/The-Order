@@ -1,4 +1,4 @@
-# 1.1.0 认证、同步、程序更新与兼容候选源码及构建
+# 1.1.0 认证、同步、程序更新与兼容源码及构建
 
 当前 1.1.0 候选与版本调整证据位于 `.artifacts/release-1.1.0-20261012/`；原 1.0.2 完整认证与同步证据保留在 `.artifacts/auth-sync-20261011/`。认证分层为 Application `NextMoeAuthentication`、Infrastructure 固定 OAuth／个人 API／共享限流、Windows 环回监听与 DPAPI 伴随文件、Presentation 协调状态及 WinUI 设置／详情。`PersonalSyncCoordinator` 独立完成读取、差异、授权、事务及恢复，UI 不拼请求或处理令牌。没有新增 NuGet 包或升级依赖；为完整历史回归按现有 npm 锁文件恢复了合成 Electron 安全存储测试运行时，不启动旧正式程序。
 
@@ -8,7 +8,7 @@
 
 认证与隐私说明见 [AUTHENTICATION](AUTHENTICATION.md)。严格跨设备无覆盖的自动双向替换写受官方无条件更新契约限制，采用手动预览确认替代后台替换。真人 OAuth 登录、重启刷新、获准个人只读接口及退出闭环已通过，证据为 `oauth-real-readonly.json`；最终产物绑定、条件结论见候选附带 `ACCEPTANCE.md` 与本机 `validation-summary.json`。真实云端写入／删除、收藏夹额外权限和 Production 升级本轮均未验收，不计为通过。
 
-维护源码为 `native/`。本地候选版本 1.1.0，公开版本仍为 1.0.1；本轮没有发布或替换日用安装。构建环境为 Windows 11 x64、固定 .NET SDK 10.0.401、Visual Studio C++ x64 构建工具、Windows SDK 10.0.26100.0 和 PowerShell 7。构建工具版本与用户运行下限是两件事。
+维护源码为 `native/`。1.1.0 已于 2026-10-12 正式发布并设为 GitHub 最新版，见 [发行页](https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0)。以下验证记录来自发布前的同一构建；发布仅上传已验证产物，没有重新编译或替换本机日用安装。构建环境为 Windows 11 x64、固定 .NET SDK 10.0.401、Visual Studio C++ x64 构建工具、Windows SDK 10.0.26100.0 和 PowerShell 7。构建工具版本与用户运行下限是两件事。
 
 `native/Directory.Build.targets` 将每个 Windows 程序集的 `TargetPlatformMinVersion` 与 `SupportedOSPlatformVersion` 固定到 10.0.17763.0；保留 `net10.0-windows10.0.26100.0` 引用目标，CA1416 以警告当作错误检查未保护的新版系统调用。`WindowsCompatibility.MinimumBuild`、启动检查、安装器 `MinVersion` 和包身份也使用 17763。桌面工具及测试为 x64，输出路径保留原约定。
 
