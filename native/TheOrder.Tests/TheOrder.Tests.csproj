@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <IsPackable>false</IsPackable><IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
@@ -15,8 +17,10 @@
     <ProjectReference Include="../TheOrder.LaunchFixture/TheOrder.LaunchFixture.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj" ReferenceOutputAssembly="false" />
     <None Include="../fixtures/**" Exclude="../fixtures/CaptureRepro/bin/**;../fixtures/CaptureRepro/obj/**;../fixtures/ImageBindingRepro/bin/**;../fixtures/ImageBindingRepro/obj/**;../fixtures/UiExperienceProfile/bin/**;../fixtures/UiExperienceProfile/obj/**" Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../data/ppocrv3-text-detector.onnx" Link="data/ppocrv3-text-detector.onnx" CopyToOutputDirectory="PreserveNewest" />
       <Compile Include="../TheOrder.WinUI/Materials/MaterialResources.cs" Link="Materials/MaterialResources.cs" />
       <Compile Include="../TheOrder.WinUI/Materials/MaterialTreeProbe.cs" Link="Materials/MaterialTreeProbe.cs" />
+      <Compile Include="../TheOrder.WinUI/Materials/WindowBackdropState.cs" Link="Materials/WindowBackdropState.cs" />
     <Compile Include="../TheOrder.WinUI/Materials/LensOptics.cs" Link="Materials/LensOptics.cs" />
     <None Include="../TheOrder.WinUI/Assets/Brand.png" Link="material-fixtures/Brand.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../TheOrder.WinUI/Resources/DesignTokens.xaml" Link="material-fixtures/DesignTokens.xaml" CopyToOutputDirectory="PreserveNewest" />

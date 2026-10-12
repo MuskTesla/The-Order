@@ -32,6 +32,7 @@ public sealed class OnlineViewModel(IOnlineCatalog catalog, ICredentialSettings 
     public bool DetailBusy => DetailState is OnlineState.Loading or OnlineState.Refreshing;
     public bool CanLoadMore => !SearchBusy && cursor is not null && Items.Count < 2000;
     public bool HasCredential { get; private set; }
+    public bool CanAccessCatalog => credentials is NextMoeAuthentication next ? next.CatalogAvailable : HasCredential;
     public long AuthGeneration => (credentials as IOnlineAuthContextSource)?.AuthContext.Generation ?? credentialGeneration;
     public bool SettingsBusy => credentialOperations > 0 || ConnectionState == OnlineState.Loading;
     public string DetailTitle => Details is { } d ? CatalogLanguage.Title(d) : UiText.Get("作品详情");
@@ -176,7 +177,7 @@ public sealed class OnlineViewModel(IOnlineCatalog catalog, ICredentialSettings 
         var epoch = auth?.Generation;
         bool Current() => !disposed && generation == connectionGeneration && credential == credentialGeneration && epoch == auth?.Generation && !stop.IsCancellationRequested;
         ConnectionState = OnlineState.Loading; ConnectionMessage = UiText.Get("正在验证目录访问权限…"); Notify();
-        try { await catalog.TestConnectionAsync(stop.Token); if (Current()) { ConnectionState = OnlineState.Loaded; ConnectionMessage = UiText.Get("连接成功：目录接口有效，密钥已获读取授权。"); } }
+        try { await catalog.TestConnectionAsync(stop.Token); if (Current()) { ConnectionState = OnlineState.Loaded; ConnectionMessage = credentials is NextMoeAuthentication ? "连接成功：当前访问方式可读取公开目录。" : UiText.Get("连接成功：目录接口有效，密钥已获读取授权。"); } }
         catch (OperationCanceledException) { if (!disposed && generation == connectionGeneration && credential == credentialGeneration) { ConnectionState = OnlineState.Idle; ConnectionMessage = UiText.Get("连接测试已取消。"); } }
         catch (Exception e) { if (Current()) { ConnectionState = e is OnlineException online ? State(online) : OnlineState.Error; ConnectionMessage = e is OnlineException failure ? failure.Message : UiText.Get("连接测试未完成，请重试。"); } }
         finally { if (ReferenceEquals(connectionStop, stop)) connectionStop = null; if (!disposed && generation == connectionGeneration) Notify(); }

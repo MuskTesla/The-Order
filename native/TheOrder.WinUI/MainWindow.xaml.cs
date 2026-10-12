@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Windowing;
 using TheOrder.Application;
 using TheOrder.Presentation;
+using TheOrder.Platform.Windows;
 using TheOrder.WinUI.Views;
 using TheOrder.WinUI.Startup;
 using System.Diagnostics;
@@ -17,6 +18,9 @@ public sealed partial class MainWindow : Window
     private readonly LibraryPage libraryPage;
     private readonly DetailsPage detailsPage;
     private readonly SettingsPage settingsPage;
+    private readonly AppUpdateViewModel updates;
+    private DispatcherTimer? updateTimer;
+    private bool updatesStopped;
     private readonly Views.OnlinePage onlinePage;
     private readonly OnlineViewModel online;
     private readonly RecognitionViewModel recognition;
@@ -40,9 +44,12 @@ public sealed partial class MainWindow : Window
     private readonly SyntheticScenario? scenario;
     private readonly SyntheticOnline? onlineFixture;
     private readonly bool performanceFixture;
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, LaunchFileDiscovery launchFiles, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    private readonly NextMoeSettingsViewModel nextMoeSettings;
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
+        this.nextMoeSettings = nextMoeSettings;
+        this.updates = updates;
         this.scenario = scenario; this.online = online; this.onlineFixture = onlineFixture; Launch = launch;
         this.recognition = recognition;
         this.launchFiles = launchFiles; this.launchFilesClient = filesClient;
@@ -57,15 +64,22 @@ public sealed partial class MainWindow : Window
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT") is not null;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
+        if (Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_READ_ONLY_OAUTH_ACCEPTANCE") == "1")
+            AppTitleBar.Title = Title = $"The Order {typeof(App).Assembly.GetName().Version!.ToString(3)} Test · 只读登录验收";
+        updates.PropertyChanged += OnAppUpdateState;
+        if (configuration.Profile is NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Production })
+        {
+            updateTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+            updateTimer.Tick += OnAutomaticUpdate;
+        }
         Root.Language = UiText.Culture.Name;
-        // Fluent shell: content extends into the caption area and the TitleBar control is the drag region.
-        ExtendsContentIntoTitleBar = true; SetTitleBar(AppTitleBar);
-        AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        InitializeWindowChrome();
         Navigation.IsEnabled = false;
         libraryPage = new(workspace, configuration.Diagnostics, images) { OpenDetails = id => Navigate(WorkspacePage.Details, id), ResolveUnsaved = ResolveUnsavedAsync, OpenImport = () => Navigate(WorkspacePage.Import), QuickLaunch = QuickLaunchAsync };
         detailsPage = new(workspace, images, launch, recognition) { GoBack = GoBackAsync, ResolveUnsaved = ResolveUnsavedAsync, ActivateLaunch = ActivateLaunchAsync, ManageInstallations = async () => { if (workspace.SelectedId is { } id) await installationNavigation.OpenAsync(id, ResolveUnsavedAsync, () => Navigate(WorkspacePage.Installations)); },
             ChangeCover = async () => { if (await ResolveUnsavedAsync() && workspace.Draft?.Source is { } details && await PickFile(".png", ".jpg", ".jpeg") is { } path) await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, path, token), details.Id); } };
         detailsPage.ChooseWorkCover = () => ChooseWorkCoverAsync(coverSelection, coverRegistry);
+        detailsPage.ConfigurePersonalSync(nextMoeSettings);
         detailsPage.ConfigureCatalog(browsing, browsing, coverRegistry, () => online.AuthGeneration, presentations, () => library.CurrentSnapshot, personalBanners);
         detailsPage.ChangeBanner = () => ChangePersonalBannerAsync(personalBanners, restore: false);
         detailsPage.RestoreDefaultBanner = () => ChangePersonalBannerAsync(personalBanners, restore: true);
@@ -83,13 +97,20 @@ public sealed partial class MainWindow : Window
                 await Navigate(next is null ? WorkspacePage.Library : WorkspacePage.Details, next);
         };
         recognition.PropertyChanged += OnRecognitionState;
-        settingsPage = new(workspace, online, recognition, browsingSettings, languages) { ChangeMaterialMode = SetMaterialModeAsync };
+        settingsPage = new(workspace, online, recognition, browsingSettings, languages, updates, nextMoeSettings) { ChangeMaterialMode = SetMaterialModeAsync,
+            InstallUpdate = package => App.Instance?.RequestUpgradeAsync(package) ?? Task.FromResult(false) };
         settingsPage.CredentialSaved = async () =>
         {
-            libraryPage.ShowApiReminder(!online.HasCredential);
-            if (online.HasCredential && recognition.UseOnline) await recognition.StartUnidentifiedAsync(retryPending: true);
+            libraryPage.ShowApiReminder(!online.CanAccessCatalog);
+            if (online.CanAccessCatalog && recognition.UseOnline) _ = ResumeRecognitionAsync(retryPending: true);
+            await Task.CompletedTask;
         };
-        online.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(OnlineViewModel.HasCredential)) libraryPage.ShowApiReminder(!online.HasCredential); };
+        online.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(OnlineViewModel.HasCredential)) libraryPage.ShowApiReminder(!online.CanAccessCatalog); };
+        nextMoeSettings.IdentityChanged = async () => { await online.CheckCredentialAsync(); if (settingsPage.CredentialSaved is { } ready) await ready(); };
+        var personalSyncTimer = new Microsoft.UI.Xaml.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        personalSyncTimer.Tick += async (_, _) => { if (nextMoeSettings.Automatic) await nextMoeSettings.AutomaticAsync(); };
+        personalSyncTimer.Start();
+        Closed += (_, _) => { personalSyncTimer.Stop(); nextMoeSettings.Dispose(); };
         browsingPolicy.Changed += OnBrowsingChanged;
         detailsPage.RefreshOnline = async () => { if (await ResolveUnsavedAsync() && workspace.SelectedId is { } id) {
             await online.RefreshEntryAsync(id);
@@ -130,8 +151,11 @@ public sealed partial class MainWindow : Window
         {
             await Sessions.InitializeAsync(); await ViewModel.InitializeAsync(); await LoadMaterialPreferencesAsync(); await LoadRecognitionPreferencesAsync(); await browsingSettings.InitializeAsync();
             await online.CheckCredentialAsync();
-            libraryPage.ShowApiReminder(!online.HasCredential);
-            if (ViewModel.CanEdit && (online.HasCredential || !recognition.UseOnline)) await recognition.StartUnidentifiedAsync();
+            await updates.ReadReceiptAsync();
+            if (!updatesStopped) updateTimer?.Start();
+            await nextMoeSettings.InitializeAsync();
+            libraryPage.ShowApiReminder(!online.CanAccessCatalog);
+            if (ViewModel.CanEdit && (online.CanAccessCatalog || !recognition.UseOnline)) _ = ResumeRecognitionAsync(retryPending: false);
             if (recognition.UseOnline)
                 presentations.Queue(Sessions.Library?.Entries.Where(e => e.Metadata is not null).Select(e => e.Metadata!.Id) ?? []);
         }
@@ -139,9 +163,12 @@ public sealed partial class MainWindow : Window
         RefreshSession();
     }
     public void SetCommandsBlocked(bool value)
-    { commandsBlocked = value; if (value) coverDialog?.Hide(); PageContent.IsEnabled = !value; RefreshSession(); }
+    { commandsBlocked = value; nextMoeSettings.PauseCommands(value); if (value) coverDialog?.Hide(); PageContent.IsEnabled = !value; RefreshSession(); }
     public void ShowLifecycleError(string message) { lifecycleMessage = message; RefreshSession(); }
-    public void CancelBackgroundRequests() { CancelOnlineRequests(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); }
+    public void CancelBackgroundRequests() { CancelOnlineRequests(); recognition.CancelAll(); files.CancelScan(); ViewModel.CancelPendingOperation(); nextMoeSettings.Cancel(); }
+    public Task DrainPersonalRequestsAsync() => nextMoeSettings.DrainAsync();
+    private async Task ResumeRecognitionAsync(bool retryPending)
+    { try { await recognition.StartUnidentifiedAsync(retryPending); } catch (OperationCanceledException) { } catch { ViewModel.ReportUnexpected(); } }
     private async void OnPauseTiming(object sender, RoutedEventArgs e) { try { await Sessions.PauseAsync(); } catch { ShowLifecycleError(UiText.Get("暂停计时未完成，请重试。")); } RefreshSession(); }
     private async void OnResumeTiming(object sender, RoutedEventArgs e) { try { await Sessions.ResumeAsync(); } catch { ShowLifecycleError(UiText.Get("恢复计时未完成，请重试。")); } RefreshSession(); }
     private void RefreshSession()
@@ -278,6 +305,9 @@ public sealed partial class MainWindow : Window
     }
     public async ValueTask StopAsync()
     {
+        updatesStopped = true;
+        if (updateTimer is not null) { updateTimer.Stop(); updateTimer.Tick -= OnAutomaticUpdate; }
+        updates.PropertyChanged -= OnAppUpdateState;
         CancelOnlineRequests();
         await materialWrite;
         DisposeVisualSystem();

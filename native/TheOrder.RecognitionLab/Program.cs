@@ -20,6 +20,9 @@ public static class Program
         if (args.Length == 0) { Console.Error.WriteLine("usage: inventory <root> <index.json.gz> <out.json>"); return 2; }
         return args[0] switch
         {
+            "anonymous-auth-smoke" => await AuthenticationSmoke.Anonymous(args[1]),
+            "oauth-readonly-smoke" => await OAuthReadOnlySmoke.Run(args[1], args[2]),
+            "auth-test-seed" => await AuthenticationSmoke.Seed(args[1]),
             "artworkprobe" => await Live.ProbeArtwork(args[1]),
             "inventory" => await Inventory(args[1], args[2], args[3]),
             "replay" => await RunReplay(args[1], args[2], args[3], args[4], args[5]),

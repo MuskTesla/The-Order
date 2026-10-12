@@ -1,8 +1,9 @@
 {
-  "version": "1.0.1",
   "schema": 1,
-  "count": 669,
-  "purpose": "Publication source snapshot including inherited application implementation and installer",
+  "version": "1.1.0",
+  "purpose": "Public 1.1.0 source snapshot; validated implementation plus publication documentation",
+  "frozenManifestSha256": "D4A310C21AAF5A1A65E01CB37E0CEB6E3126804B7B0505392A87A1F57BE141A4",
+  "count": 733,
   "items": [
     {
       "path": ".gitattributes",
@@ -23,6 +24,36 @@
       "path": "CLAUDE.md",
       "bytes": 1991,
       "sha256": "7E719929594143E1988AB82E3E0B42FEAA3D7E1BBD21B98E03AE114CBAF74990"
+    },
+    {
+      "path": "DEVELOPMENT.md",
+      "bytes": 364571,
+      "sha256": "20F082FEC851E009C9E7976D70BF8C50D8B5F5352FE805E818D11DEA2E84B317"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 34523,
+      "sha256": "8486A10C4393CEE1C25392769DDD3B2D6C242D6EC7928E1414EFFF7DFB2F07EF"
+    },
+    {
+      "path": "PUBLICATION.md",
+      "bytes": 1703,
+      "sha256": "B9D4EB3A489F652D4388FB6C82633DEC80B887538864DBB793A7C507655B6791"
+    },
+    {
+      "path": "README.md",
+      "bytes": 30551,
+      "sha256": "9AE4EE993ADBEF5EDDFFA7AAB04B415FFF55DF502A07E8873EC82EEBBE9A4D59"
+    },
+    {
+      "path": "Start-The-Order-Test.cmd",
+      "bytes": 241,
+      "sha256": "8B28BB1EC964272F0B7F82C76BAD30BAEF56D94195468537B18A675952FD19F0"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 9012,
+      "sha256": "B76A07753F5293D192CA33751A579BEFC0D37BDE17DE57A13A4A210D538802A3"
     },
     {
       "path": "data/LICENSE-PotatoDBMapper.txt",
@@ -55,14 +86,9 @@
       "sha256": "CFF1AD42E55532132C75AFF9CBA2B1E493D7932EEFE751E23A3F8826DE8BF93F"
     },
     {
-      "path": "DEVELOPMENT.md",
-      "bytes": 341037,
-      "sha256": "23104AD2572B898044024FADA2D25EB71720B499D2B7F9BC7E3F7E1D42D05527"
-    },
-    {
       "path": "docs/ai/BRIEF.md",
-      "bytes": 217326,
-      "sha256": "2CCFF0A96AC0FBBD8E2BF3BFE7970670C9B7B7C950E245CAC6E7C5B376784940"
+      "bytes": 249086,
+      "sha256": "B19143068C45389E78B4D182F81F985C62D80160023313865F9BA4B983F57BA3"
     },
     {
       "path": "docs/ai/ITERATION.md",
@@ -140,6 +166,11 @@
       "sha256": "732C0248BA269158B39448E9565874AACC66F10DFA8EE59312DF6A8A119A31E3"
     },
     {
+      "path": "docs/design/claude-phase7/README.md",
+      "bytes": 1851,
+      "sha256": "F394B641A186BB7C1E98A22872F29E58462B6EFB4B878E0A13AC6FE56EA9F2FF"
+    },
+    {
       "path": "docs/design/claude-phase7/previews/direction-r2.html",
       "bytes": 31097,
       "sha256": "30A7FAFC4B21492399144FF7F7788D7D295339A5A8FDA5D23757F0761B246F4C"
@@ -168,11 +199,6 @@
       "path": "docs/design/claude-phase7/previews/rev1-direction-b.html",
       "bytes": 34254,
       "sha256": "1EB14E9F9D77C479950C19F29C5E1815DE31F73DBF34FA8EC40FECD736B2320A"
-    },
-    {
-      "path": "docs/design/claude-phase7/README.md",
-      "bytes": 1851,
-      "sha256": "F394B641A186BB7C1E98A22872F29E58462B6EFB4B878E0A13AC6FE56EA9F2FF"
     },
     {
       "path": "docs/design/claude-phase7/rev1/01_CREATIVE_DIRECTION.md",
@@ -211,8 +237,8 @@
     },
     {
       "path": "docs/release/1.0.0/README.md",
-      "bytes": 3927,
-      "sha256": "9C8D10C932E1F185E5D710987FBD7CB70C7ED573DC646C32D1894F5BD3F62A93"
+      "bytes": 4944,
+      "sha256": "475EF0ED3E91B378FFB992165F33E84978646F70529740412CB3690BAEBD74E9"
     },
     {
       "path": "docs/release/1.0.1/BUILD.md",
@@ -228,6 +254,46 @@
       "path": "docs/release/1.0.1/README.md",
       "bytes": 2324,
       "sha256": "74A5925BE4AD17B1BCD0BF64579186C91849AB8D680CBB0319133B916642654D"
+    },
+    {
+      "path": "docs/release/1.0.2/AUTHENTICATION.md",
+      "bytes": 7159,
+      "sha256": "666D9C259913D017ACE89B50E8E3E3C82F3F027C9C98FCE3C2BB6883836A859A"
+    },
+    {
+      "path": "docs/release/1.0.2/BUILD.md",
+      "bytes": 11937,
+      "sha256": "0DCF16B3E3683B7A293E4E6233601F1626D147806D89C85B4D9188124DA43305"
+    },
+    {
+      "path": "docs/release/1.0.2/CHANGELOG.md",
+      "bytes": 4758,
+      "sha256": "AEFFF30129036B30C4E5AA118C83C081E8B13C14EDA9C3267EDB294EC6599CBA"
+    },
+    {
+      "path": "docs/release/1.0.2/README.md",
+      "bytes": 5036,
+      "sha256": "6779AA1AE1F109CEC7190346AF2D0528FA3C87D7502462881AB6488A452FDB95"
+    },
+    {
+      "path": "docs/release/1.1.0/AUTHENTICATION.md",
+      "bytes": 7159,
+      "sha256": "11839F933C3A5FCFBDBB39EC7C867302A205908D909755E908648DC592B0C5BC"
+    },
+    {
+      "path": "docs/release/1.1.0/BUILD.md",
+      "bytes": 12187,
+      "sha256": "9474714DF0754C1D48CAD14227427C5616DD28F08B77234705698BE5369085AF"
+    },
+    {
+      "path": "docs/release/1.1.0/CHANGELOG.md",
+      "bytes": 3726,
+      "sha256": "975D28357ACE77991A57FEBB0AF3B35E0EE11A665DC3DA68737104E7F2D1C8CA"
+    },
+    {
+      "path": "docs/release/1.1.0/README.md",
+      "bytes": 5027,
+      "sha256": "24CFF14CE6C730D0EEAB2FBD7525085C0AE48A5F4CC4843DA1AF7E29975E5F87"
     },
     {
       "path": "electron/evidence-matching.ts",
@@ -310,174 +376,14 @@
       "sha256": "736542595CB5F8C16D7BB0304B846735183359710DE4DE13542BC96AACC3FD0C"
     },
     {
-      "path": "LICENSE",
-      "bytes": 34523,
-      "sha256": "8486A10C4393CEE1C25392769DDD3B2D6C242D6EC7928E1414EFFF7DFB2F07EF"
-    },
-    {
       "path": "native/Directory.Build.props",
       "bytes": 799,
-      "sha256": "FD7D834402F14B0A9199915A1303D90EFEDAC68F29D02B4A91DF1A18BF842F9A"
+      "sha256": "17B497254C67EC009984AF15506B2702CFB180C82BF066C381550946567CB496"
     },
     {
-      "path": "native/fixtures/accepted-c1-shader.h",
-      "bytes": 2369,
-      "sha256": "2EBB75E8329A439EDE99CBBDFF0D47153B26F8119652D7351A4A1EF12849C042"
-    },
-    {
-      "path": "native/fixtures/compatibility-vectors.json",
-      "bytes": 109746,
-      "sha256": "C998881FC0A98C5C7273D2129DD12002F6039802319638DF68D4BC47D9DDAF80"
-    },
-    {
-      "path": "native/fixtures/corrupt/.the-order-synthetic",
-      "bytes": 37,
-      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
-    },
-    {
-      "path": "native/fixtures/corrupt/library.json",
-      "bytes": 50,
-      "sha256": "1A2C61B787D9321BA7F4A53A1FE621C8856EAC60A473611F7F3A1E269E977593"
-    },
-    {
-      "path": "native/fixtures/empty/.the-order-synthetic",
-      "bytes": 37,
-      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
-    },
-    {
-      "path": "native/fixtures/empty/library.json",
-      "bytes": 92,
-      "sha256": "89833B24E43C1A1D31928DF6447C8CF33A7C5C335CB232D00A8113A2899E4BF7"
-    },
-    {
-      "path": "native/fixtures/filesystem-oracle.json",
-      "bytes": 17506,
-      "sha256": "A402C91B1A5622B8442F0E10132BCA4E878E53302F6FF035E270C85CB025A632"
-    },
-    {
-      "path": "native/fixtures/fingerprints.json",
-      "bytes": 11683,
-      "sha256": "CA22E7480EF5C5726BB46E99F86DBEC230185560B0D5A814EDB53842E2E8C053"
-    },
-    {
-      "path": "native/fixtures/launch-oracle.json",
-      "bytes": 3345,
-      "sha256": "C3285CDACF66050B5ACEA9DA46067880CCD06C594F9037FB0BF5BD99970E130B"
-    },
-    {
-      "path": "native/fixtures/normal/.the-order-synthetic",
-      "bytes": 37,
-      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
-    },
-    {
-      "path": "native/fixtures/normal/library.json",
-      "bytes": 3158,
-      "sha256": "623E9CCF60E519532E4D5BBBA032BB1EBB314A21D93CBF5E94630EAC74A1EBAA"
-    },
-    {
-      "path": "native/fixtures/offline-ui-oracle.json",
-      "bytes": 159377,
-      "sha256": "3976306FDB91346643C642CC2F509687B094EE8F9D4210E5EE6C302B01BAE5B7"
-    },
-    {
-      "path": "native/fixtures/online-oracle.json",
-      "bytes": 85008,
-      "sha256": "9BD8754FCD6137ED74E992025CD3C1A73DC72248473AA4D0C0C08C532D8C26F5"
-    },
-    {
-      "path": "native/fixtures/optical-source-regression.cpp",
-      "bytes": 24429,
-      "sha256": "265CFDF1FABF8FAFB4ECC1CCC03E72BF9FECD1377DDEBA72AB6EB78CD4A990FE"
-    },
-    {
-      "path": "native/fixtures/recognition-evidence-oracle.json",
-      "bytes": 58691,
-      "sha256": "880CB2E18191FDF17B3F5DBCF09B9C49FAA316F7D39F13590565C990DBEC5338"
-    },
-    {
-      "path": "native/fixtures/recognition-oracle.json",
-      "bytes": 442463,
-      "sha256": "FD0166C1A63C7FE28758C0BF4E263211FA4AD690ACFDF3F055032629943B25C0"
-    },
-    {
-      "path": "native/fixtures/transaction-oracle.json",
-      "bytes": 791517,
-      "sha256": "70692D488F4F5A1268566572B700B4DAC254C38C093C8B9B0BAB9E7FBC965334"
-    },
-    {
-      "path": "native/fixtures/UiExperienceProfile/packages.lock.json",
-      "bytes": 598,
-      "sha256": "65DE5D420725DAEEDE99A43BAAC9473D12205BDE06F1680EBE16E45426127F22"
-    },
-    {
-      "path": "native/fixtures/UiExperienceProfile/Program.cs",
-      "bytes": 2389,
-      "sha256": "478AD2F88A92319E3A8DCF526C76C7919FE0E05E9A74C05F0713A631FE951BF1"
-    },
-    {
-      "path": "native/fixtures/UiExperienceProfile/UiExperienceProfile.csproj",
-      "bytes": 407,
-      "sha256": "28696CBAE68B9A644C1866692854DB692AA84EA8C5A0E2CDF686DAEE26AE709C"
-    },
-    {
-      "path": "native/global.json",
-      "bytes": 91,
-      "sha256": "C700761A8DA9E52EE1DA80751B38B9A9C36A72F5CBCBFA3C6C0EC006ED29262B"
-    },
-    {
-      "path": "native/installer/BUILD.md",
-      "bytes": 2677,
-      "sha256": "EF264368063AE2077A78DA3374CBB22FC1572A6207D33B6973A21E6F985F0AC6"
-    },
-    {
-      "path": "native/installer/languages/ChineseSimplified.isl",
-      "bytes": 21516,
-      "sha256": "E0B0B350E2245F3C5E65586DFE43D574F6E7F06F2261149ABA284954B3FC9A8D"
-    },
-    {
-      "path": "native/installer/Launcher.cpp",
-      "bytes": 3145,
-      "sha256": "1ED21220C6F376102449614464AC64CEA01FE4ABF8F99BA2C9F10FA82D243D4D"
-    },
-    {
-      "path": "native/installer/Launcher.rc",
-      "bytes": 638,
-      "sha256": "7B5BA233E5C86EAE19A798760ED8BD1145CC03FF78A2C08D6C5D4FEDFA90EB25"
-    },
-    {
-      "path": "native/installer/LICENSE-InnoSetup.txt",
-      "bytes": 1521,
-      "sha256": "2E5346868C2A18434489824E11D65C3031620F792FEFC415D05F19CD441ABF5C"
-    },
-    {
-      "path": "native/installer/TheOrder.iss",
-      "bytes": 9409,
-      "sha256": "AE92952BCAB08EB158C28A4A11BEC6F4D0F305E5D2357CD9754A223FCFD7722A"
-    },
-    {
-      "path": "native/installer/安装版使用说明.txt",
-      "bytes": 1526,
-      "sha256": "A8AC4AEC66C092DF015E6C0E63D8165F35BE508918972C43C999146E3AD35EB8"
-    },
-    {
-      "path": "native/licenses/MARKDIG-LICENSE.txt",
-      "bytes": 1318,
-      "sha256": "7423242B4AE72BCCDF19A06CD3C20790DF8519A164A08F37B31CB4A40034D827"
-    },
-    {
-      "path": "native/licenses/PotatoVN-LICENSE.txt",
-      "bytes": 11833,
-      "sha256": "2B3F1ACA1AF27CE5222519496543EC0B416ED9A03537C2AAAAD322BF048A4614"
-    },
-    {
-      "path": "native/licenses/PP-OCRv3-LICENSE.txt",
-      "bytes": 11437,
-      "sha256": "609AAAC97719DA6B71CD3FFD08B5DE08B75F582E5C50A196FAB522B6D5087714"
-    },
-    {
-      "path": "native/licenses/UNICODE-LICENSE.txt",
-      "bytes": 1995,
-      "sha256": "E7A93B009565CFCE55919A381437AC4DB883E9DA2126FA28B91D12732BC53D96"
+      "path": "native/Directory.Build.targets",
+      "bytes": 788,
+      "sha256": "CA5EC3A3A498522572998CDBD90D773C5D7C4AE3141CDC65D43C0F9C66CD522F"
     },
     {
       "path": "native/NuGet.Config",
@@ -485,234 +391,29 @@
       "sha256": "EF18AAE73F086BB5FC3E982CE9B14CD85951B0C85871C7F3459DFA7041D5158B"
     },
     {
-      "path": "native/scripts/build-material-effects.ps1",
-      "bytes": 1389,
-      "sha256": "7F9D883281F2F8BA638AD68D4B9F81059CBF0DFB2D07E39508A0A631374636E2"
-    },
-    {
-      "path": "native/scripts/build-optical-material.ps1",
-      "bytes": 2011,
-      "sha256": "5ADFC0EB46F5237C41680389FB5F14D076A1468E76B38A781DB317B0949CAE23"
-    },
-    {
-      "path": "native/scripts/capture-ui-evidence.mjs",
-      "bytes": 3868,
-      "sha256": "0BDDE71E0E6D7C8318C95059815EF40F5B2535A9AA1E4610F48EBDE7CA15BBCD"
-    },
-    {
-      "path": "native/scripts/capture-ui-evidence.test.mjs",
-      "bytes": 4128,
-      "sha256": "DE892C7CD159B29A9465A59F8CDDE7A8D95D5E06839B5B7179B39EE14D17802F"
-    },
-    {
-      "path": "native/scripts/check-performance-results.py",
-      "bytes": 12670,
-      "sha256": "D5CBB7B0464E80AD2F85DF6EC66E4877FD38AAE3AE105F364F757D05B98274B6"
-    },
-    {
-      "path": "native/scripts/check-published-runner.ps1",
-      "bytes": 2186,
-      "sha256": "30173DBDD52C9B3CC2747DFE3698B60716BDA0185A0DC4D24C67C61E18E7A57F"
-    },
-    {
-      "path": "native/scripts/create-filesystem-lab.ps1",
-      "bytes": 3260,
-      "sha256": "33266C84F252315B472E2157DE5E45003A749FBAED185BFE2A22A8E8538A045D"
-    },
-    {
-      "path": "native/scripts/generate-compatibility-vectors.mjs",
-      "bytes": 8582,
-      "sha256": "1BA6FC7721CC64DF581C1E523E20D7A87580CAA565070E0B06713E8FEBF2C913"
-    },
-    {
-      "path": "native/scripts/generate-filesystem-oracle.mjs",
-      "bytes": 7121,
-      "sha256": "1645E2841DDDDC7117C01A5247F9960FAC9D6DEE78E763ECE18C3D558F9FDF10"
-    },
-    {
-      "path": "native/scripts/generate-fixtures.mjs",
-      "bytes": 5292,
-      "sha256": "46E5E7FC6BEC72F279B39551C3EC354083D2B802DE084A715D7331A758453AF2"
-    },
-    {
-      "path": "native/scripts/generate-launch-oracle.mjs",
-      "bytes": 5770,
-      "sha256": "48921A6111EA7F8FC4C6AC2D6D514096F5062EA6066884478340DC9BA7934A79"
-    },
-    {
-      "path": "native/scripts/generate-offline-library.mjs",
-      "bytes": 3548,
-      "sha256": "6693847A61FEE00F42B4ADE2523272176978E636715D48C51568A762B50610B4"
-    },
-    {
-      "path": "native/scripts/generate-offline-ui-oracle.mjs",
-      "bytes": 6347,
-      "sha256": "5AC69094F889ECF23FCA0369964009DB943E5DDA0932D85C4B5DB42E06229719"
-    },
-    {
-      "path": "native/scripts/generate-online-oracle.mjs",
-      "bytes": 5253,
-      "sha256": "4D3659EEB2A23B19D268C320633BA02E8260E130A79E538950E1304D2708C185"
-    },
-    {
-      "path": "native/scripts/generate-performance-covers.py",
-      "bytes": 3253,
-      "sha256": "6373CA8EC6A4DA49B73DA8621BA5CA12B627009E8265D7746AC3A63FFAB14D8A"
-    },
-    {
-      "path": "native/scripts/generate-recognition-evidence-oracle.mjs",
-      "bytes": 5945,
-      "sha256": "43286ECB94A5E2088FDE7B468A15C094B347EB6FAC083B56E781383334724956"
-    },
-    {
-      "path": "native/scripts/generate-recognition-oracle.mjs",
-      "bytes": 3136,
-      "sha256": "6EDACAC4660884BADFF06A6C38F62694B1591B1EAB095C8080216A49E709F03F"
-    },
-    {
-      "path": "native/scripts/generate-recognition-profile.mjs",
-      "bytes": 1672,
-      "sha256": "111CF09BA4620400BA0EEF1F3003CD24689E0A573B97AB2549A9DDE9AD529A1E"
-    },
-    {
-      "path": "native/scripts/generate-recognition-remediation-profile.mjs",
-      "bytes": 2533,
-      "sha256": "23256E53E1A606B7E41794EBCB47CDA9E027CDADFED73B3F427423CD24338EF6"
-    },
-    {
-      "path": "native/scripts/generate-transaction-oracle.mjs",
-      "bytes": 15267,
-      "sha256": "DFB5CFB9AC57F2E9E061D3B1B80191ED7136529F9D56A708F47A29B4AA1AA404"
-    },
-    {
-      "path": "native/scripts/launch-native-release.ps1",
-      "bytes": 5193,
-      "sha256": "93022B648D0BB7B79E5EC11C2566C3F4F4E2EE3C1B56D5BFA964D09A477D4F12"
-    },
-    {
-      "path": "native/scripts/launch-portable-test.ps1",
-      "bytes": 3476,
-      "sha256": "88E349440727E27A1B47B368152ACAE71F366D619C16BE36C9093DE417F8C4CF"
-    },
-    {
-      "path": "native/scripts/native.ps1",
-      "bytes": 6102,
-      "sha256": "46835D2C20F1786BBF00A048255EF2615497CAD25E0AEB16C04C3E5AEB0E9828"
-    },
-    {
-      "path": "native/scripts/package-native-installer.ps1",
-      "bytes": 8882,
-      "sha256": "E3FF41ADCCD6BBAFA9A97AD3B947774DF773E5B1B3437E846B92D4623911B5D1"
-    },
-    {
-      "path": "native/scripts/package-native-rc.ps1",
-      "bytes": 7339,
-      "sha256": "63B3A97BB0AAB71D6E755FF6EF05AC14B3816213DB1EC56A3FFCE7C9D16477FB"
-    },
-    {
-      "path": "native/scripts/package-native-release.ps1",
-      "bytes": 7715,
-      "sha256": "D3F431F3F830969C3E62175C9E09E1E794A50881339E01EF459E678E043831C9"
-    },
-    {
-      "path": "native/scripts/prepare-launch-smoke.ps1",
-      "bytes": 2659,
-      "sha256": "BA52EDB631A715240E00791B1871986270D827681D828B928DE621DC37FF3685"
-    },
-    {
-      "path": "native/scripts/request-test-tray-menu.ps1",
-      "bytes": 1239,
-      "sha256": "4EEBAD94D92089A60E4C52D1CB2E6AF6B395929524C6891173FEC2E3758D53CE"
-    },
-    {
-      "path": "native/scripts/run-astra-material-review.ps1",
-      "bytes": 1400,
-      "sha256": "6132C7FF4E8D0291CE326785D3BFB30EB5A1D4D07E43E77D6B679D7F8611CD21"
-    },
-    {
-      "path": "native/scripts/run-dispersion-review.ps1",
-      "bytes": 1233,
-      "sha256": "EF9221F902AFD01ADCD8AFF31FD73171A28392E018FE4052B13B535D08B03A62"
-    },
-    {
-      "path": "native/scripts/run-integrated-ui-diagnostics.ps1",
-      "bytes": 409,
-      "sha256": "CC5D1399C3194B0E096E7D501F1388B5A358ACB50F5FC2251B5EE9A4A8F786F7"
-    },
-    {
-      "path": "native/scripts/run-integrated-ui.ps1",
-      "bytes": 4181,
-      "sha256": "46F899370419C48313AAB202E0E9D18F50DB953C6C5D9949BAB73BB7E76C33FC"
-    },
-    {
-      "path": "native/scripts/run-material-review.ps1",
-      "bytes": 977,
-      "sha256": "C08DBE47C8685DF87E390D6BE19E39CB02DDD0029FA098B143C180DF840526A6"
-    },
-    {
-      "path": "native/scripts/run-performance-ui.ps1",
-      "bytes": 3985,
-      "sha256": "10B58354D10F9E09DD29B499577D7D58A3D510A44988BFC1DAA664B94D198E6D"
-    },
-    {
-      "path": "native/scripts/run-visual-review.ps1",
-      "bytes": 3529,
-      "sha256": "2908084A25973F7A89A9A6F9B5ABD59BBC50F157A63F8F0E8623ABC0C9469B7D"
-    },
-    {
-      "path": "native/scripts/safe-storage-probe.cjs",
-      "bytes": 1110,
-      "sha256": "621C265B5CAC15236B94846B7D3B4E23D4D0F19F839F886BC999DF7202491255"
-    },
-    {
-      "path": "native/scripts/test-native-installer.ps1",
-      "bytes": 12987,
-      "sha256": "D0AB5D95A7BF2C779423D2352CFE050495213A223661DA70BBC9D097EC035E5F"
-    },
-    {
-      "path": "native/scripts/test-native-release-launcher.ps1",
-      "bytes": 6863,
-      "sha256": "2B920A96CC3FA6D6343F22DB09A3982627EB693507CF86F93B83DE3480DC455D"
-    },
-    {
-      "path": "native/scripts/test-native-uninstall-data.ps1",
-      "bytes": 2669,
-      "sha256": "FA9107FFA8480F2D62A3A3C40BDE06D4A62032A1E05555B96F798C65F8AB3E98"
-    },
-    {
-      "path": "native/scripts/test-optical-lifecycle.ps1",
-      "bytes": 5305,
-      "sha256": "D58520DA24702662ED9146498A2B2C7BE39BA15C54B975DA4A114AD1084203BD"
-    },
-    {
-      "path": "native/scripts/test-optical-source.ps1",
-      "bytes": 1739,
-      "sha256": "B4ED002D0DAD3633D3933A9637E3CE3ECAF858A3A642C2A6B490B8594CF4C855"
-    },
-    {
-      "path": "native/scripts/test-rc-off-isolation.ps1",
-      "bytes": 9137,
-      "sha256": "95B489EF2DB0298FB7FB3237FFF4387D1147B418CD4C752DD4B008785C575F9E"
-    },
-    {
-      "path": "native/scripts/visual-command.ps1",
-      "bytes": 1544,
-      "sha256": "6FEA9769550060641B5A6A7A9C54F3A5AD34D6B655CAFAE05EFC9EBCAA56BE70"
-    },
-    {
-      "path": "native/scripts/watch-performance-resources.ps1",
-      "bytes": 3016,
-      "sha256": "74BC8C7544E56C4FF51684919671A0C1C280ADC15FEB312CBDA1E4610397221F"
-    },
-    {
-      "path": "native/scripts/write-performance-binding.ps1",
-      "bytes": 2967,
-      "sha256": "78589D032FE24B8911C1C2E371685A91C11E2470ADD47D2A5DC1FA4AA3786ECB"
-    },
-    {
       "path": "native/TheOrder.Application/AppSessionHost.cs",
       "bytes": 7171,
       "sha256": "997A0EBFEA3DECBB7E3571DBBFDAF6D36542D3F4CC44654AD017929A2F9E28C7"
+    },
+    {
+      "path": "native/TheOrder.Application/AppUpdateBlocks.cs",
+      "bytes": 7969,
+      "sha256": "C1EF21D24BA06D46E1A47CCFE89A20B7362E052CB5F9F25E779EB2EC99085AB6"
+    },
+    {
+      "path": "native/TheOrder.Application/AppUpdateNotes.cs",
+      "bytes": 2549,
+      "sha256": "8DB1BABBE8B547AA38B7CBE36ED96229216627207C19067DFC88500E6FA0EAC2"
+    },
+    {
+      "path": "native/TheOrder.Application/AppUpdateShutdown.cs",
+      "bytes": 504,
+      "sha256": "5D572E1848218D5BD01F2A87E44F0163A2AA6FA851724FEC37129DEC53C99D47"
+    },
+    {
+      "path": "native/TheOrder.Application/AppUpdates.cs",
+      "bytes": 5170,
+      "sha256": "4156C8EFFA81B4A822E5AE46F0C359ADD0485F09FB995618EA1E5332D3682735"
     },
     {
       "path": "native/TheOrder.Application/ArtworkReadability.cs",
@@ -910,6 +611,11 @@
       "sha256": "288DFA7E52EAA3EC02A77F2FFA851B0A1F2F221D89CF1BB8A11FA6682182A7B9"
     },
     {
+      "path": "native/TheOrder.Application/NextMoeAuthentication.cs",
+      "bytes": 13779,
+      "sha256": "C0A3E770B48113A1A43C1D877599F464DC2E14CE3CC037096B11D4FDEF5F39B4"
+    },
+    {
       "path": "native/TheOrder.Application/OfflineContracts.cs",
       "bytes": 5075,
       "sha256": "770FCA6903A1C2B5FA619C48872C016FE960250FD10A7BC781FA22F2556D62CE"
@@ -931,8 +637,8 @@
     },
     {
       "path": "native/TheOrder.Application/OnlineContracts.cs",
-      "bytes": 4443,
-      "sha256": "B4058AE08CC19888F1B7F44980272963861C3DA1103985C04E4F5756C6717E85"
+      "bytes": 5178,
+      "sha256": "63CE55682ECAEDD7C64CC7C6B604BE80200B08DAEC5C9EB4E7B4DA3AF90409D5"
     },
     {
       "path": "native/TheOrder.Application/OnlineCoverSelectionClient.cs",
@@ -945,11 +651,6 @@
       "sha256": "A87424D4871C6647ABAB496BE6A9A35D8C1290CDD15174F9560EB485A596C5B4"
     },
     {
-      "path": "native/TheOrder.Application/packages.lock.json",
-      "bytes": 127,
-      "sha256": "D5F62A77B81618ACFE3980F7034C1ADFA9440FC0F96B3325B3D3432291B0298E"
-    },
-    {
       "path": "native/TheOrder.Application/PersonalBanners.cs",
       "bytes": 1454,
       "sha256": "E5D0A14E8CA76025100D7E13234EAAD9D3EDBA7B4717645BCD442F718A5DADA7"
@@ -960,6 +661,31 @@
       "sha256": "15524D9C1F3EEEA0BF9C7955AA2558EC71D6B343BA8D23B6966A187E53307C55"
     },
     {
+      "path": "native/TheOrder.Application/PersonalSyncContracts.cs",
+      "bytes": 5109,
+      "sha256": "EDEDA2D13D61958C2B1A9C66A400F9A4BAE8696246315EE409D7764491C6E95C"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalSyncControls.cs",
+      "bytes": 1594,
+      "sha256": "E3791E3101386D2D91717496564B3666D3A2665CA6A6BE44ED9080F7A89B26A7"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalSyncCoordinator.cs",
+      "bytes": 41950,
+      "sha256": "1E0F58903767386093CF56B6C1D70E6FB5230F59255B98FA83AAECBDADE3FB55"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalSyncLibrary.cs",
+      "bytes": 1576,
+      "sha256": "494AE1F255B35CAD8863B486CEDE3CC85F50C5BA68B5C31C76AE1DD8073D690F"
+    },
+    {
+      "path": "native/TheOrder.Application/PersonalSyncPlanning.cs",
+      "bytes": 7242,
+      "sha256": "80281FB35350A0D5819E080AC0A1DB9D4AC3D5B495CE1221D24D3EB2896290DB"
+    },
+    {
       "path": "native/TheOrder.Application/PreferenceValidation.cs",
       "bytes": 1989,
       "sha256": "408D9D789C1570E6D648952D8C849F1EA55FE90EB1C23898A973F7E78D92B385"
@@ -968,6 +694,11 @@
       "path": "native/TheOrder.Application/PublicArtwork.cs",
       "bytes": 449,
       "sha256": "75DA55F398D1F7BC918EAA4E1ACDE0658A2FD18F3187177650B3F8648CE94FE2"
+    },
+    {
+      "path": "native/TheOrder.Application/ReadOnlyPersonalApi.cs",
+      "bytes": 1498,
+      "sha256": "DF23C041A32EF84E6F0A63E2707CDEA88FA3FC725E5C53FC19D723521730B0DE"
     },
     {
       "path": "native/TheOrder.Application/RecognitionContracts.cs",
@@ -1035,6 +766,11 @@
       "sha256": "F2D7F0040F52F9CB8D31558A61846F8BF4EF5FCA7C415DA411D6A2D745C02B63"
     },
     {
+      "path": "native/TheOrder.Application/packages.lock.json",
+      "bytes": 127,
+      "sha256": "D5F62A77B81618ACFE3980F7034C1ADFA9440FC0F96B3325B3D3432291B0298E"
+    },
+    {
       "path": "native/TheOrder.Domain/CatalogPresentation.cs",
       "bytes": 3151,
       "sha256": "0269E03D2D9AC8D04B9F46A9554AC09292D1C9CED8490A4057E15A7F5709CAB0"
@@ -1045,11 +781,6 @@
       "sha256": "8510B26A2EB30F16FF697298F3159F3B7A6EDC35EC29F526944EFE98A165E5EF"
     },
     {
-      "path": "native/TheOrder.Domain/packages.lock.json",
-      "bytes": 61,
-      "sha256": "A29C6AA8CFB81874FF8BB78DC369D7416F28C9B8CC47E99592BFC019B20C41EB"
-    },
-    {
       "path": "native/TheOrder.Domain/Sessions.cs",
       "bytes": 3113,
       "sha256": "5A1D7C17311C67C3755040F95E695D810633547145B74E30282E022334B0550C"
@@ -1058,6 +789,11 @@
       "path": "native/TheOrder.Domain/TheOrder.Domain.csproj",
       "bytes": 36,
       "sha256": "8D654C44B7BEBB6B31A9F2F606927F45B5072193ADC4EEF8CCE3F3CF3B278DF3"
+    },
+    {
+      "path": "native/TheOrder.Domain/packages.lock.json",
+      "bytes": 61,
+      "sha256": "A29C6AA8CFB81874FF8BB78DC369D7416F28C9B8CC47E99592BFC019B20C41EB"
     },
     {
       "path": "native/TheOrder.Infrastructure/Legacy/LegacyClientTextRules.cs",
@@ -1136,8 +872,18 @@
     },
     {
       "path": "native/TheOrder.Infrastructure/Online/CatalogTransport.cs",
-      "bytes": 10958,
-      "sha256": "DB7FCB1DE4701334B38119276F0182F48B2245AC36E38F84ECB339F3CEA35A83"
+      "bytes": 12456,
+      "sha256": "B0ABF31C9A5137B6DA13DED6FFCE3616D72166AE3E80507E66E748CC67E9B8DC"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/GitHubUpdateFeed.Differential.cs",
+      "bytes": 5357,
+      "sha256": "46E8A4B0073A14487122A76B190E65DE19860C25B917AC5E10DE5096D1CD0746"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/GitHubUpdateFeed.cs",
+      "bytes": 11789,
+      "sha256": "D85C9E784EBC47D998C80A6256112C5B1075BE66FEF4F1F7E2B2B9060A9B9A7A"
     },
     {
       "path": "native/TheOrder.Infrastructure/Online/NetworkOwnership.cs",
@@ -1150,14 +896,34 @@
       "sha256": "0F613369A355E991EBC29154C8C98C4C832C3A41FA226A3E848945A8635D147E"
     },
     {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.Entities.cs",
+      "bytes": 6981,
+      "sha256": "F6DBB83842D06977540E2E3406FE34CB4EDB8E23F3C21F2D61FD8FF24E0589AF"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.SyncIdentities.cs",
+      "bytes": 1485,
+      "sha256": "6BE94453631F6454C5191B6B64A61FECD9EF7DCC66EFD81FC5CC591DCA075C2A"
+    },
+    {
       "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.cs",
       "bytes": 8327,
       "sha256": "6B4F5F39D1EAA576A8242D14695231F649AB49B1B99488493BA7A05D2C032062"
     },
     {
-      "path": "native/TheOrder.Infrastructure/Online/NextMoeCatalog.Entities.cs",
-      "bytes": 6981,
-      "sha256": "F6DBB83842D06977540E2E3406FE34CB4EDB8E23F3C21F2D61FD8FF24E0589AF"
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeOAuth.cs",
+      "bytes": 5833,
+      "sha256": "E71562CB6AD2EEE1EB893EE269610EF09773C1AE6F2EF91B9523B1E534DEB270"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoePersonalApi.cs",
+      "bytes": 13120,
+      "sha256": "B1B2F20AA1958FDD766ADA61400AE1F63CD176676C6EA3242D5E027EC4494A26"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Online/NextMoeRateCoordinator.cs",
+      "bytes": 3475,
+      "sha256": "C0F01C72C67ADCF2946FB10F787AD33FEAD56DF6C2F8BFFC9EC707694C7C2F8E"
     },
     {
       "path": "native/TheOrder.Infrastructure/Online/RecognitionCatalog.cs",
@@ -1183,11 +949,6 @@
       "path": "native/TheOrder.Infrastructure/Online/VndbArtworkSource.cs",
       "bytes": 6591,
       "sha256": "7FFB6B8634768F955E09212781383960084915C7BE572640B2E54FC10F015590"
-    },
-    {
-      "path": "native/TheOrder.Infrastructure/packages.lock.json",
-      "bytes": 272,
-      "sha256": "C01B4D2063485985ABDA33E4921B4FAB89A9B83D7C64954F2261E4ED7E9F098F"
     },
     {
       "path": "native/TheOrder.Infrastructure/Recognition/EvidenceRanking.cs",
@@ -1250,14 +1011,14 @@
       "sha256": "2B32CB55F2277B42F9ACAE7CF6C0BC38EE90E0B5AF547C5AE71A676D9B3F835B"
     },
     {
-      "path": "native/TheOrder.Infrastructure/Recognition/TitleIndex.cs",
-      "bytes": 6351,
-      "sha256": "6889DC0637EB0118E8FF3B00306F80E2D95E6C7D20C0860BDD69F1D48DDBA2FD"
-    },
-    {
       "path": "native/TheOrder.Infrastructure/Recognition/TitleIndex.Retrieval.cs",
       "bytes": 4128,
       "sha256": "9E6933F2C46B9A1087926405557DDB2E9796E8F2F766ACD08FC57D346954DE54"
+    },
+    {
+      "path": "native/TheOrder.Infrastructure/Recognition/TitleIndex.cs",
+      "bytes": 6351,
+      "sha256": "6889DC0637EB0118E8FF3B00306F80E2D95E6C7D20C0860BDD69F1D48DDBA2FD"
     },
     {
       "path": "native/TheOrder.Infrastructure/Recognition/TitleMatching.cs",
@@ -1270,9 +1031,9 @@
       "sha256": "D2504997C19F003C647F9AE530B14D5F1D7CC2B249EFD097323B1AF0764C73D3"
     },
     {
-      "path": "native/TheOrder.LaunchFixture/packages.lock.json",
-      "bytes": 79,
-      "sha256": "BD9CA0E4E85B9AD2C5937D42F577A6B6C31FCE3819986DCD2D4C36D9734EE82F"
+      "path": "native/TheOrder.Infrastructure/packages.lock.json",
+      "bytes": 272,
+      "sha256": "C01B4D2063485985ABDA33E4921B4FAB89A9B83D7C64954F2261E4ED7E9F098F"
     },
     {
       "path": "native/TheOrder.LaunchFixture/Program.cs",
@@ -1285,9 +1046,9 @@
       "sha256": "50142477370023B0321BFAC91D69A209EE8B25FD506D21859BBB430D54FFCEAF"
     },
     {
-      "path": "native/TheOrder.Performance/packages.lock.json",
-      "bytes": 1023,
-      "sha256": "A7B8C1AFC924C77806A28C92AC7AD15002BA606571B14A107E6C8712AEAD531E"
+      "path": "native/TheOrder.LaunchFixture/packages.lock.json",
+      "bytes": 84,
+      "sha256": "F8A2EE79BF0AC38BFA6E71A43A3A83438D593D40054EB561E4F10E1DBBE7D52E"
     },
     {
       "path": "native/TheOrder.Performance/Program.cs",
@@ -1301,8 +1062,13 @@
     },
     {
       "path": "native/TheOrder.Performance/TheOrder.Performance.csproj",
-      "bytes": 490,
-      "sha256": "2EAB1E484BB05C9E8280F2DAEBB91485B3A18CD5F57B751049783749451586B3"
+      "bytes": 626,
+      "sha256": "CD67C28C05756DADD6878BF61D5D89615F586C6983C01CBC4A565F142EF83E6E"
+    },
+    {
+      "path": "native/TheOrder.Performance/packages.lock.json",
+      "bytes": 4446,
+      "sha256": "BDE89849E48966EA86584927799D77116C623650D37A8D0AD30F103D0460E0BF"
     },
     {
       "path": "native/TheOrder.Platform.Windows/CatalogBrowsePreferencesStore.cs",
@@ -1356,8 +1122,8 @@
     },
     {
       "path": "native/TheOrder.Platform.Windows/IsolatedThumbnailCache.cs",
-      "bytes": 4478,
-      "sha256": "7700438625D13BD010F8B44414BA556F8E6883291A85A030ADB3B6B4D1042185"
+      "bytes": 4666,
+      "sha256": "DA17E8C46AD979038852097BADA42D3C6DED9A2C53AC75864DDBD0105F6E2184"
     },
     {
       "path": "native/TheOrder.Platform.Windows/IsolatedUiPreferencesStore.cs",
@@ -1395,11 +1161,6 @@
       "sha256": "00794CCEF3C2F9699DB289B0FDC96F28F915A31DD3465F1BC7D3233888D584F7"
     },
     {
-      "path": "native/TheOrder.Platform.Windows/packages.lock.json",
-      "bytes": 290,
-      "sha256": "6D0E101025A240C4BEDE4F865E57155E11A0C2B2632274897606F7C6074B1DE8"
-    },
-    {
       "path": "native/TheOrder.Platform.Windows/ProcessSnapshotGeneration.cs",
       "bytes": 2730,
       "sha256": "2BA9A7822BBBB9DC0D8A08F6EBE622274279D7D99188F083D22D6FD7149BBCE7"
@@ -1416,13 +1177,13 @@
     },
     {
       "path": "native/TheOrder.Platform.Windows/TheOrder.Platform.Windows.csproj",
-      "bytes": 322,
-      "sha256": "462EBC512AFAA5201292EC20AAF274C1514A34B3AB2B1A33695A4B8E096B3BD0"
+      "bytes": 588,
+      "sha256": "1E7A1F70B3B618194657CCF546CABF72A863DDBDB4F24818A915C3B52F3B5420"
     },
     {
       "path": "native/TheOrder.Platform.Windows/WindowsArtworkTextDetector.cs",
-      "bytes": 5231,
-      "sha256": "08CBF5C1E81822A79D93D00A7D86A3AF0BC16EAACE2FE7987D2FCC438C39A7C7"
+      "bytes": 6150,
+      "sha256": "44B04D46DC8382E1D3014C59AAD65EB27105763E5521AC727F16964394EBF460"
     },
     {
       "path": "native/TheOrder.Platform.Windows/WindowsAtomicFile.cs",
@@ -1440,6 +1201,11 @@
       "sha256": "BDF29660474B443EDF8827BC72E7CDB45A10A4B402E5F575FD9438EA585F8243"
     },
     {
+      "path": "native/TheOrder.Platform.Windows/WindowsCompatibility.cs",
+      "bytes": 926,
+      "sha256": "D1D947E5743D76139C20178042B8D4D53C8811F63CC769CDD44657FC57098A5A"
+    },
+    {
       "path": "native/TheOrder.Platform.Windows/WindowsDataProtection.cs",
       "bytes": 1904,
       "sha256": "EFB7818D871E158E718F0B493F2888B53AC74595339D7891CC5A02E3BDD55077"
@@ -1453,6 +1219,21 @@
       "path": "native/TheOrder.Platform.Windows/WindowsGameProcesses.cs",
       "bytes": 15548,
       "sha256": "1B3AC815E897918DA93A0ECAFBFCA058603942F26F6F83997709E42E264BFB21"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsNextMoeAuthStore.cs",
+      "bytes": 4354,
+      "sha256": "A2DFF00F909DE1BD375BBEBE09B2A56E073867823BCF654E056AABDF789BACA9"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsOAuthLogin.cs",
+      "bytes": 7951,
+      "sha256": "83A60BBA36F8F0D95D301431248872E27D5138D75116B538DA97182E645F724B"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsPersonalSyncStore.cs",
+      "bytes": 8993,
+      "sha256": "C68817A451B0D028AD9AF8725F2896E799BA4A3ADDF4A53D46976384A1D313FA"
     },
     {
       "path": "native/TheOrder.Platform.Windows/WindowsProcessLifetimeScope.cs",
@@ -1503,6 +1284,26 @@
       "path": "native/TheOrder.Platform.Windows/WindowsUiLanguage.cs",
       "bytes": 437,
       "sha256": "1CCF2718546898EAA2B6047E19F8736ECB55E013C210EFBE7A9E2B8EE5D95BE9"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsUpdateInstaller.cs",
+      "bytes": 8495,
+      "sha256": "CF0D9F92DE5BD702184606F0A9C3A55A89F9E6CCF42BB0AC7A41BF12B38C238C"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/WindowsUpdatePackages.cs",
+      "bytes": 9811,
+      "sha256": "C87E5F94B2D23ADBC4DB17F2CEB00E07C56EBF0A0B10CB398456E4BA7ECE1C23"
+    },
+    {
+      "path": "native/TheOrder.Platform.Windows/packages.lock.json",
+      "bytes": 2939,
+      "sha256": "3A242FE4530981A56F57B2DAA0B4EC80B934D237DE4D40B10242922F64200CFC"
+    },
+    {
+      "path": "native/TheOrder.Presentation/AppUpdateViewModel.cs",
+      "bytes": 5708,
+      "sha256": "D9328AF81852465CBC09FB0751149E3EB0E421748E1B22B2E2F161173662AFF7"
     },
     {
       "path": "native/TheOrder.Presentation/CandidateDetailLinks.cs",
@@ -1560,19 +1361,19 @@
       "sha256": "0687339C585BD9D2CB815E05CC09AF6ED0E7040FEA2702AFD79649C22E3FF009"
     },
     {
+      "path": "native/TheOrder.Presentation/NextMoeSettingsViewModel.cs",
+      "bytes": 12815,
+      "sha256": "AA1014810F4AAAEBEAAE35EB91B91356DFFCC99A9BB4B239650F6818B6F5A055"
+    },
+    {
       "path": "native/TheOrder.Presentation/ObservableState.cs",
       "bytes": 588,
       "sha256": "A41A6AEE6C11E05B6C0B3032D3C6ACCA08DC82C0984E347FCBC324D282E513EA"
     },
     {
       "path": "native/TheOrder.Presentation/OnlineViewModel.cs",
-      "bytes": 16746,
-      "sha256": "4D9DD5223210534E70A6170EFB27825AE82CF3F727003955EE29239105D23EAB"
-    },
-    {
-      "path": "native/TheOrder.Presentation/packages.lock.json",
-      "bytes": 524,
-      "sha256": "5F9701FCCF1FB217834520CABC40194F7872322E3AB48582C1D5ACBC3AD33178"
+      "bytes": 16966,
+      "sha256": "82B65245F9B016C4F3D8CF0E05B1A6851B49375060A88899E610969C9C500E8E"
     },
     {
       "path": "native/TheOrder.Presentation/PersonalDraft.cs",
@@ -1610,9 +1411,9 @@
       "sha256": "A424B8DDFB4F85EFA45DBE7AFF3FBD3F10E151962DF6D0B0E0B12E1D8C476F74"
     },
     {
-      "path": "native/TheOrder.ProfileProbe/packages.lock.json",
-      "bytes": 598,
-      "sha256": "65DE5D420725DAEEDE99A43BAAC9473D12205BDE06F1680EBE16E45426127F22"
+      "path": "native/TheOrder.Presentation/packages.lock.json",
+      "bytes": 524,
+      "sha256": "5F9701FCCF1FB217834520CABC40194F7872322E3AB48582C1D5ACBC3AD33178"
     },
     {
       "path": "native/TheOrder.ProfileProbe/Program.cs",
@@ -1621,18 +1422,28 @@
     },
     {
       "path": "native/TheOrder.ProfileProbe/TheOrder.ProfileProbe.csproj",
-      "bytes": 388,
-      "sha256": "555D4BBA241692D2EBBE86CEFDD2B24393D51C0938B3FCC1CDFE5D7DA21D87CD"
+      "bytes": 548,
+      "sha256": "AB87D02AE4DF8A16217232C0240687DA9C496048273DBE10B2963B3453146D00"
     },
     {
-      "path": "native/TheOrder.RecognitionLab/Engines.cs",
-      "bytes": 1712,
-      "sha256": "ABC4E12601ACF69F79C88F85C5F3C984AD3BA1FD47EBC92DF67F048A2B9A3ECE"
+      "path": "native/TheOrder.ProfileProbe/packages.lock.json",
+      "bytes": 4048,
+      "sha256": "7C229FCBA384E6D8B78FDB9FEE53C832A8B2BB34077CF56E3634D87E2EF7DC48"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/AuthenticationSmoke.cs",
+      "bytes": 5221,
+      "sha256": "D43FDF86B7A0EAECDA5D83572728A07270E5A9FEE2695F0E0D25F6A0E6530B3E"
     },
     {
       "path": "native/TheOrder.RecognitionLab/Engines.V2.cs",
       "bytes": 9059,
       "sha256": "6F92752629960571A75D8C28F5023D513FD203C9FB3C95B16B764CE2CE572D38"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/Engines.cs",
+      "bytes": 1712,
+      "sha256": "ABC4E12601ACF69F79C88F85C5F3C984AD3BA1FD47EBC92DF67F048A2B9A3ECE"
     },
     {
       "path": "native/TheOrder.RecognitionLab/Live.Artwork.cs",
@@ -1645,24 +1456,24 @@
       "sha256": "549472D1AA5A8A6FC26E120A1DCA1E269B9F0B7CB3B8E3AA948C1F27ABE5B64A"
     },
     {
-      "path": "native/TheOrder.RecognitionLab/Live.cs",
-      "bytes": 13700,
-      "sha256": "009685462134629FF6EF34D8462A27ADB3F37E2B1A168FCD3E29C035716FE6ED"
-    },
-    {
       "path": "native/TheOrder.RecognitionLab/Live.EntityCovers.cs",
       "bytes": 5217,
       "sha256": "8D5A6AA0E4A90526C153283A7014A02C403409C6B11FE7061C01498F536BD354"
     },
     {
-      "path": "native/TheOrder.RecognitionLab/packages.lock.json",
-      "bytes": 625,
-      "sha256": "F1D554FB1F1CEFCCFC0F78AA989A6F58BB8E8BB1EDA35014DF26DB8513E13733"
+      "path": "native/TheOrder.RecognitionLab/Live.cs",
+      "bytes": 13700,
+      "sha256": "009685462134629FF6EF34D8462A27ADB3F37E2B1A168FCD3E29C035716FE6ED"
+    },
+    {
+      "path": "native/TheOrder.RecognitionLab/OAuthReadOnlySmoke.cs",
+      "bytes": 6313,
+      "sha256": "9A09340A22CABCD7DC2121627F336ECD42E1E5277FAECCEEC16C7468FEBA4F8F"
     },
     {
       "path": "native/TheOrder.RecognitionLab/Program.cs",
-      "bytes": 8038,
-      "sha256": "B5AA1A075F05B9502C33B860BEB0A3EFE93FB26C1B9B8B96EA689227F0572921"
+      "bytes": 8284,
+      "sha256": "B89E5AF6720E073E8739046E3ED64ED3024633B6F18C6737E40A34CAE9D7E891"
     },
     {
       "path": "native/TheOrder.RecognitionLab/Replay.cs",
@@ -1681,13 +1492,13 @@
     },
     {
       "path": "native/TheOrder.RecognitionLab/TheOrder.RecognitionLab.csproj",
-      "bytes": 502,
-      "sha256": "BD7AB7CF52869A2F066E07A9248B91E8ADEC938ED971A7D186FD75CBC00B7ED3"
+      "bytes": 638,
+      "sha256": "055BE79E8794864DDD4EB1B985E9D4E0221AB13BC8B14BCF68CA9D5AAF97F4F4"
     },
     {
-      "path": "native/TheOrder.slnx",
-      "bytes": 713,
-      "sha256": "10BFC99C5672DADFABEBA036B9DC9253C59622869C84F658241B057B0DC0AD5D"
+      "path": "native/TheOrder.RecognitionLab/packages.lock.json",
+      "bytes": 4048,
+      "sha256": "7C229FCBA384E6D8B78FDB9FEE53C832A8B2BB34077CF56E3634D87E2EF7DC48"
     },
     {
       "path": "native/TheOrder.Tests/AppLifecycleTests.cs",
@@ -1698,6 +1509,16 @@
       "path": "native/TheOrder.Tests/AppLifecycleWindowsTests.cs",
       "bytes": 10450,
       "sha256": "3C6BA0565AE69E5086833B7D5ED4F52A034FAC9F1F75E64D4803095804CB4EF7"
+    },
+    {
+      "path": "native/TheOrder.Tests/AppUpdateDifferentialTests.cs",
+      "bytes": 11606,
+      "sha256": "B113230FD1C033076E2D75E467C7BAEA2149776889BC582480DF058968CCDC5B"
+    },
+    {
+      "path": "native/TheOrder.Tests/AppUpdateTests.cs",
+      "bytes": 17398,
+      "sha256": "9F0CB93E33CCB0BD246504307AE8A9C0D23653DFC1DFD5096F9A95FE9A51BD15"
     },
     {
       "path": "native/TheOrder.Tests/ArtworkCacheTests.cs",
@@ -1856,8 +1677,8 @@
     },
     {
       "path": "native/TheOrder.Tests/LaunchTests.cs",
-      "bytes": 19638,
-      "sha256": "958EECA74621B7DF98BCCB29272875F00545D3805116AB72E806293EF350ED5D"
+      "bytes": 19464,
+      "sha256": "DCC82DF5FDC1E9504BE0B8997A8C82C778B631EABD1212ECACB12823B56E1CA1"
     },
     {
       "path": "native/TheOrder.Tests/LegacyCompatibilityTests.cs",
@@ -1866,8 +1687,8 @@
     },
     {
       "path": "native/TheOrder.Tests/LegacyRemediationTests.cs",
-      "bytes": 7697,
-      "sha256": "033AB09915E02705DFAA4B39F8B62BB0FB55D54C93150BBF85E0689A2418726B"
+      "bytes": 8012,
+      "sha256": "B1FEE408E5DDD82560C3B24BF854D585A64E972E9666FC3E4FE0189E668E32D0"
     },
     {
       "path": "native/TheOrder.Tests/LensOpticsTests.cs",
@@ -1916,13 +1737,38 @@
     },
     {
       "path": "native/TheOrder.Tests/NativeProfileTests.cs",
-      "bytes": 22302,
-      "sha256": "8FBAAF590A4396C3CCB99CB4427ED099D402CDBCB05EF925468B95737F20E92D"
+      "bytes": 22070,
+      "sha256": "A6C246EC57E7360E6E0C00AC4003ED04A1A80317C7CA4D7FDE0708FD61761B1F"
     },
     {
       "path": "native/TheOrder.Tests/NativeReadProvenanceTests.cs",
       "bytes": 15914,
       "sha256": "06DF34EC5D6A115630B402684C4D41ED40D04EF267D27F91C5D308E6AA6976E2"
+    },
+    {
+      "path": "native/TheOrder.Tests/NextMoeAuthTests.cs",
+      "bytes": 11105,
+      "sha256": "85A12FC24647426D0003C4302604FF0706F16385553BDD3AA975DE526978DFC5"
+    },
+    {
+      "path": "native/TheOrder.Tests/NextMoeOAuthTests.cs",
+      "bytes": 8882,
+      "sha256": "FB82138905C8DB85B7E9AB5CF6163BCD94DCBE61BD0F6E675E570190E733B928"
+    },
+    {
+      "path": "native/TheOrder.Tests/NextMoePersonalApiTests.cs",
+      "bytes": 12366,
+      "sha256": "C99AB7B15E1FA7E1E6F654450F3AB4F21AACB9236F719F784FEF039D91519ECA"
+    },
+    {
+      "path": "native/TheOrder.Tests/NextMoeStorageTests.cs",
+      "bytes": 8130,
+      "sha256": "A3E1D3C5DE7DC8AC81B9C454EED6DD3A5D436803F7E7A0E337C245492FD9B472"
+    },
+    {
+      "path": "native/TheOrder.Tests/NextMoeSyncLifecycleTests.cs",
+      "bytes": 9448,
+      "sha256": "BF30930EB8AE3B773735F14DAED80C134385DC9CC3F3C51129F10DC3E497E17D"
     },
     {
       "path": "native/TheOrder.Tests/OfflineClientPerformanceTests.cs",
@@ -1951,13 +1797,8 @@
     },
     {
       "path": "native/TheOrder.Tests/OnlineTransportTests.cs",
-      "bytes": 17300,
-      "sha256": "AE60C86B8CD7255188A777A4703FE4FB0E009BE1B5C9AFE9044745C7A9813E6F"
-    },
-    {
-      "path": "native/TheOrder.Tests/packages.lock.json",
-      "bytes": 5001,
-      "sha256": "C70E897507471E905DC322AD84C69718EA549CA41BEC8575D4C70DAA0029C34E"
+      "bytes": 17329,
+      "sha256": "D9A0255447E740C76D2014CD37904EADB60319B840112912608D37E506F84AE0"
     },
     {
       "path": "native/TheOrder.Tests/PerformanceHardeningTests.cs",
@@ -1966,8 +1807,13 @@
     },
     {
       "path": "native/TheOrder.Tests/PersonalBannerTests.cs",
-      "bytes": 6643,
-      "sha256": "284CF528E1B0732F6DEF2E3DF1B3DE2339F096FC11A752EB8A8A02CB8226A054"
+      "bytes": 8675,
+      "sha256": "CFFC8643AB6B0B48383E32FA8074B1E5F5E7DD04092C14C4F24790B1C7577A93"
+    },
+    {
+      "path": "native/TheOrder.Tests/PersonalSyncTests.cs",
+      "bytes": 24955,
+      "sha256": "2011E19D1406305C7F972CFEF110D82C58F7EAD26A8212BA41D5D719D68079DB"
     },
     {
       "path": "native/TheOrder.Tests/PresentationRemediationTests.cs",
@@ -2136,8 +1982,8 @@
     },
     {
       "path": "native/TheOrder.Tests/TheOrder.Tests.csproj",
-      "bytes": 2330,
-      "sha256": "0808DB8DF95E00BB8F7620BEA5D2C283984A38632F8DC51F14B435ACA86C1A2A"
+      "bytes": 2724,
+      "sha256": "2501947E0B32CDCF09FFCA90D784DD6282190C863FC2FB0FA4F932C7389D3F62"
     },
     {
       "path": "native/TheOrder.Tests/TransactionDifferentialTests.cs",
@@ -2170,9 +2016,44 @@
       "sha256": "29395900629E5492A5F0D00BA154ABC7A1D4F694062CECCB921BB7219D33F618"
     },
     {
-      "path": "native/TheOrder.WinUI/app.manifest",
-      "bytes": 579,
-      "sha256": "3B24D2B54FB9CDD408571A0586458A03FA338E84E3E8F0D89B6E753AB034C9F7"
+      "path": "native/TheOrder.Tests/WindowsAppUpdateTests.cs",
+      "bytes": 6425,
+      "sha256": "EA7D652FC60BD6E52F88A37268B5A5F34275381392853EA798671AF0A2679EE3"
+    },
+    {
+      "path": "native/TheOrder.Tests/WindowsArtworkTextDetectorTests.cs",
+      "bytes": 5414,
+      "sha256": "829B2B92228944EFBEA0A47FA0F8F58497672EBBB65866198BE7E43637817A38"
+    },
+    {
+      "path": "native/TheOrder.Tests/WindowsCompatibilityTests.cs",
+      "bytes": 2962,
+      "sha256": "30F4C4BEDD788F9D965FBB18C5F13B17AAAB89B5EC674680A212E7978F426AE4"
+    },
+    {
+      "path": "native/TheOrder.Tests/WindowsDifferentialUpdateTests.cs",
+      "bytes": 6890,
+      "sha256": "029DAD9AE45DFFDCFC9B68B0E191E1B8DD617F5CC527D0D55AB382B57FFFFD79"
+    },
+    {
+      "path": "native/TheOrder.Tests/packages.lock.json",
+      "bytes": 8424,
+      "sha256": "3E5FAACC44C15BBA1CBABD131D727233BBBC55700F3468C8E8B144136D11A783"
+    },
+    {
+      "path": "native/TheOrder.UpdateTool/Program.cs",
+      "bytes": 3371,
+      "sha256": "5A8DFA61F5A8A68C0DE5216CC179E2D817DE71205B28DF20663C1B90E1A23631"
+    },
+    {
+      "path": "native/TheOrder.UpdateTool/TheOrder.UpdateTool.csproj",
+      "bytes": 215,
+      "sha256": "2B040AEDFF95650EDE7F59C03024DDD9E9893182B4DFA30371B26E391D73FD08"
+    },
+    {
+      "path": "native/TheOrder.UpdateTool/packages.lock.json",
+      "bytes": 287,
+      "sha256": "AAD2A17EAABF5B4072444485422556F04911C14D954025C756D7E9AA56051D82"
     },
     {
       "path": "native/TheOrder.WinUI/App.xaml",
@@ -2181,8 +2062,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/App.xaml.cs",
-      "bytes": 8682,
-      "sha256": "7BBE701DD409E130E7D7AC5D665F7798AB882B522BCBA7D6EEA4F45DE5EACF7B"
+      "bytes": 9304,
+      "sha256": "E52858ED4A6477477367F03FF1E40C00D2A3497F8F10C85760B67682E39307F0"
     },
     {
       "path": "native/TheOrder.WinUI/Assets/Brand.Dark.ico",
@@ -2250,19 +2131,29 @@
       "sha256": "9C1D4DAB2B5EF663F405A457C8527DFD03A3F424485865FE619230BB84D27288"
     },
     {
+      "path": "native/TheOrder.WinUI/MainWindow.PersonalFixture.cs",
+      "bytes": 1275,
+      "sha256": "98E22C1F5EAECEBAD7A8E274FBEA5FD4F4245D16FD7D7A33EE96BC4D657DE75B"
+    },
+    {
       "path": "native/TheOrder.WinUI/MainWindow.RecognitionPreferences.cs",
       "bytes": 1921,
       "sha256": "212818DD5E516A8789435A9CA2141596545401169BE9DB9408FACA75770FC97E"
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.Shell.cs",
-      "bytes": 14350,
-      "sha256": "823D620BF930E8C05A67D720A8EEC79338D8AC8104D4F2C70CDB847A3E989FE0"
+      "bytes": 16939,
+      "sha256": "CB72C1630F13C9EE4F3F2BDD1533659ADB40D96E066283455752CBE75AFF7F9F"
+    },
+    {
+      "path": "native/TheOrder.WinUI/MainWindow.Updates.cs",
+      "bytes": 838,
+      "sha256": "D572DC1D35B47CBB1EF2548C13710D647121B2AC6B08128943864922B5A03C56"
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.Visual.cs",
-      "bytes": 24733,
-      "sha256": "DA0E14F9EAE9B094B57239DAA8FD5BB28A9682B6BB28E93B6B494AE60AC4281C"
+      "bytes": 26181,
+      "sha256": "AB78DE95337A7AC6839989111C01814F9A12F0040FD712729B6D3B31D667CC3A"
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.VisualRound3.cs",
@@ -2271,13 +2162,13 @@
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.xaml",
-      "bytes": 9791,
-      "sha256": "EA33D41615163895F9EE7A1522D39AFCBAE35EA8D4A12D95841AED5282FBF1DE"
+      "bytes": 10080,
+      "sha256": "5645A4D02E234BE0981D6B6DF79E8F6485D5C89CF2F26132F72AD1C89A139DB4"
     },
     {
       "path": "native/TheOrder.WinUI/MainWindow.xaml.cs",
-      "bytes": 32359,
-      "sha256": "0399E54FE1257DDC27DDC93B28EE951EEC9C9295CC43B230990D0F671102778A"
+      "bytes": 34602,
+      "sha256": "B6FE93510B42BD19A7A56F1563C8952A94375E48D3738AF27D746BC1704BE738"
     },
     {
       "path": "native/TheOrder.WinUI/Materials/ChannelEffect.cs",
@@ -2296,8 +2187,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/Materials/MaterialPolicy.cs",
-      "bytes": 13491,
-      "sha256": "E4045A47DC85C04682828AA1D5A301B1AC7E0B964F09767398E1D3CBE34B6F4D"
+      "bytes": 13956,
+      "sha256": "5E74A324A6911301EE42BD9DCAC56F03E311791ED1230668BBCB852CDA98B447"
     },
     {
       "path": "native/TheOrder.WinUI/Materials/MaterialResources.cs",
@@ -2346,8 +2237,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/Materials/RefractionGallery.xaml.cs",
-      "bytes": 41181,
-      "sha256": "C03658E25B465B40FA011B90B2CA1AC0800AFDEF26D560B9BD626419DF96DF4A"
+      "bytes": 41498,
+      "sha256": "C3C18C040E394E8662DAD69D0E49509F13C2C1A7B9AA21C30364136ABC9DD6E9"
     },
     {
       "path": "native/TheOrder.WinUI/Materials/RefractionLens.cs",
@@ -2355,14 +2246,14 @@
       "sha256": "47377D32739744DEC9AA151E913569AFE900CE72D95C36DB665754FF2F0524DB"
     },
     {
-      "path": "native/TheOrder.WinUI/packages.lock.json",
-      "bytes": 11758,
-      "sha256": "63EFBA784162D0CA5F358DE8925F2A8A4C642410D4ADBD36494ED3B67D025DD7"
+      "path": "native/TheOrder.WinUI/Materials/WindowBackdropState.cs",
+      "bytes": 719,
+      "sha256": "F6CDA0CD10F20F1F03FDC8C135786281C0B443327DE5497F197A9BE59A050ECE"
     },
     {
       "path": "native/TheOrder.WinUI/Program.cs",
-      "bytes": 4804,
-      "sha256": "A3E7D3BC7A32D7A906667DB74FBAD92878462F1EEE142D472192714346FCE90E"
+      "bytes": 5135,
+      "sha256": "3B9A438A474CC3C4911A5D08AEBA5595BCCF62CCB67015AAA0C787A7020FFBE8"
     },
     {
       "path": "native/TheOrder.WinUI/Resources/DesignTokens.xaml",
@@ -2371,8 +2262,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/Startup/Composition.cs",
-      "bytes": 12905,
-      "sha256": "33E246BF645547548D64BF46076928F49AD4FE75445B7173157A55B0868E12AC"
+      "bytes": 15961,
+      "sha256": "FA79207CD49741ECFA774EC74FFFFE97FAB2CE32A1C8795502F426261B2F6855"
     },
     {
       "path": "native/TheOrder.WinUI/Startup/NativeLifecycleLog.cs",
@@ -2385,6 +2276,11 @@
       "sha256": "8D2E40213185D75991F240871644B4212AB67AE9D8747A051C93C85F2C6E5159"
     },
     {
+      "path": "native/TheOrder.WinUI/Startup/SyntheticNextMoe.cs",
+      "bytes": 3752,
+      "sha256": "342CBD9689BF92488CC4D1E990BC653CBFE9F230CA602DD0A5C238A3B68C4883"
+    },
+    {
       "path": "native/TheOrder.WinUI/Startup/SyntheticOnline.cs",
       "bytes": 8615,
       "sha256": "C44A96E4D513DDB146E87E6806567A9AED0987A8F6E883B2A55EAC590A88612A"
@@ -2395,9 +2291,19 @@
       "sha256": "24739E1B7EB85AF50EE95430A57AD12329D3BAA0036BA2065D183D863F68B9B7"
     },
     {
+      "path": "native/TheOrder.WinUI/Startup/SyntheticUpdates.cs",
+      "bytes": 900,
+      "sha256": "F45E57A9CB33940CEE334CD9262673F980A6A28B10AA5CA6A5D8788D58F6DF4C"
+    },
+    {
+      "path": "native/TheOrder.WinUI/Startup/WindowCapabilities.cs",
+      "bytes": 1709,
+      "sha256": "90DE3A077094468F35FAB469EE3B8B7847CAF55C210CE864052BD55699B9D8EE"
+    },
+    {
       "path": "native/TheOrder.WinUI/TheOrder.WinUI.csproj",
-      "bytes": 7435,
-      "sha256": "90592771E6B21ACECB26B4F3ACF9B9B0C30E124BF39C16202ACF5621CFE5FAAD"
+      "bytes": 7524,
+      "sha256": "202AB2947ED27B59C0213F5AED4B43590FC1DAC6CF09B8C28093F0C3E274B93B"
     },
     {
       "path": "native/TheOrder.WinUI/Views/ArtworkStage.Audit.cs",
@@ -2470,14 +2376,19 @@
       "sha256": "6C4D3C75036CBC2F3BA11906E40237CB9DE9D0BDADEE131FBEC71A157FF75B0D"
     },
     {
+      "path": "native/TheOrder.WinUI/Views/DetailsPage.PersonalSync.cs",
+      "bytes": 2571,
+      "sha256": "07BA190C175AECD601D64A79441DCBB2E7ADE2FD0B0C5BDCF27C8231B2978A05"
+    },
+    {
       "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml",
-      "bytes": 15564,
-      "sha256": "010D22BF38E335A0E315D8B10626D5F0D7B066C46BF6700EAEC1141E11C8E906"
+      "bytes": 15863,
+      "sha256": "28092D05615F5E0D5ADBFA7C0FC87F583CB18164DB6252B0F73694F644BFF969"
     },
     {
       "path": "native/TheOrder.WinUI/Views/DetailsPage.xaml.cs",
-      "bytes": 17559,
-      "sha256": "FE4118E38F01C88166734105F8015A1E1F8567A13767FFF2FEB90974B928521B"
+      "bytes": 17600,
+      "sha256": "4200E8651C2870C26D64AB2388C4F97D78E3DF1182B12666FEF72EC6DA42C3D8"
     },
     {
       "path": "native/TheOrder.WinUI/Views/DisplayBitmaps.cs",
@@ -2521,8 +2432,8 @@
     },
     {
       "path": "native/TheOrder.WinUI/Views/MarkdownView.cs",
-      "bytes": 7107,
-      "sha256": "4145A5B0F562B5E7C3406A0F1B39E591F2D3028570111E8FBB4DDD4AF64EABCD"
+      "bytes": 7253,
+      "sha256": "1C63BC383AFF3C422DEA2BE79E06A4425ABB382BCECA8D758C8248EDE0FE03FF"
     },
     {
       "path": "native/TheOrder.WinUI/Views/OnlinePage.xaml",
@@ -2555,14 +2466,19 @@
       "sha256": "39E38FCDE4F5E956A43F147E6B8EC6E09DE2A64E1A1BF9FFDFEDD396C6BD6F05"
     },
     {
+      "path": "native/TheOrder.WinUI/Views/SettingsPage.NextMoe.cs",
+      "bytes": 8962,
+      "sha256": "034D596EE3F2517B9EB973516F6F049B13826EEC29452C292EEDCA316F8E2490"
+    },
+    {
       "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml",
-      "bytes": 8525,
-      "sha256": "1190D3D027FC4469FD46883F1107D42F55DDDD43E076474D541165914A2C2955"
+      "bytes": 16673,
+      "sha256": "45810D7C0C380621DB419439E35059CE17140F91140CEB8433F2746D9727116B"
     },
     {
       "path": "native/TheOrder.WinUI/Views/SettingsPage.xaml.cs",
-      "bytes": 7275,
-      "sha256": "F1BEEBCE712311681FB3E1118E94AA2B92E60FBDA17616C1850C093393034E36"
+      "bytes": 11502,
+      "sha256": "4CB6D9BE21EFC345433B40BB1A075E3E44E4782A884E9191F2F178337395725C"
     },
     {
       "path": "native/TheOrder.WinUI/Views/TagFlowPanel.cs",
@@ -2570,19 +2486,444 @@
       "sha256": "DE71A7C3FDAA7C76F1995DE5DFB86846EFB1C0188D574523E04B6FA8FB107D2E"
     },
     {
-      "path": "native/tools/BrandIcons/BrandIcons.csproj",
-      "bytes": 281,
-      "sha256": "3769CB18BF603D9F4677F964D59FDE5377808870697CDBB68802F1986F3A2147"
+      "path": "native/TheOrder.WinUI/app.manifest",
+      "bytes": 579,
+      "sha256": "3B24D2B54FB9CDD408571A0586458A03FA338E84E3E8F0D89B6E753AB034C9F7"
     },
     {
-      "path": "native/tools/BrandIcons/packages.lock.json",
-      "bytes": 466,
-      "sha256": "47327C6560825BA8AE4431DA82A9A7CBCA838ADF2F148D22C6E6A461C25E3634"
+      "path": "native/TheOrder.WinUI/packages.lock.json",
+      "bytes": 11813,
+      "sha256": "FB6199D0A4711AB6A4C6E09B36973BDC6B9C44F49D86ED957E8A1332C689CDCF"
+    },
+    {
+      "path": "native/TheOrder.slnx",
+      "bytes": 781,
+      "sha256": "BF3199179704C924FF6235448D2AA55BDFF0D0A6B1D508A9A1CE2BD20727A378"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/Program.cs",
+      "bytes": 2389,
+      "sha256": "478AD2F88A92319E3A8DCF526C76C7919FE0E05E9A74C05F0713A631FE951BF1"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/UiExperienceProfile.csproj",
+      "bytes": 543,
+      "sha256": "2D9BF32D85BC7BBA6828E912F7D06F04D90D2AAA569F26A48A2DDCA726E7B3E0"
+    },
+    {
+      "path": "native/fixtures/UiExperienceProfile/packages.lock.json",
+      "bytes": 4048,
+      "sha256": "7C229FCBA384E6D8B78FDB9FEE53C832A8B2BB34077CF56E3634D87E2EF7DC48"
+    },
+    {
+      "path": "native/fixtures/accepted-c1-shader.h",
+      "bytes": 2369,
+      "sha256": "2EBB75E8329A439EDE99CBBDFF0D47153B26F8119652D7351A4A1EF12849C042"
+    },
+    {
+      "path": "native/fixtures/compatibility-vectors.json",
+      "bytes": 109746,
+      "sha256": "C998881FC0A98C5C7273D2129DD12002F6039802319638DF68D4BC47D9DDAF80"
+    },
+    {
+      "path": "native/fixtures/corrupt/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/corrupt/library.json",
+      "bytes": 50,
+      "sha256": "1A2C61B787D9321BA7F4A53A1FE621C8856EAC60A473611F7F3A1E269E977593"
+    },
+    {
+      "path": "native/fixtures/empty/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/empty/library.json",
+      "bytes": 92,
+      "sha256": "89833B24E43C1A1D31928DF6447C8CF33A7C5C335CB232D00A8113A2899E4BF7"
+    },
+    {
+      "path": "native/fixtures/filesystem-oracle.json",
+      "bytes": 17506,
+      "sha256": "A402C91B1A5622B8442F0E10132BCA4E878E53302F6FF035E270C85CB025A632"
+    },
+    {
+      "path": "native/fixtures/fingerprints.json",
+      "bytes": 11683,
+      "sha256": "CA22E7480EF5C5726BB46E99F86DBEC230185560B0D5A814EDB53842E2E8C053"
+    },
+    {
+      "path": "native/fixtures/launch-oracle.json",
+      "bytes": 3345,
+      "sha256": "C3285CDACF66050B5ACEA9DA46067880CCD06C594F9037FB0BF5BD99970E130B"
+    },
+    {
+      "path": "native/fixtures/normal/.the-order-synthetic",
+      "bytes": 37,
+      "sha256": "B1C685CA46F6C36D69B4DF002373FB59C5E61B4D94F0E862E379996BCE0C7346"
+    },
+    {
+      "path": "native/fixtures/normal/library.json",
+      "bytes": 3158,
+      "sha256": "623E9CCF60E519532E4D5BBBA032BB1EBB314A21D93CBF5E94630EAC74A1EBAA"
+    },
+    {
+      "path": "native/fixtures/offline-ui-oracle.json",
+      "bytes": 159377,
+      "sha256": "3976306FDB91346643C642CC2F509687B094EE8F9D4210E5EE6C302B01BAE5B7"
+    },
+    {
+      "path": "native/fixtures/online-oracle.json",
+      "bytes": 85008,
+      "sha256": "9BD8754FCD6137ED74E992025CD3C1A73DC72248473AA4D0C0C08C532D8C26F5"
+    },
+    {
+      "path": "native/fixtures/optical-source-regression.cpp",
+      "bytes": 24429,
+      "sha256": "265CFDF1FABF8FAFB4ECC1CCC03E72BF9FECD1377DDEBA72AB6EB78CD4A990FE"
+    },
+    {
+      "path": "native/fixtures/recognition-evidence-oracle.json",
+      "bytes": 58691,
+      "sha256": "880CB2E18191FDF17B3F5DBCF09B9C49FAA316F7D39F13590565C990DBEC5338"
+    },
+    {
+      "path": "native/fixtures/recognition-oracle.json",
+      "bytes": 442463,
+      "sha256": "FD0166C1A63C7FE28758C0BF4E263211FA4AD690ACFDF3F055032629943B25C0"
+    },
+    {
+      "path": "native/fixtures/transaction-oracle.json",
+      "bytes": 791517,
+      "sha256": "70692D488F4F5A1268566572B700B4DAC254C38C093C8B9B0BAB9E7FBC965334"
+    },
+    {
+      "path": "native/global.json",
+      "bytes": 91,
+      "sha256": "C700761A8DA9E52EE1DA80751B38B9A9C36A72F5CBCBFA3C6C0EC006ED29262B"
+    },
+    {
+      "path": "native/installer/BUILD.md",
+      "bytes": 2795,
+      "sha256": "8D6EFA9796152CD95AC5B371DA7E1B206DA81C9058606E91F25F7A6818D06DB1"
+    },
+    {
+      "path": "native/installer/LICENSE-InnoSetup.txt",
+      "bytes": 1521,
+      "sha256": "2E5346868C2A18434489824E11D65C3031620F792FEFC415D05F19CD441ABF5C"
+    },
+    {
+      "path": "native/installer/Launcher.cpp",
+      "bytes": 3145,
+      "sha256": "1ED21220C6F376102449614464AC64CEA01FE4ABF8F99BA2C9F10FA82D243D4D"
+    },
+    {
+      "path": "native/installer/Launcher.rc",
+      "bytes": 638,
+      "sha256": "7E9206CD2D451AF58BA09CC643C74F6BA321F937EBE902F363756EC23A95D649"
+    },
+    {
+      "path": "native/installer/PayloadFiles.iss",
+      "bytes": 1119,
+      "sha256": "A895DE8A9E4960BC194CE8E672025AA403758CC5778CB208EA2DD5CEBB3FA289"
+    },
+    {
+      "path": "native/installer/TheOrder.iss",
+      "bytes": 10026,
+      "sha256": "152AF306DDE493552D9BDFB546830F22E05B15F2BDDEC4D9C9D1A7814FF8A7BE"
+    },
+    {
+      "path": "native/installer/languages/ChineseSimplified.isl",
+      "bytes": 21516,
+      "sha256": "E0B0B350E2245F3C5E65586DFE43D574F6E7F06F2261149ABA284954B3FC9A8D"
+    },
+    {
+      "path": "native/installer/安装版使用说明.txt",
+      "bytes": 1721,
+      "sha256": "240B2CCF8D6EAEDBB0EE005DE647369FF1FA42828055A194BC66B55A41AB62A9"
+    },
+    {
+      "path": "native/licenses/MARKDIG-LICENSE.txt",
+      "bytes": 1318,
+      "sha256": "7423242B4AE72BCCDF19A06CD3C20790DF8519A164A08F37B31CB4A40034D827"
+    },
+    {
+      "path": "native/licenses/PP-OCRv3-LICENSE.txt",
+      "bytes": 11437,
+      "sha256": "609AAAC97719DA6B71CD3FFD08B5DE08B75F582E5C50A196FAB522B6D5087714"
+    },
+    {
+      "path": "native/licenses/PotatoVN-LICENSE.txt",
+      "bytes": 11833,
+      "sha256": "2B3F1ACA1AF27CE5222519496543EC0B416ED9A03537C2AAAAD322BF048A4614"
+    },
+    {
+      "path": "native/licenses/UNICODE-LICENSE.txt",
+      "bytes": 1995,
+      "sha256": "E7A93B009565CFCE55919A381437AC4DB883E9DA2126FA28B91D12732BC53D96"
+    },
+    {
+      "path": "native/scripts/build-material-effects.ps1",
+      "bytes": 1389,
+      "sha256": "7F9D883281F2F8BA638AD68D4B9F81059CBF0DFB2D07E39508A0A631374636E2"
+    },
+    {
+      "path": "native/scripts/build-optical-material.ps1",
+      "bytes": 2011,
+      "sha256": "5ADFC0EB46F5237C41680389FB5F14D076A1468E76B38A781DB317B0949CAE23"
+    },
+    {
+      "path": "native/scripts/capture-ui-evidence.mjs",
+      "bytes": 3868,
+      "sha256": "0BDDE71E0E6D7C8318C95059815EF40F5B2535A9AA1E4610F48EBDE7CA15BBCD"
+    },
+    {
+      "path": "native/scripts/capture-ui-evidence.test.mjs",
+      "bytes": 4128,
+      "sha256": "DE892C7CD159B29A9465A59F8CDDE7A8D95D5E06839B5B7179B39EE14D17802F"
+    },
+    {
+      "path": "native/scripts/check-performance-results.py",
+      "bytes": 12670,
+      "sha256": "D5CBB7B0464E80AD2F85DF6EC66E4877FD38AAE3AE105F364F757D05B98274B6"
+    },
+    {
+      "path": "native/scripts/check-published-runner.ps1",
+      "bytes": 2186,
+      "sha256": "30173DBDD52C9B3CC2747DFE3698B60716BDA0185A0DC4D24C67C61E18E7A57F"
+    },
+    {
+      "path": "native/scripts/create-filesystem-lab.ps1",
+      "bytes": 3260,
+      "sha256": "33266C84F252315B472E2157DE5E45003A749FBAED185BFE2A22A8E8538A045D"
+    },
+    {
+      "path": "native/scripts/generate-compatibility-vectors.mjs",
+      "bytes": 8582,
+      "sha256": "1BA6FC7721CC64DF581C1E523E20D7A87580CAA565070E0B06713E8FEBF2C913"
+    },
+    {
+      "path": "native/scripts/generate-filesystem-oracle.mjs",
+      "bytes": 7121,
+      "sha256": "1645E2841DDDDC7117C01A5247F9960FAC9D6DEE78E763ECE18C3D558F9FDF10"
+    },
+    {
+      "path": "native/scripts/generate-fixtures.mjs",
+      "bytes": 5292,
+      "sha256": "46E5E7FC6BEC72F279B39551C3EC354083D2B802DE084A715D7331A758453AF2"
+    },
+    {
+      "path": "native/scripts/generate-launch-oracle.mjs",
+      "bytes": 5770,
+      "sha256": "48921A6111EA7F8FC4C6AC2D6D514096F5062EA6066884478340DC9BA7934A79"
+    },
+    {
+      "path": "native/scripts/generate-offline-library.mjs",
+      "bytes": 3548,
+      "sha256": "6693847A61FEE00F42B4ADE2523272176978E636715D48C51568A762B50610B4"
+    },
+    {
+      "path": "native/scripts/generate-offline-ui-oracle.mjs",
+      "bytes": 6347,
+      "sha256": "5AC69094F889ECF23FCA0369964009DB943E5DDA0932D85C4B5DB42E06229719"
+    },
+    {
+      "path": "native/scripts/generate-online-oracle.mjs",
+      "bytes": 5253,
+      "sha256": "4D3659EEB2A23B19D268C320633BA02E8260E130A79E538950E1304D2708C185"
+    },
+    {
+      "path": "native/scripts/generate-performance-covers.py",
+      "bytes": 3253,
+      "sha256": "6373CA8EC6A4DA49B73DA8621BA5CA12B627009E8265D7746AC3A63FFAB14D8A"
+    },
+    {
+      "path": "native/scripts/generate-recognition-evidence-oracle.mjs",
+      "bytes": 5945,
+      "sha256": "43286ECB94A5E2088FDE7B468A15C094B347EB6FAC083B56E781383334724956"
+    },
+    {
+      "path": "native/scripts/generate-recognition-oracle.mjs",
+      "bytes": 3136,
+      "sha256": "6EDACAC4660884BADFF06A6C38F62694B1591B1EAB095C8080216A49E709F03F"
+    },
+    {
+      "path": "native/scripts/generate-recognition-profile.mjs",
+      "bytes": 1672,
+      "sha256": "111CF09BA4620400BA0EEF1F3003CD24689E0A573B97AB2549A9DDE9AD529A1E"
+    },
+    {
+      "path": "native/scripts/generate-recognition-remediation-profile.mjs",
+      "bytes": 2533,
+      "sha256": "23256E53E1A606B7E41794EBCB47CDA9E027CDADFED73B3F427423CD24338EF6"
+    },
+    {
+      "path": "native/scripts/generate-transaction-oracle.mjs",
+      "bytes": 15267,
+      "sha256": "DFB5CFB9AC57F2E9E061D3B1B80191ED7136529F9D56A708F47A29B4AA1AA404"
+    },
+    {
+      "path": "native/scripts/launch-native-release.ps1",
+      "bytes": 5193,
+      "sha256": "93022B648D0BB7B79E5EC11C2566C3F4F4E2EE3C1B56D5BFA964D09A477D4F12"
+    },
+    {
+      "path": "native/scripts/launch-portable-test.ps1",
+      "bytes": 3476,
+      "sha256": "88E349440727E27A1B47B368152ACAE71F366D619C16BE36C9093DE417F8C4CF"
+    },
+    {
+      "path": "native/scripts/native.ps1",
+      "bytes": 6102,
+      "sha256": "46835D2C20F1786BBF00A048255EF2615497CAD25E0AEB16C04C3E5AEB0E9828"
+    },
+    {
+      "path": "native/scripts/package-native-installer.ps1",
+      "bytes": 12567,
+      "sha256": "69CC87285B08E69C9DE7E9D64D2CF2C572307B8E1AAFBEAF660D6F909D739916"
+    },
+    {
+      "path": "native/scripts/package-native-rc.ps1",
+      "bytes": 7514,
+      "sha256": "E5942E0C226E33F6FFE1E4553E24EAB7F8EE84A43F3387DD3910F8247331F0FE"
+    },
+    {
+      "path": "native/scripts/package-native-release.ps1",
+      "bytes": 8001,
+      "sha256": "B3DEA0BD7F38ED662B985233D7BECA5EDC147FA4E048D2C980E6F72D063A8F34"
+    },
+    {
+      "path": "native/scripts/prepare-launch-smoke.ps1",
+      "bytes": 2659,
+      "sha256": "BA52EDB631A715240E00791B1871986270D827681D828B928DE621DC37FF3685"
+    },
+    {
+      "path": "native/scripts/request-test-tray-menu.ps1",
+      "bytes": 1239,
+      "sha256": "4EEBAD94D92089A60E4C52D1CB2E6AF6B395929524C6891173FEC2E3758D53CE"
+    },
+    {
+      "path": "native/scripts/run-astra-material-review.ps1",
+      "bytes": 1400,
+      "sha256": "6132C7FF4E8D0291CE326785D3BFB30EB5A1D4D07E43E77D6B679D7F8611CD21"
+    },
+    {
+      "path": "native/scripts/run-dispersion-review.ps1",
+      "bytes": 1233,
+      "sha256": "EF9221F902AFD01ADCD8AFF31FD73171A28392E018FE4052B13B535D08B03A62"
+    },
+    {
+      "path": "native/scripts/run-integrated-ui-diagnostics.ps1",
+      "bytes": 409,
+      "sha256": "CC5D1399C3194B0E096E7D501F1388B5A358ACB50F5FC2251B5EE9A4A8F786F7"
+    },
+    {
+      "path": "native/scripts/run-integrated-ui.ps1",
+      "bytes": 4181,
+      "sha256": "46F899370419C48313AAB202E0E9D18F50DB953C6C5D9949BAB73BB7E76C33FC"
+    },
+    {
+      "path": "native/scripts/run-material-review.ps1",
+      "bytes": 977,
+      "sha256": "C08DBE47C8685DF87E390D6BE19E39CB02DDD0029FA098B143C180DF840526A6"
+    },
+    {
+      "path": "native/scripts/run-performance-ui.ps1",
+      "bytes": 3985,
+      "sha256": "10B58354D10F9E09DD29B499577D7D58A3D510A44988BFC1DAA664B94D198E6D"
+    },
+    {
+      "path": "native/scripts/run-visual-review.ps1",
+      "bytes": 3529,
+      "sha256": "2908084A25973F7A89A9A6F9B5ABD59BBC50F157A63F8F0E8623ABC0C9469B7D"
+    },
+    {
+      "path": "native/scripts/safe-storage-probe.cjs",
+      "bytes": 1110,
+      "sha256": "621C265B5CAC15236B94846B7D3B4E23D4D0F19F839F886BC999DF7202491255"
+    },
+    {
+      "path": "native/scripts/test-native-installer.ps1",
+      "bytes": 12987,
+      "sha256": "D0AB5D95A7BF2C779423D2352CFE050495213A223661DA70BBC9D097EC035E5F"
+    },
+    {
+      "path": "native/scripts/test-native-release-launcher.ps1",
+      "bytes": 6863,
+      "sha256": "2B920A96CC3FA6D6343F22DB09A3982627EB693507CF86F93B83DE3480DC455D"
+    },
+    {
+      "path": "native/scripts/test-native-selective-install.ps1",
+      "bytes": 7522,
+      "sha256": "6C0BA8BAB5181BDB9C5BAFDFF66DAF41A0E9CDB7EAD439AE48EF0C62C54CBCCB"
+    },
+    {
+      "path": "native/scripts/test-native-uninstall-data.ps1",
+      "bytes": 2669,
+      "sha256": "FA9107FFA8480F2D62A3A3C40BDE06D4A62032A1E05555B96F798C65F8AB3E98"
+    },
+    {
+      "path": "native/scripts/test-native-update-handoff.ps1",
+      "bytes": 5228,
+      "sha256": "3AE54338E507356F89980E39DC3C4E7C46A3B4EA1EA5541BDB00F07B369A0C29"
+    },
+    {
+      "path": "native/scripts/test-native-update-worker.ps1",
+      "bytes": 4154,
+      "sha256": "BC42971AE5C3075DC6954423866831375D854C7C22D6959EDABAE68E1AC04374"
+    },
+    {
+      "path": "native/scripts/test-optical-lifecycle.ps1",
+      "bytes": 5305,
+      "sha256": "D58520DA24702662ED9146498A2B2C7BE39BA15C54B975DA4A114AD1084203BD"
+    },
+    {
+      "path": "native/scripts/test-optical-source.ps1",
+      "bytes": 1739,
+      "sha256": "B4ED002D0DAD3633D3933A9637E3CE3ECAF858A3A642C2A6B490B8594CF4C855"
+    },
+    {
+      "path": "native/scripts/test-rc-off-isolation.ps1",
+      "bytes": 9137,
+      "sha256": "95B489EF2DB0298FB7FB3237FFF4387D1147B418CD4C752DD4B008785C575F9E"
+    },
+    {
+      "path": "native/scripts/update-worker.ps1",
+      "bytes": 10268,
+      "sha256": "0F0629582D1B8DCB59AD763EFD39F34941525100A2E032E2E046A25AF8D30334"
+    },
+    {
+      "path": "native/scripts/visual-command.ps1",
+      "bytes": 1544,
+      "sha256": "6FEA9769550060641B5A6A7A9C54F3A5AD34D6B655CAFAE05EFC9EBCAA56BE70"
+    },
+    {
+      "path": "native/scripts/watch-performance-resources.ps1",
+      "bytes": 3016,
+      "sha256": "74BC8C7544E56C4FF51684919671A0C1C280ADC15FEB312CBDA1E4610397221F"
+    },
+    {
+      "path": "native/scripts/write-performance-binding.ps1",
+      "bytes": 2967,
+      "sha256": "78589D032FE24B8911C1C2E371685A91C11E2470ADD47D2A5DC1FA4AA3786ECB"
+    },
+    {
+      "path": "native/tools/BrandIcons/BrandIcons.csproj",
+      "bytes": 408,
+      "sha256": "B032F521667EA97B3149EDDCABAF37BC1C633800DC1ACAD1C3C2DEDD2634D0DE"
     },
     {
       "path": "native/tools/BrandIcons/Program.cs",
       "bytes": 2975,
       "sha256": "AC82A03C198138CBE450C324EF9C7C804E921B92BC8219C657AABADDA0286C58"
+    },
+    {
+      "path": "native/tools/BrandIcons/packages.lock.json",
+      "bytes": 3889,
+      "sha256": "C1B644BE7CDEDA54FFBDF19B0AF6AAEB9E2397EA97DC09872CD01CD5644C19BA"
     },
     {
       "path": "package-lock.json",
@@ -2613,16 +2954,6 @@
       "path": "public/the-order.png",
       "bytes": 660089,
       "sha256": "018762A3E64AE6F97D7C25B9C763C8EB9B22909BAEB0D2A55270F3B8C841FC3B"
-    },
-    {
-      "path": "PUBLICATION.md",
-      "bytes": 1057,
-      "sha256": "190E879B490B63147B3E05D7461BEE44891839EA328768795A6F338A681961BE"
-    },
-    {
-      "path": "README.md",
-      "bytes": 30329,
-      "sha256": "5DBF803464E90683A4DA9F4A21562177B45CED4B8D0485ED034196AAE7A0E018"
     },
     {
       "path": "scripts/build-electron.mjs",
@@ -2858,11 +3189,6 @@
       "path": "src/workspace-refresh.css",
       "bytes": 13743,
       "sha256": "021147D81999C87DAED2CD45297D40DED546DBCEDF16397BF6CCEC4BF459300E"
-    },
-    {
-      "path": "Start-The-Order-Test.cmd",
-      "bytes": 241,
-      "sha256": "8B28BB1EC964272F0B7F82C76BAD30BAEF56D94195468537B18A675952FD19F0"
     },
     {
       "path": "tests/binding-pagination.test.ts",
@@ -3270,6 +3596,11 @@
       "sha256": "1552CF1CDD30F5AF4A920D8B8DACE423C9777995C38223E457B83AB96D124136"
     },
     {
+      "path": "tests/ui-fixtures/LICENSE.txt",
+      "bytes": 192,
+      "sha256": "8F2DA218B4E41E5A60E5E61CD729DC42E4D0236D4B615B42911D8A4C375CE8C1"
+    },
+    {
       "path": "tests/ui-fixtures/cover-0.svg",
       "bytes": 2475,
       "sha256": "FFA1274A5D3CA999E24C577DD878B2C001AEF308AC2AE4DCA4AC7FBA75EB90F2"
@@ -3315,11 +3646,6 @@
       "sha256": "BBFF6CC365C78752488E297ECDC7A846897282724FF17FAB55DAF604AD7F2E26"
     },
     {
-      "path": "tests/ui-fixtures/LICENSE.txt",
-      "bytes": 192,
-      "sha256": "8F2DA218B4E41E5A60E5E61CD729DC42E4D0236D4B615B42911D8A4C375CE8C1"
-    },
-    {
       "path": "tests/window-appearance.test.ts",
       "bytes": 4166,
       "sha256": "C3875D877B525002A2F0447D1757736306F2FC71AD9FD4F23DD6BA3B6D10C83F"
@@ -3328,11 +3654,6 @@
       "path": "tests/workspace-concurrency.test.ts",
       "bytes": 52602,
       "sha256": "EEFE53A098B491703A05B862562CA46F7AA6993DD63EA1B9CC5199D2E9458AE2"
-    },
-    {
-      "path": "THIRD_PARTY_NOTICES.md",
-      "bytes": 9012,
-      "sha256": "B76A07753F5293D192CA33751A579BEFC0D37BDE17DE57A13A4A210D538802A3"
     },
     {
       "path": "tsconfig.electron.json",

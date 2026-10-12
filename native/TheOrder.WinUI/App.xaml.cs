@@ -118,21 +118,29 @@ public partial class App : Microsoft.UI.Xaml.Application
         }
         catch (Exception) { RequestActivation(); host?.Window.ShowLifecycleError(UiText.Get("托盘操作未完成，请在窗口中重试。")); }
     }
-    internal async Task RequestExitAsync()
+    internal async Task RequestExitAsync() => await ExitCoreAsync(null);
+    internal Task<bool> RequestUpgradeAsync(VerifiedAppUpdate package) => ExitCoreAsync(package);
+    private async Task<bool> ExitCoreAsync(VerifiedAppUpdate? update)
     {
-        if (exiting || host is not { } owner) return;
+        if (exiting || host is not { } owner) return false;
         exiting = true; RequestActivation(); owner.Window.SetCommandsBlocked(true);
         try
         {
             owner.Window.CancelBackgroundRequests();
-            if (!await owner.Window.ResolveUnsavedAsync()) return;
-            if (!await owner.Sessions.PrepareExitAsync()) { owner.Window.ShowLifecycleError(owner.Sessions.Error ?? UiText.Get("退出已取消，请重试。")); return; }
-            await owner.DisposeAsync();
-            tray?.Dispose(); tray = null;
-            allowClose = true;
-            owner.Window.DispatcherQueue.TryEnqueue(() => owner.Window.Close());
+            return await AppUpdateShutdown.RunAsync(owner.Window.ResolveUnsavedAsync,
+                async () => update is null ? null : await owner.Updates.PrepareAsync(update, CancellationToken.None),
+                async () =>
+                {
+                    await owner.Window.DrainPersonalRequestsAsync();
+                    if (await owner.Sessions.PrepareExitAsync()) return true;
+                    owner.Window.ShowLifecycleError(owner.Sessions.Error ?? UiText.Get("退出已取消，请重试。")); return false;
+                }, () => owner.DisposeAsync().AsTask(), () =>
+                {
+                    tray?.Dispose(); tray = null; allowClose = true;
+                    owner.Window.DispatcherQueue.TryEnqueue(() => owner.Window.Close());
+                });
         }
-        catch (Exception error) { owner.LogFatal(error); owner.Window.ShowLifecycleError(UiText.Get("退出未完成，窗口已保留。请重试。")); }
+        catch (Exception error) { owner.LogFatal(error); owner.Window.ShowLifecycleError(error is AppUpdateException ? error.Message : UiText.Get("退出未完成，窗口已保留。请重试。")); return false; }
         finally { if (!allowClose) { exiting = false; owner.Window.SetCommandsBlocked(false); } }
     }
     private bool QuerySystemEnd(bool logoff)

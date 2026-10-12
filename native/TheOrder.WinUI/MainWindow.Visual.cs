@@ -81,7 +81,12 @@ public sealed partial class MainWindow
     private void OnPaneToggle(TitleBar sender, object args) => Navigation.IsPaneOpen = !Navigation.IsPaneOpen;
     private void OnShellSizeChanged(object sender, SizeChangedEventArgs args) { }
 
-    private void StartVisualFixture(object sender, RoutedEventArgs e) => visualFixtureTimer?.Start();
+    private void StartVisualFixture(object sender, RoutedEventArgs e)
+    {
+        visualFixtureTimer?.Start();
+        if (fixtureDirectory is not null)
+            File.WriteAllText(Path.Combine(fixtureDirectory, "fixture-ready.json"), JsonSerializer.Serialize(new { ready = true, isolatedTest = true }));
+    }
     private void ApplyMaterialPolicy()
     {
         if (visualStopped || materialPolicy is null) return;
@@ -90,7 +95,8 @@ public sealed partial class MainWindow
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
         RefreshCaptionTheme();
         var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
-        // Mica is the window backdrop; system/app transparency rules replace it with the solid canvas.
+        // Win10 uses a solid window canvas. That does not disable supported in-app
+        // Acrylic or the artwork-owned banner glass; their existing policy is independent.
         ApplyBackdrop(materialPolicy.EffectsAllowed);
         // Hidden windows hold no glass renderer: stages drop to their XAML layers and release swapchains.
         var stageAllowed = materialPolicy.EffectsAllowed && visible;
@@ -204,6 +210,11 @@ public sealed partial class MainWindow
         diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
         catalogPreparation = presentations.Metrics, stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence, online = onlinePage.StageEvidence }, shell = ShellEvidence(),
         round3 = Round3Evidence(), managed = MaterialManagedEvidence(), displayBitmaps = Views.DisplayBitmaps.Evidence(images), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
+        updates = new { updates.CurrentVersion, latest = updates.Latest?.Version, updates.Message, updates.Highlights, updates.CanCheck, updates.CanInstall, updates.CanCancel, updates.IsBusy, updates.Progress, badgeVisible = UpdateBadge.Visibility == Visibility.Visible },
+        nextMoe = new { mode = nextMoeSettings.Status?.Mode.ToString(), nextMoeSettings.Status?.NeedsLogin, nextMoeSettings.TimeDirection, nextMoeSettings.StateDirection,
+            nextMoeSettings.FolderDirection, nextMoeSettings.ReadRatings, nextMoeSettings.Automatic, nextMoeSettings.HasPending, nextMoeSettings.HasPreview, nextMoeSettings.PreviewSummary, nextMoeSettings.Message,
+            rows = nextMoeSettings.Rows.Select(x => new { x.Title, x.Values, x.Explanation, x.Choice }) },
+        settings = settingsPage.LayoutEvidence(),
         treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
         glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
@@ -281,6 +292,9 @@ public sealed partial class MainWindow
                 case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
                 case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;
                 case "probe": break;
+                case "checkUpdate": await Navigate(WorkspacePage.Settings); await updates.CheckAsync(); settingsPage.ShowUpdatesTest(); break;
+                case "automaticUpdate": await updates.CheckAutomaticallyAsync(); break;
+                case "personalFixture": await RunPersonalFixtureAsync(root.GetProperty("value").GetString()); break;
                 case "opticalProbe":
                     await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "optical-probe.json"), JsonSerializer.Serialize(OpticalRenderer.Diagnostics()));
                     break;

@@ -54,7 +54,7 @@ public sealed class OnlineTransportTests
             var failure = await Assert.ThrowsAsync<OnlineException>(Run);
             Assert.Equal(error.GetString() switch { "INVALID_RESPONSE" or "INVALID_JSON" or "HTTP_ERROR" => OnlineFailure.InvalidResponse, "RESPONSE_TOO_LARGE" => OnlineFailure.ResponseTooLarge,
                 "NETWORK_ERROR" => OnlineFailure.Offline, "MERGE_LOOP" => OnlineFailure.MergeLoop, "MERGE_LIMIT" => OnlineFailure.MergeLimit, "REDIRECT_BLOCKED" => OnlineFailure.RedirectBlocked,
-                "INVALID_API_KEY" => OnlineFailure.InvalidCredential, "RATE_LIMITED" or "QUOTA_EXCEEDED" => OnlineFailure.RateLimited,
+                "INVALID_API_KEY" => OnlineFailure.InvalidCredential, "RATE_LIMITED" => OnlineFailure.RateLimited, "QUOTA_EXCEEDED" => OnlineFailure.QuotaExceeded,
                 _ => name == "status-400" ? OnlineFailure.InvalidRequest : name == "status-403" ? OnlineFailure.Forbidden : name == "status-404" ? OnlineFailure.NotFound : name == "status-408" ? OnlineFailure.Timeout : OnlineFailure.Server }, failure.Failure);
         }
         else

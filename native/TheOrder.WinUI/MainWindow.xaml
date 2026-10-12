@@ -2,7 +2,7 @@
  <Grid x:Name="Root" SizeChanged="OnShellSizeChanged">
   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
   <!-- Solid canvas replaces Mica when transparency is off (system, app setting, HC or policy fault). -->
-  <Border x:Name="OpaqueCanvas" Grid.RowSpan="3" Background="{ThemeResource CanvasBrush}" Visibility="Collapsed" />
+  <Border x:Name="OpaqueCanvas" Grid.RowSpan="3" Background="{ThemeResource CanvasBrush}" />
   <!-- Fluent title bar: brand, library search and the session indicator. Back lives below the brand only when available. × keeps
        The Order in the tray and the tray menu exits. -->
   <TitleBar x:Name="AppTitleBar" Title="The Order" IsBackButtonVisible="False" IsBackButtonEnabled="False" IsPaneToggleButtonVisible="False" BackRequested="OnTitleBack" PaneToggleRequested="OnPaneToggle" AutomationProperties.AutomationId="AppTitleBar">
@@ -53,7 +53,7 @@
     <NavigationViewItem x:Name="OnlineNavigation" Tag="online" HorizontalContentAlignment="Center" Padding="0" Height="74" AutomationProperties.AutomationId="OnlineNavigation" l:Localize.Name="发现"><StackPanel Spacing="6" HorizontalAlignment="Center"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" /><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="发现" /></StackPanel></NavigationViewItem>
    </NavigationView.MenuItems>
    <NavigationView.FooterMenuItems>
-    <NavigationViewItem x:Name="SettingsNavigation" Tag="settings" HorizontalContentAlignment="Center" Padding="0" Height="74" AutomationProperties.AutomationId="SettingsNavigation" l:Localize.Name="设置"><StackPanel Spacing="6" HorizontalAlignment="Center"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" /><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="设置" /></StackPanel></NavigationViewItem>
+    <NavigationViewItem x:Name="SettingsNavigation" Tag="settings" HorizontalContentAlignment="Center" Padding="0" Height="74" AutomationProperties.AutomationId="SettingsNavigation" l:Localize.Name="设置"><StackPanel Spacing="6" HorizontalAlignment="Center"><Grid Width="34" Height="28"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center" /><Ellipse x:Name="UpdateBadge" Width="6" Height="6" Fill="{ThemeResource AccentFillColorDefaultBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" /></Grid><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="设置" /></StackPanel></NavigationViewItem>
    </NavigationView.FooterMenuItems>
    <!-- Transparent page content shares the shell backdrop; high contrast keeps its system surface. -->
    <Grid x:Name="ContentLayer" Background="{ThemeResource LayerBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="0">

@@ -95,6 +95,36 @@ public sealed class PersonalBannerTests
         var cached = await reopened.LoadAsync(key, 1600, default);
         Assert.Equal(1920, cached.Pixels!.Width); Assert.Equal(0, reopened.Metrics.Loads);
     }
+    [Fact]
+    public async Task PersonalOriginalRendersThroughRealPipelineAndSurvivesRestart()
+    {
+        using var fixture = new ProfileFixture(); using var profile = fixture.Open();
+        var encoded = await ImagePipelineTests.Png(800, 300);
+        var file = Path.Combine(fixture.Root, "synthetic-banner.png"); await File.WriteAllBytesAsync(file, encoded);
+        await using var store = new IsolatedPersonalBannerStore(profile.Configuration(), new WindowsRasterCodec());
+        var key = (await store.SaveAsync("game-a", file)).Key!;
+        var disk = new IsolatedThumbnailCache(profile.Configuration());
+        var options = new ImageOptions(MaximumEdge: ArtworkSizing.MaximumEdge);
+        await using (var pipeline = new ImagePipeline(store, new WindowsRasterCodec(), disk, options))
+        {
+            var image = await pipeline.LoadAsync(key, 1600, default);
+            Assert.Equal("loaded", image.Status); Assert.NotNull(image.Pixels);
+            Assert.Equal(800, image.Pixels.Width); Assert.Equal(300, image.Pixels.Height);
+            Assert.Equal(1, pipeline.Metrics.Loads);
+        }
+        Assert.Equal(encoded, await store.ReadAsync(key, default));
+        await using var reopened = new ImagePipeline(new Source([1, 2, 3]), new WindowsRasterCodec(), disk, options);
+        var cached = await reopened.LoadAsync(key, 1600, default);
+        Assert.NotNull(cached.Pixels); Assert.Equal(800, cached.Pixels.Width); Assert.Equal(0, reopened.Metrics.Loads);
+    }
+    [Theory]
+    [InlineData("../local-banner-")][InlineData("arbitrary-")][InlineData("local-banner-../")][InlineData("local-banner-\\")]
+    public async Task PersonalBannerCacheNamespaceStillRejectsPathsAndOtherPrefixes(string prefix)
+    {
+        using var fixture = new ProfileFixture(); using var profile = fixture.Open();
+        var cache = new IsolatedThumbnailCache(profile.Configuration());
+        await Assert.ThrowsAsync<InvalidDataException>(() => cache.ReadAsync(prefix + new string('A', 64) + "-1600", default));
+    }
     private sealed class Source(byte[] encoded) : IImageSourceProvider
     { public Task<byte[]?> ReadAsync(string key, CancellationToken cancellation) => Task.FromResult<byte[]?>(encoded); }
 }

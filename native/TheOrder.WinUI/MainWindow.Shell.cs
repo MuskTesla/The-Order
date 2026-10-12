@@ -8,6 +8,8 @@ using TheOrder.Presentation;
 using Windows.System;
 using Windows.UI;
 using Windows.UI.ViewManagement;
+using TheOrder.WinUI.Startup;
+using TheOrder.WinUI.Materials;
 
 namespace TheOrder.WinUI;
 
@@ -24,10 +26,38 @@ public sealed partial class MainWindow
     private bool materialInitialized;
     private string? materialPreferenceNotice;
     private MicaBackdrop? mica;
+    private readonly WindowCapabilities windowCapabilities = WindowCapabilities.Detect();
+    private readonly WindowBackdropState windowBackdrop = new();
+    private bool customTitleBar;
+    private string? chromeWarning;
     private UISettings? colorSettings;
     private long accentEvents;
     private string accentSource = "Windows theme resources (startup)";
     private bool diagnosticsToggle;
+
+    private void InitializeWindowChrome()
+    {
+        // Windows App SDK backports customized title bars to Win10. If the host
+        // rejects customization, retain the real system caption and its controls;
+        // the XAML title-bar content stays available as an in-window command row.
+        if (windowCapabilities.CustomTitleBar)
+        {
+            try
+            {
+                ExtendsContentIntoTitleBar = true;
+                SetTitleBar(AppTitleBar);
+                AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+                customTitleBar = true;
+            }
+            catch (Exception exception) { chromeWarning = exception.GetType().Name; }
+        }
+        if (!customTitleBar)
+        {
+            ExtendsContentIntoTitleBar = false;
+            SetTitleBar(null);
+        }
+        SessionDuration.FontFamily = SessionFlyoutDuration.FontFamily = new FontFamily(windowCapabilities.MonospaceFont);
+    }
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -66,9 +96,15 @@ public sealed partial class MainWindow
         // leaving a contrast theme, even while XAML has returned to Dark.
         // Let contrast themes use the system palette, then explicitly restore
         // the live XAML theme instead of a stale OS/RequestedTheme default.
-        AppWindow.TitleBar.PreferredTheme = materialPolicy?.HighContrast == true
-            ? TitleBarTheme.Legacy
-            : Root.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
+        try
+        {
+            // Win10's system caption colors are OS-owned; do not assume that
+            // AppWindow color customization behaves like Win11. HC is OS-owned too.
+            AppWindow.TitleBar.PreferredTheme = !windowCapabilities.CaptionTheme || materialPolicy?.HighContrast == true
+                ? TitleBarTheme.Legacy
+                : Root.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
+        }
+        catch (Exception exception) { chromeWarning ??= exception.GetType().Name; }
         // TitleBar's BitmapIcon visual retained its initial foreground in a real
         // Light-theme check. Explicit black/light pixels avoid that copy boundary.
         var dark = Root.ActualTheme == ElementTheme.Dark;
@@ -156,16 +192,20 @@ public sealed partial class MainWindow
 
     private void ApplyBackdrop(bool translucent)
     {
-        if (translucent)
+        windowBackdrop.Apply(translucent, windowCapabilities.Mica, () =>
         {
+            if (windowCapabilities.Scenario == "mica-attachment-failure-simulation")
+                throw new InvalidOperationException("TestMicaAttachmentFailure");
             if (SystemBackdrop is not MicaBackdrop) SystemBackdrop = mica ??= new MicaBackdrop();
             OpaqueCanvas.Visibility = Visibility.Collapsed;
-        }
-        else
+        }, () =>
         {
-            if (SystemBackdrop is not null) SystemBackdrop = null;
+            // Show the canvas before detaching a rejected material. A failed detach
+            // still leaves a readable, theme-correct surface, including the first frame.
             OpaqueCanvas.Visibility = Visibility.Visible;
-        }
+            try { if (SystemBackdrop is not null) SystemBackdrop = null; }
+            catch (Exception exception) { chromeWarning ??= exception.GetType().Name; }
+        });
     }
 
     // Live accent: WinUI resolves SystemAccentColor* once per process. On a Windows personalization change
@@ -243,7 +283,11 @@ public sealed partial class MainWindow
             titleBar = AppTitleBar.ActualHeight, captionTheme = AppWindow.TitleBar.PreferredTheme.ToString(), backEnabled = AppTitleBar.IsBackButtonEnabled, search = libraryPage.SearchLength, searchFocus = libraryPage.SearchFocus,
             paneMode = Navigation.DisplayMode.ToString(), paneOpen = Navigation.IsPaneOpen, sessionIndicator = SessionSurface.Visibility == Visibility.Visible,
             exitButtonPresent = false, accentEvents, accentSource, accentBrushUpdates, accentRgb = accent is { } a ? $"{a.R:X2}{a.G:X2}{a.B:X2}" : "framework",
-            launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle
+            launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle,
+            compatibility = new { hostVersion = windowCapabilities.HostVersion.ToString(), minimumBuild = TheOrder.Platform.Windows.WindowsCompatibility.MinimumBuild,
+                windowCapabilities.Scenario, customTitleBar, windowCapabilities.CaptionTheme, windowCapabilities.MonospaceFont,
+                micaSupported = windowCapabilities.Mica, backdrop = windowBackdrop.UsingMica ? "Mica" : "Solid",
+                canvasVisible = OpaqueCanvas.Visibility == Visibility.Visible, windowBackdrop.Failure, chromeWarning }
         };
     }
 }

@@ -1,6 +1,152 @@
 # The Order：当前实现与评审交接
 
-## 当前 1.0.0 首版发布前候选（2026-10-11）
+## 1.1.0 GitHub 发布记录（2026-10-12）
+
+用户明确授权将已验收的 1.1.0 上传 GitHub。本次公开入口为 https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0；安装器、完整对应源码、差量块表、校验与原验证报告一同发布。源码保持当前 native 实现、锁文件和必需数据，公开文档更新下载入口与范围；原开发编号 1.0.2 的真实 OAuth／完整回归按实际版本保留。
+
+真实云端写入／删除、收藏夹额外权限、Win10 实机、真实安装升级和长期稳定性仍未验收。同步默认关闭；双向模式后台本地时长／状态上传仍需手动预览。旧标签／附件与日用程序不变；发布暂存目录不作为维护入口。
+
+## 最新候选 1.1.0（2026-10-12，原开发编号 1.0.2）
+
+用户明确确认将本次新增认证、个人同步、程序更新及 Win10 适配的功能版本命名为 **1.1.0**。维护源码、分支、HEAD 和所有继承成果不变；程序集、Setup／GUI 入口资源、安装器身份、包与差量附件名称和当前说明统一使用 1.1.0。内部应用 ID、安装 AppId、Profile／StoreId、资料格式、公开 1.0.1 与全部旧候选不改。
+
+当前候选和版本调整检查位于 `.artifacts/release-1.1.0-20261012/`，最终入口和条件结论见该目录 `validation-summary.json` 与 `distribution/ACCEPTANCE.md`。原 1.0.2 的完整 2638 项回归、真实匿名和真人 OAuth 只读闭环证据位于 `.artifacts/auth-sync-20261011/`，不改写它们的实际版本。新增检查验证 1.0.1→1.1.0 升级、1.1.0→1.1.1 更新以及拒绝 1.0.3 降级；合成更新预览版本改为 1.1.1。当前说明见 `docs/release/1.1.0/`。
+
+尚未发布、提交／推送或替换正式程序。真实云端写入／删除和收藏夹额外授权未验收；官方替换接口缺少条件更新，后台双向本地上传仍需要手动预览。以下 1.0.2 记录是已保留的实施与验收历史。
+
+
+## 当前 1.0.2 认证、同步与设置候选（2026-10-11）
+
+本轮在 `D:/Projects/The-Order-worktrees/claude-recognition-rnd/native`、`codex/library-ui-refinement`、HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加继承 dirty 上继续实现，没有重置、整体提交、推送、修改公开 1.0.1 或安装日用更新。保留 Win10 17763 能力守卫、低模糊横幅、差量下载与按文件安装、原识别／会话和全部个人数据格式。下方旧候选、失败记录及证据均保留，不代表当前入口。
+
+新增匿名／账号／API Key 三种明确访问模式：匿名不携带认证头，旧 DPAPI Key 保留；系统浏览器 PKCE 与随机 IPv4 环回端口完成账号授权，刷新串行轮换并原子记录未知状态，失败要求恢复登录。Client ID `2df77ee1e0167493048a94b677c73e10` 已经官方授权端点与无效对照验证为有效应用，不是仅从截图猜测。正常登录 scope 为 openid/profile/catalog:read，收藏夹按用户选择另外授权。
+
+个人同步默认关闭、独立于登录。时长、状态和收藏夹提供按类别的读取、预览、确认导入／上传；评分只读、独立展示，本地会话和小数评分保留。账号／Profile／客户端基线、独立收藏映射、真实游标、完整删除快照、UUID POST 日志与 207 逐项结果保护；未知任务同内容重试或明确核对后结束，不静默新建任务。常规自动化仅使用合成账号与资料；真人授权后仅在专门隔离 Test 中验证获准的只读接口，不使用 Production 或真实游戏。
+
+**官方接口限制：时长／状态替换写没有 compare-and-swap。** 三方比较和提交前重读无法使两侧提交原子化；双向模式的后台本地替换改为提示手动预览，安全云端新增可自动导入，删除不自动传播。严格无覆盖的全自动双向替换尚不能承诺；受控替代方案通过合成验证，不能标为全自动能力通过。
+
+设置按用户最新要求统一左对齐，移除重复书架视图、当前材质生效与系统策略说明和不必要的小字；首页网格／列表保留。同步冲突、额外权限、删除说明在预览或确认时显示。常规读取、错误、进度、更新内容与操作入口保留，窄窗口控件与按钮可收缩／换行。
+
+新输出根 `.artifacts/auth-sync-20261011/`：真实匿名 `anonymous-live.json`（3 GET/200/无 Authorization）；完整回归 `tests/full-release-windows-bound.trx`（2638 通过／0 失败／0 跳过）；最终原生 XAML Test 状态／明暗／小窗口流程 `ui-acceptance-windows-bound/summary.json`（11 项通过）。用户已完成系统浏览器登录并确认连接成功、正常退出；`oauth-real-readonly.json` 记录新进程一次刷新、相同账号、目录／时长／状态／评分只读 200、本机退出及退出后私人访问拒绝，隔离书架字节未变，真实云端写入为 0。没有请求收藏夹额外权限，真人收藏夹读取／写入未验收。当前产物和结论以 `validation-summary.json`、`distribution/ACCEPTANCE.md` 为准。最终同步伴随文件 schema 2 绑定 Windows SID／ProfileId／StoreId；早期本轮未发布的 schema 1 测试文件拒绝直接借用。Root RenderTargetBitmap 不能完整捕获系统透明／组合层，不将它计为像素美观验收。最终候选未公开发布，未签名；Win10 实机、真实安装升级、真实云端写入／删除和长稳未执行。复现与隐私见 DEVELOPMENT、`docs/release/1.0.2/BUILD.md` 和 AUTHENTICATION.md。
+
+## 当前 1.0.2 差量更新候选（2026-10-11，包含程序更新与 Win10 适配）
+
+用户要求从下载完整新包改为比较版本差异并定向修改。本轮在已授权的本地 1.0.2 候选上实现差量下载及按文件安装，仍未发布、提交／推送、替换日用安装、访问 Production／个人密钥或启动真实游戏。权威维护源码仍在 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`；继承 dirty 工作及此前输出保留，产物目录不作为开发入口。
+
+发布工具为每个新 Setup 生成版本化 SHA-256 块表；安装后仅在托管程序目录留一份 `update-base.bin`，由普通卸载记录管理。用户点击更新后比较当前缓存与新版块表，通过 GitHub Range 只下载变化块，再合成并校验完整新安装包。支持跨版本比较，不要求逐版本升级；没有缓存、块表异常、差量收益不足或 Range 不支持时只回退一次全包。取消停止下载与合成，失败不写入运行中的程序。更新来源、完整包哈希／PE 身份、保存／退出／安装交接和下载安全标记保持；后台仍仅检查、不下载。
+
+新安装器根据已验证载荷逐文件编译 SHA-256 条目，相同文件跳过，缺项或不同内容才新增／替换；不删除清单外的额外文件。所有预期目标及父目录拒绝链接，快捷方式、卸载记录和资料兼容行为保留。为改善差量复用改用独立压缩流，完整 Setup 比此前固实压缩包稍大；差量仍需本地重建完整安装包及保存单份基包的磁盘空间。
+
+本轮 **109 项针对性测试通过、0 失败／跳过**，覆盖块表边界、跨版本与内容移位、复用与整包校验、缓存／网络异常回退、取消、更新状态及 Win10 守卫。真实 Inno 合成文本安装探针 **12 项通过**，验证未变文件时间保持、变化替换、缺项新增、重复／修复、缓存复制、额外文件保留及目录链接拒绝；探针不注册系统卸载信息，不安装真实应用。公开 1.0.1 的实际 64 KiB Range 请求通过；最终 GUI `--validate-only` 经系统 PowerShell 5.1 校验 **657 份载荷**，未打开应用或资料。
+
+两份内部 1.0.2 构建实测：完整包 **79,209,628 字节**，差量含块表 **5,439,527 字节**，复用 **73,890,172 字节**、23 个 Range；重建 SHA-256 与新 Setup 完全一致。该对比不是已公开版本的真实升级，后续下载量随改动变化。前轮 worker、命名事件、界面和兼容证据仍分别在下方目录，本轮没有把这些旧检查重复计数。
+
+最新输出 `.artifacts/delta-update-20261011`：`publish-final`、`package-candidate`、`installer-candidate`；交付入口为 `distribution-final/The-Order-1.0.2-Setup-x64.exe`，SHA-256 **AE1791B91917D2EB10D451FB00F70ECD724F9AF7B7EFC0257CAB4617F0AE4C4D**。同目录含 `.exe.blocks.json`（120,071 字节，SHA-256 **EB85D152F570EA6571662E042FF43013E4F5C7A1CEC2C2EE4F3C724056A85B93**）、完整对应源码、校验及验证摘要。发布差量能力需同时上传 Setup 和该块表；没有执行上传。之前 `self-update-20261011` 和 `win10-compat-20261011` 的包属于历史候选。
+
+**真实应用覆盖安装／升级／重启、Win10 实机、长稳和完整历史回归仍未验证。** 当前宿主 Windows 11 10.0.26300.0；仅运行针对性及合成验证。安装包未签名；没有绕过系统保护。公开版本仍为 1.0.1，其首次迁移需完整安装含更新功能的新版本，之后才能差量更新。维护细节见 DEVELOPMENT 与 `docs/release/1.0.2/BUILD.md`。
+
+## 前轮 1.0.2 程序更新候选（2026-10-11，已由差量候选替代）
+
+用户授权加入设置内检查、下载并升级安装，以及后台只检查、轻提示和主要升级说明。本候选仍是未发布的 1.0.2，替代下方仅含 Win10 适配的本地包。维护源码仍在 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`，分支 `codex/library-ui-refinement`、HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加继承 dirty；没有整体提交、推送、替换日用安装、访问 Production／个人密钥或启动真实游戏。
+
+Production 初始化后延迟 15 秒静默检查，再每 12 小时检查一次；发现新版仅在设置图标右上角显示 6px 提示点，不弹窗、不自动下载，后台失败不覆盖已有更新状态。设置直接显示发布者的主要改动（最多六条），可展开完整说明；手动检查取代在途后台检查，迟到结果不能覆盖新结果。更新 feed 固定为 `Ph-Rank/The-Order` 的 GitHub latest 正式发行，不需要 GitHub 登录或 NextMoe 密钥。
+
+“立即更新”下载明确的 Setup 附件，检查名称、来源、大小和 SHA-256，保留下载安全标记；下载支持取消和重试。安装前处理草稿并保存游玩记录，准备独立 PowerShell 5.1 worker，仅当应用发出保存完成的命名事件且准确的父 PID／创建时间退出后才开始静默升级并重新打开。取消、保存失败或未提交的异常退出不安装；Test／Development 禁止安装。使用资料格式与识别规则不变，Win10 1809 x64（17763）的能力回退和 CPU ONNX 适配保留。公开 latest 当前为 1.0.1，候选不会降级。
+
+Release 构建／publish 无警告错误；本轮 **72 项针对性测试通过**，包含版本与来源验证、下载失败／取消、保存交接、后台与手动竞争、更新说明和 Win10 能力守卫。系统 PowerShell 5.1 的实际 worker 校验 18 项、命名事件／父进程退出探针 4 项、隔离 Test 界面状态检查 18 项、最终入口检查 27 项通过；实际下载现有公开 1.0.1 安装包并核对 SHA-256，保留 MOTW，合成书架未变。这些不相加为全量回归，不代表真实安装升级成功。界面 PNG 为 RenderTargetBitmap，透明／原生合成层捕获不完整，只作结构参考，不声称原生像素验收。
+
+最新输出 `.artifacts/self-update-20261011`：`publish-final-2`、`package-final`（657 份清单文件）、`installer-final/distribution/The-Order-1.0.2-Setup-x64.exe`。Setup **72496776 字节**，SHA-256 **CC85F7CAFA35352011C6DD16D28B25ABE92A15DD2C2A1D3706C9967C24E965A9**。交付包、完整对应候选源码和校验见 `distribution-final`；产物与证据绑定在 `validation-summary.json`。此前 Win10 阶段输出、失败记录和早期更新候选均保留，不能作为最新入口。
+
+**未运行真实覆盖安装、Production 升级或 Win10 实机验收，也未重跑全部历史回归和长稳测试。** 本轮不要求用户操作；日用安装保持。安装包未签名，系统安全提示仍可能需要用户确认，不绕过防护。1.0.1 不含程序内更新，需要先安装包含此功能的新版本；未来发布仍需用户授权。构建与边界见 DEVELOPMENT 和 `docs/release/1.0.2/BUILD.md`。
+
+## 当前 1.0.2 Windows 10 兼容候选（2026-10-11）
+
+用户授权在没有 Win10 实机／虚拟机、无人值守的情况下完成兼容开发及联网研究。本轮未发布 GitHub、替换日用程序、安装／卸载用户程序或读取 Production、个人密钥。权威维护源码仍是 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`，分支 `codex/library-ui-refinement`、HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加继承 dirty 工作；不要用发布暂存或本轮输出目录继续开发。
+
+最低运行版本、编译 API 检查、启动提示及安装器门槛统一为 **Windows 10 1809 x64（17763）**；Windows SDK 引用仍为 26100。Mica 只在 Win11 且能力支持时启用；Win10／附加失败使用主题色窗口背景，自定义标题栏不可用时保留系统控制。Win10 等宽字体使用 Consolas，动画变化事件按 19041 保护，旧版本依靠原有系统通知刷新。详情低模糊、无折射／色散玻璃独立于窗口 Mica，标准材质及系统关闭效果的回退保留。
+
+横幅文字检测改用已随包提供的固定 CPU ONNX Runtime 2.1.74，避开旧 Win10 内置 WinML 无法运行原 opset-15 模型的问题。模型、评分与识别规则不变，不下载提供程序。平台消费者按锁文件自包含同版运行时；取消／释放按串行评估收尾。合成图片烟测还发现并修复 `local-banner-<SHA256>` 被缩略图缓存拒绝的问题，只增加该固定命名空间，不放宽路径校验。1.0.1 的识别进度、连续核对、移除、卸载选项、黑白图标及继续游玩小封面卡片保留，资料格式未迁移。
+
+实际宿主是 **Windows 11 10.0.26300.0**。Release 构建、最终 publish、完整载荷与 Inno 编译通过；三份 TRX 共 619 个运行结果，按 TRX testId 去重 **604 项通过、0 失败**，不是历史整版全量回归。另有最终入口检查 27 项通过，以及四种窗口能力场景、明暗主题、标准／Auto 材质的 **74 项检查通过**；累计 1406 个采样帧未出现可见但未就绪的详情首帧。合成横幅实际解码为 800×300，Auto 路径存在 GPU 绘制与 σ1 模糊，不再以缺图回退冒充成功。RenderTargetBitmap 不包含原生合成面板和系统标题栏，截图不能当作这些像素的视觉验收。
+
+输出根目录 `.artifacts/win10-compat-20261011`：最终程序包 `package-final`，Setup `installer-final/distribution/The-Order-1.0.2-Setup-x64.exe`，SHA-256 `12C3AF2BC03418742C38A29806E1765D7ABA7EB64026187F87A00E581B8B163C`（72462328 字节）。交付副本、完整候选源码 ZIP 和校验文件在 `distribution-final`；实际验证及产物绑定见 `validation-summary.json`、`test-union-final.json`、`delivery-validation.json`、`fallback-smoke-final-2/summary.json`。GUI `--validate-only` 已调用系统 Windows PowerShell 5.1 校验最终全部载荷，未打开正式资料。早期失败／缺图记录保留，后续结果仅以 final 路径为准。
+
+**没有真实 Win10 安装、文件选择器、驱动／缩放或长稳验收**；Win11 上关闭能力的模拟不能等同 Win10 通过。本轮也未验证真实 API／游戏，未运行交互安装器或重跑全部历史测试。安装包未签名，公开版本仍为 1.0.1。后续发布、用户安装和实机测试分别需要相应授权；当前用户无需参与操作。构建及官方依据见 `docs/release/1.0.2/BUILD.md`。
+
+## 当前 1.0.1 已公开发布（2026-10-11）
+
+用户回复“可以了，更新 GitHub 平台”，已明确授权本次源码提交、发行及下载说明更新。公开发行 https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.1 已标记 Latest，README 推荐直接下载 Setup.exe。v1.0.1 固定提交 a4c82decf8fc44d106afee86542a13da9919d2cc，tree 2ad653090dd278bf3ac63a64cc9d428cb5d9f071；原 v1.0.0 标签与附件保留。
+
+上传的是用户确认的 home-progress-20261011 安装包，没有重新编译或改动；Setup SHA-256 12092E7B8DB3D077056D6A4C434BC020D9437CFD934712C13079FAA100C2B4BB，72419445 字节。完整源码含安装器，669 份文件和清单，源包 SHA-256 0B216C68EA6B894C0A9520AA565961C5CC1202E2FA3456860E818E41F4808B0E。四份公开附件（Setup、源码 ZIP、SHA256SUMS、ACCEPTANCE）均回下载比对大小与 SHA-256 一致，源码归档清单逐文件一致；223 份可验证编译源码与 PDB 文档哈希一致。打包时 release-identity 的 STAGED_NOT_PUBLISHED/sourceSnapshot:null 是历史构建记录，未重写已确认的安装器，公开身份另由发行页和源码清单说明。
+
+170 个前轮针对性用例和后续 49 项存在重叠，不相加，不声称全量回归通过。用户确认提醒、移除交互和继续游玩布局，并同意发布；真实 API／游戏识别、用户安装卸载、独立干净 Windows 和长期稳定性仍不计入自动验收。未签名和可能的下载信誉提示如实保留。
+
+维护源码与继承 dirty 成果保持，未整体提交开发工作树。发布暂存 .artifacts/github-publication-1.0.1-20261011/repository 仅用于公开快照，不作为开发入口；完整发布凭证 publication.json、public-download-verification.json 和 published-release.png 在同一输出目录。未操作 Production、个人凭据或真实游戏，未自动安装日用版；本次授权不扩大到未来任意发布。下方“尚未发布”反映候选阶段。
+
+
+## 当前 1.0.1 首页进度与继续游玩修复（2026-10-11，替代上一候选）
+
+用户继续反馈自动识别排队数恒为 0、首页看不到进度，以及继续游玩把竖版封面放大成模糊横幅。本轮仅针对这两项修改并验证，版本保持尚未发布的 1.0.1，继承前轮七项修复。
+
+统计原因是此前只读取 RecognitionQueue，遗漏尚未送入两工作线程的外层 automaticTargets；识别结束后的资料复核、写入和图片准备也被过早算作已处理。现自动批次保留完整总数，排队包括外层等待项，处理中包括复核／应用／图片准备，已处理只在该项流程结束后增加。重复加入不重复计数，追加任务更新总数，取消归入取消项，新批次不继承上轮总数。设置与首页显示同一份统计；首页新增进度条、阶段说明和取消入口。
+
+继续游玩改为 84×112 的书架封面与右侧标题、游玩信息和操作，使用普通主题卡片，不再将封面作为宽横幅放大／模糊，也不建立该区域的 ArtworkStage 材质。详情页横幅和玻璃不变。空图使用既有占位，离开页面释放图片请求。用户已回复“布局合适”；这里只确认独立合成 Test 的布局，不代表实际游戏识别已核验。
+
+AutomaticRecognitionTests 与 RecognitionPresentationTests 49/49 通过；覆盖外层排队、重复和追加、取消后重试、新批次重置，以及图片准备期间仍处于处理中的情况。Release publish、完整候选打包、安装器编译、654 项启动清单校验和独立 Test 启动通过；没有重跑全部历史回归，没有访问正式资料、启动游戏或替换日用程序。实际游戏识别进度仍待用户安装后核验。
+
+新 Setup：.artifacts/home-progress-20261011/installer/distribution/The-Order-1.0.1-Setup-x64.exe，SHA-256 12092E7B8DB3D077056D6A4C434BC020D9437CFD934712C13079FAA100C2B4BB。测试证据 home-progress-20261011/tests/home-progress.trx；日志 .artifacts/home-progress-*.log。Test 入口 home-progress-20261011/Start-The-Order-Test.cmd 使用本轮新建 visual-test（三条合成条目，仅一项包含本轮空白合成安装目录）。此新包替代上一节的本地候选；未上传 GitHub、未提交或推送，旧候选和记录保留。
+
+## 当前 1.0.1 本地修复候选（2026-10-11）
+
+用户授权修复七项实际使用问题，并要求尽快完成针对性修改，省略耗时的历史基线复核。维护源码仍在本工作区 native，保留原继承 dirty 状态。候选版本为 1.0.1，尚未发布、提交、推送或替换日用安装；未打开 Production、读取密钥或启动真实游戏。
+
+- 保存 API 后自动补识别已导入但未关联的本地条目，等待正在收尾的导入批次后重试；使用原安全自动识别规则，歧义／版本冲突仍待核对。补全缺失资料也可重试旧空建议；成功后清除失效旧建议。
+- 待核对确认或手动关联成功后进入下一项，队列结束返回书架；失败不跳转。
+- 候选列表上下边界继续滚轮时转交外层滚动，并启用原生滚动链。
+- 书架右键、详情更多及选择模式提供单项／批量移除。确认后原子删除书架资料和记录，不删除游戏文件；活跃计时及事务保护保留。
+- 交互卸载询问保留或删除默认 Production 使用资料，默认保留；静默卸载保留。清理拒绝目录链接，不影响真实游戏、独立 Test／Development 和手动导出备份。
+- 桌面／开始菜单快捷方式按系统主题：深色白色，浅色黑色。安装时、启动时及应用运行中的系统主题变化同步；程序完全退出期间不另设常驻进程，下次启动再同步。只改指向本安装程序的已知快捷方式。
+- 未配置 API 时书架首页显示提示，设置提供 developer.nextmoe.dev 获取入口，保存后自动继续识别。
+
+170 个不重复的针对性用例通过（usability-2/3/4.trx 去重）；Release 构建、publish、安装器编译、完整包与 GUI 启动入口校验通过。临时 .lnk 黑白切换和属性保留、合成资料清理及目录链接拒绝通过。未重跑完整历史回归、干净 Windows 或长稳测试；真实 API 批量识别、滚轮手感、安装后的桌面图标和交互卸载仍需用户实用核验，不能合并成整版 PASS。
+
+已用三条虚构资料打开独立 Test，用户回复“已检查，这部分合适”，仅确认首页提醒及单项／批量移除。旧 experience-profile-v2 已删除，没有恢复旧私人资料。当前 Test：.artifacts/usability-20261011/visual-test-3；入口 .artifacts/usability-20261011/Start-The-Order-Test.cmd。初次合成种子使用 localCover:null 被校验拒绝，改为省略可选字段并经过 codec 正规化后成功；两个失败种子未作为验收资料。
+
+交付 Setup：.artifacts/usability-20261011/installer-final/distribution/The-Order-1.0.1-Setup-x64.exe，SHA-256 FD2C120A56C20B70AB073C00A8EEB4051DA479229D991C1FA8036495B6B5921E。完整候选 package-final、验证摘要 validation-summary.json 和本轮日志均在 usability-20261011 及 .artifacts/usability-*.log。包仍未签名，历史 SmartScreen 状态没有被宣称已消除。原 1.0.0 公开发行保持不变。
+
+## 当前 1.0.0 安装版与下载信誉检查（2026-10-11）
+
+用户要求提供可直接下载的 Setup.exe，并明确授权将已验证的安装包、安装器源码补充和校验文件上传至现有 1.0.0 发行页，更新发行页及 README 的推荐下载；原 ZIP 和标签保留。当前公开仓库为 https://github.com/Ph-Rank/The-Order ，发行页 https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0 。新增 The-Order-1.0.0-Setup-x64.exe（72423273 字节，SHA-256 F3F75D8AAE79147022D422CE3580563AB446D5FEF97E9A4DECA9696F5E12E8ED）、The-Order-1.0.0-installer-source.zip 和 INSTALLER-SHA256SUMS.txt；三份公开下载均已核对大小和哈希。原五份发行附件、v1.0.0 标签及其冻结源码身份保持。
+
+安装器采用 Inno Setup 6.7.3，仅为当前用户安装到 %LOCALAPPDATA%/Programs/The Order，创建桌面／开始菜单快捷方式和卸载入口。新增无终端窗口的 TheOrder.exe 调用原 launch.ps1；原 655 份应用文件全部逐字节一致。运行中拒绝安装／卸载，不强制结束用户程序；拒绝资料目录、联接及未受管理目录，修复仅恢复受管理程序，卸载保留资料和未知用户文件。新增维护源码在 native/installer 和 native/scripts/package-native-installer.ps1、test-native-installer.ps1；安装器对应源码补充与原应用完整源码 ZIP 合起来对应安装版，不能用发行包或源码恢复作为开发入口。
+
+.artifacts/installer-20261011/validation-final/summary.json 记录 49 项本机安装、修复、卸载、快捷方式、文件一致性、边界保护及合成 Test 启动检查 PASS。使用本轮新建合成 Test，原 experience-profile-v2 已按清理授权删除，不恢复旧库；没有读取 Production 或执行真实游戏。启动烟测后仅结束自己创建的空白 Test 实例，正常退出未在本轮重测。独立干净 Windows、长期稳定性和本轮用户安装视觉确认不计入该 PASS。
+
+用户反馈 Edge“通常不会下载”提示；公开下载、完整程序文件和新增入口经本机 Microsoft Defender（定义 1.459.669.0）自定义扫描，三个退出码为 0，均未发现威胁。安装包未签名，本机没有可用的有效代码签名证书；该提示属于下载信誉问题，不能直接认定病毒，也不能凭本机扫描声称微软认可或风险消失。未关闭／绕过系统防护、安装自签名信任或向外提交私人信息。微软反馈页的说明由用户如实填写，验证码和最终提交由用户处理；尚无微软审核结果。后续可信签名或 Store 分发需身份、服务和独立发布准备，本轮未冒称完成。证据及未通过／未验证边界见 .artifacts/installer-20261011/report.md、publication.json 和 defender-scan-results.json。
+
+维护源码仍是 claude-recognition-rnd/native 的原分支和 HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加继承 dirty 工作；本次公开文档提交仅涉及 README，未整体提交工作区、移动标签、升级应用或依赖。下方历史阶段的入口和资料路径按相应时间点理解。
+
+## 当前本机清理与资料清空已完成（2026-10-11）
+
+用户在 1.0.0 发布后明确要求清理本机 The Order 历史无用版本及信息、清除全部使用资料，准备从 GitHub 重新下载；并补充“旧源码工作树和本机发行副本也清理”。这次明确授权覆盖旧 Production／Electron 资料、原 experience-profile-v2、缓存、加密凭据及私人备份的删除，优先于下方第 17 条的旧资料保留要求；不授权读取／解密／输出密钥、删除真实游戏文件或影响公开 GitHub 仓库。后续新资料仍适用原保护边界。
+
+历史候选、冻结源码副本、发行 ZIP／暂存 clone、旧构建依赖、旧工作树和清单内临时文件已删除；原 Start-The-Order-Test.cmd 已随其失效的测试资料入口删除，不能再按下方历史路径启动。当前维护源码仍是 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native、codex/library-ui-refinement、HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加继承 dirty 成果；长期仓库和 Git 分支／标签／提交保留，未集成、提交、推送或重建程序。保留 1.0.0 少量验收记录、源码清单及 .artifacts/github-publication-1.0.0-20261011 下的发布凭证；其余历史 artifact 路径仅是历史引用，不能视为本机仍存在的文件。SDK 和生成依赖需按 DEVELOPMENT 的原安装／恢复步骤重新准备。
+
+用户先删除四处受保护目录，再确认永久删除回收站七项。最终复核：267 个原清理目标均不存在，回收站 The Order 残留为 0，应用运行实例为 0；正式／Test 资料、缓存、加密凭据和私人备份已清空。1093 份维护源文件的前后哈希核对仅有两仓库 BRIEF／DEVELOPMENT 清理记录变化及失效 Test 启动脚本删除，程序源码未改变；两个 HEAD、全部用户分支和标签不变。Codex 内部 capture／checkpoint 引用有变化，但对应 tree 对象仍存在，不与用户分支／提交历史混同。清理及源码保护复核为 PASS，详见 .artifacts/cleanup-20261011/final-verification.json；result.json、recycle-cleanup.json 和初步检查保留为历史状态。自动审批拒绝与 SeSecurityPrivilege 失败未被改写成成功。真实游戏文件、公开发行和以后新资料不在本次删除范围。
+
+## 当前 1.0.0 已正式发布（2026-10-11）
+
+用户在完成首版本机验收后明确授权“完成上传任务并更新记忆”，并说明此前没有 GitHub 仓库。本轮已在用户账户创建公开仓库 https://github.com/MuskTesla/The-Order ，正式发行 https://github.com/MuskTesla/The-Order/releases/tag/v1.0.0 ，Release ID 409555394，published_at 2026-10-11T09:03:28Z，draft=false、prerelease=false。该授权仅覆盖本次必要的公开源码提交、发行上传与记录；不改变 Production、日用程序、真实游戏及继承 dirty 工作的保护边界。
+
+v1.0.0 对应源码提交 f8d0115f097894e0b86a1415f6262b13ca6def4d，Git tree 9f963eab975415514e8f4692ae5e5411dddd483c。标签中的 653 份源码、SOURCE-MANIFEST.json 和 PUBLICATION.md 共 655 个 Git 文件逐 blob 核对一致；653 份完整源码清单 SHA-256 为 2A5E9B4678AC5213BD53D13AF5E0D7DD01D9D3A8A8E824FBA540E1DCD3790952。其后 main 的 bd8062aebc07f751b2cca9946caaa88dbd5018da 只更新 README.md 和 PUBLICATION.md 的下载与实际发行记录，发行标签和完整对应源码 ZIP 未改变。
+
+五个发行附件（完整程序 ZIP、完整源码 ZIP、README.md、ACCEPTANCE.md、SHA256SUMS.txt）均已从公开地址回下载，大小与 SHA-256 全部相同。程序 ZIP 保持 A0869195D086A3FE831724308B51CF19E76CA6138744C6BF772AF4BC57900159，源码 ZIP 保持 1484FF4C7446C7EE0888675A05041ACB50E7842A5C1DE1580493DCDF64ADDF18。公开附件不包含个人资料、缓存、私人检查点或真实密钥。实际发行状态为 PUBLISHED；发布证据统一在 .artifacts/github-publication-1.0.0-20261011/publication.json、public-source-verification.json、public-download-verification.json 和 published-release.png。
+
+维护源码仍为 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native，codex/library-ui-refinement，HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加原继承 dirty 成果。D:/Projects/The-Order 尚未集成；发行暂存 clone、源码 ZIP、冻结恢复目录和 GitHub 标签都不是本轮新的开发入口。没有 reset/clean/stash，没有在原开发仓库提交或推送，没有替换日用程序、打开 Production、执行真实游戏或操作正在运行的普通 Test 窗口。原 Start-The-Order-Test.cmd 仍固定 1.0.0 和既有 experience-profile-v2。
+
+已通过的 2413 项完整回归、27 项启动入口检查、60 分钟持续操作及用户本轮显示确认保持原范围。用户明确不在发布前重验干净 Windows，并把长期稳定性留待发布后验证；两项没有改写成 PASS，持续高频操作中末段约 +0.315 MiB/min 的缓慢私有内存增长继续保留。源码、程序及附件身份不能只用原 dirty HEAD 代替。下方全部 18 条有效要求继续保留，后续要求优先；下方发布前 STAGED_NOT_PUBLISHED 文本仅是相应时间点的历史状态。
+
+## 历史 1.0.0 首版发布前候选（2026-10-11）
 
 用户已确认最终 v24“已检查，本轮显示合适”，随后明确要求完成正式第一版发布前的其他工作。本轮仍从 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native 开发，codex/library-ui-refinement、HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加全部继承 dirty 成果；长期 D:/Projects/The-Order 尚未集成。不得从源码恢复、发布包或长期仓库旧副本继续开发，也不得整体盲目集成这份 dirty 快照。
 

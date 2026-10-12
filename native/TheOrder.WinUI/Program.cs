@@ -20,6 +20,11 @@ internal static class Program
     public static int Main(string[] args)
     {
         _ = StartupClock.Elapsed; // Force the marker before profile I/O even on beforefieldinit runtimes.
+        if (!OperatingSystem.IsWindows() || !WindowsCompatibility.IsSupported(Environment.OSVersion.Version))
+        {
+            MessageBox(IntPtr.Zero, "The Order 需要 Windows 10 1809（系统版本 17763）或更高版本的 64 位 Windows。尚未打开书架资料。", "The Order", 0x10);
+            return 1;
+        }
         WinRT.ComWrappersSupport.InitializeComWrappers();
         try
         {

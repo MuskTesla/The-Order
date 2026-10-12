@@ -4,13 +4,17 @@ Windows 本地 Galgame 书架，使用原生 WinUI 界面。当前提供简体�
 
 ## 开始使用
 
-1. 完整解压程序 ZIP 到有写入权限的新文件夹。不要只复制 EXE，也不要覆盖正在运行的旧程序。
-2. 双击 `Start-The-Order.cmd`。无需安装 .NET、Windows App Runtime 或开发工具。
+1. 从[正式发行页](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0)下载 `The-Order-1.0.0-Setup-x64.exe`，按中文向导安装。安装前正常退出旧实例。
+2. 从桌面或开始菜单打开 The Order。无需安装 .NET、Windows App Runtime 或开发工具。
 3. 在书架中点击“导入”，选择游戏所在文件夹；扫描和识别不会执行游戏。
 4. 在设置中填写自己的 NextMoe API 密钥，使用在线资料和发现搜索。没有密钥仍可管理本地书架；密钥保存在当前 Windows 用户的加密存储中。
 5. 首次启动游戏时，从该安装文件夹中选择 exe 或 cmd，之后沿用已保存的位置。只有明确点击启动才会执行游戏。
 
 窗口右上角 × 隐藏到托盘。需要完全退出时，在系统托盘菜单选择“退出”。“结束计时”停止记录，不会关闭游戏。
+
+默认仅为当前用户安装到 `%LOCALAPPDATA%\Programs\The Order`，可在 Windows“已安装的应用”中卸载。安装／卸载不会强制结束运行中的程序；卸载保留书架、设置、图片、游玩记录和游戏文件。
+
+便携 ZIP 仍提供：完整解压到有写入权限的新文件夹，双击 `Start-The-Order.cmd`。不要只复制 EXE，也不要覆盖正在运行的旧程序。
 
 ## 资料、备份与升级
 
@@ -18,7 +22,7 @@ Windows 本地 Galgame 书架，使用原生 WinUI 界面。当前提供简体�
 
 升级前正常退出程序，保留当前完整资料文件夹的闭合副本；个人名称、评分、笔记、安装、游玩记录以及本地封面和横幅都在资料中。备份应保存在自己掌控的私人位置，其中可能含加密凭据。密钥依赖 Windows 用户环境，换电脑或账户后可能需要重新填写。
 
-把新版本解压到独立程序目录，再通过普通入口打开。程序目录可以移除或替换，资料和游戏文件不会随之删除。程序回退只更换完整程序包，继续使用当前资料；不要拿旧资料覆盖升级后的新编辑。完整资料副本的恢复仅适用于相同物理路径和同一资料身份，不能通过改文件夹名、编辑 manifest 或改 Test/Production 类型迁移资料。本版没有自动 Electron 迁移或跨电脑完整资料迁移功能。
+安装版通过新安装器维护受管理程序；便携版把新版本解压到独立程序目录，再通过普通入口打开。程序目录可以移除或替换，资料和游戏文件不会随之删除。程序回退只更换完整程序包，继续使用当前资料；不要拿旧资料覆盖升级后的新编辑。完整资料副本的恢复仅适用于相同物理路径和同一资料身份，不能通过改文件夹名、编辑 manifest 或改 Test/Production 类型迁移资料。本版没有自动 Electron 迁移或跨电脑完整资料迁移功能。
 
 `Start-Test.cmd` 打开独立空白试用资料 `%LOCALAPPDATA%\TheOrder-RC\Test`。已有隔离 Test 资料可通过 `launch.ps1 -Test -DataDirectory <绝对路径>` 指定。试用入口拒绝正式资料及其父子目录。普通入口和 Test 不共享书架、编辑或密钥。
 
@@ -30,8 +34,8 @@ Windows 本地 Galgame 书架，使用原生 WinUI 界面。当前提供简体�
 
 ## 许可与故障反馈
 
-应用源码使用 AGPL-3.0-or-later，完整对应源码随同 `The-Order-1.0.0-source.zip` 提供。第三方许可证、模型和数据索引的来源见 `THIRD_PARTY_NOTICES.md`、`LICENSE-TheOrder.txt` 与 `licenses/`。图标设计借鉴参考《9-nine-》中的 The Order。
+应用源码使用 AGPL-3.0-or-later，完整对应源码随同 `The-Order-1.0.0-source.zip` 提供；安装版新增部分的完整源码在 `The-Order-1.0.0-installer-source.zip`，两份合起来对应安装版。第三方许可证、模型和数据索引的来源见 `THIRD_PARTY_NOTICES.md`、`LICENSE-TheOrder.txt` 与 `licenses/`。图标设计借鉴参考《9-nine-》中的 The Order。
 
-程序包当前未使用商业代码签名证书。请从可信发布来源下载，核对同时提供的 SHA-256；哈希只能校验文件一致性，不替代发布者签名。不要关闭系统防护。
+程序包当前没有代码签名证书，首次下载可能显示“通常不会下载”等信誉提示。请从可信发布来源下载，核对安装版的 `INSTALLER-SHA256SUMS.txt` 或原 ZIP 的 `SHA256SUMS.txt`；哈希只能校验文件一致性，不替代发布者签名。公开安装包、完整应用和新增入口经本机 Defender 扫描未发现威胁，不等于微软认证或保证消除信誉提示。不要关闭系统防护。[微软的下载信誉说明](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
 
 如果不能启动，先确认完整解压、使用上述启动入口、Windows 版本受支持且没有旧实例仍在托盘中。启动日志为当前资料目录内的 `native-runtime.log`。反馈时提供版本号、复现步骤和经过检查的日志片段，避免上传密钥、私人书架或完整资料文件夹。

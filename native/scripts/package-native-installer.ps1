@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$CandidatePayload,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [Parameter(Mandatory)][string]$InnoCompiler
+    [Parameter(Mandatory)][string]$InnoCompiler,
+    [string]$Dotnet
 )
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
@@ -13,7 +14,7 @@ if (!$output.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase) -o
 $originalHash = $null
 $CandidatePayload = [IO.Path]::GetFullPath($CandidatePayload)
 if (!$CandidatePayload.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Candidate must be a packaged workspace artifact.' }
-if ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $CandidatePayload 'TheOrder.WinUI.exe')).FileVersion -ne '1.0.1.0') { throw 'Build and package application version 1.0.1 before creating this installer.' }
+if ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $CandidatePayload 'TheOrder.WinUI.exe')).FileVersion -ne '1.1.0.0') { throw 'Build and package application version 1.1.0 before creating this installer.' }
 $compiler = [IO.Path]::GetFullPath($InnoCompiler)
 $compilerLibrary = Join-Path (Split-Path $compiler) 'ISCmplr.dll'
 if (!(Test-Path -LiteralPath $compiler -PathType Leaf) -or !(Test-Path -LiteralPath $compilerLibrary -PathType Leaf) -or
@@ -80,18 +81,60 @@ try {
 @"
 [Installer]
 Identity=TheOrder.Setup.F7940B13-6814-42F7-AB71-69A9901D7DB3
-Version=1.0.1
+Version=1.1.0
 PublishedArchiveSha256=$originalHash
 PublishedManifestSha256=$manifestHash
 "@ | Set-Content -LiteralPath (Join-Path $addon 'installer-identity.ini') -Encoding ascii
 Copy-Item -LiteralPath (Join-Path $installerSource '安装版使用说明.txt') -Destination $addon
 $distribution = Join-Path $output 'distribution'
 $null = New-Item -ItemType Directory -Path $distribution
+# Inno evaluates Check before extraction. Unchanged files keep their bytes and timestamps.
+# The exhaustive manifest, GUI entry, identity and notices remain owned by the usual uninstall log.
+$entries = [Collections.Generic.List[string]]::new()
+$checks = [Collections.Generic.List[string]]::new()
+$checks.Add('function PayloadPathsSafe: Boolean;')
+$checks.Add('begin')
+$checks.Add('  Result := False;')
+function Add-VerifiedEntry([string]$Source, [string]$Relative, [string]$Sha256) {
+    if ($Relative -match '["\r\n]' -or $Relative.StartsWith('\') -or $Relative.Contains(':')) { throw 'Invalid installer-relative entry.' }
+    $relativeWindows = $Relative.Replace('/', '\')
+    $parent = [IO.Path]::GetDirectoryName($relativeWindows)
+    $dest = '{app}'
+    if ($parent) { $dest += '\' + $parent }
+    $pascalPath = $relativeWindows.Replace("'", "''")
+    $name = [IO.Path]::GetFileName($relativeWindows)
+    $entries.Add('Source: "' + $Source + '"; DestDir: "' + $dest + '"; DestName: "' + $name +
+        '"; Flags: ignoreversion; Check: PayloadFileNeedsUpdate(''' + $pascalPath + ''', ''' + $Sha256 + ''')')
+    $checks.Add('  if not PayloadPathIsPlain(''' + $pascalPath + ''') then Exit;')
+}
+foreach ($file in @($manifest.files | Sort-Object path)) { Add-VerifiedEntry (Join-Path $payload $file.path) $file.path $file.sha256 }
+Add-VerifiedEntry (Join-Path $payload 'files.json') 'files.json' $manifestHash
+foreach ($name in @('TheOrder.exe','installer-identity.ini','安装版使用说明.txt')) {
+    Add-VerifiedEntry (Join-Path $addon $name) $name (Get-FileHash -LiteralPath (Join-Path $addon $name)).Hash
+}
+Add-VerifiedEntry (Join-Path $installerSource 'LICENSE-InnoSetup.txt') 'licenses/LICENSE-InnoSetup.txt' (Get-FileHash -LiteralPath (Join-Path $installerSource 'LICENSE-InnoSetup.txt')).Hash
+$checks.Add('  if not PayloadPathIsPlain(''update-base.bin'') then Exit;')
+$checks.Add('  Result := True;')
+$checks.Add('end;')
+$payloadEntries = Join-Path $build 'verified-files.iss'
+$payloadChecks = Join-Path $build 'verified-paths.iss'
+[IO.File]::WriteAllLines($payloadEntries, $entries, [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllLines($payloadChecks, $checks, [Text.UTF8Encoding]::new($false))
 $compilerArgs = @('/Qp', ('/DPayloadDirectory=' + $payload), ('/DAddonDirectory=' + $addon),
-    ('/DOutputDirectory=' + $distribution), (Join-Path $installerSource 'TheOrder.iss'))
+    ('/DOutputDirectory=' + $distribution), ('/DPayloadEntries=' + $payloadEntries), ('/DPayloadChecks=' + $payloadChecks), (Join-Path $installerSource 'TheOrder.iss'))
 & $compiler @compilerArgs 2>&1 | Tee-Object -FilePath (Join-Path $output 'installer-build.log') | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Setup compiler failed.' }
-$setup = Join-Path $distribution 'The-Order-1.0.1-Setup-x64.exe'
+$setup = Join-Path $distribution 'The-Order-1.1.0-Setup-x64.exe'
+# Publish the block map alongside Setup. Checks read only Release metadata; maps are fetched on explicit Install.
+if (!$Dotnet) { $Dotnet = Join-Path $repo '.artifacts/native-phase1/tools/dotnet/dotnet.exe' }
+if (!(Test-Path -LiteralPath $Dotnet -PathType Leaf) -or (& $Dotnet --version) -ne '10.0.401') { throw 'The pinned .NET SDK 10.0.401 is required for the block map.' }
+$updateTool = Join-Path $repo 'native/TheOrder.UpdateTool/TheOrder.UpdateTool.csproj'
+& $Dotnet restore $updateTool --locked-mode 2>&1 | Tee-Object -FilePath (Join-Path $output 'blockmap-restore.log') | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Block-map tool locked restore failed.' }
+$map = $setup + '.blocks.json'
+& $Dotnet run --project $updateTool --configuration Release --no-restore -- blockmap $setup '1.1.0' $map 2>&1 |
+    Tee-Object -FilePath (Join-Path $output 'blockmap-build.log') | Out-Null
+if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $map)) { throw 'Block-map generation failed.' }
 $sourceRoot = Join-Path $output 'installer-source'
 $null = New-Item -ItemType Directory -Path (Join-Path $sourceRoot 'native/scripts')
 Copy-Item -LiteralPath $installerSource -Destination (Join-Path $sourceRoot 'native') -Recurse
@@ -101,18 +144,21 @@ Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination $sourceRoot
 $sourceFiles = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File | Sort-Object FullName | ForEach-Object {
     [pscustomobject]@{path=[IO.Path]::GetRelativePath($sourceRoot, $_.FullName);bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash}
 })
-@{schema=1;version='1.0.1';purpose='Installer and GUI-entry source supplement; application changes require the corresponding complete source';
-    correspondingApplicationSource='The-Order-1.0.1-source.zip';originalArchiveSha256=$originalHash;
+@{schema=1;version='1.1.0';purpose='Installer and GUI-entry source supplement; application changes require the corresponding complete source';
+    correspondingApplicationSource='The-Order-1.1.0-source.zip';originalArchiveSha256=$originalHash;
     innoSetup='6.7.3';windowsSdk=$sdkVersion;visualCpp=$vcVersion;files=$sourceFiles} |
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $sourceRoot 'INSTALLER-SOURCE-MANIFEST.json') -Encoding utf8
 Compress-Archive -LiteralPath (Join-Path $sourceRoot 'native'), (Join-Path $sourceRoot 'LICENSE'),
-    (Join-Path $sourceRoot 'INSTALLER-SOURCE-MANIFEST.json') -DestinationPath (Join-Path $distribution 'The-Order-1.0.1-installer-source.zip')
+    (Join-Path $sourceRoot 'INSTALLER-SOURCE-MANIFEST.json') -DestinationPath (Join-Path $distribution 'The-Order-1.1.0-installer-source.zip')
 $hashLines = @(Get-ChildItem -LiteralPath $distribution -File | Sort-Object Name | ForEach-Object {
     (Get-FileHash -LiteralPath $_.FullName).Hash.ToLowerInvariant() + '  ' + $_.Name
 })
 [IO.File]::WriteAllLines((Join-Path $distribution 'INSTALLER-SHA256SUMS.txt'), $hashLines, [Text.UTF8Encoding]::new($false))
-$receipt = [ordered]@{schema=1;version='1.0.1';createdUtc=[DateTimeOffset]::UtcNow.ToString('o');
+$receipt = [ordered]@{schema=1;version='1.1.0';createdUtc=[DateTimeOffset]::UtcNow.ToString('o');
     installer=$setup;installerBytes=(Get-Item -LiteralPath $setup).Length;installerSha256=(Get-FileHash -LiteralPath $setup).Hash;
+    blockMap=$map;blockMapBytes=(Get-Item -LiteralPath $map).Length;blockMapSha256=(Get-FileHash -LiteralPath $map).Hash;
+    differentialAlgorithm='gear-v1-16k-64k-128k-sha256';compression='separate lzma2 streams';baseCache='update-base.bin (one installer, owned by uninstall)';
+    selectiveInstall='SHA-256 comparison skips unchanged payload files';selectiveEntries=$entries.Count;
     originalArchiveSha256=$originalHash;originalManifestSha256=$manifestHash;payloadFiles=@($manifest.files).Count + 1;
     originalApplicationUnchanged=(!$CandidatePayload);signing='unsigned';profileOpened=$false;status='BUILT_NOT_YET_VALIDATED'}
 $receipt | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'build-receipt.json') -Encoding utf8

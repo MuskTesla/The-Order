@@ -45,7 +45,7 @@ public sealed class RequestBudget : IDisposable
     public void Dispose() { authCancellation.Dispose(); linked.Dispose(); timeout.Dispose(); }
 }
 public sealed class CatalogTransport(HttpClient client, ICredentialProvider credentials, Uri endpoint, Action<NetworkEvent>? log = null,
-    TimeSpan? timeout = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
+    TimeSpan? timeout = null, Func<TimeSpan, CancellationToken, Task>? delay = null, NextMoeRateCoordinator? rate = null)
 {
     public const int MaximumBytes = 8 * 1024 * 1024;
     private readonly OnlineAuthContext auth = (credentials as IOnlineAuthContextSource)?.AuthContext ?? new();
@@ -67,14 +67,22 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
     public async Task<JsonDocument> GetAsync(string path, IReadOnlyDictionary<string, string> query, RequestBudget budget)
     {
         var secret = await credentials.ReadAsync(budget.Token).ConfigureAwait(false);
-        if (string.IsNullOrEmpty(secret)) throw new OnlineException(OnlineFailure.NoCredential);
-        if (secret.Length > 4096 || secret.Any(c => c < 0x21 || c > 0x7e)) throw new OnlineException(OnlineFailure.InvalidCredential);
+        var access = credentials as INextMoeAccess;
+        if (string.IsNullOrEmpty(secret) && access is null) throw new OnlineException(OnlineFailure.NoCredential);
+        if (secret is not null && (secret.Length > (access is null ? 4096 : 16384) || secret.Any(c => c < 0x21 || c > 0x7e))) throw new OnlineException(OnlineFailure.InvalidCredential);
+        var mode = access is null ? NextMoeAccessMode.ApiKey : (await access.StatusAsync(budget.Token).ConfigureAwait(false)).Mode;
+        // This transport only serves the official public catalog. Never admit personal/token endpoints here.
+        if (!path.StartsWith("catalog/", StringComparison.Ordinal) || path.Contains("..", StringComparison.Ordinal)
+            || path.Contains('\\') || path.Contains('?') || path.Contains('#') || path.Contains(':')) throw new OnlineException(OnlineFailure.InvalidRequest);
+        bool refreshed = false;
         var uri = new Uri(endpoint, path + "?" + string.Join("&", query.Select(k => Uri.EscapeDataString(k.Key) + "=" + Uri.EscapeDataString(k.Value))));
         while (true)
         {
             budget.Check();
+            if (rate is not null) await rate.WaitAsync(budget.Auth.Generation, mode, budget.Token).ConfigureAwait(false);
+            budget.Check();
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
+            if (secret is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
             request.Headers.Accept.Add(new("application/json"));
             var elapsed = Stopwatch.StartNew(); var requestId = Guid.NewGuid();
             HttpResponseMessage response;
@@ -94,11 +102,17 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
                     catch (Exception e) when (e is JsonException or System.Text.DecoderFallbackException) { throw new OnlineException(OnlineFailure.InvalidResponse); }
                     try { budget.Checkpoint(OnlineAcceptanceStage.Parsed); } catch { body.Dispose(); throw; }
                 }
-                if (response.IsSuccessStatusCode) return body ?? throw new OnlineException(OnlineFailure.InvalidResponse);
+                if (response.IsSuccessStatusCode) { rate?.Observe(budget.Auth.Generation, response.Headers, null); return body ?? throw new OnlineException(OnlineFailure.InvalidResponse); }
                 using (body)
                 {
                     var root = body?.RootElement ?? default;
                     var code = RemoteWorkDto.Text(root, "code");
+                    rate?.Observe(budget.Auth.Generation, response.Headers, code);
+                    if (status == 401 && !refreshed && access is not null && mode == NextMoeAccessMode.Account && secret is not null)
+                    {
+                        refreshed = true;
+                        if (await access.RefreshRejectedAsync(secret, budget.Token).ConfigureAwait(false)) { secret = await access.ReadAsync(budget.Token).ConfigureAwait(false); continue; }
+                    }
                     if (status == 404 && code == "ENTITY_MERGED")
                     {
                         var id = RemoteWorkDto.Text(root, "current_id");
@@ -108,7 +122,7 @@ public sealed class CatalogTransport(HttpClient client, ICredentialProvider cred
                         throw new MergedWorkException(id, expected);
                     }
                     var failure = status switch { 400 => OnlineFailure.InvalidRequest, 401 => code == "INVALID_API_KEY" ? OnlineFailure.InvalidCredential : OnlineFailure.Unauthorized,
-                        403 => OnlineFailure.Forbidden, 404 => OnlineFailure.NotFound, 408 => OnlineFailure.Timeout, 429 => OnlineFailure.RateLimited, >= 500 => OnlineFailure.Server, _ => OnlineFailure.InvalidResponse };
+                        403 => OnlineFailure.Forbidden, 404 => OnlineFailure.NotFound, 408 => OnlineFailure.Timeout, 429 => code == "QUOTA_EXCEEDED" ? OnlineFailure.QuotaExceeded : OnlineFailure.RateLimited, >= 500 => OnlineFailure.Server, _ => OnlineFailure.InvalidResponse };
                     var retryAfter = response.Headers.RetryAfter?.Delta ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
                     if (retryAfter is null && response.Headers.TryGetValues("Retry-After", out var values)
                         && double.TryParse(values.FirstOrDefault(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var seconds)

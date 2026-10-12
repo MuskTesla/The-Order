@@ -71,5 +71,7 @@ public sealed partial class IsolatedThumbnailCache(NativeConfiguration configura
         }
         finally { queue.Release(); }
     }
-    [GeneratedRegex("^[A-F0-9]{64}-[0-9]{2,4}$", RegexOptions.CultureInvariant)] private static partial Regex CacheKey();
+    // Personal banners use a fixed namespace plus the same SHA-256 identity.
+    // Admit that exact namespace; paths, arbitrary prefixes and non-hex IDs stay rejected.
+    [GeneratedRegex("^(?:local-banner-)?[A-F0-9]{64}-[0-9]{2,4}$", RegexOptions.CultureInvariant)] private static partial Regex CacheKey();
 }

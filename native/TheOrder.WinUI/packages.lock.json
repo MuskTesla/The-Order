@@ -230,7 +230,7 @@
       "theorder.application": {
         "type": "Project",
         "dependencies": {
-          "TheOrder.Domain": "[1.0.0, )"
+          "TheOrder.Domain": "[1.0.2, )"
         }
       },
       "theorder.domain": {
@@ -239,20 +239,21 @@
       "theorder.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "TheOrder.Application": "[1.0.0, )"
+          "TheOrder.Application": "[1.0.2, )"
         }
       },
       "theorder.platform.windows": {
         "type": "Project",
         "dependencies": {
-          "TheOrder.Application": "[1.0.0, )"
+          "Microsoft.WindowsAppSDK.ML": "[2.1.94, )",
+          "TheOrder.Application": "[1.0.2, )"
         }
       },
       "theorder.presentation": {
         "type": "Project",
         "dependencies": {
           "Markdig": "[1.4.0, )",
-          "TheOrder.Application": "[1.0.0, )"
+          "TheOrder.Application": "[1.0.2, )"
         }
       }
     },

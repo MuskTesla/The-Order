@@ -92,6 +92,12 @@ public sealed class LegacyRemediationTests
 
 internal static class ReferenceSources
 {
+    public static string FixtureOutput(string project)
+    {
+        var repo = Repository();
+        var relative = Path.GetRelativePath(Path.Combine(repo, "native", "TheOrder.Tests", "bin"), AppContext.BaseDirectory);
+        return Path.GetFullPath(Path.Combine(repo, "native", project, "bin", relative));
+    }
     public static string Repository()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

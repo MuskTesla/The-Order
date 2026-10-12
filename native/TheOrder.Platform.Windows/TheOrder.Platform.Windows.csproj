@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0-windows10.0.26100.0</TargetFramework></PropertyGroup>
   <ItemGroup><ProjectReference Include="../TheOrder.Application/TheOrder.Application.csproj" /></ItemGroup>
+  <!-- Reuse the same pinned Windows App SDK ML runtime already shipped by the UI.
+       In-box WinML on older Win10 cannot evaluate our opset-15 artwork model. -->
+  <ItemGroup><PackageReference Include="Microsoft.WindowsAppSDK.ML" Version="2.1.94" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="TheOrder.Tests" /></ItemGroup>
 </Project>

@@ -26,6 +26,15 @@ internal static class Composition
         var nativeConfiguration = Program.Profile?.Configuration(configuration["DIAGNOSTICS"] == "1")
             ?? new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
         services.AddSingleton(nativeConfiguration);
+        services.AddSingleton<GitHubUpdateFeed>();
+        var fixtureUpdates = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+            && configuration["VISUAL_TEST"] == "1" && configuration["UPDATE_FIXTURE"] == "1";
+        services.AddSingleton<IAppUpdateFeed>(p => fixtureUpdates ? new SyntheticUpdates() : p.GetRequiredService<GitHubUpdateFeed>());
+        services.AddSingleton<WindowsUpdatePackages>();
+        services.AddSingleton<IAppUpdatePackages>(p => p.GetRequiredService<WindowsUpdatePackages>());
+        services.AddSingleton<IAppUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton(p => new AppUpdateViewModel(p.GetRequiredService<IAppUpdateFeed>(), p.GetRequiredService<IAppUpdatePackages>(),
+            p.GetRequiredService<IAppUpdateInstaller>(), typeof(App).Assembly.GetName().Version!.ToString(3)));
         services.AddSingleton<IMaterialPreferencesStore, MaterialPreferencesStore>();
         services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
@@ -58,11 +67,22 @@ internal static class Composition
             services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1", configuration["RECOGNITION_FIXTURE"] == "1", configuration["RECOGNITION_BOUNDARY_FIXTURE"] == "1"));
         }
         var fixtureCredentials = fixtureOnline && configuration["ONLINE_REAL_STORE"] != "1";
-        services.AddSingleton(p => new AuthenticatedCredentials(
+        var fixturePersonal = fixtureOnline && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+            && configuration["VISUAL_TEST"] == "1" && configuration["PERSONAL_FIXTURE"] == "1";
+        if (fixturePersonal) services.AddSingleton<SyntheticNextMoe>();
+        services.AddSingleton<INextMoeAuthStore, WindowsNextMoeAuthStore>();
+        services.AddSingleton<NextMoeAccountNetwork>();
+        services.AddSingleton<INextMoeOAuth>(p => fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new NextMoeOAuth(p.GetRequiredService<NextMoeAccountNetwork>().Client));
+        services.AddSingleton<IOAuthSystemBrowser, WindowsOAuthSystemBrowser>();
+        services.AddSingleton<IOAuthLogin>(p => fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new WindowsOAuthLogin(p.GetRequiredService<IOAuthSystemBrowser>()));
+        services.AddSingleton(p => new NextMoeAuthentication(
             fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>(),
-            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>()));
-        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<AuthenticatedCredentials>());
-        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<AuthenticatedCredentials>());
+            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>(),
+            p.GetRequiredService<INextMoeAuthStore>(), p.GetRequiredService<INextMoeOAuth>(), p.GetRequiredService<IOAuthLogin>()));
+        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<INextMoeAccess>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<NextMoeRateCoordinator>();
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
         services.AddSingleton<PublicArtworkNetwork>();
@@ -70,7 +90,7 @@ internal static class Composition
         // Production/Development profiles never select this synthetic transport.
         var performanceImages = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["PERFORMANCE_COVERS"] is not null;
         if (performanceImages) services.AddSingleton<PerformanceImageFixture>();
-        services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
+        services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/"), rate: fixtureOnline ? null : p.GetRequiredService<NextMoeRateCoordinator>()));
         services.AddSingleton(p => new NextMoeCatalog(p.GetRequiredService<CatalogTransport>(), clock: fixtureOnline ? () => p.GetRequiredService<SyntheticOnline>().Now : null));
         services.AddSingleton<IOnlineCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton<IEntityCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
@@ -81,7 +101,17 @@ internal static class Composition
         services.AddSingleton<CatalogBrowseSettings>();
         services.AddSingleton<OnlineCoverSelectionClient>();
         services.AddSingleton<IRecognitionCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
-        services.AddSingleton(p => p.GetRequiredService<AuthenticatedCredentials>().AuthContext);
+        services.AddSingleton(p => p.GetRequiredService<NextMoeAuthentication>().AuthContext);
+        services.AddSingleton<IPersonalSyncStore, WindowsPersonalSyncStore>();
+        services.AddSingleton<IPersonalSyncLibrary, PersonalSyncLibrary>();
+        var readOnlyAcceptance = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["READ_ONLY_OAUTH_ACCEPTANCE"] == "1";
+        services.AddSingleton<INextMoePersonalApi>(p => {
+            INextMoePersonalApi api = fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new NextMoePersonalApi(p.GetRequiredService<CatalogNetwork>().Client,
+                p.GetRequiredService<INextMoeAccess>(), p.GetRequiredService<NextMoeRateCoordinator>());
+            return readOnlyAcceptance ? new ReadOnlyPersonalApi(api) : api;
+        });
+        services.AddSingleton<PersonalSyncCoordinator>();
+        services.AddSingleton<NextMoeSettingsViewModel>();
         services.AddSingleton<ILocalEvidenceParser, LocalEvidenceParser>();
         services.AddSingleton<IExecutableEvidenceParser, ExecutableEvidenceParser>();
         services.AddSingleton<IRecognitionEvidenceReader>(p => new WindowsRecognitionEvidence(p.GetRequiredService<ILocalEvidenceParser>(), RecognitionFingerprint.Evidence, p.GetRequiredService<IExecutableEvidenceParser>()));
@@ -141,14 +171,15 @@ internal static class Composition
         services.AddSingleton<MainWindow>();
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         // Resolution is confined to this composition root. Views and view models receive constructors.
-        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<AppSessionHost>(), provider.GetRequiredService<ILogger<NativeHost>>());
+        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<AppSessionHost>(), provider.GetRequiredService<IAppUpdateInstaller>(), provider.GetRequiredService<ILogger<NativeHost>>());
     }
 }
 
-internal sealed class NativeHost(ServiceProvider provider, MainWindow window, AppSessionHost sessions, ILogger<NativeHost> logger) : IAsyncDisposable
+internal sealed class NativeHost(ServiceProvider provider, MainWindow window, AppSessionHost sessions, IAppUpdateInstaller updates, ILogger<NativeHost> logger) : IAsyncDisposable
 {
     public MainWindow Window { get; } = window;
     public AppSessionHost Sessions { get; } = sessions;
+    public IAppUpdateInstaller Updates { get; } = updates;
     public void LogFatal(Exception exception) => logger.LogCritical(exception, "Native client terminated: {ExceptionType}", exception.GetType().Name);
     public void LogStarted() => logger.LogInformation("Native client started");
     public async ValueTask DisposeAsync() { await Window.StopAsync(); await Sessions.DisposeAsync(); logger.LogInformation("Native client drained"); await provider.DisposeAsync(); }

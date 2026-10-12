@@ -267,8 +267,7 @@ internal sealed class LaunchFixture : IAsyncDisposable
         Game = Path.Combine(Profile.Root, "日本語 游戏 [synthetic]"); Directory.CreateDirectory(Game);
         Reports = Path.Combine(Profile.Root, "observations"); Directory.CreateDirectory(Reports);
         File.WriteAllText(Path.Combine(Reports, ".the-order-launch-fixture"), "owned fixture");
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
-        var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../TheOrder.LaunchFixture/bin", configuration, "net10.0-windows10.0.26100.0"));
+        var source = ReferenceSources.FixtureOutput("TheOrder.LaunchFixture");
         foreach (var path in Directory.GetFiles(source)) File.Copy(path, Path.Combine(Game, Path.GetFileName(path)));
         foreach (var name in new[] { "simple_game", "child_game", "second_game", "helper" })
             File.Copy(Path.Combine(source, "TheOrder.LaunchFixture.exe"), Path.Combine(Game, name + ".exe"));

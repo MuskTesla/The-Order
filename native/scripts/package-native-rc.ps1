@@ -18,7 +18,7 @@ Get-ChildItem -LiteralPath $crt -Filter '*.dll' -File | Copy-Item -Destination $
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'launch-portable-test.ps1') -Destination (Join-Path $output 'launch-test.ps1')
 [IO.File]::WriteAllText((Join-Path $output 'Start-Test.cmd'), '@echo off' + "`r`n" + 'setlocal' + "`r`n" + 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0launch-test.ps1"' + "`r`n" + 'set "theOrderTestExit=%errorlevel%"' + "`r`n" + 'if not "%theOrderTestExit%"=="0" pause' + "`r`n" + 'exit /b %theOrderTestExit%' + "`r`n", [Text.Encoding]::ASCII)
 [IO.File]::WriteAllText((Join-Path $output 'README-RC.txt'), @'
-The Order - isolated native x64 Release Candidate (Windows 11 22000+)
+The Order - isolated native x64 Release Candidate (Windows 10 1809 / 17763+)
 Not approved for Production use or public release. Glass follows the saved setting.
 Extract the entire directory. Double-click Start-Test.cmd. No SDK, repository,
 seed or helper is required. Data: %LOCALAPPDATA%/TheOrder-RC/Test (native Test).
@@ -55,7 +55,7 @@ foreach ($packageName in ($packageNames | Sort-Object -Unique)) {
     $dependencyLicenses += @{package=$packageName;licenseFiles=@($texts.Name);metadata=$(if($nuspec){$nuspec.Name}else{$null})}
 }
 $dependencyLicenses | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $licenses 'dependency-license-index.json') -Encoding utf8
-@{source=(git -C $repo rev-parse HEAD);sourceDirty=([bool](git -C $repo status --porcelain));createdUtc=[DateTimeOffset]::UtcNow.ToString('o');architecture='x64';minimumWindowsBuild=22000;selfContained=$true;windowsAppSdk='2.5.1';vcRuntime=$redistVersion;defaultMode='saved preference';advancedScope='ordinary daily glass without dispersion, subject to system policy';gate='NOT YET ACCEPTED';cleanWindows='NOT VERIFIED';crtSource=$crt} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'release-identity.json') -Encoding utf8
+@{source=(git -C $repo rev-parse HEAD);sourceDirty=([bool](git -C $repo status --porcelain));createdUtc=[DateTimeOffset]::UtcNow.ToString('o');architecture='x64';minimumWindowsBuild=17763;minimumWindowsVersion='Windows 10 1809';selfContained=$true;windowsAppSdk='2.5.1';vcRuntime=$redistVersion;defaultMode='saved preference';advancedScope='ordinary daily glass without dispersion, subject to system policy; solid window canvas on Windows 10';gate='NOT YET ACCEPTED';cleanWindows='NOT VERIFIED';windows10='NO REAL OS ENVIRONMENT AVAILABLE; implementation and simulated fallbacks only';crtSource=$crt} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'release-identity.json') -Encoding utf8
 @'
 Microsoft VC x64 runtime: app-local files from the installed Visual Studio
 REDIST directory, version recorded in release-identity.json. Redistribution is
@@ -63,7 +63,7 @@ subject to the installed Visual Studio license and redistributable-code terms.
 https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
 https://learn.microsoft.com/en-us/cpp/windows/determining-which-dlls-to-redistribute
 App-local runtimes must be serviced with the application; there is no central
-installer servicing claim. Windows OS DLLs/UCRT are supplied by Windows 11.
+installer servicing claim. Windows OS DLLs/UCRT are supplied by Windows 10/11.
 NuGet runtime dependency licenses and metadata are in licenses/. Their rights
 remain with their owners. Game art and the current brand asset are not relicensed
 by the application; see THIRD_PARTY_NOTICES.md. No synthetic covers are shipped.

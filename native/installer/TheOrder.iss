@@ -9,12 +9,18 @@
 #ifndef OutputDirectory
   #error OutputDirectory is required
 #endif
+#ifndef PayloadEntries
+  #error Verified PayloadEntries is required
+#endif
+#ifndef PayloadChecks
+  #error Verified PayloadChecks is required
+#endif
 
 [Setup]
 AppId={{F7940B13-6814-42F7-AB71-69A9901D7DB3}
 AppName=The Order
-AppVersion=1.0.1
-AppVerName=The Order 1.0.1
+AppVersion=1.1.0
+AppVerName=The Order 1.1.0
 AppPublisher=The Order Project
 AppPublisherURL=https://github.com/Ph-Rank/The-Order
 AppSupportURL=https://github.com/Ph-Rank/The-Order/issues
@@ -24,20 +30,21 @@ DefaultGroupName=The Order
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
-MinVersion=10.0.22000
+MinVersion=10.0.17763
 DisableProgramGroupPage=yes
 DisableDirPage=no
 DirExistsWarning=no
 AllowUNCPath=no
 AllowNetworkDrive=no
 OutputDir={#OutputDirectory}
-OutputBaseFilename=The-Order-1.0.1-Setup-x64
+OutputBaseFilename=The-Order-1.1.0-Setup-x64
 SetupIconFile={#PayloadDirectory}\Assets\Brand.Light.ico
 UninstallDisplayIcon={app}\TheOrder.exe
 LicenseFile={#PayloadDirectory}\LICENSE-TheOrder.txt
 WizardStyle=modern dynamic
 Compression=lzma2/max
-SolidCompression=yes
+; Separate compression streams keep unchanged files reusable for differential downloads.
+SolidCompression=no
 DiskSpanning=no
 CloseApplications=no
 RestartApplications=no
@@ -46,10 +53,10 @@ UninstallDisplayName=The Order
 UninstallLogMode=append
 UsePreviousAppDir=yes
 UsePreviousTasks=yes
-VersionInfoVersion=1.0.1.0
+VersionInfoVersion=1.1.0.0
 VersionInfoDescription=The Order 安装程序
 VersionInfoProductName=The Order
-VersionInfoProductVersion=1.0.1
+VersionInfoProductVersion=1.1.0
 
 [Languages]
 Name: "zhHans"; MessagesFile: "languages\ChineseSimplified.isl"
@@ -63,12 +70,11 @@ ConfirmUninstall=确定要卸载 The Order 吗？%n%n接下来可选择保留或
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："
 
 [Files]
-; All published payload bytes, resource directories and licenses remain unchanged.
-Source: "{#PayloadDirectory}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#AddonDirectory}\TheOrder.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AddonDirectory}\installer-identity.ini"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#AddonDirectory}\安装版使用说明.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "LICENSE-InnoSetup.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+; Every expected payload/entry/license hash is compiled locally. Only changed/missing files are copied.
+#include PayloadEntries
+; Keep exactly one installer as the next differential base. Normal uninstall owns/removes it.
+; This is a local copy of this Setup, never another download or a runnable patch instruction.
+Source: "{srcexe}"; DestDir: "{app}"; DestName: "update-base.bin"; Flags: external ignoreversion
 
 [Icons]
 Name: "{group}\The Order"; Filename: "{app}\TheOrder.exe"; WorkingDir: "{app}"; IconFilename: "{code:ShortcutIcon}"; AppUserModelID: "dev.local.kungalmanager"
@@ -79,6 +85,11 @@ Name: "{group}\卸载 The Order"; Filename: "{uninstallexe}"
 Filename: "{app}\TheOrder.exe"; Description: "打开 The Order"; Flags: nowait postinstall skipifsilent unchecked
 
 [Code]
+function GetFileAttributesW(Name: String): Cardinal;
+  external 'GetFileAttributesW@kernel32.dll stdcall';
+#include "PayloadFiles.iss"
+#include PayloadChecks
+
 function ShortcutIcon(Param: String): String;
 var Light: Cardinal;
 begin
@@ -87,9 +98,6 @@ begin
   if Light <> 0 then Result := ExpandConstant('{app}\Assets\Brand.Light.ico')
   else Result := ExpandConstant('{app}\Assets\Brand.Dark.ico');
 end;
-
-function GetFileAttributesW(Name: String): Cardinal;
-  external 'GetFileAttributesW@kernel32.dll stdcall';
 
 function RunningError: String;
 var
@@ -140,7 +148,16 @@ begin
     if Parent = ExtractFileDir(Parent) then Break;
     Parent := ExtractFileDir(Parent);
   end;
+  if not PayloadPathsSafe then begin
+    Result := '安装目标包含链接文件或目录，本次安装未开始。请检查安装目录。';
+    Exit;
+  end;
   HasContents := False;
+  Attributes := GetFileAttributesW(AddBackslash(Target) + 'update-base.bin');
+  if (Attributes <> $FFFFFFFF) and ((Attributes and $400) <> 0) then begin
+    Result := '更新缓存是链接文件。请先检查安装目录，本次安装未开始。';
+    Exit;
+  end;
   if FindFirst(AddBackslash(Target) + '*', FindRec) then begin
     try
       repeat
@@ -215,7 +232,7 @@ begin
   end;
   if Result and not UninstallSilent then begin
     Choice := MsgBox('是否同时删除本机默认资料目录中的全部使用数据？' + #13#10 + #13#10 +
-      '是：删除书架、个人编辑、安装记录、游玩记录、图片缓存、设置及保存的 API 密钥。' + #13#10 +
+      '是：删除书架、个人编辑、安装记录、游玩记录、图片缓存、设置、登录令牌、API 密钥及同步记录。' + #13#10 +
       '否（默认）：保留全部使用数据，方便以后重装。' + #13#10 +
       '取消：退出卸载。' + #13#10 + #13#10 +
       '游戏文件、手动导出的备份和自定义 Test/Development 资料目录不受影响。' + #13#10 +

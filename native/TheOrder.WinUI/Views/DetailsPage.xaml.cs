@@ -100,6 +100,7 @@ public sealed partial class DetailsPage : Page, IImageHost
         EditDetailsButton.IsEnabled = EditorCard.Visibility != Visibility.Visible && ViewModel.CanEditDetails;
         if (!ReferenceEquals(displayedDetail, detail)) {
         displayedDetail = detail;
+        _ = RefreshPersonalFactsAsync();
         var work = detail?.Metadata;
         HeroFacts.SetWork(work, detail?.Personal.Name);
         SynchronizeCatalog(detail);

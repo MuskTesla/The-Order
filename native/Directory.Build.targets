@@ -1,0 +1,12 @@
+<Project>
+  <!-- The SDK version selects reference APIs; it is not the minimum runtime OS.
+       Apply the same floor to every Windows assembly, including platform helpers,
+       so CA1416 also checks calls hidden behind project references. -->
+  <PropertyGroup Condition="$([System.String]::Copy('$(TargetFramework)').Contains('-windows'))">
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- Platform consumers share the bundled CPU artwork runtime; diagnostic and
+         test tools must not depend on a globally installed App SDK either. -->
+    <WindowsAppSDKSelfContained Condition="'$(OutputType)' != 'Library'">true</WindowsAppSDKSelfContained>
+  </PropertyGroup>
+</Project>
