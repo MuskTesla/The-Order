@@ -28,7 +28,33 @@ public sealed partial class InstallationsPage : Page
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.PropertyChanged += OnStateChanged; Workspace.PropertyChanged += OnStateChanged;
+        ApplyResponsiveLayout(ActualWidth);
         RefreshActions();
+    }
+    private void OnPageSizeChanged(object sender, SizeChangedEventArgs e) => ApplyResponsiveLayout(e.NewSize.Width);
+    private void ApplyResponsiveLayout(double width)
+    {
+        if (FolderInputGrid is null) return;
+        var narrow = width is > 0 and < 640;
+        ReadOnlySpan<(Grid Grid, Button Button)> pairs =
+        [
+            (FolderInputGrid, FolderBrowseButton),
+            (ExecutableInputGrid, ExecutableBrowseButton),
+            (SaveFolderInputGrid, SaveFolderBrowseButton),
+            (LocaleEmulatorInputGrid, LocaleEmulatorBrowseButton),
+            (MagpieInputGrid, MagpieBrowseButton),
+            (WorkingDirectoryInputGrid, WorkingDirectoryBrowseButton)
+        ];
+        foreach (var (grid, button) in pairs)
+        {
+            grid.ColumnSpacing = narrow ? 0 : 8;
+            grid.RowSpacing = narrow ? 6 : 0;
+            grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : GridLength.Auto;
+            Grid.SetRow(button, narrow ? 1 : 0);
+            Grid.SetColumn(button, narrow ? 0 : 1);
+            button.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+            button.VerticalAlignment = narrow ? VerticalAlignment.Center : VerticalAlignment.Bottom;
+        }
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
@@ -83,11 +109,13 @@ public sealed partial class InstallationsPage : Page
             DraftHeading.Text = displayedDraft is not null && rows?.Any(r => r.Installation.Id == displayedDraft.Id) == true
                 ? "修改路径与启动设置" : "关联已有游戏文件夹";
         }
+        ApplyResponsiveLayout(ActualWidth);
     }
     internal void ExpandSectionForEvidence(string id)
     {
         if (id == "SaveFolderPath") SaveFolderSection.IsExpanded = true;
         if (id == "LaunchHelpers") LaunchHelpersSection.IsExpanded = true;
+        ApplyResponsiveLayout(ActualWidth);
         UpdateLayout();
     }
     internal async Task ShowLaunchHelpersAsync()

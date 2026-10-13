@@ -100,6 +100,7 @@ public sealed partial class SettingsPage : Page
         ChangeCredentialButton.Visibility = Online.HasCredential && !editingCredential ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
         RemoveCredentialButton.Visibility = Online.HasCredential ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
         CancelCredentialButton.Visibility = Online.HasCredential ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+        ResizeSettingsControls();
     }
     private void OnChangeCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { editingCredential = true; SynchronizeCredential(); ApiCredential.Focus(Microsoft.UI.Xaml.FocusState.Programmatic); }
     private void OnCancelCredential(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) { ApiCredential.Password = ""; editingCredential = false; SynchronizeCredential(); ChangeCredentialButton.Focus(Microsoft.UI.Xaml.FocusState.Programmatic); }
@@ -114,16 +115,65 @@ public sealed partial class SettingsPage : Page
         if (synchronizing || ThemeChoice.SelectedIndex < 0) return;
         await ViewModel.ChangeAppearanceAsync((NativeTheme)ThemeChoice.SelectedIndex, ViewModel.Layout);
     }
+    private void OnApiKeyPanelExpanding(Expander sender, ExpanderExpandingEventArgs args)
+    {
+        ResizeSettingsControls();
+        DispatcherQueue.TryEnqueue(ResizeSettingsControls);
+    }
+    private void OnSettingsSectionSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e) => ResizeSettingsControls();
+    private void OnSettingsControlLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => ResizeSettingsControls();
     private void OnSettingsSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e)
     {
+        var narrow = e.NewSize.Width < 641;
+        SettingsColumn.Padding = narrow ? new Microsoft.UI.Xaml.Thickness(16, 16, 16, 20) : new Microsoft.UI.Xaml.Thickness(32, 20, 32, 20);
         SettingsColumn.Width = Math.Min(900, Math.Max(0, e.NewSize.Width));
         ResizeSettingsControls();
     }
     private void ResizeSettingsControls()
     {
-        var width = Math.Max(0, SettingsColumn.Width - SettingsColumn.Padding.Left - SettingsColumn.Padding.Right);
+        var columnWidth = !double.IsNaN(SettingsColumn.Width) && SettingsColumn.Width > 0
+            ? SettingsColumn.Width
+            : SettingsColumn.ActualWidth > 0
+                ? SettingsColumn.ActualWidth
+                : SettingsRoot.ActualWidth > 0
+                    ? Math.Min(900, SettingsRoot.ActualWidth)
+                    : 0;
+        if (columnWidth <= 0) return;
+        foreach (var control in SettingsControls().Distinct())
+        {
+            var width = Math.Min(control.MaxWidth, Math.Max(0, columnWidth - HorizontalInset(control, SettingsColumn)));
+            if (double.IsNaN(control.Width) || Math.Abs(control.Width - width) > .1)
+                control.Width = width;
+        }
+    }
+    private IEnumerable<Microsoft.UI.Xaml.FrameworkElement> SettingsControls()
+    {
         foreach (var control in Descendants(SettingsColumn))
-            if (control is ComboBox or PasswordBox) control.Width = Math.Min(control.MaxWidth, Math.Max(0, width - (Inside(control, SyncPreviewRows) ? 48 : 0)));
+            if (control is ComboBox or PasswordBox) yield return control;
+        yield return ApiCredential;
+        yield return BangumiToken;
+    }
+    private double HorizontalInset(Microsoft.UI.Xaml.DependencyObject control, Microsoft.UI.Xaml.DependencyObject root)
+    {
+        double inset = Inside(control, SyncPreviewRows) ? 32 : 0;
+        for (var current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(control); current is not null; )
+        {
+            if (current is Microsoft.UI.Xaml.FrameworkElement fe) inset += fe.Margin.Left + fe.Margin.Right;
+            if (current is Border b) inset += b.Padding.Left + b.Padding.Right + b.BorderThickness.Left + b.BorderThickness.Right;
+            else if (current is StackPanel sp) inset += sp.Padding.Left + sp.Padding.Right;
+            else if (current is Grid g) inset += g.Padding.Left + g.Padding.Right + g.BorderThickness.Left + g.BorderThickness.Right;
+            if (ReferenceEquals(current, root)) break;
+            var parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current);
+            if (parent is null && ReferenceEquals(current, ApiKeyPanel.Content as Microsoft.UI.Xaml.DependencyObject))
+            {
+                var expanderPadding = ApiKeyPanel.Padding.Left + ApiKeyPanel.Padding.Right;
+                var expanderBorder = ApiKeyPanel.BorderThickness.Left + ApiKeyPanel.BorderThickness.Right;
+                inset += (expanderPadding > 0 ? expanderPadding : 32) + (expanderBorder > 0 ? expanderBorder : 2);
+                parent = ApiKeyPanel;
+            }
+            current = parent;
+        }
+        return inset;
     }
     private static bool Inside(Microsoft.UI.Xaml.DependencyObject control, Microsoft.UI.Xaml.DependencyObject parent)
     { for (var current = control; current is not null; current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current)) if (ReferenceEquals(current, parent)) return true; return false; }

@@ -39,10 +39,21 @@ public sealed partial class LibraryPage : Page, IImageHost
         RecognitionCounts.Text = model.ProgressText; RecognitionMessage.Text = model.Message;
         RecognitionBar.Maximum = Math.Max(1, p.Total); RecognitionBar.Value = p.Processed;
         CancelRecognition.Visibility = model.HasRecognitionWork ? Visibility.Visible : Visibility.Collapsed;
+        UpdateNoticeRegion();
     }
     private void OnCancelRecognition(object sender, RoutedEventArgs e) => recognition?.CancelAll();
-    internal void ShowApiReminder(bool show) => ApiReminder.IsOpen = show;
+    internal void ShowApiReminder(bool show) { ApiReminder.IsOpen = show; UpdateNoticeRegion(); }
     private async void OnApiSettings(object sender, RoutedEventArgs e) { if (OpenSettings is { } open) await open(); }
+    private void UpdateNoticeRegion()
+    {
+        if (NoticePanel is null) return;
+        DiscoveryNotice.Visibility = Visible(DiscoveryNotice.IsOpen);
+        ApiReminder.Visibility = Visible(ApiReminder.IsOpen);
+        var any = DiscoveryNotice.IsOpen || ApiReminder.IsOpen || RecognitionStatus.Visibility == Visibility.Visible;
+        NoticePanel.Visibility = Visible(any);
+        var narrow = ActualWidth is > 0 and < 641;
+        NoticePanel.Margin = any ? (narrow ? new Thickness(16, 12, 16, 0) : new Thickness(24, 12, 24, 0)) : new Thickness(0);
+    }
     private bool synchronizing = true, selectionMode, keyboardOpen, restorePending;
     private string? scrollKey, lastOpenedId;
     private long returnRestorationVersion;
@@ -60,6 +71,9 @@ public sealed partial class LibraryPage : Page, IImageHost
     {
         ViewModel = viewModel; Images = images; this.diagnostics = diagnostics; InitializeComponent();
         BuildContinueBanner();
+        DiscoveryNotice.RegisterPropertyChangedCallback(InfoBar.IsOpenProperty, (_, _) => UpdateNoticeRegion());
+        ApiReminder.RegisterPropertyChangedCallback(InfoBar.IsOpenProperty, (_, _) => UpdateNoticeRegion());
+        UpdateNoticeRegion();
         foreach (var list in new ListViewBase[] { GameGrid, GameList })
         {
             list.AddHandler(PointerPressedEvent, new PointerEventHandler(OnListPointerPressed), true);
@@ -238,6 +252,11 @@ public sealed partial class LibraryPage : Page, IImageHost
         HeaderCommands.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         ActiveFilterRegion.Padding = narrow ? new Thickness(16, 0, 12, 8) : new Thickness(32, 0, 24, 8);
         SelectionContext.Margin = narrow ? new Thickness(8, 0, 8, 8) : new Thickness(24, 0, 24, 8);
+        SelectionContext.RowSpacing = narrow ? 6 : 0;
+        Grid.SetRow(ContextActions, narrow ? 1 : 0);
+        Grid.SetColumn(ContextActions, narrow ? 0 : 1);
+        Grid.SetColumnSpan(ContextActions, narrow ? 3 : 1);
+        ContextActions.Margin = narrow ? new Thickness(0) : new Thickness(12, 0, 0, 0);
         SearchLabel.Visibility = FilterLabel.Visibility = SelectLabel.Visibility = ImportLabel.Visibility = Visible(!compact);
         SortLabel.Visibility = Visible(!narrow);
         SelectButton.Visibility = ImportButton.Visibility = Visible(!compact);
@@ -246,7 +265,42 @@ public sealed partial class LibraryPage : Page, IImageHost
         GameGrid.Padding = narrow ? new Thickness(6, 0, 6, 16) : new Thickness(18, 0, 18, 24);
         GameList.Padding = narrow ? new Thickness(8, 0, 8, 16) : new Thickness(24, 0, 24, 24);
         ListHeader.Margin = new Thickness(GameList.Padding.Left, 0, GameList.Padding.Right, 0);
+        UpdateNoticeRegion();
+        UpdateListHeaderColumns(ListHeader.ActualWidth);
         if (FilterFlyout.IsOpen) ConstrainFilterHeight();
+    }
+    private void OnListHeaderSizeChanged(object sender, SizeChangedEventArgs e) => UpdateListHeaderColumns(e.NewSize.Width);
+    private void UpdateListHeaderColumns(double headerWidth)
+    {
+        if (ListHeader is null || ListHeader.ColumnDefinitions.Count < 6 || headerWidth <= 0) return;
+        var innerWidth = headerWidth - ListHeader.Padding.Left - ListHeader.Padding.Right;
+        var compact = innerWidth < 560;
+        ListHeader.ColumnSpacing = compact ? 0 : 16;
+        if (HeaderNameButton is not null) HeaderNameButton.Margin = compact ? new Thickness(16, 0, 0, 0) : new Thickness(0);
+        ListHeader.ColumnDefinitions[2].Width = compact ? new GridLength(0) : new GridLength(84);
+        ListHeader.ColumnDefinitions[3].Width = compact ? new GridLength(0) : new GridLength(68);
+        ListHeader.ColumnDefinitions[4].Width = compact ? new GridLength(0) : new GridLength(88);
+        ListHeader.ColumnDefinitions[5].Width = compact ? new GridLength(0) : new GridLength(104);
+        HeaderStatus.Visibility = HeaderRatingButton.Visibility = HeaderPlayTimeButton.Visibility = HeaderLastPlayedButton.Visibility = Visible(!compact);
+    }
+    private void OnRowSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is not Grid row || row.ColumnDefinitions.Count < 6) return;
+        var compact = e.NewSize.Width < 560;
+        row.ColumnSpacing = compact ? 0 : 16;
+        row.ColumnDefinitions[2].Width = compact ? new GridLength(0) : new GridLength(84);
+        row.ColumnDefinitions[3].Width = compact ? new GridLength(0) : new GridLength(68);
+        row.ColumnDefinitions[4].Width = compact ? new GridLength(0) : new GridLength(88);
+        row.ColumnDefinitions[5].Width = compact ? new GridLength(0) : new GridLength(104);
+        for (int i = 2; i < row.Children.Count; i++)
+            if (row.Children[i] is FrameworkElement child && Grid.GetColumn(child) >= 2)
+                child.Visibility = Visible(!compact);
+        if (row.Children[1] is Panel titles)
+        {
+            titles.Margin = compact ? new Thickness(16, 0, 0, 0) : new Thickness(0);
+            if (titles.Children.Count > 2 && titles.Children[2] is FrameworkElement narrowMeta)
+                narrowMeta.Visibility = Visible(compact);
+        }
     }
     private ItemsWrapGrid? wrapGrid;
     private bool metricsQueued;
@@ -413,6 +467,8 @@ public sealed partial class LibraryPage : Page, IImageHost
         RecognizeSelectedButton.IsEnabled = count > 0;
         BatchEditButton.IsEnabled = count > 0 && ViewModel.CanEdit;
         RemoveSelectedButton.IsEnabled = count > 0 && ViewModel.CanEdit;
+        ListHeader.Padding = new Thickness(selectionMode ? 52 : 12, 0, 12, 0);
+        UpdateListHeaderColumns(ListHeader.ActualWidth);
     }
     private void OnCardContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
@@ -630,11 +686,15 @@ public sealed partial class LibraryPage : Page, IImageHost
 public static class LibraryFormat
 {
     public static Visibility Show(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility ShowText(string? value) => !string.IsNullOrWhiteSpace(value) ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility ShowRowSubtitle(string labels, int installations, bool favorite) => ShowText(RowSubtitle(labels, installations, favorite));
     public static Visibility Wishlist(int installations) => installations == 0 ? Visibility.Visible : Visibility.Collapsed;
     public static string Rating(double? rating) => rating is null ? "—" : $"{rating:0.#}";
     public static string CardMeta(string status, double? rating) => rating is null ? status : UiText.Format($"{status} · {rating:0.#} 分");
     public static string PlayTime(long seconds) => seconds <= 0 ? "—" : seconds < 3600 ? UiText.Format($"{Math.Max(1, seconds / 60)} 分钟") : UiText.Format($"{seconds / 3600d:0.#} 小时");
     public static string RowSubtitle(string labels, int installations, bool favorite) =>
         string.Join(" · ", new[] { favorite ? UiText.Get("收藏") : "", installations == 0 ? UiText.Get("愿望单") : "", labels }.Where(s => s.Length > 0));
+    public static string CompactRowMeta(string status, double? rating, long seconds, string lastPlayed) =>
+        string.Join(" · ", new[] { status, rating is null ? "" : UiText.Format($"{rating:0.#} 分"), seconds <= 0 ? "" : PlayTime(seconds), lastPlayed }.Where(s => s.Length > 0));
     public static string CardName(string name, string status, string lastPlayed) => UiText.Format($"{name}，{status}，最近游玩：{lastPlayed}");
 }

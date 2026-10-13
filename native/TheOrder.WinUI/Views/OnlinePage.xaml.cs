@@ -27,17 +27,24 @@ public sealed partial class OnlinePage : Page, IImageHost
     private void UpdateSearchLayout()
     {
         var empty = ViewModel.Items.Count == 0;
+        var narrow = ActualWidth is > 0 and < 641;
+        OnlineRoot.Padding = narrow ? new Thickness(16, 12, 16, 16) : new Thickness(24, 16, 24, 24);
         Grid.SetRow(SearchHeader, empty ? 1 : 0);
         SearchHeader.VerticalAlignment = empty ? VerticalAlignment.Center : VerticalAlignment.Top;
+        SearchHeader.Spacing = empty ? 20 : 12;
         SearchHeader.MaxWidth = empty ? 760 : double.PositiveInfinity;
         SearchHeader.Margin = empty ? ActualHeight > 560 ? new Thickness(12, 24, 12, 72) : new Thickness(8, 8, 8, 8) : new Thickness(0);
+        SearchBar.MaxWidth = 760;
+        SearchBar.HorizontalAlignment = HorizontalAlignment.Stretch;
         DiscoveryTitle.TextAlignment = empty ? TextAlignment.Center : TextAlignment.Left;
         DiscoveryHint.Visibility = ProviderAttribution.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         SearchStatus.TextAlignment = empty ? TextAlignment.Center : TextAlignment.Left;
         CancelSearchButton.Visibility = ViewModel.SearchBusy ? Visibility.Visible : Visibility.Collapsed;
         ResultsGrid.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         LoadMoreButton.Visibility = ViewModel.CanLoadMore ? Visibility.Visible : Visibility.Collapsed;
+        ResizeCards();
     }
+    public static Visibility TextVisible(string? text) => !string.IsNullOrWhiteSpace(text) ? Visibility.Visible : Visibility.Collapsed;
     public void FocusSearch() { _ = ReturnToSearchAsync(); OnlineQueryBox.Focus(FocusState.Keyboard); }
     public void Cancel() => browser.Cancel();
     internal void ConfigureMusic(IMusicBrainzReader music) => browser.ConfigureMusic(music);
@@ -59,5 +66,14 @@ public sealed partial class OnlinePage : Page, IImageHost
     private async void OnWork(object sender, ItemClickEventArgs e) { if (e.ClickedItem is OnlineCard card) { SearchResults.Visibility = Visibility.Collapsed; BrowserHost.Visibility = Visibility.Visible; NavigationChanged?.Invoke(); await browser.OpenAsync(new(CatalogEntityKind.Work, card.Id, card.Title), false); } }
     private void OnWrapLoaded(object sender, RoutedEventArgs e) { wrap = sender as ItemsWrapGrid; ResizeCards(); }
     private void OnResultsSizeChanged(object sender, SizeChangedEventArgs e) => ResizeCards();
-    private void ResizeCards() { if (wrap is null) return; var width = Math.Max(160, ResultsGrid.ActualWidth - 20); var columns = Math.Max(1, (int)(width / 190)); var card = width / columns; wrap.ItemWidth = card; wrap.ItemHeight = (card - 16) * 4d / 3 + 80; }
+    private void ResizeCards()
+    {
+        if (wrap is null || ResultsGrid.ActualWidth <= 0) return;
+        var width = Math.Max(140, ResultsGrid.ActualWidth - 4);
+        var minCard = ActualWidth is > 0 and < 641 ? 136 : 168;
+        var columns = Math.Max(1, (int)Math.Floor(width / minCard));
+        var card = Math.Floor(width / columns);
+        wrap.ItemWidth = card;
+        wrap.ItemHeight = Math.Round((card - 16) * 4d / 3 + 94);
+    }
 }

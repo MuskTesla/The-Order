@@ -64,9 +64,12 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         AutomationProperties.SetAutomationId(refresh, "RelatedMediaDetailRefresh");
         AutomationProperties.SetAutomationId(source, "RelatedMediaDetailSource");
         AutomationProperties.SetAutomationId(sources, "RelatedMediaDetailSources");
+        title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        picture.ImageCornerRadius = 7;
+        var coverFrame = new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = picture };
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         heading.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-        heading.Children.Add(picture);
+        heading.Children.Add(coverFrame);
         var labels = new StackPanel { Spacing = 10, Children = { media, title, originalTitle, facts } };
         SetColumn(labels, 1); heading.Children.Add(labels);
         actions.Children.Add(progress); actions.Children.Add(cancel); actions.Children.Add(retry);
@@ -77,7 +80,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
             heading,
             relation,
             new StackPanel { Spacing = 8, Children = { status, actions } },
-            new StackPanel { Spacing = 12, Children = { new TextBlock { Text = "简介", FontSize = 22 }, summary } },
+            new StackPanel { Spacing = 12, Children = { new TextBlock { Text = "简介", Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SectionTitleStyle"] }, summary } },
             sources
         } };
         scroll = new ScrollViewer

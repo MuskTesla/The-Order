@@ -6,22 +6,30 @@
   <DataTemplate x:Key="CardTemplate" x:DataType="app:GameSummary">
    <Border Margin="8,8,8,16" Padding="0" Background="Transparent" Tag="{x:Bind Id}" ContextRequested="OnCardContextRequested" AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
     <Grid RowSpacing="9"><Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="48" /></Grid.RowDefinitions>
-     <Border CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}"><Grid><FontIcon Glyph="" FontSize="24" Foreground="{ThemeResource TextTertiaryBrush}" AutomationProperties.AccessibilityView="Raw" /><views:CoverPresenter SourceKey="{x:Bind CoverKey}" /></Grid></Border>
+     <Border CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1"><Grid><views:CoverPresenter SourceKey="{x:Bind CoverKey}" ImageCornerRadius="7" /></Grid></Border>
       <TextBlock Grid.Row="1" Text="{x:Bind Name}" TextAlignment="Center" HorizontalAlignment="Stretch" FontSize="15" Foreground="{ThemeResource TextPrimaryBrush}" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Name}" />
     </Grid>
    </Border>
   </DataTemplate>
   <DataTemplate x:Key="RowTemplate" x:DataType="app:GameSummary">
-   <Grid MinHeight="70" ColumnSpacing="16" Background="Transparent" Tag="{x:Bind Id}" ContextRequested="OnCardContextRequested" AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-    <Border Width="42" Height="56" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center"><views:CoverPresenter SourceKey="{x:Bind CoverKey}" ImageCornerRadius="4" /></Border>
-    <TextBlock Grid.Column="1" Text="{x:Bind Name}" FontSize="15" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTipService.ToolTip="{x:Bind Name}" />
+   <Grid MinHeight="68" ColumnSpacing="16" Background="Transparent" Tag="{x:Bind Id}" SizeChanged="OnRowSizeChanged" ContextRequested="OnCardContextRequested" AutomationProperties.Name="{x:Bind views:LibraryFormat.CardName(Name, StatusText, LastPlayedText)}">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /><ColumnDefinition Width="84" /><ColumnDefinition Width="68" /><ColumnDefinition Width="88" /><ColumnDefinition Width="104" /></Grid.ColumnDefinitions>
+    <Border Width="42" Height="56" CornerRadius="4" Background="{ThemeResource SubtleFillColorSecondaryBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1" VerticalAlignment="Center"><Grid><views:CoverPresenter SourceKey="{x:Bind CoverKey}" ImageCornerRadius="3" /></Grid></Border>
+    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+     <TextBlock Text="{x:Bind Name}" FontSize="15" Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="1" ToolTipService.ToolTip="{x:Bind Name}" />
+     <TextBlock Text="{x:Bind views:LibraryFormat.RowSubtitle(Labels, InstallationCount, Favorite)}" Visibility="{x:Bind views:LibraryFormat.ShowRowSubtitle(Labels, InstallationCount, Favorite)}" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+     <TextBlock Text="{x:Bind views:LibraryFormat.CompactRowMeta(StatusText, Rating, PlaySeconds, LastPlayedText)}" Visibility="Collapsed" Style="{StaticResource MetadataTextStyle}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+    </StackPanel>
+    <TextBlock Grid.Column="2" Text="{x:Bind StatusText}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1" />
+    <TextBlock Grid.Column="3" Text="{x:Bind views:LibraryFormat.Rating(Rating)}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+    <TextBlock Grid.Column="4" Text="{x:Bind views:LibraryFormat.PlayTime(PlaySeconds)}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+    <TextBlock Grid.Column="5" Text="{x:Bind LastPlayedText}" Style="{StaticResource SecondaryTextStyle}" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxLines="1" />
    </Grid>
   </DataTemplate>
  </Page.Resources>
  <Grid x:Name="LibraryCanvas" SizeChanged="OnLibrarySizeChanged" KeyDown="OnPageKeyDown">
   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-  <StackPanel Grid.Row="0" Spacing="8" Margin="24,8">
+  <StackPanel x:Name="NoticePanel" Grid.Row="0" Spacing="8" Margin="0" Visibility="Collapsed">
   <InfoBar x:Name="DiscoveryNotice" IsOpen="False" IsClosable="True" CloseButtonClick="OnDismissDiscovery" Title="库目录发现了新安装" Severity="Informational"><InfoBar.ActionButton><Button x:Name="DiscoveryAction" Content="选择要导入的游戏" Click="OnReviewDiscovery" /></InfoBar.ActionButton></InfoBar>
   <InfoBar x:Name="ApiReminder" IsOpen="False" IsClosable="False" Severity="Informational" Title="开始识别前，先填写 API 密钥" Message="前往 NextMoe 开发者平台获取 API 密钥，在设置中保存后会自动继续识别已导入但缺资料的作品。">
    <InfoBar.ActionButton><Button Content="获取 API / 前往设置" Click="OnApiSettings" /></InfoBar.ActionButton>
@@ -97,25 +105,30 @@
    <HyperlinkButton Grid.Column="1" Click="OnClear" l:Localize.Content="清除全部" l:Localize.Name="清除全部筛选条件" />
   </Grid>
   <!-- Selection mode bar (replaces the header actions while selecting). -->
-  <Grid x:Name="SelectionContext" Grid.Row="3" Visibility="Collapsed" Margin="24,0,24,8" Padding="12,6" ColumnSpacing="8" CornerRadius="8" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
+  <Grid x:Name="SelectionContext" Grid.Row="3" Visibility="Collapsed" Margin="24,0,24,8" Padding="12,8" ColumnSpacing="8" CornerRadius="8" Background="{ThemeResource ContentBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1">
+   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
    <TextBlock x:Name="SelectionCountText" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" AutomationProperties.AutomationId="LibrarySelectionCount" AutomationProperties.LiveSetting="Polite" l:Localize.Text="已选择 0 项" />
-   <StackPanel x:Name="ContextActions" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
+   <views:TagFlowPanel x:Name="ContextActions" Grid.Column="1" HorizontalSpacing="6" VerticalSpacing="6" Margin="12,0,0,0" MaximumItemWidth="320">
     <Button x:Name="SelectAllButton" Style="{StaticResource SubtleButtonStyle}" Click="OnSelectAll" AutomationProperties.AutomationId="SelectAll"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="全选" /></StackPanel></Button>
     <Button x:Name="RecognizeSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRecognize" IsEnabled="False" AutomationProperties.AutomationId="RecognizeSelected" l:Localize.Name="识别所选作品"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="识别所选" /></StackPanel></Button>
     <Button x:Name="BatchEditButton" Style="{StaticResource SubtleButtonStyle}" Click="OnBatch" IsEnabled="False" AutomationProperties.AutomationId="BatchEdit" l:Localize.Name="批量编辑所选作品"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock l:Localize.Text="批量编辑" /></StackPanel></Button>
-    <Button x:Name="RemoveSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRemoveSelected" IsEnabled="False" AutomationProperties.AutomationId="RemoveSelected" Content="移除所选" />
+    <Button x:Name="RemoveSelectedButton" Style="{StaticResource SubtleButtonStyle}" Click="OnRemoveSelected" IsEnabled="False" AutomationProperties.AutomationId="RemoveSelected" AutomationProperties.Name="移除所选作品"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="" FontSize="14" /><TextBlock Text="移除所选" /></StackPanel></Button>
     <TextBlock x:Name="SelectionHint" Style="{StaticResource MetadataTextStyle}" VerticalAlignment="Center" Margin="8,0,0,0" l:Localize.Text="Shift+单击选择范围 · Esc 退出" />
-   </StackPanel>
-   <Button Grid.Column="2" Click="OnSelectionDone" AutomationProperties.AutomationId="SelectionDone" l:Localize.Content="完成" l:Localize.Name="完成选择" />
+   </views:TagFlowPanel>
+   <Button x:Name="SelectionDoneButton" Grid.Column="2" VerticalAlignment="Center" Click="OnSelectionDone" AutomationProperties.AutomationId="SelectionDone" l:Localize.Content="完成" l:Localize.Name="完成选择" />
   </Grid>
   <Grid x:Name="BooksViewport" Grid.Row="4">
    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
    <ProgressBar Grid.RowSpan="2" IsIndeterminate="True" Height="2" VerticalAlignment="Top" Canvas.ZIndex="1" Visibility="{x:Bind Visible(ViewModel.IsSearching), Mode=OneWay}" l:Localize.Name="正在更新书架" />
-    <!-- Sticky name header matches the poster/name rows. Other sort keys remain in the sort menu. -->
-    <Grid x:Name="ListHeader" Height="36" Margin="24,0,24,0" Padding="12,0,28,0" ColumnSpacing="16" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1" Visibility="Collapsed">
-     <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-     <HyperlinkButton Grid.Column="1" Tag="name" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" l:Localize.Name="按名称排序"><TextBlock x:Name="HeaderName" Style="{StaticResource CaptionTextBlockStyle}" l:Localize.Text="名称" /></HyperlinkButton>
+    <!-- Sticky column headers match the poster/metadata rows; secondary columns hide on narrow viewports. -->
+    <Grid x:Name="ListHeader" Height="36" Margin="24,0,24,0" Padding="12,0,12,0" ColumnSpacing="16" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1" Visibility="Collapsed" SizeChanged="OnListHeaderSizeChanged">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /><ColumnDefinition Width="84" /><ColumnDefinition Width="68" /><ColumnDefinition Width="88" /><ColumnDefinition Width="104" /></Grid.ColumnDefinitions>
+     <HyperlinkButton x:Name="HeaderNameButton" Grid.Column="1" Tag="name" Click="OnHeaderSort" Padding="0" Foreground="{ThemeResource TextSecondaryBrush}" l:Localize.Name="按名称排序"><TextBlock x:Name="HeaderName" Style="{StaticResource CaptionTextBlockStyle}" l:Localize.Text="名称" /></HyperlinkButton>
+     <TextBlock x:Name="HeaderStatus" Grid.Column="2" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center" l:Localize.Text="状态" />
+     <HyperlinkButton x:Name="HeaderRatingButton" Grid.Column="3" Tag="rating" Click="OnHeaderSort" Padding="0" HorizontalAlignment="Right" Foreground="{ThemeResource TextSecondaryBrush}" l:Localize.Name="按我的评分排序"><TextBlock x:Name="HeaderRating" Style="{StaticResource CaptionTextBlockStyle}" l:Localize.Text="评分" /></HyperlinkButton>
+     <HyperlinkButton x:Name="HeaderPlayTimeButton" Grid.Column="4" Tag="playtime" Click="OnHeaderSort" Padding="0" HorizontalAlignment="Right" Foreground="{ThemeResource TextSecondaryBrush}" l:Localize.Name="按游玩时长排序"><TextBlock x:Name="HeaderPlayTime" Style="{StaticResource CaptionTextBlockStyle}" l:Localize.Text="游玩时长" /></HyperlinkButton>
+     <HyperlinkButton x:Name="HeaderLastPlayedButton" Grid.Column="5" Tag="recent" Click="OnHeaderSort" Padding="0" HorizontalAlignment="Right" Foreground="{ThemeResource TextSecondaryBrush}" l:Localize.Name="按最近游玩排序"><TextBlock x:Name="HeaderLastPlayed" Style="{StaticResource CaptionTextBlockStyle}" l:Localize.Text="最近游玩" /></HyperlinkButton>
    </Grid>
    <!-- Bounded viewport; ItemsWrapGrid / ItemsStackPanel stay virtualized; the inactive source remains null. -->
    <GridView x:Name="GameGrid" Grid.Row="1" Padding="18,0,18,24" SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnItemClick" ItemTemplate="{StaticResource CardTemplate}" ItemContainerStyle="{StaticResource CardContainerStyle}" PreviewKeyDown="OnItemsPreviewKey" SelectionChanged="OnItemSelectionChanged" ContainerContentChanging="OnContainerChanging" SizeChanged="OnGridSizeChanged" AutomationProperties.AutomationId="LibraryGrid" l:Localize.Name="游戏网格">

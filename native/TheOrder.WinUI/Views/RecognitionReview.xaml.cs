@@ -11,7 +11,14 @@ public sealed partial class RecognitionReview : UserControl, IImageHost
     {
         ViewModel = viewModel; Images = images; InitializeComponent(); RemoteRichFacts.Images = images; ManualIdBox.KeyDown += OnManualKey;
         CandidateList.AddHandler(PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnCandidateWheel), true);
+        SizeChanged += (_, e) =>
+        {
+            var narrow = e.NewSize.Width < 460;
+            Grid.SetRow(ManualApplyButton, narrow ? 1 : 0);
+            Grid.SetColumn(ManualApplyButton, narrow ? 0 : 1);
+        };
     }
+    public Visibility ShowText(string? value) => !string.IsNullOrWhiteSpace(value) ? Visibility.Visible : Visibility.Collapsed;
     private void OnCandidateWheel(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(CandidateList).Properties;

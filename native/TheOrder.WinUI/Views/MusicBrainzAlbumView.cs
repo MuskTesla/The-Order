@@ -56,8 +56,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         AutomationProperties.SetAutomationId(showTracks, "MusicAlbumShowTracks"); AutomationProperties.SetAutomationId(tracksSection, "MusicAlbumTracks");
         title.FontWeight = FontWeights.SemiBold; type.Opacity = choiceReason.Opacity = .75; credits.Visibility = Visibility.Collapsed;
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
+        cover.ImageCornerRadius = 7;
+        var coverFrame = new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = cover };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
-        header.Children.Add(cover);
+        header.Children.Add(coverFrame);
         var info = new StackPanel { Spacing = 8, Children = { type, title, artist, variant, label, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
         actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(showTracks); actions.Children.Add(editions);
         confirmActions.Children.Add(confirm); confirmActions.Children.Add(chooseAgain);
@@ -165,7 +167,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             card.Children.Add(Text(13, string.Join(" · ", evidence.Evidence)));
             var preview = Button("查看此发行版与曲目"); AutomationProperties.SetAutomationId(preview, "MusicEdition-" + candidate.Id);
             preview.Click += async (_, _) => { if (model is not null) await model.PreviewAsync(candidate.Id); }; card.Children.Add(preview);
-            candidates.Children.Add(new Border { CornerRadius = new(8), Padding = new(16), Background = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"], Child = card });
+            candidates.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["SurfaceStyle"], Padding = new(16), Child = card });
         }
     }
     private void RenderDiscs(MusicBrainzAlbum? album)
@@ -292,7 +294,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     public void Deactivate() { active = false; generation++; startPending = false; model?.Deactivate(); cover.SourceKey = null; coverKey = null; requestedCover = null; ring.IsActive = false; }
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; }
     private const string TrackTemplate = """
-    <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:TheOrder.WinUI.Views"><Grid Padding="0,7" ColumnSpacing="10">
+    <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:TheOrder.WinUI.Views"><Grid Padding="0,7" ColumnSpacing="10" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
       <TextBlock Text="{Binding Number}" VerticalAlignment="Top" Opacity="0.7"/>
       <views:TagFlowPanel Grid.Column="1" HorizontalSpacing="14" VerticalSpacing="4" MaximumItemWidth="700" CenterInlineItems="False">
