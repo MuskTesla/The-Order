@@ -21,6 +21,66 @@ public sealed partial class MainWindow
     {
         if (visualFixtureTimer is null || fixtureDirectory is null || Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test) throw new InvalidOperationException();
         var action = request.GetProperty("action").GetString();
+        if (action == "p1PagesInspect")
+        {
+            if (p1Dialog is not null || ViewModel.IsDirty) throw new InvalidOperationException("Clean Test workspace required.");
+            var value = request.GetProperty("value").GetString();
+            if (value == "scan-demo")
+            {
+                var parent = Directory.GetParent(Program.Profile.Root) ?? throw new InvalidOperationException();
+                if (parent.Name != "argon-pages-20261014") throw new InvalidOperationException("Bounded visual fixture root required.");
+                var scanRoot = Path.Combine(parent.FullName, "synthetic-new-games");
+                await Navigate(TheOrder.Presentation.WorkspacePage.Import);
+                await files.ScanAsync(scanRoot);
+            }
+            else if (value == "online-demo")
+            {
+                await Navigate(TheOrder.Presentation.WorkspacePage.Online);
+                online.Query = "CLANNAD";
+                await online.SearchAsync();
+            }
+            else if (value == "library-select-first")
+            {
+                if (ViewModel.Page != TheOrder.Presentation.WorkspacePage.Library) throw new InvalidOperationException();
+                libraryPage.SetSelectionModeTest(true);
+                var list = P1Elements(libraryPage).OfType<ListViewBase>().Single(l => l.Name == (ViewModel.Layout == "list" ? "GameList" : "GameGrid"));
+                if (list.Items.Count == 0) throw new InvalidOperationException("Test library must contain a row.");
+                list.SelectedItems.Add(list.Items[0]);
+            }
+            else if (value is "settings-api" or "settings-api-close" or "settings-token" or "settings-token-close")
+            {
+                if (ViewModel.Page != TheOrder.Presentation.WorkspacePage.Settings) throw new InvalidOperationException();
+                var controls = P1Elements(settingsPage).OfType<FrameworkElement>().ToArray();
+                if (value is "settings-api" or "settings-api-close") controls.OfType<Expander>().Single(e => e.Name == "ApiKeyPanel").IsExpanded = value == "settings-api";
+                else
+                {
+                    // Existing editor-open action only: no token input, network authorization or persistence.
+                    var button = controls.OfType<Button>().Single(b => AutomationProperties.GetAutomationId(b) == (value == "settings-token-close" ? "BangumiCloseEditor" : "BangumiAuthorize"));
+                    var peer = FrameworkElementAutomationPeer.CreatePeerForElement(button) ?? new ButtonAutomationPeer(button);
+                    if (peer.GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException();
+                    invoke.Invoke();
+                }
+            }
+            else if (value is "settings-top" or "settings-online" or "settings-bangumi" or "settings-backups" or "settings-update")
+            {
+                if (ViewModel.Page != TheOrder.Presentation.WorkspacePage.Settings) throw new InvalidOperationException();
+                var controls = P1Elements(settingsPage).OfType<FrameworkElement>().ToArray();
+                var scroll = controls.OfType<ScrollViewer>().Single(s => s.Content is FrameworkElement { Name: "SettingsColumn" });
+                FrameworkElement? section = value switch
+                {
+                    "settings-online" => controls.Single(e => e.Name == "NextMoeSection"),
+                    "settings-bangumi" => controls.Single(e => e.Name == "BangumiSection"),
+                    "settings-backups" => controls.Single(e => e.Name == "AutomaticBackup"),
+                    "settings-update" => controls.Single(e => e.Name == "UpdateSection"),
+                    _ => null
+                };
+                var y = section?.TransformToVisual((UIElement)scroll.Content).TransformPoint(new Windows.Foundation.Point()).Y ?? 0;
+                scroll.ChangeView(null, Math.Max(0, y - 12), null, true);
+            }
+            else if (value == "clear-notice") NoticeBar.IsOpen = false;
+            else throw new InvalidDataException("Unknown bounded page inspection.");
+            await Task.Delay(200);
+        }
         if (action == "p1DetailsInspect")
         {
             // Read-only inspection of the isolated Test page. Invoke existing edit controls
@@ -47,13 +107,15 @@ public sealed partial class MainWindow
                 if (peer.GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException();
                 invoke.Invoke(); await Task.Delay(200);
             }
-            else if (value is "top" or "tags" or "characters")
+            else if (value is "top" or "tags" or "characters" or "review" or "review-manual")
             {
                 var scroll = controls.OfType<ScrollViewer>().Single(s => s.Name == "DetailsScroll");
                 var y = 0d;
                 if (value != "top")
                 {
-                    var heading = controls.OfType<TextBlock>().Single(t => t.Text == (value == "tags" ? "标签" : "角色"));
+                    FrameworkElement heading = value == "review-manual" ? controls.Single(t => t.Name == "ManualActions")
+                        : value == "review" ? controls.Single(t => t.Name == "ReviewSection")
+                        : controls.OfType<TextBlock>().Single(t => t.Text == (value == "tags" ? "标签" : "角色"));
                     y = heading.TransformToVisual((UIElement)scroll.Content).TransformPoint(new Windows.Foundation.Point()).Y - 12;
                 }
                 scroll.ChangeView(null, Math.Max(0, y), null, true);
@@ -204,7 +266,7 @@ public sealed partial class MainWindow
         }
         FrameworkElement? fixtureView = p1Dialog is not null ? p1Dialog : libraryPage.ContextPresenterFixture() is { } presenter ? presenter
             : ViewModel.Page == TheOrder.Presentation.WorkspacePage.Installations ? installationsPage : ViewModel.Page == TheOrder.Presentation.WorkspacePage.Import ? importPage
-            : ViewModel.Page == TheOrder.Presentation.WorkspacePage.Details ? detailsPage : libraryPage;
+            : ViewModel.Page == TheOrder.Presentation.WorkspacePage.Details ? detailsPage : PageContent.Content as FrameworkElement ?? libraryPage;
         var elements = P1Elements(fixtureView).OfType<FrameworkElement>().Take(2000).Select(x => new
         {
             type = x.GetType().Name, id = AutomationProperties.GetAutomationId(x), visible = x.Visibility.ToString(),

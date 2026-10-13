@@ -1,5 +1,15 @@
 # 开发与维护
 
+## Argon 主页面扩展候选（2026-10-14）
+
+继续使用 `D:/Projects/The-Order-worktrees/argon-details-20261014`／`codex/argon-details-20261014`，扩展基线 `113bfbf`，产品提交 `52f5f39f267239515799e992567f84b708507d85`。最终 UI 产物为 **`.artifacts/argon-pages-20261014/gpt-publish-accepted/`**；它是独立候选，没有部署到正式目录。原当前开发工作区、继承修改及上一轮详情页均已核验保留，综合 Gate 为 CONDITIONAL PASS，完整判断、模型评价与未验范围在原 `docs/ai/BRIEF.md` 顶部。
+
+`.artifacts/argon-pages-20261014/Start-IsolatedTest.ps1` 支持 `-PublishName gpt-publish-accepted -RunName <新的短名字>`。它检查 `test-profile-v2` 的 Test manifest、拒绝复用控制输出目录，设置独立数据根、`PROFILE_KIND=Test`、`FIXTURE_PROFILE=0`、诊断关闭、受限 visual fixture、公开目录与合成更新源，然后启动候选。`Control.ps1 -Control <本轮目录> -Action exit` 通过既有退出流程释放 profile，不强杀。该入口供后续可选评审，不能把未设置隔离环境的 EXE 当作新的正式入口。
+
+GPT 夹具新增动作仅限原 Test／visual 机制：固定合成文件夹扫描但不导入、公开 CLANNAD 搜索、首项选择、设置固定分区滚动与空授权编辑器展开／收起、历史核对及手动编号定位。不可保存凭据、应用建议、启动游戏或接受任意路径。`accepted-source-manifest.json` 保存实际最终源码哈希；`tests/gpt-final.trx` 为415／0／0（17秒）。最终占位图标纠错后独立重建并复拍缺图／选择／搜索，未重复无相关风险的长回归。实际 UI 记录 `after-final/`、`after-accepted/`，9组图片对照 `screenshots-review-final.html`。
+
+Gemini CLI 使用精确模型/HIGH出站校验、精确读写路径与固定 Build／Test／Inspect 命令，不是操作系统沙箱。终端后台；本轮第二整改的第一次 CLI 启动无响应，日志保留，显式空标准输入与 `GEMINI_CLI_NO_RELAUNCH=1` 后重试成功，没有改用其他模型或放宽权限。工具未读写正式私有 profile；授权的正式窗口截图在 `user-input/`，正常程序自身运行写入不作字节未变声明。
+
 ## Argon 详情页隔离视觉候选（2026-10-14）
 
 本次候选在 `D:/Projects/The-Order-worktrees/argon-details-20261014`／`codex/argon-details-20261014`，沿用当前未发布原 worktree 的完整源码快照，不是从历史 Electron 主目录重新开发。视觉提交 `642d086e8bd16cf218fed45be57d7e4c6c4aa0c8` 只含 7 个展示文件；继承快照 `22806dcf4c6cde1a236e9223cc5e696d80fdb999` 不应整包集成。最终构建位于 `.artifacts/argon-details-20261014/gpt-publish-final/`，工程及真实 UI 验收范围见原 `docs/ai/BRIEF.md` 顶部。Gate 为 CONDITIONAL PASS，未获合并／安装／发布授权。
