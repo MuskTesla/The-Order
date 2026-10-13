@@ -15,13 +15,13 @@ internal sealed record RelatedWorksBrowseState(bool Complete, BangumiRelationKin
 public sealed class BangumiRelatedView : StackPanel, IDisposable
 {
     private const int PageSize = 24;
-    private readonly TextBlock heading = new() { FontSize = 22, Text = "关联作品" };
+    private readonly TextBlock heading = new() { FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Text = "关联作品" };
     private readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, FontSize = 13 };
     private readonly ProgressRing progress = new() { Width = 18, Height = 18 };
     private readonly Button reload = new() { Content = "刷新关联", MinHeight = 32 };
     private readonly Button cancel = new() { Content = "取消读取", MinHeight = 32 };
-    private readonly Button all = new() { Content = "查看全部关联作品", HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly Button more = new() { Content = "显示更多", HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly Button all = new() { Content = "查看全部关联作品", HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new(6) };
+    private readonly Button more = new() { Content = "显示更多", HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new(6) };
     private readonly Button overview = new() { Content = "概览", MinHeight = 32, CornerRadius = new(6) };
     private readonly TagFlowPanel actions = new() { HorizontalSpacing = 8, VerticalSpacing = 6 };
     private readonly TagFlowPanel filters = new() { HorizontalSpacing = 8, VerticalSpacing = 6 };
@@ -227,12 +227,18 @@ public sealed class BangumiRelatedView : StackPanel, IDisposable
         foreach (var kind in Kinds)
         {
             var items = page.Where(x => x.Kind == kind).ToArray(); if (items.Length == 0) continue;
-            var block = new StackPanel { Spacing = 8 }; var head = new TagFlowPanel { HorizontalSpacing = 12 };
+            var block = new StackPanel { Spacing = 8 }; var head = new TagFlowPanel { HorizontalSpacing = 10 };
             head.Children.Add(new TextBlock { Text = KindName(kind), FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
             if (!complete)
             {
                 var count = rows.Count(x => x.Kind == kind);
-                var browse = new HyperlinkButton { Content = $"查看全部 {count} 项", Padding = new Thickness(0) };
+                var browse = new HyperlinkButton
+                {
+                    Content = $"查看全部 {count} 项",
+                    FontSize = 13,
+                    Opacity = count > items.Length ? 0.92 : 0.68,
+                    Padding = new Thickness(0)
+                };
                 browse.Click += (_, _) => { Select(kind); FocusFirst(); }; head.Children.Add(browse);
             }
             block.Children.Add(head);
@@ -254,15 +260,23 @@ public sealed class BangumiRelatedView : StackPanel, IDisposable
     {
         var revision = item.Bangumi is not null ? shown?.FetchedAtUtc.ToString("O") ?? "related" : catalogWork?.FetchedAt ?? "related";
         var picture = new CoverPresenter { Pipeline = images!, SourceKey = registry?.Register(item.CoverUrl, revision), PreserveEntireImage = true, ImageCornerRadius = 4 };
-        var grid = new Grid { Width = 256, ColumnSpacing = 10, Height = 90 };
+        var grid = new Grid { Width = 256, ColumnSpacing = 12, Height = 90 };
         grid.ColumnDefinitions.Add(new() { Width = new GridLength(62) }); grid.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
-        grid.Children.Add(new Border { Width = 62, Height = 86, Child = picture, VerticalAlignment = VerticalAlignment.Top });
-        var text = new StackPanel { Spacing = 3 };
+        grid.Children.Add(new Border
+        {
+            Width = 62,
+            Height = 86,
+            CornerRadius = new CornerRadius(5),
+            Background = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["SubtleFillColorSecondaryBrush"],
+            Child = picture,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var text = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock { Text = item.Title, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.Wrap, FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        text.Children.Add(new TextBlock { Text = item.Label, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12 });
-        text.Children.Add(new TextBlock { Text = item.Provider, FontSize = 11, Opacity = .65 });
+        text.Children.Add(new TextBlock { Text = item.Label, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 12, Opacity = .82 });
+        text.Children.Add(new TextBlock { Text = item.Provider, FontSize = 11, Opacity = .60 });
         Grid.SetColumn(text, 1); grid.Children.Add(text);
-        var button = new Button { Content = grid, Padding = new Thickness(10,8,10,8), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var button = new Button { Content = grid, Padding = new Thickness(10, 8, 10, 8), CornerRadius = new CornerRadius(8), HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetAutomationId(button, item.Bangumi is { } bgm ? "BangumiRelatedSubject" + bgm.Id : "NextMoeRelatedWork" + item.Id);
         AutomationProperties.SetName(button, $"{item.Title}，{KindName(item.Kind)}，{item.Label}，查看详情");
         ToolTipService.SetToolTip(button, item.Title + "\n" + item.Label + " · " + item.Provider);

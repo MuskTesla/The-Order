@@ -82,6 +82,8 @@ public sealed partial class DetailsPage : Page, IImageHost
             HeroPlate.RequestedTheme = brush is null ? ElementTheme.Default
                 : HeroStage.Polarity == StagePolarity.Deepen ? ElementTheme.Dark : ElementTheme.Light;
             HeroFacts.SetTextForeground(brush);
+            if (brush is null) HeroPersonalDivider.ClearValue(Border.BackgroundProperty);
+            else HeroPersonalDivider.Background = brush;
             foreach (var text in new[] { HeroTitle, HeroStatusText, HeroRatingText, HeroPlayText, LastPlayedText, PersonalLabelsText })
                 if (brush is null) text.ClearValue(TextBlock.ForegroundProperty); else text.Foreground = brush;
         };
@@ -160,8 +162,17 @@ public sealed partial class DetailsPage : Page, IImageHost
     {
         // Reflow the existing controls; drafts, launch state and image ownership stay in place.
         var narrow = e.NewSize.Width < 720;
-        DetailsColumn.Padding = narrow ? new Thickness(16, 8, 16, 16) : new Thickness(32, 12, 32, 24);
+        DetailsColumn.Padding = narrow ? new Thickness(16, 8, 16, 16) : new Thickness(32, 12, 32, 28);
+        TopHeaderBar.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : GridLength.Auto;
+        Grid.SetColumn(HeroActions, narrow ? 0 : 1);
+        Grid.SetRow(HeroActions, narrow ? 1 : 0);
+        HeroActions.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         var compactEditor = e.NewSize.Width < 600;
+        EditorCard.Padding = compactEditor ? new Thickness(16, 16, 16, 16) : new Thickness(24, 20, 24, 20);
+        EditorHeader.ColumnDefinitions[1].Width = compactEditor ? new GridLength(0) : GridLength.Auto;
+        Grid.SetColumn(EditorHeaderActions, compactEditor ? 0 : 1);
+        Grid.SetRow(EditorHeaderActions, compactEditor ? 1 : 0);
+        EditorHeaderActions.ColumnDefinitions[0].Width = compactEditor ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
         PersonalFields.ColumnDefinitions[1].Width = compactEditor ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         PersonalFields.ColumnDefinitions[2].Width = compactEditor ? new GridLength(0) : GridLength.Auto;
         Grid.SetColumn(RatingEditor, compactEditor ? 0 : 1); Grid.SetRow(RatingEditor, compactEditor ? 1 : 0);
@@ -185,7 +196,7 @@ public sealed partial class DetailsPage : Page, IImageHost
         var frame = BannerFrameLayout.ArtworkFrame(HeroFrame, HeroStage, heroArtwork);
         var compact = frame.Width < 560; var dense = frame.Height is > 0 and < 340;
         HeroTitleLayout.Fit(HeroTitle, HeroPlate, frame.Width, compact, dense);
-        HeroStatusText.FontSize = HeroRatingText.FontSize = compact ? 12 : dense ? 13 : 15;
+        HeroStatusText.FontSize = HeroRatingText.FontSize = compact ? 12 : 13;
         HeroFacts.Dense = dense;
         HeroFacts.Compact = compact;
         BannerFrameLayout.Apply(HeroFrame, HeroStage, HeroLayout, HeroPlate, heroArtwork);
@@ -198,6 +209,7 @@ public sealed partial class DetailsPage : Page, IImageHost
     public Visibility HasInstallations(int count) => count > 0 ? Visibility.Visible : Visibility.Collapsed;
     public Visibility NoInstallations(int count) => count == 0 ? Visibility.Visible : Visibility.Collapsed;
     public Visibility ActionVisible(bool enabled) => enabled ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility TextVisible(string? text) => !string.IsNullOrWhiteSpace(text) ? Visibility.Visible : Visibility.Collapsed;
     // The accent slot shows 启动游戏 unless the existing launch state asks for confirmation (then 确认启动位置).
     public Visibility LaunchVisible(int installations, bool confirm) => installations > 0 && !confirm ? Visibility.Visible : Visibility.Collapsed;
     // Saved rating only; the editor's in-progress text never reaches the hero.

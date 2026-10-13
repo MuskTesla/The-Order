@@ -52,6 +52,7 @@ public sealed partial class DetailsPage
         else RichCatalog.SetWork(detail.Metadata, detail.Personal.Name, collapseFacts: true);
         SetHeroArtwork(null);
         CatalogReadStatus.Text = ""; RetryCatalog.Visibility = Visibility.Collapsed;
+        CatalogStatusRow.Visibility = Visibility.Collapsed;
         if (detail?.Metadata is { } work && presentations is not null && registry is not null && IsLoaded) _ = LoadCatalogAsync(work);
         else if (detail is not null && personalBanners is not null && IsLoaded) _ = LoadPersonalBannerOnlyAsync(detail.Id);
         else heroPresentation.SetPending(false);
@@ -116,6 +117,7 @@ public sealed partial class DetailsPage
         var gameId = ViewModel.Draft?.Source.Id;
         bool Accept() => IsLoaded && generation == catalogGeneration && !token.IsCancellationRequested && auth == authGeneration?.Invoke() && ViewModel.Draft?.Source.Id == gameId && ViewModel.Draft?.Source.Metadata?.Id == saved.Id;
         CatalogReadStatus.Text = UiText.Get("正在补充目录资料…"); RetryCatalog.Visibility = Visibility.Collapsed;
+        CatalogStatusRow.Visibility = Visibility.Visible;
         try
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -132,6 +134,7 @@ public sealed partial class DetailsPage
             SourceLinks.ItemsSource = CandidateDetailLinks.From(work).Select(l => new DetailSourceLink(l.Title, l.Url)).ToArray();
             CatalogReadStatus.Text = work.Presentation?.IntroSource is "kungal" or "curated" ? UiText.Get("KunGal 目录资料") : UiText.Get("KunGal 目录 · ") + CatalogContentView.SiteName(work.Presentation?.IntroSource ?? "") + UiText.Get(" 资料");
             if (!cached.Prepared) CatalogReadStatus.Text += UiText.Get(" · 图片正在后台准备");
+            CatalogStatusRow.Visibility = Visibility.Visible;
             var choice = personalKey is null ? cached.Banner : new BannerChoice(personalKey, "", 1, "local", saved.Id);
             SetHeroArtwork(choice);
             if (refresh) presentations.Queue([saved.Id]);
@@ -140,8 +143,8 @@ public sealed partial class DetailsPage
                 choice is null ? UiText.Get("尚无合适横图；保留简洁背景") : choice.Kind == "local" ? UiText.Get("个人本地横幅 · 原图") : choice.ReferenceTitle is { } sourceTitle ? UiText.Get("横幅 CG · ") + sourceTitle + UiText.Get("（关联版本）") : UiText.Get("本版本横幅 CG") });
         }
         catch (OperationCanceledException) { }
-        catch (OnlineException e) { if (Accept()) { CatalogReadStatus.Text = UiText.Get("已保留本地资料。") + e.Message; RetryCatalog.Visibility = Visibility.Visible; } }
-        catch (Exception e) { if (Accept()) { App.TraceVisualFailure(e); CatalogReadStatus.Text = UiText.Get("已保留本地资料，在线补充未完成。"); RetryCatalog.Visibility = Visibility.Visible; } }
+        catch (OnlineException e) { if (Accept()) { CatalogReadStatus.Text = UiText.Get("已保留本地资料。") + e.Message; RetryCatalog.Visibility = Visibility.Visible; CatalogStatusRow.Visibility = Visibility.Visible; } }
+        catch (Exception e) { if (Accept()) { App.TraceVisualFailure(e); CatalogReadStatus.Text = UiText.Get("已保留本地资料，在线补充未完成。"); RetryCatalog.Visibility = Visibility.Visible; CatalogStatusRow.Visibility = Visibility.Visible; } }
         finally { if (Accept()) heroPresentation.SetPending(false); }
     }
     private Task OpenCatalogAsync(CatalogEntityRef entity) => OpenCatalogWithRelationAsync(entity, null);
