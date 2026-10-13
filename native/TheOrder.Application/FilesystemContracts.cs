@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 
 namespace TheOrder.Application;
@@ -26,7 +27,7 @@ public interface IFilesystemIdentity
 public sealed record ExistingInstallation(string GameId, string GameName, string InstallationId, string Folder);
 public sealed record ObservedInstallation(ExistingInstallation Installation, PathPreflight Path);
 public enum DuplicateStatus { NotChecked, ConfirmedUnique, ConfirmedDuplicate, Indeterminate }
-public sealed class CandidateStaleException() : Exception("候选身份在核对后已变化，请重新扫描或重新核对；未提交任何安装。");
+public sealed class CandidateStaleException() : Exception(UiText.Get("候选身份在核对后已变化，请重新扫描或重新核对；未提交任何安装。"));
 public sealed record InstallationPreflight(PathPreflight Path, ExistingInstallation? Duplicate = null, bool Overlap = false)
 {
     public ImmutableArray<ObservedInstallation> Unresolved { get; init; } = [];
@@ -59,16 +60,16 @@ public sealed class InstallationPreflightService(IFilesystemIdentity filesystem)
             var sameString = string.Equals(candidate.Observation!.DisplayPath, Normalize(known.Folder), StringComparison.OrdinalIgnoreCase);
             if (sameString && !other.IsValid || other.IsValid && other.Observation!.Identity == candidate.Observation.Identity)
                 return new(candidate with { Status = sameString ? PreflightStatus.DuplicateExistingInstall : PreflightStatus.SameTargetViaAlias,
-                    Message = $"此目录已属于「{known.GameName}」，请核对已有安装。" }, known);
+                    Message = UiText.Format($"此目录已属于「{known.GameName}」，请核对已有安装。") }, known);
             if (other.IsValid && (Within(candidate.Observation.FinalPath, other.Observation!.FinalPath) || Within(other.Observation.FinalPath, candidate.Observation.FinalPath)))
-                return new(candidate with { Status = PreflightStatus.DuplicateExistingInstall, Message = $"目录与「{known.GameName}」的安装范围重叠。" }, known, true);
+                return new(candidate with { Status = PreflightStatus.DuplicateExistingInstall, Message = UiText.Format($"目录与「{known.GameName}」的安装范围重叠。") }, known, true);
             if (!other.IsValid) unresolved.Add(record);
         }
         if (unresolved.Count > 0)
             return new(candidate with { Status = PreflightStatus.DuplicateIndeterminate,
-                Message = "无法确认是否重复，未允许自动导入。请恢复以下历史安装的访问后重新检查：\n" +
+                Message = UiText.Get("无法确认是否重复，未允许自动导入。请恢复以下历史安装的访问后重新检查：\n") +
                     string.Join("\n", unresolved.Take(3).Select(r => $"{r.Installation.Folder} · {r.Path.Message}")) +
-                    (unresolved.Count > 3 ? $"\n另有 {unresolved.Count - 3} 个无法确认的安装。" : "") }) { Unresolved = unresolved.ToImmutable() };
+                    (unresolved.Count > 3 ? UiText.Format($"\n另有 {unresolved.Count - 3} 个无法确认的安装。") : "") }) { Unresolved = unresolved.ToImmutable() };
         return new(candidate);
     }
     private static string Normalize(string path) { try { return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)); } catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return path; } }
@@ -83,7 +84,7 @@ public sealed class InstallationPreflightService(IFilesystemIdentity filesystem)
         if (!actual.IsValid || !SameObservation(snapshot, actual.Observation!))
         {
             if (reviewedCandidate) throw new CandidateStaleException();
-            throw new InvalidDataException("目录在检查后发生变化，未提交安装关系。请重新扫描或选择。");
+            throw new InvalidDataException(UiText.Get("目录在检查后发生变化，未提交安装关系。请重新扫描或选择。"));
         }
     }
 }

@@ -112,6 +112,26 @@ public sealed class AppLifecycleWindowsTests(ITestOutputHelper output)
         await fixture.Stop(); // Fixture's normal stop-file protocol; never terminate a game process.
         output.WriteLine("real Windows process survived host disposal; same Session recovered once; offline gap excluded; normal fixture exit requested.");
     }
+    [Fact]
+    public async Task ThemeBrandIconsAreReusedAndRetiredAcrossTwentyLifetimes()
+    {
+        await Sta(() => {
+            var hwnd = CreateWindowEx(0,"STATIC","The Order icon fixture",0,0,0,0,0,(IntPtr)(-3),IntPtr.Zero,IntPtr.Zero,IntPtr.Zero);
+            try {
+                var asset=Path.Combine(AppContext.BaseDirectory,"material-fixtures","Brand.png");
+                using(var warm=WindowsBrandIcons.LoadAsync(asset).GetAwaiter().GetResult()) { warm.Apply(hwnd,true); WindowsBrandIcons.Detach(hwnd); }
+                using var process=Process.GetCurrentProcess();var user=GetGuiResources(process.Handle,1);var gdi=GetGuiResources(process.Handle,0);
+                for(int n=0;n<20;n++) {
+                    using var owner=WindowsBrandIcons.LoadAsync(asset).GetAwaiter().GetResult();
+                    Assert.NotEqual(IntPtr.Zero,owner.Small(true)); Assert.NotEqual(owner.Small(true),owner.Small(false));
+                    for(int k=0;k<10;k++) { owner.Apply(hwnd,k%2==0); Assert.Equal(owner.Small(k%2==0),SendMessage(hwnd,0x7F,0,0)); }
+                    WindowsBrandIcons.Detach(hwnd); Assert.Equal(IntPtr.Zero,SendMessage(hwnd,0x7F,0,0));
+                }
+                Assert.True(GetGuiResources(process.Handle,1)<=user+2); Assert.True(GetGuiResources(process.Handle,0)<=gdi+2);
+                output.WriteLine($"20 brand owners / 200 theme assignments: USER {user}->{GetGuiResources(process.Handle,1)}, GDI {gdi}->{GetGuiResources(process.Handle,0)}.");
+            } finally { DestroyWindow(hwnd); }
+        });
+    }
     private static Task Sta(Action action)
     {
         var result = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

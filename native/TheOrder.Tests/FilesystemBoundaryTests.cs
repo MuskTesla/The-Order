@@ -191,6 +191,34 @@ public sealed class FilesystemBoundaryTests
         if (deeper) { Assert.Contains("深度限制", result.Message); Assert.NotEqual("未发现候选游戏。", result.Message); }
     }
 
+    [Theory][InlineData("setup.exe")][InlineData("start.cmd")][InlineData("bin/game64.exe")]
+    public async Task ImportDoesNotTreatOneRecognitionExeAsTheOnlyLaunchFile(string extra)
+    {
+        using var lab = new Lab(); var path = lab.Game("game", "game.exe");
+        var second = Path.Combine(path, extra.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(second)!); File.WriteAllText(second, "synthetic non executable");
+        var persistence = new CountingPersistence(Codec.Encode([], Time)); await using var client = Client(persistence); await client.LoadAsync(default);
+        var files = Files(client, new WindowsFilesystemIdentity()); var scanned = await files.ScanAsync(path, null, default);
+        Assert.Single(Assert.Single(scanned.Candidates).Executables);
+        Assert.True((await files.ImportAsync(scanned.Candidates, default)).IsCommitted);
+        var install = Assert.Single(Assert.Single(Codec.Decode(persistence.Bytes)).Installations);
+        Assert.Null(install.Executable);
+        var choices = await new LaunchFileDiscovery(new WindowsFilesystemIdentity(), new WindowsScanFilesystem()).ReadAsync(install.Folder);
+        Assert.False(choices.Partial); Assert.Equal(2, choices.Choices.Length);
+    }
+    [Fact] public async Task LauncherOnlyFolderImportsAndDefersItsSingleScriptWithoutExecution()
+    {
+        using var lab = new Lab(); var path = lab.Game("script-only", "start.cmd");
+        var original = File.ReadAllBytes(Path.Combine(path, "start.cmd"));
+        var persistence = new CountingPersistence(Codec.Encode([], Time)); await using var client = Client(persistence); await client.LoadAsync(default);
+        var files = Files(client, new WindowsFilesystemIdentity()); var scanned = await files.ScanAsync(path, null, default);
+        Assert.Equal(ScanStatus.Completed, scanned.Status); Assert.Equal("start.cmd", Path.GetFileName(Assert.Single(Assert.Single(scanned.Candidates).Executables)));
+        Assert.True((await files.ImportAsync(scanned.Candidates, default)).IsCommitted);
+        var installation = Assert.Single(Assert.Single(Codec.Decode(persistence.Bytes)).Installations); Assert.Null(installation.Executable);
+        var choices = await new LaunchFileDiscovery(new WindowsFilesystemIdentity(), new WindowsScanFilesystem()).ReadAsync(installation.Folder);
+        Assert.False(choices.Partial); Assert.Equal("start.cmd", Assert.Single(choices.Choices).Label);
+        Assert.Equal(original, File.ReadAllBytes(Path.Combine(path, "start.cmd")));
+    }
     private static ScanCandidate Candidate(string root)
     {
         var observation = new WindowsFilesystemIdentity().Inspect(root).Observation!;

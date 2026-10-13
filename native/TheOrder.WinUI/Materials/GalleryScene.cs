@@ -1,3 +1,4 @@
+using TheOrder.Application;
 namespace TheOrder.WinUI.Materials;
 
 // The same finite Gallery content, expressed as drawing commands. This is not
@@ -22,7 +23,7 @@ internal sealed record GalleryScene(uint Background, IReadOnlyList<GalleryPrimit
             case 0:
                 for (var row = 0; row < 8; row++)
                     items.Add(new(1, 10 + row % 2 * 30, 14 + row * 46, row % 2 == 0 ? 24 : 16, 0, 0xff141619,
-                        "GLASS  光学边缘  ガラス  0123456789  —  The Order", 600));
+                        UiText.Get("GLASS  光学边缘  ガラス  0123456789  —  The Order"), 600));
                 for (var i = 0; i < 18; i++) Rect(18 + i * 61, 0, i % 2 == 0 ? 2 : 1, Height, 0xff181a1d);
                 break;
             case 1:

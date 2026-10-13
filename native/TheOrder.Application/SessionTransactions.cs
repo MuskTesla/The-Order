@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using TheOrder.Domain;
 
@@ -16,7 +17,7 @@ public sealed partial class TransactionalLibrary
         lock (admission)
         {
             ObjectDisposedException.ThrowIf(closing || disposed, this);
-            if (sessionEngineOwned) throw new SessionConflictException("此 writer 已有会话引擎。");
+            if (sessionEngineOwned) throw new SessionConflictException(UiText.Get("此 writer 已有会话引擎。"));
             sessionEngineOwned = true; return new EngineLease(this);
         }
     }
@@ -33,7 +34,7 @@ public sealed partial class TransactionalLibrary
             AssertSessionIdentity(identity, installationId);
             if (current.Access != LibraryAccess.ValidWritable) throw new LibraryReadOnlyException(current.ReadOnlyReason!);
             if (pendingOwnedSessions.Count != 0 || current.Entries.Any(e => e.Sessions.Any(s => s.Native is { IsTerminal: false })))
-                throw new LaunchValidationException(LaunchOutcome.AlreadyRunning, "已有自有会话待处理，没有启动第二个程序。");
+                throw new LaunchValidationException(LaunchOutcome.AlreadyRunning, UiText.Get("已有自有会话待处理，没有启动第二个程序。"));
             cancellation.ThrowIfCancellationRequested();
             var result = create();
             if (result is IObservedProcess) pendingOwnedSessions[identity.GameId] = installationId;
@@ -106,7 +107,7 @@ public sealed partial class TransactionalLibrary
             var next = after.FirstOrDefault(g => g.Id == e.Id);
             if (next is null || forceNewGeneration == e.Id || bindings.Any(id => e.Installations.FirstOrDefault(i => i.Id == id) != next.Installations.FirstOrDefault(i => i.Id == id))
                 || !e.Installations.Select(i => i.Id).Order().SequenceEqual(next.Installations.Select(i => i.Id).Order()))
-                throw new SessionConflictException("请先处理此游戏的活动会话，再删除、合并或更换安装。");
+                throw new SessionConflictException(UiText.Get("请先处理此游戏的活动会话，再删除、合并或更换安装。"));
         }
     }
 

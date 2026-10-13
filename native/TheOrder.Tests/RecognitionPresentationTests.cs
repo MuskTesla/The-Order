@@ -18,6 +18,34 @@ public sealed class RecognitionPresentationTests
     private static WorkspaceViewModel Workspace(Lab lab) => new(lab.Offline, new Preferences(), new(lab.Profile.Root), new LegacyClientTextRules());
     private static RecognitionViewModel Vm(Lab lab, WorkspaceViewModel workspace) => new(lab.Offline, lab.Queue, lab.Reviews, lab.Catalog, new Covers(), lab.Credentials.AuthContext, workspace);
 
+    [Fact] public async Task EmbeddedReviewUsesNewestSuggestionRatherThanOldestStaleOne()
+    {
+        await using var lab = new Lab(); await lab.Init(); var old = await lab.Recognize();
+        await lab.Library.UpdateAsync("a", new() { Name = "星空の航路 特別版" }); await lab.Reviews.RefreshValidityAsync(default);
+        var latest = await lab.Recognize(); Assert.NotEqual(old, latest);
+        await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace);
+        vm.SelectForGame("a"); Assert.Equal(latest, vm.SelectedId);
+    }
+    [Fact] public async Task StaleChosenCandidateIsRecheckedAndLaterPersonalEditsSurvive()
+    {
+        await using var lab = new Lab(); await lab.Init(); var old = await lab.Recognize();
+        lab.Reader.Hash = new('b', 64); lab.Queue.MarkStale(old, "synthetic historical suggestion"); await lab.Reviews.FlushAsync();
+        Assert.Equal(RecognitionReviewStatus.Stale, Assert.Single(lab.Reviews.Snapshot).Status);
+        await lab.Library.UpdateAsync("a", new() { Notes = "later personal note", Rating = 8, Favorite = true });
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        vm.Select(old); vm.SelectCandidate("200"); Assert.False(vm.CanApply); Assert.True(vm.CanConfirmSelection);
+        await vm.ConfirmSelectionAsync(); Assert.True(vm.LastDecision?.IsCommitted);
+        var entry = Assert.Single(lab.Library.Snapshot.Entries); Assert.Equal("200", entry.Metadata?.Id); Assert.Equal("later personal note", entry.Notes); Assert.Equal(8, entry.PersonalRating); Assert.True(entry.Favorite);
+    }
+    [Fact] public async Task RecheckNeverSubstitutesAnUnchosenCandidateWhenOldCandidateDisappears()
+    {
+        await using var lab = new Lab(); await lab.Init(); var old = await lab.Recognize();
+        lab.Reader.Hash = new('c', 64); lab.Queue.MarkStale(old, "synthetic historical suggestion"); await lab.Reviews.FlushAsync();
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        vm.Select(old); vm.SelectCandidate("200"); lab.Catalog.Works = [Work("201")];
+        await vm.ConfirmSelectionAsync(); Assert.Null(Assert.Single(lab.Library.Snapshot.Entries).Metadata); Assert.False(vm.LastDecision?.IsCommitted ?? false);
+    }
+
     [Fact] public async Task StableRefreshRetainsCardsAndIgnoreClearsRemoteDetails()
     {
         await using var lab = new Lab(); await lab.Init(); var id = await lab.Recognize();
@@ -68,11 +96,31 @@ public sealed class RecognitionPresentationTests
         await using var lab = new Lab(); await lab.Init(); var id = await lab.Recognize();
         await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace); vm.Select(id);
         lab.Catalog.Detail = (_, _) => Task.FromResult(Work() with { WebUrl = "https://vndb.org/v200" });
-        await vm.OpenDetailsAsync("200"); Assert.Single(vm.RemoteLinks);
+        await vm.OpenDetailsAsync("200"); Assert.Collection(vm.RemoteLinks, l=>Assert.Equal("KunGal",l.Title), l=>Assert.Equal("VNDB",l.Title));
         await lab.Credentials.ClearAsync(default); vm.RefreshIfDirty(); Assert.Empty(vm.RemoteLinks);
         var deferred = new TaskCompletionSource<TheOrder.Domain.WorkMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
         lab.Catalog.Detail = (_, _) => deferred.Task;
         var pending = vm.OpenDetailsAsync("200"); await vm.IgnoreAsync();
         deferred.SetResult(Work() with { WebUrl = "https://vndb.org/v200" }); await pending; Assert.Empty(vm.RemoteLinks);
+    }
+    [Fact] public async Task EmbeddedReviewSelectionCannotLeakIntoAnotherGame()
+    {
+        await using var lab = new Lab(); await lab.Init(); var id = await lab.Recognize();
+        await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace);
+        vm.SelectForGame("a"); Assert.True(vm.HasSelection); Assert.Equal("a", vm.SelectedGameId);
+        var delayed = new TaskCompletionSource<TheOrder.Domain.WorkMetadata>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lab.Catalog.Detail = (_,_) => delayed.Task; var old = vm.OpenDetailsAsync("200");
+        vm.SelectForGame("other"); Assert.False(vm.HasSelection);
+        delayed.SetResult(Work() with { WebUrl = "https://vndb.org/v200" }); await old;
+        Assert.Empty(vm.RemoteLinks); Assert.Null(vm.RemoteCoverKey);
+        vm.SelectForGame("a"); Assert.True(vm.HasSelection); vm.SelectForGame(null); Assert.False(vm.HasSelection);
+    }
+    [Fact] public async Task AutomaticImportsRespectOfflineSetting()
+    {
+        await using var lab = new Lab(); await lab.Init();
+        await using var workspace = Workspace(lab); await using var vm = Vm(lab, workspace);
+        vm.UseOnline = false; await vm.StartUnidentifiedAsync();
+        await lab.Queue.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0, lab.Catalog.DetailCalls); Assert.Null(lab.Library.Snapshot.Entries[0].Metadata);
     }
 }

@@ -12,10 +12,12 @@ namespace TheOrder.WinUI.Startup;
 
 internal static class Composition
 {
-    public static NativeHost Create()
+    public static NativeHost Create(LanguageSettings languages, LanguagePreferencesStore languageStore)
     {
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables("THE_ORDER_NATIVE_").Build();
         var services = new ServiceCollection();
+        services.AddSingleton(languages);
+        services.AddSingleton<ILanguagePreferencesStore>(_ => languageStore);
         services.AddLogging(builder =>
         {
             builder.AddDebug().SetMinimumLevel(LogLevel.Information);
@@ -24,10 +26,22 @@ internal static class Composition
         var nativeConfiguration = Program.Profile?.Configuration(configuration["DIAGNOSTICS"] == "1")
             ?? new NativeConfiguration(configuration["DATA_DIR"], configuration["DIAGNOSTICS"] == "1");
         services.AddSingleton(nativeConfiguration);
+        services.AddSingleton<GitHubUpdateFeed>();
+        var fixtureUpdates = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+            && configuration["VISUAL_TEST"] == "1" && configuration["UPDATE_FIXTURE"] == "1";
+        services.AddSingleton<IAppUpdateFeed>(p => fixtureUpdates ? new SyntheticUpdates() : p.GetRequiredService<GitHubUpdateFeed>());
+        services.AddSingleton<WindowsUpdatePackages>();
+        services.AddSingleton<IAppUpdatePackages>(p => p.GetRequiredService<WindowsUpdatePackages>());
+        services.AddSingleton<IAppUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton(p => new AppUpdateViewModel(p.GetRequiredService<IAppUpdateFeed>(), p.GetRequiredService<IAppUpdatePackages>(),
+            p.GetRequiredService<IAppUpdateInstaller>(), typeof(App).Assembly.GetName().Version!.ToString(3)));
         services.AddSingleton<IMaterialPreferencesStore, MaterialPreferencesStore>();
         services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();
         services.AddSingleton<OfflineLibraryClient>();
+        services.AddSingleton<ILibraryBackupStore, WindowsLibraryBackupStore>();
+        services.AddSingleton<LibraryBackupService>();
+        services.AddSingleton<LibraryBackupViewModel>();
         services.AddSingleton<IFilesystemIdentity, WindowsFilesystemIdentity>();
         services.AddSingleton<ILaunchLibrary, OfflineLaunchLibrary>();
         services.AddSingleton<ILaunchPositionStore, IsolatedLaunchPositionStore>();
@@ -45,6 +59,16 @@ internal static class Composition
         services.AddSingleton(p => new LaunchViewModel(p.GetRequiredService<ILaunchLibrary>(), p.GetRequiredService<AppSessionHost>()));
         services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();
         services.AddSingleton<BoundedScanner>();
+        services.AddSingleton<ILibrarySourcesStore, WindowsLibrarySourcesStore>();
+        services.AddSingleton<ISteamLibraryScanner>(p => new WindowsSteamLibraryScanner(p.GetRequiredService<IFilesystemIdentity>(),
+            p.GetRequiredService<BoundedScanner>(), p.GetRequiredService<ITitleIndex>()));
+        services.AddSingleton<LibrarySourcesService>();
+        services.AddSingleton<WindowsLibrarySourcesWatcher>();
+        services.AddSingleton<WindowsLocalResources>();
+        services.AddSingleton<LibraryExtrasClient>();
+        services.AddSingleton<IDirectMetadataSource>(p => new DirectMetadataSources(p.GetRequiredService<PublicArtworkNetwork>().Client, p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<MetadataSourceClient>();
+        services.AddSingleton<LaunchFileDiscovery>();
         services.AddSingleton<IRasterCodec, WindowsRasterCodec>();
         services.AddSingleton<OfflineFilesClient>();
         services.AddSingleton<LocalCoverSources>();
@@ -55,23 +79,70 @@ internal static class Composition
             services.AddSingleton(_ => new SyntheticOnline(configuration["ONLINE_SLOW_CONNECTION"] == "1", configuration["RECOGNITION_FIXTURE"] == "1", configuration["RECOGNITION_BOUNDARY_FIXTURE"] == "1"));
         }
         var fixtureCredentials = fixtureOnline && configuration["ONLINE_REAL_STORE"] != "1";
-        services.AddSingleton(p => new AuthenticatedCredentials(
+        var fixturePersonal = fixtureOnline && Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test
+            && configuration["VISUAL_TEST"] == "1" && configuration["PERSONAL_FIXTURE"] == "1";
+        if (fixturePersonal) services.AddSingleton<SyntheticNextMoe>();
+        services.AddSingleton<INextMoeAuthStore, WindowsNextMoeAuthStore>();
+        services.AddSingleton<NextMoeAccountNetwork>();
+        services.AddSingleton<INextMoeOAuth>(p => fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new NextMoeOAuth(p.GetRequiredService<NextMoeAccountNetwork>().Client));
+        services.AddSingleton<IOAuthSystemBrowser, WindowsOAuthSystemBrowser>();
+        services.AddSingleton<IOAuthLogin>(p => fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new WindowsOAuthLogin(p.GetRequiredService<IOAuthSystemBrowser>()));
+        services.AddSingleton(p => new NextMoeAuthentication(
             fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>(),
-            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>()));
-        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<AuthenticatedCredentials>());
-        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<AuthenticatedCredentials>());
+            fixtureCredentials ? p.GetRequiredService<SyntheticOnline>() : p.GetRequiredService<IsolatedCredentialStore>(),
+            p.GetRequiredService<INextMoeAuthStore>(), p.GetRequiredService<INextMoeOAuth>(), p.GetRequiredService<IOAuthLogin>()));
+        services.AddSingleton<ICredentialSettings>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<ICredentialProvider>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<INextMoeAccess>(p => p.GetRequiredService<NextMoeAuthentication>());
+        services.AddSingleton<NextMoeRateCoordinator>();
         services.AddSingleton<CatalogNetwork>();
         services.AddSingleton<ImageNetwork>();
+        services.AddSingleton<PublicArtworkNetwork>();
+        services.AddSingleton<BangumiAccessContext>();
+        services.AddSingleton<IBangumiCredentialStore, WindowsBangumiCredentialStore>();
+        services.AddSingleton<IBangumiAccountProvider>(p => new BangumiAccountProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
+        services.AddSingleton<IBangumiOAuthBrowser, WindowsBangumiOAuthBrowser>();
+        services.AddSingleton<IBangumiOAuth>(p => new BangumiOAuthProvider(p.GetRequiredService<PublicArtworkNetwork>().Client,
+            p.GetRequiredService<IBangumiOAuthBrowser>(), BangumiOAuthDefaults.Service));
+        services.AddSingleton<BangumiAuthorization>();
+        services.AddSingleton<BangumiSettingsViewModel>();
+        services.AddSingleton(p => new BangumiRelationsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiRelationsProvider>(p => p.GetRequiredService<BangumiRelationsProvider>());
+        services.AddSingleton<IRelatedSemanticReader>(p => p.GetRequiredService<BangumiRelationsProvider>());
+        services.AddSingleton<IBangumiSubjectDetailsProvider>(p => new BangumiSubjectDetailsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiSubjectDetailsReader>(p => new BangumiSubjectDetailsService(p.GetRequiredService<IBangumiSubjectDetailsProvider>(), access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IMusicBrainzProvider>(p => new MusicBrainzProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
+        services.AddSingleton<IMusicBrainzCache, IsolatedMusicBrainzCache>();
+        services.AddSingleton<IMusicBrainzReader, MusicBrainzService>();
+        services.AddSingleton<IBangumiRelationsCache, IsolatedBangumiRelationsCache>();
+        services.AddSingleton(p => new BangumiRelationsService(p.GetRequiredService<IBangumiRelationsProvider>(), p.GetRequiredService<IBangumiRelationsCache>(), access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiRelationsReader>(p => p.GetRequiredService<BangumiRelationsService>());
         // Explicit isolated Test images must not depend on the diagnostic text UI.
         // Production/Development profiles never select this synthetic transport.
         var performanceImages = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["PERFORMANCE_COVERS"] is not null;
         if (performanceImages) services.AddSingleton<PerformanceImageFixture>();
-        services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/")));
+        services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/"), rate: fixtureOnline ? null : p.GetRequiredService<NextMoeRateCoordinator>()));
         services.AddSingleton(p => new NextMoeCatalog(p.GetRequiredService<CatalogTransport>(), clock: fixtureOnline ? () => p.GetRequiredService<SyntheticOnline>().Now : null));
         services.AddSingleton<IOnlineCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton<IEntityCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton<IContentFilteredCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton<CatalogBrowsePolicy>();
+        services.AddSingleton<CatalogBrowseClient>();
+        services.AddSingleton<ICatalogBrowsePreferencesStore, CatalogBrowsePreferencesStore>();
+        services.AddSingleton<CatalogBrowseSettings>();
         services.AddSingleton<OnlineCoverSelectionClient>();
         services.AddSingleton<IRecognitionCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
-        services.AddSingleton(p => p.GetRequiredService<AuthenticatedCredentials>().AuthContext);
+        services.AddSingleton(p => p.GetRequiredService<NextMoeAuthentication>().AuthContext);
+        services.AddSingleton<IPersonalSyncStore, WindowsPersonalSyncStore>();
+        services.AddSingleton<IPersonalSyncLibrary, PersonalSyncLibrary>();
+        var readOnlyAcceptance = Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && configuration["READ_ONLY_OAUTH_ACCEPTANCE"] == "1";
+        services.AddSingleton<INextMoePersonalApi>(p => {
+            INextMoePersonalApi api = fixturePersonal ? p.GetRequiredService<SyntheticNextMoe>() : new NextMoePersonalApi(p.GetRequiredService<CatalogNetwork>().Client,
+                p.GetRequiredService<INextMoeAccess>(), p.GetRequiredService<NextMoeRateCoordinator>());
+            return readOnlyAcceptance ? new ReadOnlyPersonalApi(api) : api;
+        });
+        services.AddSingleton<PersonalSyncCoordinator>();
+        services.AddSingleton<NextMoeSettingsViewModel>();
         services.AddSingleton<ILocalEvidenceParser, LocalEvidenceParser>();
         services.AddSingleton<IExecutableEvidenceParser, ExecutableEvidenceParser>();
         services.AddSingleton<IRecognitionEvidenceReader>(p => new WindowsRecognitionEvidence(p.GetRequiredService<ILocalEvidenceParser>(), RecognitionFingerprint.Evidence, p.GetRequiredService<IExecutableEvidenceParser>()));
@@ -86,14 +157,29 @@ internal static class Composition
             p.GetRequiredService<IRecognitionReviewStorage>(), p.GetRequiredService<IRecognitionReviewCodec>(), p.GetRequiredService<IRecognitionEvidenceReader>(),
             p.GetRequiredService<IRecognitionRanker>(), p.GetRequiredService<IRecognitionCatalog>(), p.GetRequiredService<OnlineAuthContext>(), RecognitionFingerprint.Identity));
         services.AddSingleton<RecognitionViewModel>();
-        services.AddSingleton(p => new RemoteCoverSource(performanceImages ? p.GetRequiredService<PerformanceImageFixture>().Client : fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<ImageNetwork>().Client));
+        services.AddSingleton<IRemoteArtworkCache,IsolatedArtworkCache>();
+        services.AddSingleton(p => new RemoteCoverSource(performanceImages ? p.GetRequiredService<PerformanceImageFixture>().Client : fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<ImageNetwork>().Client,p.GetRequiredService<IRemoteArtworkCache>(),
+            fixtureOnline || performanceImages ? null : p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IRemoteCoverRegistry>(p => p.GetRequiredService<RemoteCoverSource>());
-        services.AddSingleton(p => new CombinedCoverSources(p.GetRequiredService<LocalCoverSources>(), p.GetRequiredService<OfflineLibraryClient>(), p.GetRequiredService<IRemoteCoverRegistry>(), p.GetRequiredService<RemoteCoverSource>()));
+        services.AddSingleton<IPersonalBannerStore, IsolatedPersonalBannerStore>();
+        services.AddSingleton(p => new CombinedCoverSources(p.GetRequiredService<LocalCoverSources>(), p.GetRequiredService<OfflineLibraryClient>(), p.GetRequiredService<IRemoteCoverRegistry>(), p.GetRequiredService<RemoteCoverSource>(), p.GetRequiredService<IPersonalBannerStore>()));
         services.AddSingleton<OnlineLibraryClient>();
-        services.AddSingleton<OnlineViewModel>();
+        services.AddSingleton(p => new OnlineViewModel(p.GetRequiredService<CatalogBrowseClient>(),
+            p.GetRequiredService<ICredentialSettings>(), p.GetRequiredService<IRemoteCoverRegistry>(),
+            p.GetRequiredService<OnlineLibraryClient>(), p.GetRequiredService<WorkspaceViewModel>()));
         services.AddSingleton<IThumbnailDiskCache, IsolatedThumbnailCache>();
-        services.AddSingleton(new ImageOptions());
+        services.AddSingleton(new ImageOptions(MaximumEdge: ArtworkSizing.MaximumEdge));
         services.AddSingleton<IImagePipeline, ImagePipeline>();
+        services.AddSingleton<ICatalogPresentationCache, IsolatedCatalogPresentationCache>();
+        services.AddSingleton<Func<IArtworkTextDetector>>(_ => () => new WindowsArtworkTextDetector());
+        if (!fixtureOnline && !performanceImages)
+            services.AddSingleton<IPublicArtworkSource>(p => new PublicArtworkSources(
+                new VndbArtworkSource(p.GetRequiredService<PublicArtworkNetwork>().Client,
+                    () => File.OpenRead(Path.Combine(AppContext.BaseDirectory, "data", "vndb-banner-hints.json"))),
+                new SteamArtworkSource(p.GetRequiredService<PublicArtworkNetwork>().Client, p.GetRequiredService<IImagePipeline>(), p.GetRequiredService<IRemoteCoverRegistry>())));
+        services.AddSingleton<CatalogPresentationService>();
+        services.AddSingleton<ICoverRecommendationSource>(p => p.GetRequiredService<CatalogPresentationService>());
+        services.AddSingleton<ICachedCoverRecommendationSource>(p => p.GetRequiredService<CatalogPresentationService>());
         services.AddSingleton<FilesViewModel>();
         if (nativeConfiguration.Diagnostics)
         {
@@ -116,14 +202,15 @@ internal static class Composition
         services.AddSingleton<MainWindow>();
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         // Resolution is confined to this composition root. Views and view models receive constructors.
-        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<AppSessionHost>(), provider.GetRequiredService<ILogger<NativeHost>>());
+        return new(provider, provider.GetRequiredService<MainWindow>(), provider.GetRequiredService<AppSessionHost>(), provider.GetRequiredService<IAppUpdateInstaller>(), provider.GetRequiredService<ILogger<NativeHost>>());
     }
 }
 
-internal sealed class NativeHost(ServiceProvider provider, MainWindow window, AppSessionHost sessions, ILogger<NativeHost> logger) : IAsyncDisposable
+internal sealed class NativeHost(ServiceProvider provider, MainWindow window, AppSessionHost sessions, IAppUpdateInstaller updates, ILogger<NativeHost> logger) : IAsyncDisposable
 {
     public MainWindow Window { get; } = window;
     public AppSessionHost Sessions { get; } = sessions;
+    public IAppUpdateInstaller Updates { get; } = updates;
     public void LogFatal(Exception exception) => logger.LogCritical(exception, "Native client terminated: {ExceptionType}", exception.GetType().Name);
     public void LogStarted() => logger.LogInformation("Native client started");
     public async ValueTask DisposeAsync() { await Window.StopAsync(); await Sessions.DisposeAsync(); logger.LogInformation("Native client drained"); await provider.DisposeAsync(); }

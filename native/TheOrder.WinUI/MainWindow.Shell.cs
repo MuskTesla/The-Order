@@ -8,6 +8,8 @@ using TheOrder.Presentation;
 using Windows.System;
 using Windows.UI;
 using Windows.UI.ViewManagement;
+using TheOrder.WinUI.Startup;
+using TheOrder.WinUI.Materials;
 
 namespace TheOrder.WinUI;
 
@@ -15,7 +17,7 @@ namespace TheOrder.WinUI;
 // persisted material intent, library quick launch and live Windows accent updates.
 public sealed partial class MainWindow
 {
-    // Advanced materials remain opt-in for the development integration candidate.
+    // Material choice is available in ordinary settings; Windows policy remains authoritative.
     private Views.MaterialMode materialMode = Views.MaterialMode.Standard;
     private readonly IMaterialPreferencesStore materialPreferences;
     private readonly bool controlledAdvanced;
@@ -24,13 +26,38 @@ public sealed partial class MainWindow
     private bool materialInitialized;
     private string? materialPreferenceNotice;
     private MicaBackdrop? mica;
+    private readonly WindowCapabilities windowCapabilities = WindowCapabilities.Detect();
+    private readonly WindowBackdropState windowBackdrop = new();
+    private bool customTitleBar;
+    private string? chromeWarning;
     private UISettings? colorSettings;
     private long accentEvents;
     private string accentSource = "Windows theme resources (startup)";
     private bool diagnosticsToggle;
-    private int titleSearchEditsPending;
-    private long titleSearchEditVersion;
-    private Task? titleSearchNavigation;
+
+    private void InitializeWindowChrome()
+    {
+        // Windows App SDK backports customized title bars to Win10. If the host
+        // rejects customization, retain the real system caption and its controls;
+        // the XAML title-bar content stays available as an in-window command row.
+        if (windowCapabilities.CustomTitleBar)
+        {
+            try
+            {
+                ExtendsContentIntoTitleBar = true;
+                SetTitleBar(AppTitleBar);
+                AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+                customTitleBar = true;
+            }
+            catch (Exception exception) { chromeWarning = exception.GetType().Name; }
+        }
+        if (!customTitleBar)
+        {
+            ExtendsContentIntoTitleBar = false;
+            SetTitleBar(null);
+        }
+        SessionDuration.FontFamily = SessionFlyoutDuration.FontFamily = new FontFamily(windowCapabilities.MonospaceFont);
+    }
 
     private void InitializeShellInput(bool diagnostics)
     {
@@ -38,18 +65,17 @@ public sealed partial class MainWindow
         void Accelerator(VirtualKey key, VirtualKeyModifiers modifiers, Action action)
         {
             var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
-            accelerator.Invoked += (_, args) => { args.Handled = true; if (!commandsBlocked) action(); };
+            accelerator.Invoked += (_, args) => { args.Handled = true; if (startupReady && !commandsBlocked) action(); };
             Root.KeyboardAccelerators.Add(accelerator);
         }
         Root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
-        Accelerator(VirtualKey.F, VirtualKeyModifiers.Control, () => TitleSearch.Focus(FocusState.Keyboard));
+        Accelerator(VirtualKey.F, VirtualKeyModifiers.Control, () => { if (ViewModel.Page == WorkspacePage.Library) libraryPage.OpenSearch(); else if (ViewModel.Page == WorkspacePage.Online) onlinePage.FocusSearch(); });
         Accelerator(VirtualKey.Left, VirtualKeyModifiers.Menu, () => _ = GoBackAsync());
         Accelerator(VirtualKey.GoBack, VirtualKeyModifiers.None, () => _ = GoBackAsync());
         if (diagnostics) Accelerator(VirtualKey.D, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift,
             () => DiagnosticsPanel.Visibility = DiagnosticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible);
         // Mouse back button (XButton1) goes back like Alt+Left.
-        Root.PointerPressed += (_, args) => { if (!commandsBlocked && args.GetCurrentPoint(Root).Properties.IsXButton1Pressed) { args.Handled = true; _ = GoBackAsync(); } };
-        ViewModel.PropertyChanged += OnShellState;
+        Root.PointerPressed += (_, args) => { if (startupReady && !commandsBlocked && args.GetCurrentPoint(Root).Properties.IsXButton1Pressed) { args.Handled = true; _ = GoBackAsync(); } };
         Root.ActualThemeChanged += OnCaptionThemeChanged;
         RefreshCaptionTheme();
         try { colorSettings = new UISettings(); colorSettings.ColorValuesChanged += OnSystemColorsChanged; }
@@ -58,7 +84,6 @@ public sealed partial class MainWindow
 
     private void DisposeShellInput()
     {
-        ViewModel.PropertyChanged -= OnShellState;
         Root.ActualThemeChanged -= OnCaptionThemeChanged;
         if (colorSettings is not null) { colorSettings.ColorValuesChanged -= OnSystemColorsChanged; colorSettings = null; }
     }
@@ -71,53 +96,28 @@ public sealed partial class MainWindow
         // leaving a contrast theme, even while XAML has returned to Dark.
         // Let contrast themes use the system palette, then explicitly restore
         // the live XAML theme instead of a stale OS/RequestedTheme default.
-        AppWindow.TitleBar.PreferredTheme = materialPolicy?.HighContrast == true
-            ? TitleBarTheme.Legacy
-            : Root.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
-    }
-
-    private void OnShellState(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(WorkspaceViewModel.Query)) SynchronizeTitleSearch();
-    }
-
-    // Search lives in the title bar and always drives the Library query; typing elsewhere returns to the Library.
-    private async void OnTitleSearchChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-    {
-        if (commandsBlocked || args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
-        var text = sender.Text;
-        var version = ++titleSearchEditVersion;
-        titleSearchEditsPending++;
         try
         {
-            if (ViewModel.Page != WorkspacePage.Library && !galleryVisible)
-            {
-                // All edits share the navigation (including its unsaved prompt).
-                // ShowPage must not replace a live edit with the previous query.
-                var navigation = titleSearchNavigation ??= NavigateForTitleSearchAsync();
-                await navigation;
-                if (ReferenceEquals(titleSearchNavigation, navigation)) titleSearchNavigation = null;
-            }
-            if (version != titleSearchEditVersion) return;
-            if (commandsBlocked || ViewModel.Page != WorkspacePage.Library || galleryVisible) { SynchronizeTitleSearch(); return; }
-            if (ViewModel.Query.Text != text) await ViewModel.SetQueryAsync(ViewModel.Query with { Text = text });
+            // Win10's system caption colors are OS-owned; do not assume that
+            // AppWindow color customization behaves like Win11. HC is OS-owned too.
+            AppWindow.TitleBar.PreferredTheme = !windowCapabilities.CaptionTheme || materialPolicy?.HighContrast == true
+                ? TitleBarTheme.Legacy
+                : Root.ActualTheme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
         }
-        catch (Exception) { ViewModel.ReportUnexpected(); }
-        finally { if (--titleSearchEditsPending == 0) SynchronizeTitleSearch(); }
-    }
-    private async Task NavigateForTitleSearchAsync()
-    {
-        // Search returns to a new result set, not the old Details anchor.
-        // If the unsaved prompt cancels navigation, retain the original Back intent.
-        var restorePending = libraryPage.CancelReturnRestorationForSearch();
-        try { await Navigate(WorkspacePage.Library); }
-        finally { if (ViewModel.Page != WorkspacePage.Library) libraryPage.RestoreCancelledReturnIntent(restorePending); }
-    }
-    private void OnTitleSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
-    { if (!commandsBlocked && ViewModel.Page == WorkspacePage.Library && !galleryVisible) libraryPage.FocusResults(); }
-    private void SynchronizeTitleSearch()
-    {
-        if (titleSearchEditsPending == 0 && TitleSearch is not null && TitleSearch.Text != ViewModel.Query.Text) TitleSearch.Text = ViewModel.Query.Text;
+        catch (Exception exception) { chromeWarning ??= exception.GetType().Name; }
+        // TitleBar's BitmapIcon visual retained its initial foreground in a real
+        // Light-theme check. Explicit black/light pixels avoid that copy boundary.
+        var dark = Root.ActualTheme == ElementTheme.Dark;
+        try {
+            if (materialPolicy?.HighContrast == true && colorSettings is not null) {
+                var foreground=colorSettings.GetColorValue(UIColorType.Foreground);
+                dark=(foreground.R*299+foreground.G*587+foreground.B*114)>=128000;
+            }
+        } catch (Exception) { /* Keep the live theme's contrasting silhouette. */ }
+        var asset=dark?"Brand.Dark.png":"Brand.Light.png";
+        if (AppTitleBar.IconSource is not ImageIconSource brand || brand.ImageSource is not Microsoft.UI.Xaml.Media.Imaging.BitmapImage image
+            || !image.UriSource.AbsoluteUri.EndsWith(asset,StringComparison.Ordinal))
+            AppTitleBar.IconSource=new ImageIconSource { ImageSource=new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/"+asset)) };
     }
 
     private async void OnSessionDetails(object sender, RoutedEventArgs e)
@@ -163,10 +163,10 @@ public sealed partial class MainWindow
         try
         {
             var read = await materialPreferences.LoadAsync();
-            materialMode = Enum.Parse<Views.MaterialMode>(read.Preference.Mode);
+            materialMode = read.Preference.Mode == "Opaque" ? Views.MaterialMode.Standard : Enum.Parse<Views.MaterialMode>(read.Preference.Mode);
             materialReadOnly = read.ReadOnly; materialPreferenceNotice = read.Warning;
         }
-        catch (Exception) { materialMode = Views.MaterialMode.Standard; materialReadOnly = true; materialPreferenceNotice = "材质设置未能读取，已使用标准材质；原文件保留。"; }
+        catch (Exception) { materialMode = Views.MaterialMode.Standard; materialReadOnly = true; materialPreferenceNotice = UiText.Get("材质设置未能读取，已使用标准材质；原文件保留。"); }
         materialInitialized = true;
         ApplyMaterialPolicy();
     }
@@ -184,7 +184,7 @@ public sealed partial class MainWindow
             if (visualStopped) return;
             materialMode = mode; materialPreferenceNotice = null;
         }
-        catch (Exception) { materialPreferenceNotice = "材质设置未保存，已保留上次选项；请重试。"; }
+        catch (Exception) { materialPreferenceNotice = UiText.Get("材质设置未保存，已保留上次选项；请重试。"); }
         finally { settingsPage.SetMaterialSaving(false); if (!visualStopped) ApplyMaterialPolicy(); }
     }
     private Views.MaterialMode EffectiveMaterialMode => Enum.Parse<Views.MaterialMode>(MaterialActivationPolicy.Effective(
@@ -192,16 +192,20 @@ public sealed partial class MainWindow
 
     private void ApplyBackdrop(bool translucent)
     {
-        if (translucent)
+        windowBackdrop.Apply(translucent, windowCapabilities.Mica, () =>
         {
+            if (windowCapabilities.Scenario == "mica-attachment-failure-simulation")
+                throw new InvalidOperationException("TestMicaAttachmentFailure");
             if (SystemBackdrop is not MicaBackdrop) SystemBackdrop = mica ??= new MicaBackdrop();
             OpaqueCanvas.Visibility = Visibility.Collapsed;
-        }
-        else
+        }, () =>
         {
-            if (SystemBackdrop is not null) SystemBackdrop = null;
+            // Show the canvas before detaching a rejected material. A failed detach
+            // still leaves a readable, theme-correct surface, including the first frame.
             OpaqueCanvas.Visibility = Visibility.Visible;
-        }
+            try { if (SystemBackdrop is not null) SystemBackdrop = null; }
+            catch (Exception exception) { chromeWarning ??= exception.GetType().Name; }
+        });
     }
 
     // Live accent: WinUI resolves SystemAccentColor* once per process. On a Windows personalization change
@@ -276,10 +280,14 @@ public sealed partial class MainWindow
         return new
         {
             selectedId = ViewModel.SelectedId, queryText = ViewModel.Query.Text, sort = ViewModel.Query.Sort, layout = ViewModel.Layout,
-            titleBar = AppTitleBar.ActualHeight, captionTheme = AppWindow.TitleBar.PreferredTheme.ToString(), backEnabled = AppTitleBar.IsBackButtonEnabled, search = TitleSearch.Text.Length, searchFocus = TitleSearch.FocusState.ToString(),
+            titleBar = AppTitleBar.ActualHeight, captionTheme = AppWindow.TitleBar.PreferredTheme.ToString(), backEnabled = AppTitleBar.IsBackButtonEnabled, search = libraryPage.SearchLength, searchFocus = libraryPage.SearchFocus,
             paneMode = Navigation.DisplayMode.ToString(), paneOpen = Navigation.IsPaneOpen, sessionIndicator = SessionSurface.Visibility == Visibility.Visible,
             exitButtonPresent = false, accentEvents, accentSource, accentBrushUpdates, accentRgb = accent is { } a ? $"{a.R:X2}{a.G:X2}{a.B:X2}" : "framework",
-            launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle
+            launchNotice = LaunchNotice.IsOpen ? LaunchNotice.Severity.ToString() : null, diagnosticsToggle,
+            compatibility = new { hostVersion = windowCapabilities.HostVersion.ToString(), minimumBuild = TheOrder.Platform.Windows.WindowsCompatibility.MinimumBuild,
+                windowCapabilities.Scenario, customTitleBar, windowCapabilities.CaptionTheme, windowCapabilities.MonospaceFont,
+                micaSupported = windowCapabilities.Mica, backdrop = windowBackdrop.UsingMica ? "Mica" : "Solid",
+                canvasVisible = OpaqueCanvas.Visibility == Visibility.Visible, windowBackdrop.Failure, chromeWarning }
         };
     }
 }

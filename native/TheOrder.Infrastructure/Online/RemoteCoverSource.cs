@@ -6,7 +6,7 @@ namespace TheOrder.Infrastructure.Online;
 
 // Only registered API/library artwork is eligible. HTTPS public DNS destinations, no credentials/cookies,
 // no redirects, no alternate ports. DNS is checked and the checked IP is used for the actual socket.
-public sealed class RemoteCoverSource(HttpClient http) : IImageSourceProvider, IRemoteCoverRegistry
+public sealed class RemoteCoverSource(HttpClient http, IRemoteArtworkCache? disk = null, HttpClient? originalArtwork = null) : IImageSourceProvider, IRemoteCoverRegistry, IRemoteArtworkPreparation
 {
     private readonly object gate = new();
     private readonly Dictionary<string, Uri> sources = [];
@@ -28,13 +28,27 @@ public sealed class RemoteCoverSource(HttpClient http) : IImageSourceProvider, I
         Uri? uri;
         lock (gate) { if (cache.TryGetValue(key, out var hit) && hit.Until > DateTimeOffset.UtcNow) return hit.Bytes; sources.TryGetValue(key, out uri); }
         if (uri is null) return null;
+        // URL-addressed originals survive process restarts and layout/DPI changes.
+        // The disposable decoded thumbnail budget cannot evict these originals.
+        var diskKey=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(uri.AbsoluteUri)));
+        if(disk is not null)
+        {
+            try { if(await disk.ReadAsync(diskKey,cancellation).ConfigureAwait(false) is { } saved) return saved; }
+            catch(Exception e) when(e is IOException or UnauthorizedAccessException or DataIsolationException) { }
+        }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation); timeout.CancelAfter(TimeSpan.FromSeconds(20));
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+            var transport = originalArtwork is not null && (VndbArtworkSource.OriginalImageUri(uri) || SteamArtworkSource.OriginalImageUri(uri)
+                || BangumiRelationsService.ValidCoverUrl(uri.AbsoluteUri) || MusicBrainzValidation.CoverUri(uri.AbsoluteUri)) ? originalArtwork : http;
+            using var response = await ReadResponseAsync(transport, uri, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType is not ("image/jpeg" or "image/png" or "image/webp")) return null;
             var bytes = await CatalogTransport.ReadBoundedAsync(response.Content, MaximumBytes, timeout.Token).ConfigureAwait(false);
+            if(disk is not null)
+            {
+                try { await disk.WriteAsync(diskKey,bytes,timeout.Token).ConfigureAwait(false); }
+                catch(Exception e) when(e is IOException or UnauthorizedAccessException or DataIsolationException) { }
+            }
             // Decoder validates format and pixel count before allocation. Encoded cache is a separate,
             // disposable 32 MiB / 64-entry memory cache; personal covers never enter it.
             lock (gate)
@@ -47,6 +61,39 @@ public sealed class RemoteCoverSource(HttpClient http) : IImageSourceProvider, I
         }
         catch (OperationCanceledException) when (!cancellation.IsCancellationRequested) { return null; }
         catch (Exception e) when (e is HttpRequestException or OnlineException or IOException) { return null; }
+    }
+    private static async Task<HttpResponseMessage> ReadResponseAsync(HttpClient transport, Uri original, CancellationToken cancellation)
+    {
+        var uri = original;
+        // Only CAA edition-addressed artwork may redirect. Other image sources retain the no-redirect policy.
+        string? releaseId = null;
+        if (MusicBrainzValidation.CoverUri(original.AbsoluteUri))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(original.AbsolutePath, @"(?:/release/|/mbid-)([a-f0-9-]{36})/");
+            if (match.Success) releaseId = match.Groups[1].Value;
+        }
+        for (int hop = 0; ; hop++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            if (releaseId is not null) request.Headers.UserAgent.ParseAdd(MusicBrainzProvider.UserAgent);
+            var response = await transport.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
+            if (response.RequestMessage?.RequestUri is { } returned && returned != uri)
+            { response.Dispose(); throw new HttpRequestException("Unexpected artwork redirect."); }
+            if (releaseId is null || response.StatusCode is not (HttpStatusCode.MovedPermanently or HttpStatusCode.Redirect or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect)) return response;
+            var next = response.Headers.Location; response.Dispose();
+            if (hop >= 3 || next is null || !next.IsAbsoluteUri || !MusicBrainzValidation.CoverUri(next.AbsoluteUri, releaseId))
+                throw new HttpRequestException("Invalid CAA artwork redirect.");
+            uri = next;
+        }
+    }
+    public async Task<bool> EnsureCachedAsync(string key,CancellationToken cancellation)
+    {
+        var bytes=await ReadAsync(key,cancellation).ConfigureAwait(false);if(bytes is null)return false;
+        if(disk is null)return true;
+        Uri? uri;lock(gate)sources.TryGetValue(key,out uri);if(uri is null)return false;
+        var diskKey=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(uri.AbsoluteUri)));
+        try {return await disk.ReadAsync(diskKey,cancellation).ConfigureAwait(false) is not null || await disk.WriteAsync(diskKey,bytes,cancellation).ConfigureAwait(false);}
+        catch(Exception e) when(e is IOException or UnauthorizedAccessException or DataIsolationException){return false;}
     }
     public static bool IsPublic(IPAddress address)
     {

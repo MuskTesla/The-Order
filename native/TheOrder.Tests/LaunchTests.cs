@@ -262,18 +262,17 @@ internal sealed class LaunchFixture : IAsyncDisposable
     public IsolatedLaunchPositionStore Store { get; }
     public GameLaunchService Service { get; }
     public LaunchFixtureObservation? Observation { get; }
-    public LaunchFixture(bool observedHandoff = false)
+    public LaunchFixture(bool observedHandoff = false, bool syntheticSteam = false)
     {
         Game = Path.Combine(Profile.Root, "日本語 游戏 [synthetic]"); Directory.CreateDirectory(Game);
         Reports = Path.Combine(Profile.Root, "observations"); Directory.CreateDirectory(Reports);
         File.WriteAllText(Path.Combine(Reports, ".the-order-launch-fixture"), "owned fixture");
-        var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
-        var source = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../TheOrder.LaunchFixture/bin", configuration, "net10.0-windows10.0.26100.0"));
+        var source = ReferenceSources.FixtureOutput("TheOrder.LaunchFixture");
         foreach (var path in Directory.GetFiles(source)) File.Copy(path, Path.Combine(Game, Path.GetFileName(path)));
-        foreach (var name in new[] { "simple_game", "child_game", "second_game", "helper" })
+        foreach (var name in new[] { "simple_game", "child_game", "second_game", "helper", "LEProc", "Steam" })
             File.Copy(Path.Combine(source, "TheOrder.LaunchFixture.exe"), Path.Combine(Game, name + ".exe"));
         Library = new(new(new(Guid.NewGuid(), Guid.NewGuid(), "g"), [], "i"));
-        Platform = new(Identity); Store = new(new(Profile.Root));
+        Platform = new(Identity, steamClient: syntheticSteam ? () => Identity.Inspect(Path.Combine(Game, "Steam.exe"), false).Observation! : null); Store = new(new(Profile.Root));
         Observation = observedHandoff ? new(Platform, Reports) : null;
         Service = new(Library, Identity, (IGameProcessPlatform?)Observation ?? Platform, Store, new() { HandoffWindow = TimeSpan.FromSeconds(2), InitialTreeWindow = TimeSpan.FromSeconds(4), CandidateSettle = TimeSpan.FromMilliseconds(300) });
         if (Observation is not null) Service.ProcessChanged += Observation.ProcessChanged;
@@ -287,8 +286,15 @@ internal sealed class LaunchFixture : IAsyncDisposable
     }
     public async Task<JsonElement> Report(string name)
     {
-        var path = Path.Combine(Reports, name + ".json"); await Wait(() => File.Exists(path));
-        return JsonDocument.Parse(await File.ReadAllBytesAsync(path)).RootElement.Clone();
+        var path = Path.Combine(Reports, name + ".json"); var deadline = Stopwatch.StartNew();
+        while (true)
+        {
+            try { using var report = JsonDocument.Parse(await File.ReadAllBytesAsync(path)); return report.RootElement.Clone(); }
+            catch (IOException) when (deadline.Elapsed < TimeSpan.FromSeconds(15)) { }
+            catch (JsonException) when (deadline.Elapsed < TimeSpan.FromSeconds(15)) { }
+            // Creation can be observed before the fixture finishes writing its report.
+            await Task.Delay(100);
+        }
     }
     public async Task Wait(Func<bool> condition)
     {

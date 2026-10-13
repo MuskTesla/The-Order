@@ -1,4 +1,34 @@
-# The Order 0.7.1
+# The Order 1.1.0
+
+Windows 本地 Galgame 书架，使用 C# / WinUI 3 原生界面，提供简体中文。
+
+**[下载 Windows 安装版 Setup.exe（推荐）](https://github.com/Ph-Rank/The-Order/releases/download/v1.1.0/The-Order-1.1.0-Setup-x64.exe)** · [1.1.0 更新说明与附件](https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0)
+
+本地导入后自动识别作品，管理封面、简介、角色、多安装、启动、游玩记录、评分与笔记。书架支持搜索、筛选、愿望清单和单项／批量移除；识别有歧义时进入待核对队列，移除不删除游戏文件。
+
+首次使用默认匿名访问公开目录，无需填写 API。设置中可通过系统浏览器登录 NextMoe，或继续使用已有 API Key。登录与个人同步相互独立，所有同步默认关闭。
+
+1.1.0 新增可选的时长、状态与收藏夹差异预览和确认同步，云端评分独立只读。双向模式的本地时长／状态上传需要预览确认，删除不自动传播。真实云端写入及收藏夹额外授权尚未验收，使用前请核对预览；详见 [认证、同步与隐私说明](docs/release/1.1.0/AUTHENTICATION.md)。
+
+软件后台只检查更新，有新版时设置图标显示提示点；设置内可查看主要改动并点击升级。更新优先下载变化的部分，安装时跳过相同文件；条件不满足时使用完整包。
+
+面向 Windows 10 1809 x64（17763）及以上 / Windows 11 x64，运行依赖随包提供。**Windows 10 尚未完成实机或虚拟机验收**。安装前请从托盘退出程序，覆盖升级保留原生书架、设置和游玩记录，无需先卸载；卸载可选择保留或删除使用数据，默认保留。1.0.1 用户需先安装本版，以后可在软件内更新。旧 Electron 或独立试用资料不会自动迁移。
+
+[完整对应源码（含安装器）](https://github.com/Ph-Rank/The-Order/releases/download/v1.1.0/The-Order-1.1.0-source.zip) · [SHA-256 校验](https://github.com/Ph-Rank/The-Order/releases/download/v1.1.0/SHA256SUMS.txt) · [构建说明](docs/release/1.1.0/BUILD.md)
+
+安装包未签名，浏览器或 Windows 可能显示下载信誉提示；请保持系统防护开启。相关测试和未验证范围见 [发行说明](https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0)。
+
+本项目为独立开发的开源工具，不代表 Kun、NextMoe 或 PotatoVN 官方。源码采用 AGPL-3.0-or-later，第三方依赖、索引、模型和美术保留各自权利及许可，见 LICENSE、THIRD_PARTY_NOTICES.md、data 与 native/licenses。
+
+- [1.1.0 更新内容](docs/release/1.1.0/CHANGELOG.md)
+- [使用说明](docs/release/1.1.0/README.md)
+- [公开发行身份](PUBLICATION.md)
+- [旧版 1.0.1](https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.1)
+
+<details>
+<summary>历史 Electron 0.7.1 实现说明</summary>
+
+## The Order 0.7.1（历史）
 
 一个面向 Windows 的本地 Galgame 书架。界面使用 KunUI 与 Vue，桌面功能由 Electron 提供，作品资料直接读取 NextMoe API。
 
@@ -261,3 +291,5 @@ NextMoe 的一个作品条目可能聚合多个发行版本，也可能存在标
 项目以 **AGPL-3.0-or-later** 提供完整源代码。界面使用官方 KunUI 组件包，保留其开源许可与署名；分发修改版本时请一并提供相应源代码和许可文件。
 
 参见 [LICENSE](LICENSE) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。游戏资料和图片保留各自来源与权利归属。PotatoVN 是功能与架构参考；本项目实际复用了 PotatoDBMapper 的公开数据，并以转换后的标题索引随应用分发，保留其 Apache-2.0 许可证。本项目为独立应用。
+
+</details>

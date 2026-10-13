@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using System.Globalization;
 using TheOrder.Domain;
@@ -26,7 +27,7 @@ public sealed record PersistenceReceipt(string? Warning = null);
 public enum LibraryRecovery { Main, Backup, New }
 public enum LibraryAccess { InvalidInput, ValidReadOnly, ValidWritable }
 public sealed record LibraryDocument(LibraryAccess Access, ImmutableArray<LibraryEntry> Entries, byte[]? WritableBytes, string? Reason = null);
-public sealed class LibraryWriteLimitException() : InvalidOperationException("当前资料可读取，但当前 writer 无法在 32 MiB 契约内安全保存。");
+public sealed class LibraryWriteLimitException() : InvalidOperationException(UiText.Get("当前资料可读取，但当前 writer 无法在 32 MiB 契约内安全保存。"));
 public sealed class LibraryReadOnlyException(string reason) : InvalidOperationException(reason);
 public sealed record LibrarySnapshot(ImmutableArray<LibraryEntry> Entries, LibraryRecovery Recovery,
     LibraryAccess Access = LibraryAccess.ValidWritable, string? ReadOnlyReason = null);
@@ -48,7 +49,7 @@ public sealed record PersonalPatch
     public Change<string?> PreferredInstallationId { get; init; }
 }
 public sealed record RequestToken(Guid Epoch, string GameId, Guid Generation, long Request, long Revision);
-public sealed class StaleLibraryRequestException() : InvalidOperationException("条目或请求已变化，请重新开始操作。");
+public sealed class StaleLibraryRequestException() : InvalidOperationException(UiText.Get("条目或请求已变化，请重新开始操作。"));
 
 // UI-independent transaction service. All state is immutable; only this queue publishes snapshots.
 // Metadata fetching, directory authorization and game launch deliberately do not live here.
@@ -95,9 +96,9 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             // Construction/output capability must never be interpreted as input corruption.
             if (document is not null) return Create(document, (persistence as ILibraryRecoveryProvenance)?.MainRecovery ?? LibraryRecovery.Main);
             try { backup = persistence.ReadBackup(); if (backup is not null) document = Read(backup); }
-            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { throw new InvalidDataException("主文件及备份不可用；原文件已保留。", e); }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { throw new InvalidDataException(UiText.Get("主文件及备份不可用；原文件已保留。"), e); }
             if (document is not null) return Create(document, LibraryRecovery.Backup);
-            if (main is not null || mainError is not null) throw new InvalidDataException("主文件不可用且没有有效备份；原文件已保留。", mainError);
+            if (main is not null || mainError is not null) throw new InvalidDataException(UiText.Get("主文件不可用且没有有效备份；原文件已保留。"), mainError);
             return Create(new(LibraryAccess.ValidWritable, [], codec.Encode([], Now())), LibraryRecovery.New);
         }
         catch { persistence.Dispose(); throw; }
@@ -130,7 +131,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             });
         }
     }
-    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null, Func<Task>? verifyBeforeCommit = null, bool sessionMutation = false)
+    private Task<CommitResult<T>> Mutate<T>(Func<ImmutableArray<LibraryEntry>, (ImmutableArray<LibraryEntry> Entries, T Result)> operation, CancellationToken cancellation, string? forceNewGeneration = null, Action? precommit = null, Func<Task>? verifyBeforeCommit = null, bool sessionMutation = false, bool renewGenerations = false)
         => Enqueue(async () =>
         {
             if (current.Access != LibraryAccess.ValidWritable) throw new LibraryReadOnlyException(current.ReadOnlyReason!);
@@ -150,11 +151,12 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             foreach (var id in nextLifecycles.Keys.Except(validated.Select(e => e.Id)).ToArray()) nextLifecycles.Remove(id);
             foreach (var id in nextLaunchIncarnations.Keys.Except(validated.Select(e => e.Id)).ToArray()) nextLaunchIncarnations.Remove(id);
             foreach (var e in validated)
-                if (e.Id == forceNewGeneration || !nextLaunchIncarnations.ContainsKey(e.Id)
-                    || old.TryGetValue(e.Id, out var priorLaunch) && !priorLaunch.Installations.Select(i => i.Id).Order().SequenceEqual(e.Installations.Select(i => i.Id).Order()))
+                if (renewGenerations || e.Id == forceNewGeneration || !nextLaunchIncarnations.ContainsKey(e.Id)
+                    || old.TryGetValue(e.Id, out var priorLaunch) && (!priorLaunch.Installations.Select(i => i.Id).Order().SequenceEqual(e.Installations.Select(i => i.Id).Order())
+                        || e.Installations.Any(i => priorLaunch.Installations.FirstOrDefault(p => p.Id == i.Id) is { } prior && (prior.Compatibility != i.Compatibility || prior.SteamAppId != i.SteamAppId))))
                     nextLaunchIncarnations[e.Id] = Guid.NewGuid();
             foreach (var e in validated)
-                if (e.Id == forceNewGeneration || !old.TryGetValue(e.Id, out var before) || codec.EvidenceIdentity(before) != codec.EvidenceIdentity(e))
+                if (renewGenerations || e.Id == forceNewGeneration || !old.TryGetValue(e.Id, out var before) || codec.EvidenceIdentity(before) != codec.EvidenceIdentity(e))
                     nextLifecycles[e.Id] = new(Guid.NewGuid(), ++nextRevision);
             var retiredRequests = lifecycles.Where(pair => !nextLifecycles.TryGetValue(pair.Key, out var next) || next.Generation != pair.Value.Generation)
                 .Select(pair => pair.Value.Request).ToArray();
@@ -184,18 +186,8 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
         return Mutate(games =>
         {
             var incoming = codec.Decode(backup.ToArray()).Select(PortableSessionHistory).ToImmutableArray();
-            var ids = games.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
-            var workIds = games.Where(e => e.Metadata is not null).Select(e => e.Metadata!.Id).ToHashSet(StringComparer.Ordinal);
-            var folders = games.SelectMany(e => e.Installations).Select(i => codec.InstallationKey(i.Folder)).ToHashSet(StringComparer.Ordinal);
-            var result = games.ToBuilder(); int added = 0, skipped = 0;
-            foreach (var e in incoming)
-            {
-                var keys = e.Installations.Select(i => codec.InstallationKey(i.Folder)).ToArray();
-                if (ids.Contains(e.Id) || e.Metadata is { } m && workIds.Contains(m.Id) || keys.Any(folders.Contains)) { skipped++; continue; }
-                result.Add(e); ids.Add(e.Id); if (e.Metadata is not null) workIds.Add(e.Metadata.Id);
-                folders.UnionWith(keys); added++;
-            }
-            return (result.ToImmutable(), new ImportCount(added, skipped));
+            var plan = AddMissing(games, incoming);
+            return (plan.Entries, plan.Count);
         }, cancellation);
     }
     public Task<CommitResult<LibraryEntry>> AddAsync(WorkMetadata work, CancellationToken cancellation = default)
@@ -228,6 +220,15 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
         }, cancellation);
     public Task<CommitResult<bool>> DeleteAsync(string id, CancellationToken cancellation = default)
         => Mutate(games => (games.Remove(Find(games, id)), true), cancellation);
+
+    public Task<CommitResult<int>> DeleteBatchAsync(ImmutableArray<string> ids, CancellationToken cancellation = default)
+        => Mutate(games =>
+        {
+            if (ids.IsDefaultOrEmpty) throw new InvalidDataException("请选择需要移除的作品。");
+            var selected = ids.ToHashSet(StringComparer.Ordinal);
+            foreach (var id in selected) _ = Find(games, id);
+            return (games.Where(e => !selected.Contains(e.Id)).ToImmutableArray(), selected.Count);
+        }, cancellation);
     // Installation is an already-authorized value, never an instruction to scan/open/execute a path.
     public Task<CommitResult<LibraryEntry>> AddInstallationAsync(string id, Installation installation, RequestToken token, CancellationToken cancellation = default)
         => Mutate(games =>
@@ -236,7 +237,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             var key = codec.InstallationKey(installation.Folder);
             foreach (var known in games.SelectMany(g => g.Installations).Select(i => codec.InstallationKey(i.Folder)))
                 if (key == known || key.StartsWith(known.TrimEnd('\\') + "\\", StringComparison.Ordinal) || known.StartsWith(key.TrimEnd('\\') + "\\", StringComparison.Ordinal))
-                    throw new InvalidDataException("安装目录重复或范围重叠。");
+                    throw new InvalidDataException(UiText.Get("安装目录重复或范围重叠。"));
             var preferred = e.Installations.Any(i => i.Id == e.PreferredInstallationId && i.Executable is not null) ? e.PreferredInstallationId : installation.Id;
             var changed = e with { Installations = e.Installations.Add(installation), PreferredInstallationId = preferred };
             return (games.Replace(e, changed), changed);
@@ -245,7 +246,7 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
     public Task<CommitResult<LibraryEntry>> RemoveInstallationAsync(string id, string installationId, CancellationToken cancellation = default)
         => Mutate(games =>
         {
-            var e = Find(games, id); var location = e.Installations.FirstOrDefault(i => i.Id == installationId) ?? throw new InvalidDataException("安装不存在。");
+            var e = Find(games, id); var location = e.Installations.FirstOrDefault(i => i.Id == installationId) ?? throw new InvalidDataException(UiText.Get("安装不存在。"));
             var changed = e with { Installations = e.Installations.Remove(location), PreferredInstallationId = e.PreferredInstallationId == installationId ? null : e.PreferredInstallationId };
             return (games.Replace(e, changed), changed);
         }, cancellation);
@@ -329,12 +330,12 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
                         if (previous.Native is not { IsTerminal: true } a || play.Native is not { IsTerminal: true } b
                             || a.GameId != b.GameId || a.InstallationId != b.InstallationId || a.CreatedObservedAtUtc != b.CreatedObservedAtUtc
                             || a.StartedAtUtc != b.StartedAtUtc || a.Lifecycle != b.Lifecycle || a.Reason != b.Reason || a.EndedAtUtc != b.EndedAtUtc)
-                            throw new SessionConflictException("原生游玩记录冲突，未合并。");
+                            throw new SessionConflictException(UiText.Get("原生游玩记录冲突，未合并。"));
                         duplicateSeconds += Math.Min(previous.Seconds, play.Seconds); duplicateCount++;
                         if (b.Accumulated100ns > a.Accumulated100ns) sessions[index] = play;
                         continue;
                     }
-                    if (previous.StartedAt != play.StartedAt) throw new InvalidDataException("游玩记录编号冲突，未合并。");
+                    if (previous.StartedAt != play.StartedAt) throw new InvalidDataException(UiText.Get("游玩记录编号冲突，未合并。"));
                     duplicateSeconds += Math.Min(previous.Seconds, play.Seconds);
                     if (previous.Seconds > 0 && play.Seconds > 0) duplicateCount++;
                     if (play.Seconds > previous.Seconds) sessions[index] = play;
@@ -347,6 +348,9 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
                     Favorite = e.Favorite || target.Favorite, PersonalRating = e.PersonalRating ?? target.PersonalRating, Status = e.Status == "planned" ? target.Status : e.Status,
                     Notes = target.Notes.Length > 0 && target.Notes != e.Notes ? string.Join("\n\n", new[] { e.Notes, target.Notes }.Where(s => s.Length > 0)) : e.Notes,
                     Sessions = sessions.ToImmutable(), TotalPlaySeconds = e.TotalPlaySeconds + target.TotalPlaySeconds - duplicateSeconds, PlayCount = e.PlayCount + target.PlayCount - duplicateCount,
+                    ManualPlaytime = MetadataMixing.MergeLedger(e.ManualPlaytime, target.ManualPlaytime),
+                    GuidePaths = [.. e.GuidePaths.Concat(target.GuidePaths).Distinct(StringComparer.OrdinalIgnoreCase)],
+                    MetadataMix = MetadataMixing.Merge(work, e.MetadataMix, target.MetadataMix),
                     LastPlayedAt = target.LastPlayedAt is not null && (e.LastPlayedAt is null || string.CompareOrdinal(target.LastPlayedAt, e.LastPlayedAt) > 0) ? target.LastPlayedAt : e.LastPlayedAt,
                     LocalCover = inheritCover ? target.LocalCover : e.LocalCover,
                     CoverChoice = inheritCover && target.LocalCover is null && target.CoverChoice?.WorkId == work.Id ? target.CoverChoice : e.CoverChoice,
@@ -354,18 +358,22 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
                 };
                 games = games.Remove(target);
             }
-            e = e with { Metadata = work, Name = mergedName ?? (keep ? e.Name : work.Title), NameIsCustom = mergedName is not null || keep };
+            var mix = e.MetadataMix;
+            // A deliberate new association must not transplant overrides from a different work.
+            if (target is null && source.Metadata?.Id != work.Id) mix = null;
+            if (mix is not null) mix = mix with { Base = work };
+            e = e with { MetadataMix = mix, Metadata = mix is null ? work : MetadataMixing.Compose(mix), Name = mergedName ?? (keep ? e.Name : work.Title), NameIsCustom = mergedName is not null || keep };
             return (games.Replace(source, e), e);
         }, cancellation, id, verifyBeforeCommit: verifyBeforeCommit);
     }
-    private static LibraryEntry Find(ImmutableArray<LibraryEntry> entries, string id) => entries.FirstOrDefault(e => e.Id == id) ?? throw new InvalidDataException("游戏不存在。");
+    private static LibraryEntry Find(ImmutableArray<LibraryEntry> entries, string id) => entries.FirstOrDefault(e => e.Id == id) ?? throw new InvalidDataException(UiText.Get("游戏不存在。"));
     public void Dispose()
     {
         lock (admission)
         {
             if (disposed) return;
             // Compatibility for idle owners only; NEVER block a UI thread waiting for I/O.
-            if (admitted != 0 || shutdown is not null) throw new InvalidOperationException("事务仍在运行，请 await DisposeAsync / ShutdownAsync。");
+            if (admitted != 0 || shutdown is not null) throw new InvalidOperationException(UiText.Get("事务仍在运行，请 await DisposeAsync / ShutdownAsync。"));
             closing = true;
             DisposeResources();
         }

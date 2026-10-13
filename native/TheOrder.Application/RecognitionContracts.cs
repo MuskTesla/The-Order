@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using TheOrder.Domain;
@@ -34,6 +35,10 @@ public sealed record IndexCandidate(int Row,TitleIndexRecord Record,string Obser
 public interface ITitleIndex
 {
     Task<ImmutableArray<IndexCandidate>> FindAsync(ImmutableArray<string> names,CancellationToken cancellation);
+    // Exact catalog membership, never a fuzzy title match or an automatic metadata identity.
+    Task<bool> ContainsReferenceAsync(string reference, CancellationToken cancellation) => Task.FromResult(false);
+    // Bounded near-title retrieval only. These rows are never exact identity/reference proof.
+    Task<ImmutableArray<IndexCandidate>> FindSimilarAsync(ImmutableArray<string> names, CancellationToken cancellation) => Task.FromResult(ImmutableArray<IndexCandidate>.Empty);
     Task<ImmutableArray<string>> FindReadmeTitlesAsync(ImmutableArray<string> headings, CancellationToken cancellation) => Task.FromResult(ImmutableArray<string>.Empty);
 }
 public sealed record ParsedLocalEvidence(ImmutableArray<LocalTitleEvidence> Titles, ImmutableArray<ReferenceEvidence> References,
@@ -80,7 +85,7 @@ public sealed record RecognitionResult(Guid Generation, RecognitionEntrySnapshot
     public ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>> ReleaseContext { get; init; } = ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>>.Empty;
     public RecognitionResult WithoutEnrichment() => this with { Candidates = [], AuthGeneration = null,
         ReleaseContext = ImmutableDictionary<string, ImmutableArray<ReleaseIdentity>>.Empty,
-        EnrichmentUnavailable = true, EnrichmentMessage = "凭据已变化，在线候选已撤销；本地识别结果保留。" };
+        EnrichmentUnavailable = true, EnrichmentMessage = UiText.Get("凭据已变化，在线候选已撤销；本地识别结果保留。") };
 }
 public interface IRecognitionEngine
 {

@@ -8,54 +8,80 @@ using TheOrder.Application;
 
 namespace TheOrder.Platform.Windows;
 
-public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem, IProcessSnapshotSource? snapshots = null,
-    Func<int, IObservedProcess?>? openProcess = null) : IGameProcessPlatform
+public sealed partial class WindowsGameProcesses(IFilesystemIdentity filesystem, IProcessSnapshotSource? snapshots = null,
+    Func<int, IObservedProcess?>? openProcess = null, Func<PathObservation>? steamClient = null) : IGameProcessPlatform
 {
     public IObservedProcess Start(LaunchSnapshot snapshot, CancellationToken cancellation)
     {
         var leases = new List<SafeFileHandle>();
         try
         {
+            var script = snapshot.Executable.StoredPath.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase)
+                ? WindowsCommandScript.Build(LaunchExecutablePath(snapshot.Executable), snapshot.Installation.Arguments) : null;
+            var initialImage = snapshot.LocaleTool ?? (script is null ? snapshot.Executable : filesystem.Inspect(script.Interpreter, false).Observation
+                ?? throw new LaunchValidationException(LaunchOutcome.LaunchFailed, UiText.Get("Windows 命令解释器不可用，未执行脚本。")));
+            if (snapshot.Installation.Compatibility?.UseSteam == true) initialImage = SteamClient();
             // Pin lexical ancestors/reparse entries as well as final targets. Deny delete on
             // directories and deny write/delete on the exe until CreateProcess returns.
             var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var observation in new[] { snapshot.Folder, snapshot.WorkingDirectory, snapshot.Executable })
+            foreach (var observation in new[] { snapshot.Folder, snapshot.WorkingDirectory, snapshot.Executable, initialImage, snapshot.ScalingTool }.OfType<PathObservation>().Distinct())
             {
                 string? path = observation.StoredPath;
                 while (path is not null)
                 {
                     if (paths.Add(path))
                     {
-                        bool file = path == snapshot.Executable.StoredPath;
+                        bool file = !observation.IsDirectory && path == observation.StoredPath;
                         var handle = CreateFile(path, 0x80, file ? 1u : 3u, IntPtr.Zero, 3, 0x02000000 | 0x00200000, IntPtr.Zero);
-                        if (handle.IsInvalid) { var error = Marshal.GetLastWin32Error(); handle.Dispose(); throw new LaunchValidationException(error == 5 ? LaunchOutcome.AccessDenied : LaunchOutcome.StaleInstallation, "启动路径不能固定，未执行程序。"); }
+                        if (handle.IsInvalid) { var error = Marshal.GetLastWin32Error(); handle.Dispose(); throw new LaunchValidationException(error == 5 ? LaunchOutcome.AccessDenied : LaunchOutcome.StaleInstallation, UiText.Get("启动路径不能固定，未执行程序。")); }
                         leases.Add(handle);
                     }
                     path = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(path));
                 }
                 var target = CreateFile(observation.FinalPath, 0x80, observation.IsDirectory ? 3u : 1u, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
-                if (target.IsInvalid) { target.Dispose(); throw new LaunchValidationException(LaunchOutcome.StaleInstallation, "启动目标不能固定，未执行程序。"); }
+                if (target.IsInvalid) { target.Dispose(); throw new LaunchValidationException(LaunchOutcome.StaleInstallation, UiText.Get("启动目标不能固定，未执行程序。")); }
                 leases.Add(target);
             }
             var preflight = new InstallationPreflightService(filesystem);
             try { preflight.Revalidate(snapshot.Folder); preflight.Revalidate(snapshot.Executable); preflight.Revalidate(snapshot.WorkingDirectory); }
-            catch (InvalidDataException) { throw new LaunchValidationException(LaunchOutcome.StaleInstallation, "安装在启动前发生变化，未执行程序。"); }
+            catch (InvalidDataException) { throw new LaunchValidationException(LaunchOutcome.StaleInstallation, UiText.Get("安装在启动前发生变化，未执行程序。")); }
             cancellation.ThrowIfCancellationRequested();
+            preflight.Revalidate(initialImage);
             var cwd = LaunchWorkingDirectory(snapshot.WorkingDirectory);
             if (cwd.Length >= 260)
-                throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, "Windows 创建进程不支持此长度的工作目录；未更换目录，也未执行程序。");
+                throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, UiText.Get("Windows 创建进程不支持此长度的工作目录；未更换目录，也未执行程序。"));
             // Atomic scope association closes the unobserved, short-lived intermediary gap.
             // Structured arguments are encoded once for CreateProcessW, without a shell.
             var startedAt = Stopwatch.GetTimestamp();
             try
             {
-                var created = WindowsProcessLifetimeScope.Start(LaunchExecutablePath(snapshot.Executable), snapshot.Installation.Arguments, cwd);
-                return new Observed(created.Pid, created.Handle, filesystem, snapshot.Executable, startedAt, created.Scope);
+                IObservedProcess observed;
+                if (snapshot.Installation.Compatibility?.UseSteam == true) observed = StartSteam(snapshot, initialImage, startedAt, cancellation);
+                else
+                {
+                    var arguments = snapshot.LocaleTool is null ? snapshot.Installation.Arguments : ImmutableArray.Create(LaunchExecutablePath(snapshot.Executable)).AddRange(snapshot.Installation.Arguments.Select(WindowsProcessLifetimeScope.Quote));
+                    if (snapshot.Installation.Compatibility?.Administrator == true)
+                        observed = StartElevated(initialImage, arguments, cwd, script, startedAt);
+                    else
+                    {
+                        var created = WindowsProcessLifetimeScope.Start(LaunchExecutablePath(initialImage), script is null ? arguments : [], cwd, script, snapshot.Installation.Compatibility?.HighDpi == true);
+                        observed = new Observed(created.Pid, created.Handle, filesystem, initialImage, startedAt, created.Scope);
+                    }
+                }
+                // Scaling tools own no game session and never determine its lifetime.
+                if (snapshot.ScalingTool is { } scaling)
+                {
+                    string notice;
+                    try { preflight.Revalidate(scaling); if (FindExisting(scaling, 8192).IsEmpty) using (Process.Start(new ProcessStartInfo(LaunchExecutablePath(scaling)) { WorkingDirectory = Path.GetDirectoryName(scaling.StoredPath)!, UseShellExecute = false })) { } notice = "Magpie 已打开，可用其快捷键开始缩放。"; }
+                    catch { notice = "游戏已启动，Magpie 未能打开；可稍后手动启动。"; }
+                    if (observed is Observed native) native.AuxiliaryNotice = notice;
+                }
+                return observed;
             }
             catch (Win32Exception error)
             {
-                throw new LaunchValidationException(error.NativeErrorCode is 5 or 740 ? LaunchOutcome.AccessDenied : LaunchOutcome.LaunchFailed,
-                    error.NativeErrorCode == 740 ? "此程序需要提升权限；管理器不会绕过 UAC。" : "Windows 未能创建游戏进程。");
+                throw new LaunchValidationException(error.NativeErrorCode == 1223 ? LaunchOutcome.Cancelled : error.NativeErrorCode is 5 or 740 ? LaunchOutcome.AccessDenied : LaunchOutcome.LaunchFailed,
+                    error.NativeErrorCode == 1223 ? "已取消管理员授权，未启动游戏。" : error.NativeErrorCode == 740 ? UiText.Get("此程序需要提升权限；请在安装与启动设置中开启管理员启动。") : UiText.Get("Windows 未能创建游戏进程。"));
             }
         }
         finally { foreach (var handle in leases) handle.Dispose(); }
@@ -85,7 +111,7 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem, IProces
         var actual = filesystem.Inspect(normal);
         if (normal.Length >= 260 || !actual.IsValid || actual.Observation is not { IsDirectory: true } observed
             || observed.Identity != working.Identity || !string.Equals(observed.FinalPath, working.FinalPath, StringComparison.OrdinalIgnoreCase))
-            throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, "工作目录无法转换为同一身份的 Windows 启动路径，未更换目录，也未执行程序。");
+            throw new LaunchValidationException(LaunchOutcome.WorkingDirectoryInvalid, UiText.Get("工作目录无法转换为同一身份的 Windows 启动路径，未更换目录，也未执行程序。"));
         return normal;
     }
 
@@ -110,14 +136,14 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem, IProces
     public ImmutableArray<ProcessIdentity> FindExisting(PathObservation executable, int maximumProcesses)
     {
         var rows = Capture(maximumProcesses);
-        if (rows is null) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, "无法完成启动前进程检查，未重复创建程序。");
+        if (rows is null) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, UiText.Get("无法完成启动前进程检查，未重复创建程序。"));
         var result = ImmutableArray.CreateBuilder<ProcessIdentity>();
         foreach (var row in rows.Rows.Where(r => string.Equals(r.Name, Path.GetFileName(executable.StoredPath), StringComparison.OrdinalIgnoreCase)))
         {
             using var observed = Open(row.Pid);
             var value = observed?.Query();
             if (value?.State == ProcessTrackingState.Exited) continue;
-            if (value?.Identity?.ImageIdentity is null) throw new LaunchValidationException(LaunchOutcome.AccessDenied, "存在同名但无法查询的进程，请先确认游戏是否已运行。");
+            if (value?.Identity?.ImageIdentity is null) throw new LaunchValidationException(LaunchOutcome.AccessDenied, UiText.Get("存在同名但无法查询的进程，请先确认游戏是否已运行。"));
             if (value.Identity.ImageIdentity == executable.Identity) result.Add(value.Identity);
         }
         return result.ToImmutable();
@@ -158,6 +184,7 @@ public sealed class WindowsGameProcesses(IFilesystemIdentity filesystem, IProces
         private ProcessIdentity? identity;
         public int Pid { get; }
         public long? StartTimestamp { get; }
+        public string? AuxiliaryNotice { get; set; }
         public Observed(int pid, SafeProcessHandle handle, IFilesystemIdentity filesystem, PathObservation? expected = null, long? startedAt = null, WindowsProcessLifetimeScope? scope = null)
         { Pid = pid; this.handle = handle; this.filesystem = filesystem; this.expected = expected; StartTimestamp = startedAt; this.scope = scope; }
         public IProcessLifetimeScope? RetainLifetimeScope() => scope?.Retain();

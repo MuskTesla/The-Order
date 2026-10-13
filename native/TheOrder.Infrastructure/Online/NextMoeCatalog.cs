@@ -6,7 +6,7 @@ using static TheOrder.Infrastructure.Online.RemoteWorkDto;
 
 namespace TheOrder.Infrastructure.Online;
 
-public sealed partial class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IRecognitionCatalog
+public sealed partial class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IRecognitionCatalog, IEntityCatalog, ICatalogCoverSource
 {
     private readonly object gate = new();
     private sealed record CachedDetail(WorkMetadata Work, DateTimeOffset Until, int Bytes, long AuthGeneration);
@@ -62,7 +62,7 @@ public sealed partial class NextMoeCatalog(CatalogTransport transport, bool incl
                 if (!visited.Add(current)) throw new OnlineException(OnlineFailure.MergeLoop);
                 try
                 {
-                    var p = Parameters(); p["include"] = "titles,refs,links,intros,covers,companies,ratings,tags,characters";
+                    var p = Parameters(); p["include"] = "titles,refs,relations,links,intros,covers,screenshots,companies,ratings,tags,characters,credits,engines,series";
                     using var body = await transport.GetAsync("catalog/works/" + current, p, scope).ConfigureAwait(false);
                     var work = new RemoteWorkDto(body.RootElement).Map(includeExplicit, Now);
                     if (!string.Equals(work.Id, current, StringComparison.Ordinal)) throw new OnlineException(OnlineFailure.InvalidResponse);
@@ -97,6 +97,26 @@ public sealed partial class NextMoeCatalog(CatalogTransport transport, bool incl
     {
         var p = Parameters(); p["limit"] = "1"; using var body = await transport.GetAsync("catalog/works", p, scope).ConfigureAwait(false); RequireList(body.RootElement); return true;
     }, cancellation);
+    public Task<ImmutableDictionary<string,string?>> CoversAsync(ImmutableArray<string> ids, CancellationToken cancellation)
+    {
+        if(ids.IsDefault || ids.Length is <1 or >100 || ids.Any(id=>!ValidId(id))) throw new OnlineException(OnlineFailure.InvalidRequest);
+        return transport.Operation(scope=>ReadCoversAsync(ids,scope),cancellation);
+    }
+    // Shared operation scope preserves the original credential generation, timeout and
+    // cancellation when a compact appearance/credit list needs its missing artwork.
+    private async Task<ImmutableDictionary<string,string?>> ReadCoversAsync(ImmutableArray<string> ids,RequestBudget scope)
+    {
+        var p=Parameters();p["ids"]=string.Join(',',ids.Distinct(StringComparer.Ordinal));p["include"]="covers";p["limit"]="100";
+        using var response=await transport.GetAsync("catalog/works",p,scope).ConfigureAwait(false);
+        RequireList(response.RootElement,100);var result=ImmutableDictionary.CreateBuilder<string,string?>();
+        foreach(var row in Rows(response.RootElement,"items"))
+        {
+            var id=Text(row,"id");
+            if(!ids.Contains(id)||KunGalGalgameId(row) is null) continue; // No merged identities, other media or unclaimed pages.
+            var work=new RemoteWorkDto(row).Map(includeExplicit,Now);result[id]=work.CoverUrl;
+        }
+        return result.ToImmutable();
+    }
     private static void RequireList(JsonElement root, int maximum = int.MaxValue)
     { var rows = Field(root, "items"); if (Text(root, "object") != "list" || rows.ValueKind != JsonValueKind.Array || rows.GetArrayLength() > maximum) throw new OnlineException(OnlineFailure.InvalidResponse); }
 }

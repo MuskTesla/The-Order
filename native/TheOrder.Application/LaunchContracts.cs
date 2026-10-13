@@ -14,9 +14,11 @@ public enum ProcessEventKind { ProcessStarted, ProcessTrackingAttached, ProcessH
 public sealed record GameLaunchIdentity(Guid Epoch, Guid Incarnation, string GameId);
 public sealed record LaunchEntry(GameLaunchIdentity Identity, ImmutableArray<Installation> Installations, string? Preferred);
 public sealed record LaunchSnapshot(Guid OperationId, long Generation, GameLaunchIdentity Game, Installation Installation,
-    string? Preferred, PathObservation Folder, PathObservation Executable, PathObservation WorkingDirectory, bool ExplicitWorkingDirectory);
+    string? Preferred, PathObservation Folder, PathObservation Executable, PathObservation WorkingDirectory, bool ExplicitWorkingDirectory)
+{ public PathObservation? LocaleTool { get; init; } public PathObservation? ScalingTool { get; init; } }
 public sealed record LaunchPosition(string GameId, string InstallationId, string Folder, string Executable, string WorkingDirectory,
-    PathObservation FolderObservation, PathObservation ExecutableObservation, PathObservation WorkingObservation);
+    PathObservation FolderObservation, PathObservation ExecutableObservation, PathObservation WorkingObservation)
+{ public LaunchCompatibility? Compatibility { get; init; } public string? SteamAppId { get; init; } public PathObservation? LocaleTool { get; init; } public PathObservation? ScalingTool { get; init; } }
 public sealed record LaunchPreparation(LaunchOutcome Outcome, LaunchSnapshot? Snapshot, string Message);
 public sealed record ProcessIdentity(int Pid, long CreationFileTime, string ImagePath, FilesystemIdentity? ImageIdentity);
 public sealed record ProcessObservation(ProcessIdentity? Identity, ProcessTrackingState State, long? ExitFileTime = null, bool HasWindow = false, int? ParentPid = null);
@@ -35,6 +37,7 @@ public interface IObservedProcess : IDisposable
 {
     int Pid { get; }
     long? StartTimestamp => null;
+    string? AuxiliaryNotice => null;
     ProcessObservation Query();
     // A separate owned lease survives stopped observation for bounded admission revalidation.
     IProcessLifetimeScope? RetainLifetimeScope() => null;
@@ -83,11 +86,15 @@ public static class LaunchSelection
     public static string WorkingDirectory(Installation installation) => installation.WorkingDirectory ?? Path.GetDirectoryName(installation.Executable!)!;
     public static LaunchPosition Position(LaunchSnapshot snapshot) => new(snapshot.Game.GameId, snapshot.Installation.Id,
         snapshot.Installation.Folder, snapshot.Installation.Executable!, snapshot.WorkingDirectory.StoredPath,
-        snapshot.Folder, snapshot.Executable, snapshot.WorkingDirectory);
+        snapshot.Folder, snapshot.Executable, snapshot.WorkingDirectory)
+        { Compatibility = snapshot.Installation.Compatibility, SteamAppId = snapshot.Installation.SteamAppId, LocaleTool = snapshot.LocaleTool, ScalingTool = snapshot.ScalingTool };
     public static bool Matches(LaunchPosition saved, LaunchSnapshot current) => saved.GameId == current.Game.GameId
         && saved.InstallationId == current.Installation.Id && saved.Folder == current.Installation.Folder
         && saved.Executable == current.Installation.Executable && saved.WorkingDirectory == current.WorkingDirectory.StoredPath
+        && saved.Compatibility == current.Installation.Compatibility && saved.SteamAppId == current.Installation.SteamAppId
+        && SameTool(saved.LocaleTool, current.LocaleTool) && SameTool(saved.ScalingTool, current.ScalingTool)
         && InstallationPreflightService.SameObservation(saved.FolderObservation, current.Folder)
         && InstallationPreflightService.SameObservation(saved.ExecutableObservation, current.Executable)
         && InstallationPreflightService.SameObservation(saved.WorkingObservation, current.WorkingDirectory);
+    private static bool SameTool(PathObservation? a, PathObservation? b) => a is null && b is null || a is not null && b is not null && InstallationPreflightService.SameObservation(a, b);
 }

@@ -26,7 +26,7 @@ public sealed class OnlineTransportTests
     private static JsonDocument Oracle() => JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures/online-oracle.json")));
     public static IEnumerable<object[]> Cases() { using var doc = Oracle(); return doc.RootElement.GetProperty("cases").EnumerateArray().Select(c => new object[] { c.GetProperty("name").GetString()! }).ToArray(); }
     [Theory, MemberData(nameof(Cases)), Trait("Category", "OnlineDifferential")]
-    public async Task ActualElectronOnlineBehaviorMatches(string name)
+    public async Task CapturedElectronContractWithDocumentedNativePresentationChanges(string name)
     {
         using var oracle = Oracle(); var vector = oracle.RootElement.GetProperty("cases").EnumerateArray().Single(v => v.GetProperty("name").GetString() == name);
         var calls = new List<object>(); var waits = new List<double>(); int index = 0;
@@ -54,17 +54,39 @@ public sealed class OnlineTransportTests
             var failure = await Assert.ThrowsAsync<OnlineException>(Run);
             Assert.Equal(error.GetString() switch { "INVALID_RESPONSE" or "INVALID_JSON" or "HTTP_ERROR" => OnlineFailure.InvalidResponse, "RESPONSE_TOO_LARGE" => OnlineFailure.ResponseTooLarge,
                 "NETWORK_ERROR" => OnlineFailure.Offline, "MERGE_LOOP" => OnlineFailure.MergeLoop, "MERGE_LIMIT" => OnlineFailure.MergeLimit, "REDIRECT_BLOCKED" => OnlineFailure.RedirectBlocked,
-                "INVALID_API_KEY" => OnlineFailure.InvalidCredential, "RATE_LIMITED" or "QUOTA_EXCEEDED" => OnlineFailure.RateLimited,
+                "INVALID_API_KEY" => OnlineFailure.InvalidCredential, "RATE_LIMITED" => OnlineFailure.RateLimited, "QUOTA_EXCEEDED" => OnlineFailure.QuotaExceeded,
                 _ => name == "status-400" ? OnlineFailure.InvalidRequest : name == "status-403" ? OnlineFailure.Forbidden : name == "status-404" ? OnlineFailure.NotFound : name == "status-408" ? OnlineFailure.Timeout : OnlineFailure.Server }, failure.Failure);
         }
         else
         {
             var actual = JsonSerializer.SerializeToNode(await Run(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!;
             var wanted = JsonNode.Parse(expected.GetProperty("value").GetRawText())!;
-            RemoveOptional(actual, wanted); Assert.True(JsonNode.DeepEquals(wanted, actual), $"Mapping mismatch: {name}");
+            ProjectNativeLinks(wanted);
+            // v21 no longer substitutes an arbitrary gallery scan when the
+            // declared primary is filtered. Keep the Electron capture immutable.
+            if (name == "detail-explicit-filter") wanted["coverUrl"] = null;
+            RemoveOptional(actual, wanted); Assert.True(JsonNode.DeepEquals(wanted, actual), $"Mapping mismatch: {name}\nExpected: {wanted}\nActual: {actual}");
         }
-        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(vector.GetProperty("calls").GetRawText()), JsonSerializer.SerializeToNode(calls)));
+        // Preserve the captured Electron oracle. Native details deliberately request the additional
+        // presentation blocks; pagination, auth, ordering, retries and all other parameters stay exact.
+        var expectedCalls = JsonNode.Parse(vector.GetProperty("calls").GetRawText())!.AsArray();
+        foreach (var call in expectedCalls.OfType<JsonObject>())
+            if (call["path"]!.GetValue<string>().StartsWith("/v2/catalog/works/", StringComparison.Ordinal))
+                call["query"]!["include"] = "titles,refs,relations,links,intros,covers,screenshots,companies,ratings,tags,characters,credits,engines,series";
+        Assert.True(JsonNode.DeepEquals(expectedCalls, JsonSerializer.SerializeToNode(calls)), $"Request mismatch: {name}");
         Assert.Equal(vector.GetProperty("delays").EnumerateArray().Select(v => v.GetDouble()), waits);
+    }
+    // KunGal now routes every catalog work by its own ID, even without a claim. This is
+    // a mapping projection over the immutable historical oracle. All stored facts remain compared.
+    private static void ProjectNativeLinks(JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            if (obj.ContainsKey("originalTitle") && obj["id"] is JsonValue id)
+                obj["webUrl"] = "https://www.kungal.com/galgame/" + id.GetValue<string>();
+            foreach (var pair in obj) ProjectNativeLinks(pair.Value);
+        }
+        else if (node is JsonArray array) foreach (var item in array) ProjectNativeLinks(item);
     }
     private static void RemoveOptional(JsonNode? actual, JsonNode? expected)
     {

@@ -1,3 +1,4 @@
+using TheOrder.Application;
 namespace TheOrder.Application;
 
 public sealed partial class TransactionalLibrary : ILaunchLibrary
@@ -13,7 +14,7 @@ public sealed partial class TransactionalLibrary : ILaunchLibrary
         {
             if (identity.Epoch != epoch || !launchIncarnations.TryGetValue(identity.GameId, out var incarnation) || incarnation != identity.Incarnation
                 || !current.Entries.Any(g => g.Id == identity.GameId && g.Installations.Any(i => i.Id == installationId)))
-                throw new LaunchValidationException(LaunchOutcome.StaleInstallation, "作品或安装关系已失效，请重新打开详情。");
+                throw new LaunchValidationException(LaunchOutcome.StaleInstallation, UiText.Get("作品或安装关系已失效，请重新打开详情。"));
             cancellation.ThrowIfCancellationRequested();
             // No library mutation or playtime side effect. Once creation succeeds cancellation cannot undo it.
             return Task.FromResult(create());

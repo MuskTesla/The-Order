@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 
 namespace TheOrder.Application;
@@ -14,10 +15,12 @@ public sealed record GameSummary(string Id, string Name, string Status, double? 
 {
     public string? CoverKey { get; init; }
     public bool HasLocalCover { get; init; }
+    public string? CatalogWorkId { get; init; }
+    public bool AutomaticCover { get; init; }
     public string StatusText => StatusNames.Display(Status);
-    public string RatingText => Rating is null ? "未评分" : $"{Rating:0.#} 分";
-    public string FavoriteText => Favorite ? "♥ 收藏" : "";
-    public string Subtitle => $"{StatusText} · {RatingText} · {InstallationCount} 个安装";
+    public string RatingText => Rating is null ? UiText.Get("未评分") : UiText.Format($"{Rating:0.#} 分");
+    public string FavoriteText => Favorite ? UiText.Get("♥ 收藏") : "";
+    public string Subtitle => UiText.Format($"{StatusText} · {RatingText} · {InstallationCount} 个安装");
     // Read-only projection of the stored LibraryEntry.LastPlayedAt; never inferred from other fields.
     public string? LastPlayedAt { get; init; }
     public bool HasPlayHistory { get; init; }
@@ -29,16 +32,16 @@ public static class LastPlayedNames
     // 从未游玩: no stored time and no history. 时间未知: history exists but the time is missing or unreadable.
     public static string Display(string? value, bool hasHistory, DateTimeOffset now)
     {
-        if (string.IsNullOrWhiteSpace(value)) return hasHistory ? "时间未知" : "从未游玩";
-        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at)) return "时间未知";
+        if (string.IsNullOrWhiteSpace(value)) return hasHistory ? UiText.Get("时间未知") : UiText.Get("从未游玩");
+        if (!DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at)) return UiText.Get("时间未知");
         var local = at.ToOffset(now.Offset); var days = (now.Date - local.Date).Days;
-        return days switch { < 0 => local.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), 0 => "今天 " + local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), 1 => "昨天", < 7 => $"{days} 天前",
-            _ => local.ToString(local.Year == now.Year ? "M月d日" : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) };
+        return days switch { < 0 => local.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), 0 => UiText.Get("今天 ") + local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), 1 => UiText.Get("昨天"), < 7 => UiText.Format($"{days} 天前"),
+            _ => local.ToString(local.Year == now.Year ? UiText.Get("M月d日") : "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) };
     }
 }
 public static class StatusNames
 {
-    public static string Display(string value) => value switch { "planned" => "未开始", "playing" => "在玩", "completed" => "已完成", "paused" => "搁置", "dropped" => "放弃", _ => "全部状态" };
+    public static string Display(string value) => value switch { "planned" => UiText.Get("未开始"), "playing" => UiText.Get("在玩"), "completed" => UiText.Get("已完成"), "paused" => UiText.Get("搁置"), "dropped" => UiText.Get("放弃"), _ => UiText.Get("全部状态") };
 }
 public sealed record LibraryQueryResult(ImmutableArray<GameSummary> Items, int Total, ImmutableArray<string> Categories, ImmutableArray<string> Tags);
 public sealed record PersonalInput(string Name, string Status, string Rating, bool Favorite, string Notes, string Categories, string Tags);

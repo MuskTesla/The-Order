@@ -12,6 +12,90 @@ namespace TheOrder.Tests;
 
 public sealed class AutomaticRecognitionTests
 {
+    [Fact]
+    public async Task ProgressIncludesWaitingImportsDeduplicatesAndSettlesCancellation()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new Engine { Candidates = [] };
+        engine.Hold = async token => { if (engine.Calls >= 2) entered.TrySetResult(); await Task.Delay(Timeout.Infinite, token); };
+        await using var lab = new Lab(engine: engine, ranker: new Ranker()); await lab.Init();
+        var additions = Enumerable.Range(1, 6).Select(n => Entry(folder: @"C:\synthetic\progress" + n) with { Id = "g" + n }).ToImmutableArray();
+        await lab.Library.ImportAsync(new LegacyLibraryCodec().Encode(additions, Clock));
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        var ids = additions.Select(e => e.Id).ToImmutableArray();
+        await vm.StartImportedAsync(ids); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new RecognitionProgress(6, 4, 2, 0, 0, 0, 0, 0), vm.Progress);
+        await vm.StartImportedAsync(ids.Add("a"));
+        Assert.Equal(new RecognitionProgress(7, 5, 2, 0, 0, 0, 0, 0), vm.Progress);
+        Assert.Contains("排队 5", vm.ProgressText); Assert.True(vm.HasRecognitionWork);
+        vm.CancelAll(); await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new RecognitionProgress(7, 0, 0, 0, 0, 0, 7, 0), vm.Progress); Assert.False(vm.HasRecognitionWork);
+        engine.Hold = null;
+        await vm.StartImportedAsync(["a"]); await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new RecognitionProgress(1, 0, 0, 1, 0, 0, 0, 0), vm.Progress);
+    }
+    [Fact]
+    public async Task CredentialRetryWaitsForAnEarlierImportAndThenRetriesIt()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var engine = new Engine { Candidates = [] };
+        engine.Hold = async token => {
+            if (engine.Calls == 1) { entered.TrySetResult(); await release.Task.WaitAsync(token); }
+            else engine.Candidates = [Candidate("200", .99)];
+        };
+        await using var lab = new Lab(engine: engine, ranker: new Ranker()); await lab.Init();
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        await vm.StartImportedAsync(["a"]); await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var retry = vm.StartUnidentifiedAsync(retryPending: true);
+        Assert.False(retry.IsCompleted);
+        release.TrySetResult(); await retry.WaitAsync(TimeSpan.FromSeconds(5));
+        await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, engine.Calls); Assert.Equal("200", lab.Library.Snapshot.Entries[0].Metadata?.Id);
+        Assert.Empty(vm.Reviews);
+    }
+    [Fact]
+    public async Task SavingCredentialCanResumeEntriesBlockedByOldEmptyReviews()
+    {
+        var engine = new Engine { Candidates = [] };
+        await using var lab = new Lab(engine: engine, ranker: new Ranker()); await lab.Init();
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        await vm.StartImportedAsync(["a"]); await vm.WaitForAutomaticRecognitionAsync();
+        Assert.Null(lab.Library.Snapshot.Entries[0].Metadata); Assert.Single(vm.Reviews);
+        engine.Candidates = [Candidate("200", .99)];
+        await vm.StartUnidentifiedAsync(); Assert.Equal(1, engine.Calls);
+        await vm.StartUnidentifiedAsync(retryPending: true); await vm.WaitForAutomaticRecognitionAsync();
+        Assert.Equal("200", lab.Library.Snapshot.Entries[0].Metadata?.Id); Assert.Empty(vm.Reviews);
+        await vm.StartUnidentifiedAsync(retryPending: true); Assert.Equal(2, engine.Calls);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public async Task ConfirmationAdvancesOnlyAfterCommitAndEndsAtLibrary(bool hasNext)
+    {
+        await using var lab = new Lab(engine: new Engine { Candidates = [Candidate("200", .9)] }, ranker: new Ranker()); await lab.Init();
+        if (hasNext) await lab.Library.ImportAsync(new LegacyLibraryCodec().Encode([Entry(folder: @"C:\synthetic\b") with { Id = "b" }], Clock));
+        await using var workspace = Workspace(lab); await workspace.InitializeAsync(); await using var vm = Vm(lab, workspace);
+        await vm.StartUnidentifiedAsync(); await vm.WaitForAutomaticRecognitionAsync();
+        var order = vm.Reviews.Select(r => r.GameId).ToArray(); Assert.Equal(hasNext ? 2 : 1, order.Length);
+        var completed = new List<(string Id, string? Next)>();
+        vm.ReviewCompleted = (id, next) => { completed.Add((id, next)); return Task.CompletedTask; };
+        vm.SelectForGame(order[0]); vm.SelectCandidate("200"); await vm.ConfirmSelectionAsync();
+        Assert.True(vm.LastDecision?.IsCommitted, vm.LastDecision?.Message);
+        Assert.Equal((order[0], hasNext ? order[1] : null), Assert.Single(completed));
+    }
+    [Fact]
+    public async Task BatchRemovalIsAtomicAndKeepsUnselectedPersonalData()
+    {
+        await using var lab = new Lab(); await lab.Init();
+        await lab.Library.ImportAsync(new LegacyLibraryCodec().Encode([Entry(folder: @"C:\synthetic\b") with { Id = "b", Notes = "保留" }], Clock));
+        await Assert.ThrowsAsync<InvalidDataException>(() => lab.Library.DeleteBatchAsync(["a", "missing"]));
+        Assert.Equal(2, lab.Library.Snapshot.Entries.Length);
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => lab.Library.DeleteBatchAsync(["a"], cancelled.Token));
+        Assert.Equal(2, lab.Library.Snapshot.Entries.Length);
+        await lab.Library.DeleteBatchAsync(["a", "a"]);
+        var remaining = Assert.Single(lab.Library.Snapshot.Entries); Assert.Equal("b", remaining.Id); Assert.Equal("保留", remaining.Notes);
+        Assert.Equal(@"C:\synthetic\b", Assert.Single(remaining.Installations).Folder);
+    }
     private sealed class Preferences : IUiPreferencesStore
     {
         public Task<ClientPreferences> LoadAsync(CancellationToken cancellation) => Task.FromResult(new ClientPreferences());
@@ -210,5 +294,44 @@ public sealed class AutomaticRecognitionTests
         await vm.StartUnidentifiedAsync(); await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal("200", lab.Library.Snapshot.Entries[0].Metadata?.Id);
         await vm.StartUnidentifiedAsync(); Assert.Equal(1, engine.Calls);
+    }
+    [Fact]
+    public async Task ImportCompletionWaitsForArtworkAfterCommitWithoutOpeningDetails()
+    {
+        await using var lab=new Lab(engine:new Engine(),ranker:new Ranker());await lab.Init();
+        await using var workspace=Workspace(lab);await workspace.InitializeAsync();await using var vm=Vm(lab,workspace);
+        var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        vm.PrepareImportedArtwork=async(id,token)=> {
+            Assert.Equal("200",id);Assert.Equal("200",lab.Library.Snapshot.Entries[0].Metadata?.Id);
+            Assert.Equal(WorkspacePage.Library,workspace.Page);Assert.False(workspace.IsDirty);
+            entered.SetResult();await release.Task.WaitAsync(token);return true;
+        };
+        await vm.StartImportedAsync(["a"]);await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(vm.WaitForAutomaticRecognitionAsync().IsCompleted);
+        Assert.Equal(new RecognitionProgress(1, 0, 1, 0, 0, 0, 0, 0), vm.Progress);
+        Assert.True(vm.HasRecognitionWork);
+        Assert.Contains("准备作品图片",vm.Message);release.SetResult();
+        await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));Assert.Contains("自动识别完成",vm.Message);
+        Assert.Equal(new RecognitionProgress(1, 0, 0, 0, 1, 0, 0, 0), vm.Progress);
+        Assert.False(vm.HasRecognitionWork);
+    }
+    [Fact]
+    public async Task ArtworkFailureCannotUndoOrMislabelCommittedImport()
+    {
+        await using var lab=new Lab(engine:new Engine(),ranker:new Ranker());await lab.Init();
+        await using var workspace=Workspace(lab);await workspace.InitializeAsync();await using var vm=Vm(lab,workspace);
+        vm.PrepareImportedArtwork=(_,_)=>Task.FromResult(false);
+        await vm.StartImportedAsync(["a"]);await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("200",lab.Library.Snapshot.Entries[0].Metadata?.Id);Assert.Contains("图片准备未完成",vm.Message);Assert.Contains("已应用 1",vm.Message);
+    }
+    [Fact]
+    public async Task AmbiguityDoesNotPrepareAnUnappliedCandidate()
+    {
+        await using var lab=new Lab(engine:new Engine{Candidates=[Candidate("200",.9)]},ranker:new Ranker());await lab.Init();
+        await using var workspace=Workspace(lab);await workspace.InitializeAsync();await using var vm=Vm(lab,workspace);
+        int calls=0;vm.PrepareImportedArtwork=(_,_)=>{calls++;return Task.FromResult(true);};
+        await vm.StartImportedAsync(["a"]);await vm.WaitForAutomaticRecognitionAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(0,calls);Assert.Null(lab.Library.Snapshot.Entries[0].Metadata);
     }
 }

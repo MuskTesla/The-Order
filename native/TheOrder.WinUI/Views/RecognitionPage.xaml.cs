@@ -13,7 +13,7 @@ public sealed partial class RecognitionPage : Page, IImageHost
     private readonly DispatcherTimer updates = new() { Interval = TimeSpan.FromMilliseconds(100) };
     public RecognitionPage(RecognitionViewModel viewModel, IImagePipeline images)
     {
-        ViewModel = viewModel; Images = images; InitializeComponent();
+        ViewModel = viewModel; Images = images; InitializeComponent(); ManualIdBox.KeyDown += OnManualKey;
         updates.Tick += (_, _) => ViewModel.RefreshIfDirty();
         Loaded += async (_, _) => { updates.Start(); await ViewModel.InitializeAsync(); };
         Unloaded += (_, _) => updates.Stop();
@@ -35,7 +35,8 @@ public sealed partial class RecognitionPage : Page, IImageHost
     }
     private async void OnRerun(object sender, RoutedEventArgs e) => await ViewModel.RerunAsync();
     private async void OnIgnore(object sender, RoutedEventArgs e) => await ViewModel.IgnoreAsync();
-    private async void OnApply(object sender, RoutedEventArgs e) => await ViewModel.ApplyAsync();
+    private async void OnApply(object sender, RoutedEventArgs e) => await ViewModel.ConfirmSelectionAsync();
+    private async void OnManualKey(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) { if (e.Key == Windows.System.VirtualKey.Enter) { e.Handled = true; ViewModel.ManualId = ManualIdBox.Text; await ViewModel.OpenDetailsAsync(ViewModel.ManualId); } }
     private async void OnManual(object sender, RoutedEventArgs e) => await ViewModel.ManualLinkAsync();
     private async void OnLocalDetails(object sender, RoutedEventArgs e)
     { try { if (ViewModel.SelectedGameId is { } id && OpenLocalDetails is not null) await OpenLocalDetails(id); } catch (Exception) { ViewModel.ReportLocalDetailsFailure(); } }

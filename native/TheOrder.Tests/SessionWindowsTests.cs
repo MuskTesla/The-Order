@@ -53,16 +53,20 @@ public sealed class SessionWindowsTests(ITestOutputHelper output)
     [InlineData("chain")]
     public async Task RealFiveAProcessFactsCreateSingleHistoryAndFinalExitUsesOsOccurrence(string mode)
     {
-        await using var fixture = new LaunchFixture(); fixture.Set(mode);
+        // This scenario requires a confirmed live-parent/live-child handoff. Use
+        // the existing real-observer handshake instead of assuming that two fixed
+        // sleeps also establish those facts during a full-suite CPU load.
+        await using var fixture = new LaunchFixture(observedHandoff: mode == "launcher"); fixture.Set(mode);
         var entry = SessionTestRig.Entry() with { Installations = fixture.Library.Entry.Installations };
         File.WriteAllBytes(Path.Combine(fixture.Profile.Root, "library.json"), SessionTestRig.Codec.Encode([entry], SessionTestRig.Date));
         await using var library = TransactionalLibrary.Open(SessionTestRig.Codec, new IsolatedLibraryPersistence(fixture.Profile.Root));
         var clock = new WindowsSessionClock(); var tokens = new WindowsSessionRecoveryTokens(fixture.Profile.Root);
-        var platform = new WindowObservationPlatform(fixture.Platform);
+        var platform = new WindowObservationPlatform((IGameProcessPlatform?)fixture.Observation ?? fixture.Platform);
         using var power = new WindowsSessionPowerEvents();
         await using var engine = new SessionEngine(library, fixture.Identity, platform, fixture.Store, clock, tokens, power,
             launchOptions: new() { HandoffWindow = TimeSpan.FromSeconds(1), CandidateSettle = TimeSpan.FromMilliseconds(200) });
         var prep = await engine.PrepareAsync("g"); await engine.ConfirmPositionAsync(prep.Snapshot!);
+        fixture.Observation?.Requested();
         var started = await engine.LaunchAsync("g"); Assert.True(started.ProcessCreated);
         await Wait(() => engine.LaunchStatus.Tracking == ProcessTrackingState.RunningConfirmed && (mode == "game" || engine.Snapshot.Current?.Pid != started.Initial?.Pid));
         await platform.WindowObserved.Task.WaitAsync(TimeSpan.FromSeconds(15));

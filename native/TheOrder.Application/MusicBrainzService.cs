@@ -1,0 +1,126 @@
+namespace TheOrder.Application;
+
+// Small public metadata cache. Manual edition choices are keyed by the complete bridge facts,
+// never by a title, and cannot edit a game, playtime, or any other library component.
+public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrainzCache? disk = null,
+    Func<DateTimeOffset>? clock = null) : IMusicBrainzReader
+{
+    public static readonly TimeSpan SearchFreshFor = TimeSpan.FromHours(1), AlbumFreshFor = TimeSpan.FromDays(1), MaximumStaleAge = TimeSpan.FromDays(7);
+    private readonly object gate = new();
+    private readonly SemaphoreSlim commits = new(1);
+    private readonly Dictionary<string, MusicBrainzCacheValue> memory = [];
+    private readonly Dictionary<string, long> latest = [];
+    private long sequence;
+    private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
+    public async Task<MusicBrainzMatchResult> MatchAsync(MusicAlbumSource source, bool refresh, CancellationToken cancellation)
+    {
+        if (!source.IsValid) throw new InvalidDataException("音乐匹配依据无效。");
+        var binding = await ReadAsync("binding:" + source.Fingerprint, cancellation).ConfigureAwait(false);
+        if (!refresh && binding?.Binding is { } chosen)
+            return new(new([], 0, false, null, null), null, chosen.ReleaseId, true, false, null);
+        // Retrieval revisions invalidate negative/partial search caches without invalidating confirmed identities.
+        var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-3")));
+        var result = await LoadAsync(key, refresh, SearchFreshFor, async token =>
+            new(key, Now, Search: await provider.SearchAsync(source, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
+        return new(result.Value.Search!, MusicBrainzMatching.Automatic(source, result.Value.Search!), binding?.Binding?.ReleaseId,
+            result.Cached, result.Stale, result.Warning);
+    }
+    public async Task<MusicBrainzAlbumResult> LoadAlbumAsync(string releaseId, bool refresh, CancellationToken cancellation)
+    {
+        if (!MusicBrainzReference.ValidId(releaseId)) throw new InvalidDataException("MusicBrainz 发行版编号无效。");
+        var key = "release:" + releaseId;
+        var result = await LoadAsync(key, refresh, AlbumFreshFor, async token =>
+            new(key, Now, Album: await provider.FetchAlbumAsync(releaseId, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
+        return new(result.Value.Album!, result.Cached, result.Stale, result.Warning);
+    }
+    public async Task<MusicBrainzSearchResult> EditionsAsync(string releaseGroupId, CancellationToken cancellation)
+    {
+        if (!MusicBrainzReference.ValidId(releaseGroupId)) throw new InvalidDataException("MusicBrainz 专辑组编号无效。");
+        var key = "group:" + releaseGroupId;
+        var result = await LoadAsync(key, false, SearchFreshFor, async token => new(key, Now,
+            Search: await provider.EditionsAsync(releaseGroupId, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
+        return result.Value.Search! with { Notice = result.Warning ?? result.Value.Search!.Notice };
+    }
+    public async Task ConfirmAsync(MusicAlbumSource source, MusicBrainzAlbum album, CancellationToken cancellation)
+    {
+        if (!source.IsValid || !MusicBrainzValidation.Album(album)) throw new InvalidDataException("音乐资料身份无效。");
+        cancellation.ThrowIfCancellationRequested();
+        var binding = new MusicBrainzCacheValue("binding:" + source.Fingerprint, Now,
+            Binding: new(source.Fingerprint, album.Release.Id));
+        // Persistence is awaited before reporting confirmation. Cancellation before atomic replacement leaves no choice.
+        if (disk is not null) await disk.WriteAsync(binding, cancellation).ConfigureAwait(false);
+        lock (gate) Remember(binding);
+    }
+    private async Task<(MusicBrainzCacheValue Value, bool Cached, bool Stale, string? Warning)> LoadAsync(string key, bool refresh,
+        TimeSpan fresh, Func<CancellationToken, Task<MusicBrainzCacheValue>> fetch, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var prior = await ReadAsync(key, cancellation).ConfigureAwait(false);
+        if (!refresh && prior is not null && Now - prior.CachedAtUtc < fresh) return (prior, true, false, null);
+        long version; lock (gate) latest[key] = version = ++sequence;
+        try
+        {
+            var value = await fetch(cancellation).ConfigureAwait(false); cancellation.ThrowIfCancellationRequested();
+            if (value.Key != key || !MusicBrainzValidation.Cache(value) || value.CachedAtUtc > Now.AddMinutes(5))
+                throw new MusicBrainzException(MusicBrainzFailure.InvalidResponse, "MusicBrainz 资料身份或格式不一致。");
+            await commits.WaitAsync(cancellation).ConfigureAwait(false);
+            try
+            {
+                bool owns; lock (gate) owns = latest.GetValueOrDefault(key) == version;
+                if (owns)
+                {
+                    if (disk is not null)
+                        try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); }
+                        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+                    cancellation.ThrowIfCancellationRequested();
+                    lock (gate) { if (latest.GetValueOrDefault(key) == version) Remember(value); }
+                }
+            }
+            finally { commits.Release(); }
+            return (value, false, false, null);
+        }
+        catch (MusicBrainzException e) when (prior is not null && e.Failure is MusicBrainzFailure.Offline or MusicBrainzFailure.Timeout
+            or MusicBrainzFailure.Server or MusicBrainzFailure.RateLimited)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            return (prior, true, Now - prior.CachedAtUtc >= fresh, "暂时无法更新，显示已缓存的音乐资料。" + e.Message);
+        }
+        catch (MusicBrainzException)
+        {
+            // A removed/invalid release must not reappear from disk on the next visit or process restart.
+            await commits.WaitAsync(cancellation).ConfigureAwait(false);
+            try
+            {
+                bool owns; lock (gate) owns = latest.GetValueOrDefault(key) == version;
+                if (owns)
+                {
+                    var rejected = new MusicBrainzCacheValue(key, Now, Rejected: true);
+                    if (disk is not null)
+                        try { await disk.WriteAsync(rejected, cancellation).ConfigureAwait(false); }
+                        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+                    lock (gate) { if (latest.GetValueOrDefault(key) == version) Remember(rejected); }
+                }
+            }
+            finally { commits.Release(); }
+            throw;
+        }
+        finally { lock (gate) { if (latest.GetValueOrDefault(key) == version) latest.Remove(key); } }
+    }
+    private async Task<MusicBrainzCacheValue?> ReadAsync(string key, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested(); MusicBrainzCacheValue? value;
+        lock (gate) memory.TryGetValue(key, out value);
+        if (value is null && disk is not null)
+            try { value = await disk.ReadAsync(key, cancellation).ConfigureAwait(false); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        cancellation.ThrowIfCancellationRequested();
+        if (value?.Key != key || !MusicBrainzValidation.Cache(value) || value!.Rejected || value.CachedAtUtc > Now.AddMinutes(5)
+            || value.Binding is null && Now - value.CachedAtUtc > MaximumStaleAge) return null;
+        lock (gate) Remember(value); return value;
+    }
+    private void Remember(MusicBrainzCacheValue value)
+    {
+        memory.Remove(value.Key); memory[value.Key] = value;
+        while (memory.Count > 64) memory.Remove(memory.Keys.First());
+    }
+}

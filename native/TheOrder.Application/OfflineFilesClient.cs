@@ -1,12 +1,18 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-public sealed record InstallationInput(string Id, string Folder, string? Executable, string? WorkingDirectory, ImmutableArray<string> Arguments, bool Preferred);
+public sealed record InstallationInput(string Id, string Folder, string? Executable, string? WorkingDirectory, ImmutableArray<string> Arguments, bool Preferred)
+{
+    public string? SaveFolder { get; init; }
+    public string? SteamAppId { get; init; }
+    public LaunchCompatibility? Compatibility { get; init; }
+}
 public sealed record InstallationRow(Installation Installation, PreflightStatus Status, string StatusText, bool Preferred)
 {
-    public string PreferredText => Preferred ? "首选安装" : "";
+    public string PreferredText => Preferred ? UiText.Get("默认从此文件夹启动") : "";
     public override string ToString() => $"{Installation.Folder} · {StatusText} · {PreferredText}";
 }
 public sealed record InstallationView(InstallationDetails Details, ImmutableArray<InstallationRow> Rows);
@@ -28,12 +34,12 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
         try
         {
             var library = client.Required();
-            if (details.CoverToken is null) throw new InvalidDataException("请重新打开详情后修改封面。");
+            if (details.CoverToken is null) throw new InvalidDataException(UiText.Get("请重新打开详情后修改封面。"));
             var cover = path is null ? null : await raster.NormalizePhotoAsync(path, cancellation).ConfigureAwait(false);
             return OfflineLibraryClient.Present(await library.SaveLocalCoverAsync(details.CoverToken, cover, cancellation).ConfigureAwait(false));
         }
         catch (Exception e) when (OfflineLibraryClient.Expected(e) || e is System.Runtime.InteropServices.COMException)
-        { return e is System.Runtime.InteropServices.COMException ? new(ClientOutcome.ValidationFailure, "无法解码此图片，原封面保持不变。") : OfflineLibraryClient.Failure(e); }
+        { return e is System.Runtime.InteropServices.COMException ? new(ClientOutcome.ValidationFailure, UiText.Get("无法解码此图片，原封面保持不变。")) : OfflineLibraryClient.Failure(e); }
     }
     public Task<ScanResult> ScanAsync(string root, IProgress<ScanProgress>? progress, CancellationToken cancellation)
         => scanner.ScanAsync(root, TransactionalLibrary.Existing(client.Required().Snapshot.Entries), progress: progress, cancellation: cancellation);
@@ -43,8 +49,8 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
         return await Task.Run(() => new InstallationView(details, [.. details.Items.Select(i =>
         {
             cancellation.ThrowIfCancellationRequested(); var probe = identity.Inspect(i.Folder);
-            var status = probe.IsValid && probe.Observation!.ViaReparsePoint ? "目录别名 · 可用" : probe.Status switch
-            { PreflightStatus.Valid => "可用", PreflightStatus.NotFound or PreflightStatus.BrokenLink => "路径不可用，记录保留", PreflightStatus.AccessDenied => "无权访问，记录保留", _ => "无法确认，记录保留" };
+            var status = probe.IsValid && probe.Observation!.ViaReparsePoint ? UiText.Get("目录别名 · 可用") : probe.Status switch
+            { PreflightStatus.Valid => UiText.Get("可用"), PreflightStatus.NotFound or PreflightStatus.BrokenLink => UiText.Get("路径不可用，记录保留"), PreflightStatus.AccessDenied => UiText.Get("无权访问，记录保留"), _ => UiText.Get("无法确认，记录保留") };
             return new InstallationRow(i, probe.Status, status, details.Preferred == i.Id);
         })]), cancellation).ConfigureAwait(false);
     }
@@ -56,9 +62,11 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
             var prepared = await Task.Run(() => candidates.Select(c =>
             {
                 cancellation.ThrowIfCancellationRequested(); preflight.Revalidate(c.Folder, reviewedCandidate: true);
-                if (c.Executables.Length is < 1 or > 200) throw new InvalidDataException("候选必须含有 1 至 200 个游戏 exe。");
+                if (c.Executables.Length is < 1 or > 200) throw new InvalidDataException(UiText.Get("候选必须含有 1 至 200 个游戏 exe 或启动 cmd。"));
                 var executables = c.Executables.Select(p => { var probe = identity.Inspect(p, false); if (!probe.IsValid) { preflight.Revalidate(c.Folder, reviewedCandidate: true); throw new InvalidDataException(probe.Message); } return probe.Observation!; }).ToImmutableArray();
-                return new LocalImportItem(c.Name, Prepare(new(Guid.NewGuid().ToString(), c.Folder.StoredPath, c.Executables.Length == 1 ? c.Executables[0] : null, null, [], true), cancellation, c.Folder), executables);
+                // Recognition excludes installers and does not enumerate every nested launcher.
+                // Let the first launch action inspect all exe/cmd files before making a choice.
+                return new LocalImportItem(c.Name, Prepare(new InstallationInput(Guid.NewGuid().ToString(), c.Folder.StoredPath, null, null, [], true) { SteamAppId = c.SteamAppId }, cancellation, c.Folder), executables);
             }).ToImmutableArray(), cancellation).ConfigureAwait(false);
             var result = await library.ImportLocalAsync(prepared, preflight, cancellation).ConfigureAwait(false);
             var presented = OfflineLibraryClient.Present(result);
@@ -67,7 +75,7 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
             var installations = prepared.Select(p => p.Installation.Value.Id).ToHashSet(StringComparer.Ordinal);
             var imported = library.Snapshot.Entries.Where(e => e.Installations.Any(i => installations.Contains(i.Id)))
                 .Select(e => e.Id).ToImmutableArray();
-            return presented with { Message = $"{presented.Message} 新增 {result.Value.Added} 个，重复跳过 {result.Value.Skipped} 个。",
+            return presented with { Message = UiText.Format($"{presented.Message} 新增 {result.Value.Added} 个，重复跳过 {result.Value.Skipped} 个。"),
                 ImportedGameIds = imported };
         }
         catch (Exception e) when (OfflineLibraryClient.Expected(e)) { return OfflineLibraryClient.Failure(e); }
@@ -98,19 +106,22 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
         if (!string.IsNullOrEmpty(input.Executable))
         {
             var probe = identity.Inspect(input.Executable, false);
-            if (!probe.IsValid || probe.Observation!.IsDirectory || !BoundedScanner.IsGameExecutable(Path.GetFileName(input.Executable)) || !InstallationPreflightService.Within(probe.Observation.FinalPath, folder.Observation!.FinalPath))
-                throw new InvalidDataException("启动文件必须是安装目录内的有效游戏 exe；不会执行该文件。");
+            if (!probe.IsValid || probe.Observation!.IsDirectory || !LaunchFileDiscovery.IsLaunchFile(Path.GetFileName(input.Executable)) || !InstallationPreflightService.Within(probe.Observation.FinalPath, folder.Observation!.FinalPath))
+                throw new InvalidDataException(UiText.Get("启动文件必须是安装目录内的有效 exe 或 cmd；保存时不会执行该文件。"));
             executable = probe.Observation;
         }
         if (!string.IsNullOrEmpty(input.WorkingDirectory))
         {
             var probe = identity.Inspect(input.WorkingDirectory);
             if (!probe.IsValid || probe.Observation!.Identity != folder.Observation!.Identity && !InstallationPreflightService.Within(probe.Observation.FinalPath, folder.Observation.FinalPath))
-                throw new InvalidDataException("工作目录必须位于安装目录内且可读取。");
+                throw new InvalidDataException(UiText.Get("工作目录必须位于安装目录内且可读取。"));
             working = probe.Observation;
         }
         if (input.Arguments.IsDefault || input.Arguments.Length > 100 || input.Arguments.Any(a => a is null || a.Length > 8192 || a.Contains('\0')))
-            throw new InvalidDataException("参数须为不超过 100 项的字符串数组，每项最多 8192 字符。");
-        return new(new(input.Id, input.Folder, executable?.StoredPath, input.Arguments, working?.StoredPath), folder.Observation!, executable, working, reviewedCandidate);
+            throw new InvalidDataException(UiText.Get("参数须为不超过 100 项的字符串数组，每项最多 8192 字符。"));
+        if (input.SaveFolder is not null && !identity.Inspect(input.SaveFolder).IsValid) throw new InvalidDataException("存档目录不可读取，请重新选择；不会创建或搬动存档。");
+        foreach (var tool in new[] { input.Compatibility?.LocaleEmulator, input.Compatibility?.ScalingTool }.Where(p => p is not null))
+            if (!identity.Inspect(tool!, false).IsValid) throw new InvalidDataException("启动辅助工具不可读取，请重新选择。");
+        return new(new Installation(input.Id, input.Folder, executable?.StoredPath, input.Arguments, working?.StoredPath) { SaveFolder = input.SaveFolder, SteamAppId = input.SteamAppId, Compatibility = input.Compatibility }, folder.Observation!, executable, working, reviewedCandidate);
     }
 }

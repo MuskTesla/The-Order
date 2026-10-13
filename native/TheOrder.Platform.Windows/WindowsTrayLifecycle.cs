@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Runtime.InteropServices;
 
 namespace TheOrder.Platform.Windows;
@@ -16,7 +17,7 @@ public sealed class WindowsTrayLifecycle : IDisposable
     private readonly uint taskbarCreated;
     private NotifyIconData data;
     private bool disposed, attached, paused, canPause, canResume;
-    private string title = "当前没有游玩会话", state = "";
+    private string title = UiText.Get("当前没有游玩会话"), state = "";
     public bool Available { get; private set; }
     public event Action? Unavailable;
     public event Action? SystemSettingsChanged;
@@ -28,7 +29,7 @@ public sealed class WindowsTrayLifecycle : IDisposable
         attached = SetWindowSubclass(window, callback, 0x5b2, 0);
         if (!attached) throw new System.ComponentModel.Win32Exception();
         data = new() { Size = (uint)Marshal.SizeOf<NotifyIconData>(), Window = window, Id = 1, Flags = 7 | 0x80,
-            Callback = CallbackMessage, Icon = LoadIcon(IntPtr.Zero, (IntPtr)32512), Tip = "The Order · 书架与游玩计时", Info = "", InfoTitle = "" };
+            Callback = CallbackMessage, Icon = LoadIcon(IntPtr.Zero, (IntPtr)32512), Tip = UiText.Get("The Order · 书架与游玩计时"), Info = "", InfoTitle = "" };
         if (!simulateFailure) Add();
     }
     private void Add()
@@ -43,6 +44,13 @@ public sealed class WindowsTrayLifecycle : IDisposable
         var text = $"The Order · {game} · {status}"; if (text.Length > 127) text = text[..127];
         if (disposed || text == data.Tip) return;
         data.Tip = text;
+        if (Available && !ShellNotifyIcon(1, ref data)) { Available = false; Unavailable?.Invoke(); }
+    }
+    // Borrowed application icon. The caller owns its lifetime and detaches the tray before disposal.
+    public void SetIcon(IntPtr icon)
+    {
+        if (disposed || icon == IntPtr.Zero || icon == data.Icon) return;
+        data.Icon = icon;
         if (Available && !ShellNotifyIcon(1, ref data)) { Available = false; Unavailable?.Invoke(); }
     }
     private IntPtr Receive(IntPtr hwnd, uint message, nuint wParam, nint lParam, nuint id, nuint reference)
@@ -72,11 +80,11 @@ public sealed class WindowsTrayLifecycle : IDisposable
         var menu = CreatePopupMenu(); if (menu == IntPtr.Zero) return;
         try
         {
-            AppendMenu(menu, 0, 1, "打开 The Order");
+            AppendMenu(menu, 0, 1, UiText.Get("打开 The Order"));
             AppendMenu(menu, 3, 0, title.Replace("&", "&&"));
             if (state.Length > 0) AppendMenu(menu, 3, 0, state.Replace("&", "&&"));
-            AppendMenu(menu, (canPause || canResume) ? 0u : 3u, 2, paused ? "恢复计时" : "暂停计时");
-            AppendMenu(menu, 0x800, 0, ""); AppendMenu(menu, 0, 3, "退出 The Order");
+            AppendMenu(menu, (canPause || canResume) ? 0u : 3u, 2, paused ? UiText.Get("恢复计时") : UiText.Get("暂停计时"));
+            AppendMenu(menu, 0x800, 0, ""); AppendMenu(menu, 0, 3, UiText.Get("退出 The Order"));
             GetCursorPos(out var point); SetForegroundWindow(window);
             var selected = TrackPopupMenuEx(menu, 0x102, point.X, point.Y, window, IntPtr.Zero);
             PostMessage(window, 0, 0, 0);

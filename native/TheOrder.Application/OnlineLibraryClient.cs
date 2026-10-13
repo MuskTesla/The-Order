@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using TheOrder.Domain;
 
 namespace TheOrder.Application;
@@ -12,7 +13,8 @@ public sealed class OnlineLibraryClient(OfflineLibraryClient offline, IOnlineCat
     public async Task<ClientResult> RefreshAsync(string gameId, CancellationToken cancellation)
     {
         var library = offline.Required(); var entry = library.Snapshot.Entries.FirstOrDefault(e => e.Id == gameId);
-        if (entry?.Metadata is null) return new(ClientOutcome.ValidationFailure, "此条目尚未关联在线作品。");
+        if (entry?.Metadata is null) return new(ClientOutcome.ValidationFailure, UiText.Get("此条目尚未关联在线作品。"));
+        if (!MetadataMixing.HasNextMoeIdentity(entry)) return new(ClientOutcome.ValidationFailure, "请在「游玩记录、攻略与资料源」中重新获取直接资料，或先关联 NextMoe 目录作品。");
         var token = await library.BeginRequestAsync(gameId, cancellation).ConfigureAwait(false);
         try
         {
@@ -32,17 +34,19 @@ public sealed partial class TransactionalLibrary
 {
     public Task<CommitResult<bool>> DeleteWishlistAsync(string id, CancellationToken cancellation) => Mutate(games =>
     {
-        var entry = Find(games, id); if (!entry.Installations.IsEmpty) throw new InvalidDataException("此条目已有本地安装，不能作为愿望条目移除。");
+        var entry = Find(games, id); if (!entry.Installations.IsEmpty) throw new InvalidDataException(UiText.Get("此条目已有本地安装，不能作为愿望条目移除。"));
         return (games.Remove(entry), true);
     }, cancellation);
 }
-public sealed class CombinedCoverSources(LocalCoverSources local, OfflineLibraryClient library, IRemoteCoverRegistry registry, IImageSourceProvider remote) : IImageSourceProvider
+public sealed class CombinedCoverSources(LocalCoverSources local, OfflineLibraryClient library, IRemoteCoverRegistry registry, IImageSourceProvider remote, IPersonalBannerStore? personalBanners = null) : IImageSourceProvider
 {
     private readonly object gate = new();
     private LibrarySnapshot? indexed;
     private Dictionary<string, (string? Url, string Revision)> sources = [];
     public async Task<byte[]?> ReadAsync(string key, CancellationToken cancellation)
     {
+        if (key.StartsWith("local-banner-", StringComparison.Ordinal))
+            return personalBanners is null ? null : await personalBanners.ReadAsync(key, cancellation).ConfigureAwait(false);
         var bytes = library.Capability.Loaded ? await local.ReadAsync(key, cancellation).ConfigureAwait(false) : null; if (bytes is not null) return bytes;
         if (library.Capability.Loaded)
         {
@@ -52,7 +56,17 @@ public sealed class CombinedCoverSources(LocalCoverSources local, OfflineLibrary
                 if (!ReferenceEquals(snapshot, indexed))
                 {
                     sources = [];
-                    foreach (var entry in snapshot.Entries) { cancellation.ThrowIfCancellationRequested(); if (entry.LocalCover is null && ImageSourceKeys.For(entry) is { } id) sources[id] = (CoverSources.Selected(entry), entry.Metadata?.FetchedAt ?? ""); }
+                    foreach (var entry in snapshot.Entries)
+                    {
+                        cancellation.ThrowIfCancellationRequested();
+                        var revision = entry.Metadata?.FetchedAt ?? "";
+                        if (entry.LocalCover is null && ImageSourceKeys.For(entry) is { } id) sources[id] = (CoverSources.Selected(entry), revision);
+                        if (ArtworkSources.Landscape(entry.Metadata) is { } banner && ImageSourceKeys.Remote(banner, revision) is { } bannerKey)
+                            sources[bannerKey] = (banner, revision);
+                        if (entry.Metadata is { } work)
+                            foreach (var character in work.Characters.Take(24))
+                                if (ImageSourceKeys.Remote(character.ImageUrl, revision) is { } portrait) sources[portrait] = (character.ImageUrl, revision);
+                    }
                     indexed = snapshot;
                 }
                 if (sources.TryGetValue(key, out var source)) registry.Register(source.Url, source.Revision);

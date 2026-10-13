@@ -41,7 +41,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 using var lease = new PathLease(root, file);
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan);
                 Revalidate(root); Revalidate(file); Observe(file);
-                if (stream.Length > maximum || remaining < Math.Min(stream.Length, prefix)) { observations.Add(path + "|oversize"); warnings.Add("已跳过超过大小或本次读取总量限制的线索文件。"); return; }
+                if (stream.Length > maximum || remaining < Math.Min(stream.Length, prefix)) { observations.Add(path + "|oversize"); warnings.Add(UiText.Get("已跳过超过大小或本次读取总量限制的线索文件。")); return; }
                 int length = (int)Math.Min(stream.Length, prefix); long size = stream.Length;
                 var bytes = new byte[length]; int read = 0;
                 while (read < length) { cancellation.ThrowIfCancellationRequested(); int n = stream.Read(bytes, read, length - read); if (n == 0) throw new IOException(); read += n; }
@@ -50,7 +50,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 Add(parser.Parse(kind, Path.GetFileName(path), bytes, size > length));
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
-            { observations.Add(path + "|unsafe"); warnings.Add("部分本地线索无法安全读取，已保留其他可用证据。"); }
+            { observations.Add(path + "|unsafe"); warnings.Add(UiText.Get("部分本地线索无法安全读取，已保留其他可用证据。")); }
         }
         DirectoryItem[] Enumerate(PathObservation root, string path, int limit)
         {
@@ -61,12 +61,12 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 var directory = result.Observation!;
                 if (directory.Identity != root.Identity && (!InstallationPreflightService.Within(directory.FinalPath, root.FinalPath) || directory.ReparsePaths.Except(root.ReparsePaths, StringComparer.OrdinalIgnoreCase).Any())) return [];
                 var items = new List<DirectoryItem>();
-                foreach (var item in directories.Enumerate(directory, root)) { cancellation.ThrowIfCancellationRequested(); if (items.Count == limit) { warnings.Add("目录项目较多，只检查了有界范围内的文件名。"); break; } items.Add(item); }
+                foreach (var item in directories.Enumerate(directory, root)) { cancellation.ThrowIfCancellationRequested(); if (items.Count == limit) { warnings.Add(UiText.Get("目录项目较多，只检查了有界范围内的文件名。")); break; } items.Add(item); }
                 Observe(directory);
                 observations.Add(path + "|entries|" + Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(items.OrderBy(i => i.Name, StringComparer.Ordinal)))));
                 return items.OrderBy(i => i.Name, StringComparer.Ordinal).ToArray();
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { observations.Add(path + "|unsafe"); warnings.Add("部分线索目录无法安全读取。"); return []; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { observations.Add(path + "|unsafe"); warnings.Add(UiText.Get("部分线索目录无法安全读取。")); return []; }
         }
         var installations = entry.Installations.OrderByDescending(i => i.Id == entry.PreferredInstallationId).Take(100).ToArray();
         foreach (var installation in installations)
@@ -77,7 +77,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
             var result = filesystem.Inspect(installation.Folder);
             if (!result.IsValid) { observations.Add(installation.Folder + "|unavailable|" + result.Status); continue; }
             var root = result.Observation!;
-            if (directories.IsForbiddenRoot(root)) { warnings.Add("已拒绝从系统根目录收集线索。"); continue; }
+            if (directories.IsForbiddenRoot(root)) { warnings.Add(UiText.Get("已拒绝从系统根目录收集线索。")); continue; }
             if (roots.Any(r => r.Identity == root.Identity)) continue;
             roots.Add(root); Observe(root);
             ReadFile(root, Path.Combine(installation.Folder, ".PotatoVN", "meta.json"), "sidecar", 1024 * 1024, 1024 * 1024);
@@ -123,7 +123,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 }
                 // A malformed version resource only removes this executable's PE evidence; it must
                 // not fail recognition of the whole entry.
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException) { observations.Add(path + "|pe-unavailable"); warnings.Add("部分程序版本资料无法安全读取。"); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException) { observations.Add(path + "|pe-unavailable"); warnings.Add(UiText.Get("部分程序版本资料无法安全读取。")); }
             }
             foreach (var file in entries.Where(e => !e.IsDirectory && !e.IsReparsePoint && Match(e.Name, @"\.(ain|pfs|ypf)$") && !Match(e.Name, @"backup|beifen|\.bak|\.old")).Take(5))
             { string name = Path.GetFileNameWithoutExtension(file.Name); if (executableParser?.IsUsefulTitle(name) == true) titles.Add(new(name, "archive-name")); }
@@ -167,7 +167,7 @@ public sealed class WindowsRecognitionEvidence(ILocalEvidenceParser parser, Func
                 for (string? path = start; path is not null; path = Path.GetDirectoryName(path))
                 {
                     var handle = CreateFile(path, 0x80, 1, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
-                    if (handle.IsInvalid) { handle.Dispose(); throw new IOException("本地线索目录正在变化。"); }
+                    if (handle.IsInvalid) { handle.Dispose(); throw new IOException(UiText.Get("本地线索目录正在变化。")); }
                     handles.Add(handle);
                 }
             }

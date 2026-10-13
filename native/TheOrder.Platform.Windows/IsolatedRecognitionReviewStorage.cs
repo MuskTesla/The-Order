@@ -14,7 +14,7 @@ public sealed class IsolatedRecognitionReviewStorage(NativeConfiguration configu
             try
             {
                 using var stream = IsolatedLibrarySource.OpenChecked(Path.Combine(root, name));
-                if (stream.Length > Maximum) throw new InvalidDataException("核对队列超过 16 MiB，原文件已保留。");
+                if (stream.Length > Maximum) throw new InvalidDataException(UiText.Get("核对队列超过 16 MiB，原文件已保留。"));
                 var bytes = new byte[(int)stream.Length]; stream.ReadExactly(bytes); return bytes;
             }
             catch (FileNotFoundException) { return null; }
@@ -23,7 +23,7 @@ public sealed class IsolatedRecognitionReviewStorage(NativeConfiguration configu
     }, cancellation);
     public Task WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellation) => Run(root =>
     {
-        if (bytes.Length > Maximum) throw new InvalidDataException("核对队列过大，未保存。");
+        if (bytes.Length > Maximum) throw new InvalidDataException(UiText.Get("核对队列过大，未保存。"));
         if (configuration.Profile is { } profile) { profile.WriteComponent("native-recognition.json", bytes); return true; }
         var target = Path.Combine(root, "native-recognition.json"); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var file = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }

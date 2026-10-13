@@ -1,34 +1,29 @@
+using System.Text.RegularExpressions;
 using TheOrder.Domain;
-
 namespace TheOrder.Presentation;
-
 public sealed record CandidateDetailLink(string Title, string Url);
-
 public static class CandidateDetailLinks
 {
-    private static readonly HashSet<string> Hosts = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "www.kungal.com", "kungal.com", "vndb.org", "bgm.tv", "bangumi.tv", "chii.in",
-        "store.steampowered.com", "erogamescape.dyndns.org", "howlongtobeat.com", "www.dlsite.com"
-    };
-
+    private static readonly Dictionary<string,string> Sites = new(StringComparer.OrdinalIgnoreCase) {
+        ["www.kungal.com"]="KunGal",["kungal.com"]="KunGal",["vndb.org"]="VNDB",["bgm.tv"]="Bangumi",["bangumi.tv"]="Bangumi",["chii.in"]="Bangumi",["store.steampowered.com"]="Steam",["erogamescape.dyndns.org"]="ErogameScape",["howlongtobeat.com"]="HowLongToBeat",["www.dlsite.com"]="DLsite" };
     public static bool Allowed(string? value) => value is { Length: > 0 and <= 8192 }
-        && Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == "https"
-        && uri.IsDefaultPort && uri.UserInfo.Length == 0 && Hosts.Contains(uri.IdnHost);
-
+        && Uri.TryCreate(value,UriKind.Absolute,out var uri)&&uri.Scheme=="https"&&uri.IsDefaultPort&&uri.UserInfo.Length==0&&Sites.ContainsKey(uri.IdnHost);
     public static IReadOnlyList<CandidateDetailLink> From(WorkMetadata work)
     {
-        var links = new List<CandidateDetailLink>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        void Add(string title, string? url)
-        {
-            if (Allowed(url) && seen.Add(url!)) links.Add(new(title, url!));
+        var links=new List<CandidateDetailLink>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string? url) {
+            if(!Allowed(url))return;var uri=new Uri(url!);var site=Sites[uri.IdnHost];
+            // Work refs are authoritative anchors; releases, characters and staff are separate entities.
+            if(site=="VNDB"&&!Regex.IsMatch(uri.AbsolutePath,@"^/v[0-9]+/?$"))return;
+            if(seen.Add(site))links.Add(new(site,url!));
         }
-        Add("打开作品页面", work.WebUrl);
-        foreach (var reference in work.References.Take(32))
-            Add(reference.Source switch { "vndb" => "在 VNDB 查看", "bangumi" => "在 Bangumi 查看",
-                "steam" => "在 Steam 查看", "erogamescape" => "在 ErogameScape 查看",
-                "dlsite" => "在 DLsite 查看", _ => "打开来源页面" }, reference.Url);
-        return links;
+        // KunGal's detail route uses the catalog work ID even when no community claim exists.
+        // This is a browsing URL, not an additional independent recognition identifier.
+        if (Regex.IsMatch(work.Id, "^[0-9]{1,20}$")) Add("https://www.kungal.com/galgame/" + work.Id);
+        Add(work.WebUrl);
+        foreach(var r in work.References.Where(r=>r.Source is "kungal" or "curated"))Add(r.Url);
+        foreach(var r in work.References.Where(r=>r.Source=="vndb"&&Regex.IsMatch(r.Id,@"^v[0-9]+$")))Add(r.Url);
+        foreach(var r in work.References.Take(128))Add(r.Url);
+        return links.OrderBy(l=>l.Title=="KunGal"?0:1).ToArray();
     }
 }

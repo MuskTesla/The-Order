@@ -183,7 +183,7 @@ public sealed class NativeProfileStore : INativeProfileStore, IDisposable
         {
             // Valid JSON with unknown fields is a compatibility failure, never a backup trigger.
             try { using var parsed = JsonDocument.Parse(bytes); }
-            catch (JsonException) { throw new InvalidDataException("损坏的 native component。", e); }
+            catch (JsonException) { throw new InvalidDataException(UiText.Get("损坏的 native component。"), e); }
             throw new NativeProfileException("UnsupportedComponentSchema");
         }
         if (value.Version != 1 || value.ProfileId != Manifest.ProfileId || value.StoreId != Manifest.StoreId || value.Name != name)

@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using TheOrder.Domain;
 
@@ -19,7 +20,8 @@ public sealed partial class TransactionalLibrary
     private void AssertInstallations(InstallationEditToken token, LibraryEntry entry)
     {
         if (token.Epoch != epoch || token.Generation != lifecycles[entry.Id].Generation || token.Preferred != entry.PreferredInstallationId || token.Original.Length != entry.Installations.Length
-            || !token.Original.Zip(entry.Installations).All(p => p.First.Id == p.Second.Id && p.First.Folder == p.Second.Folder && p.First.Executable == p.Second.Executable && p.First.WorkingDirectory == p.Second.WorkingDirectory && p.First.Arguments.SequenceEqual(p.Second.Arguments)))
+            || !token.Original.Zip(entry.Installations).All(p => p.First.Id == p.Second.Id && p.First.Folder == p.Second.Folder && p.First.Executable == p.Second.Executable && p.First.WorkingDirectory == p.Second.WorkingDirectory && p.First.Arguments.SequenceEqual(p.Second.Arguments)
+                && p.First.SaveFolder == p.Second.SaveFolder && p.First.SteamAppId == p.Second.SteamAppId && p.First.Compatibility == p.Second.Compatibility))
             throw new StaleLibraryRequestException();
     }
     public Task<CommitResult<LibraryEntry>> SaveInstallationAsync(InstallationEditToken token, PreparedInstallation prepared,
@@ -44,7 +46,7 @@ public sealed partial class TransactionalLibrary
         => Mutate(games =>
         {
             var entry = Find(games, token.GameId); AssertInstallations(token, entry);
-            var old = entry.Installations.FirstOrDefault(i => i.Id == installationId) ?? throw new InvalidDataException("安装不存在。");
+            var old = entry.Installations.FirstOrDefault(i => i.Id == installationId) ?? throw new InvalidDataException(UiText.Get("安装不存在。"));
             var changed = entry with { Installations = entry.Installations.Remove(old), PreferredInstallationId = entry.PreferredInstallationId == installationId ? null : entry.PreferredInstallationId };
             return (games.Replace(entry, changed), changed);
         }, cancellation);
@@ -52,7 +54,7 @@ public sealed partial class TransactionalLibrary
         => Mutate(games =>
         {
             var entry = Find(games, token.GameId); AssertInstallations(token, entry);
-            if (!entry.Installations.Any(i => i.Id == installationId)) throw new InvalidDataException("安装不存在。");
+            if (!entry.Installations.Any(i => i.Id == installationId)) throw new InvalidDataException(UiText.Get("安装不存在。"));
             var changed = entry with { PreferredInstallationId = installationId }; return (games.Replace(entry, changed), changed);
         }, cancellation);
     public Task<CommitResult<ImportCount>> ImportLocalAsync(ImmutableArray<LocalImportItem> items, InstallationPreflightService preflight, CancellationToken cancellation = default)
@@ -60,7 +62,7 @@ public sealed partial class TransactionalLibrary
         var accepted = new List<LocalImportItem>();
         return Mutate(games =>
         {
-            if (items.Length is < 1 or > 2000) throw new InvalidDataException("请选择 1 至 2000 个候选。");
+            if (items.Length is < 1 or > 2000) throw new InvalidDataException(UiText.Get("请选择 1 至 2000 个候选。"));
             var builder = games.ToBuilder(); int skipped = 0;
             var observed = preflight.Observe(Existing(games), cancellation).ToList();
             foreach (var item in items)
@@ -93,14 +95,14 @@ public sealed partial class TransactionalLibrary
         if (item.Installation.ReviewedCandidate is not { } original || !InstallationPreflightService.SameObservation(original, item.Installation.Folder))
             throw new CandidateStaleException();
         preflight.Revalidate(original, reviewedCandidate: true);
-        if (item.Executables.IsDefault || item.Executables.Length is < 1 or > 200) throw new InvalidDataException("候选必须含有 1 至 200 个游戏 exe。");
+        if (item.Executables.IsDefault || item.Executables.Length is < 1 or > 200) throw new InvalidDataException(UiText.Get("候选必须含有 1 至 200 个游戏 exe 或启动 cmd。"));
         var expected = item.Executables.Length == 1 ? item.Executables[0].StoredPath : null;
-        if (item.Installation.Value.Executable != expected)
-            throw new InvalidDataException("单个候选 exe 自动选中，多个候选须稍后由用户选择。");
+        if (item.Installation.Value.Executable is not null && item.Installation.Value.Executable != expected)
+            throw new InvalidDataException(UiText.Get("导入候选中的启动程序必须是唯一候选文件；也可留空，在首次启动时选择。"));
         foreach (var executable in item.Executables)
         {
-            if (executable.IsDirectory || !BoundedScanner.IsGameExecutable(Path.GetFileName(executable.StoredPath)) || !InstallationPreflightService.Within(executable.FinalPath, item.Installation.Folder.FinalPath)
-                || !string.Equals(Path.GetDirectoryName(executable.FinalPath), item.Installation.Folder.FinalPath, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("候选启动文件必须位于游戏根目录。");
+            if (executable.IsDirectory || !(BoundedScanner.IsGameExecutable(Path.GetFileName(executable.StoredPath)) || BoundedScanner.IsLauncherScript(Path.GetFileName(executable.StoredPath))) || !InstallationPreflightService.Within(executable.FinalPath, item.Installation.Folder.FinalPath)
+                || !string.Equals(Path.GetDirectoryName(executable.FinalPath), item.Installation.Folder.FinalPath, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(UiText.Get("候选启动文件必须位于游戏根目录。"));
             preflight.Revalidate(executable);
         }
     }
@@ -110,9 +112,9 @@ public sealed partial class TransactionalLibrary
     {
         if (item.Value.Folder != item.Folder.StoredPath || !item.Folder.IsDirectory || item.Value.Executable != item.Executable?.StoredPath
             || item.Value.WorkingDirectory != item.WorkingDirectory?.StoredPath || item.Executable?.IsDirectory == true
-            || item.Executable is not null && (!BoundedScanner.IsGameExecutable(Path.GetFileName(item.Value.Executable!)) || !InstallationPreflightService.Within(item.Executable.FinalPath, item.Folder.FinalPath))
+            || item.Executable is not null && (!LaunchFileDiscovery.IsLaunchFile(Path.GetFileName(item.Value.Executable!)) || !InstallationPreflightService.Within(item.Executable.FinalPath, item.Folder.FinalPath))
             || item.WorkingDirectory is not null && (!item.WorkingDirectory.IsDirectory || item.WorkingDirectory.Identity != item.Folder.Identity && !InstallationPreflightService.Within(item.WorkingDirectory.FinalPath, item.Folder.FinalPath)))
-            throw new InvalidDataException("安装检查结果与待保存路径不一致。");
+            throw new InvalidDataException(UiText.Get("安装检查结果与待保存路径不一致。"));
         preflight.Revalidate(item.Folder);
         if (item.Executable is not null) preflight.Revalidate(item.Executable);
         if (item.WorkingDirectory is not null) preflight.Revalidate(item.WorkingDirectory);

@@ -40,17 +40,42 @@ public sealed class ElectronCoverParityTests
         public readonly OfflineLibraryClient Offline;
         public readonly OnlineCoverSelectionClient Client;
         public TransactionalLibrary Library => Offline.Required();
-        public Lab(LibraryEntry? entry = null)
+        public Lab(LibraryEntry? entry = null, ICoverRecommendationSource? recommendations = null)
         {
             var codec = new NativeLibraryCodec();
             Profile = new(codec.Encode([entry ?? Entry() with { Metadata = Artwork() }], Clock));
             Offline = new(new IsolatedLibraryFactory(codec, new(Profile.Root)), new LegacyClientTextRules());
             var credentials = new Credentials(); Credentials = new(credentials, credentials);
-            Client = new(Offline, Catalog, Credentials.AuthContext);
+            Client = new(Offline, Catalog, Credentials.AuthContext, recommendations);
         }
         public async Task Init() => Assert.Equal(ClientOutcome.Success, (await Offline.LoadAsync(default)).Outcome);
         public async Task<OnlineCoverOptions> Options() => await Client.LoadAsync(await Library.DetailsAsync("a"), default);
         public async ValueTask DisposeAsync() { await Offline.DisposeAsync(); Profile.Dispose(); }
+    }
+
+    private sealed class Recommendations : ICoverRecommendationSource
+    {
+        public CoverRecommendation Value = new("https://images.example/recommended", "signature", true);
+        public Task<CoverRecommendation> RecommendationAsync(string id, CancellationToken cancellation)
+        { Assert.Equal("200", id); cancellation.ThrowIfCancellationRequested(); return Task.FromResult(Value); }
+    }
+    [Fact] public async Task AutomaticPreviewUsesDisplayedRecommendationAndKeepsCatalogDefaultSeparate()
+    {
+        var recommendations = new Recommendations(); await using var lab = new Lab(recommendations: recommendations); await lab.Init();
+        var options = await lab.Options(); Assert.Equal(recommendations.Value, options.Recommendation); Assert.Equal(Default.Url, options.Work.CoverUrl);
+        Assert.True((await lab.Client.SaveAsync(options, null, default)).IsCommitted);
+        Assert.Null(lab.Library.Snapshot.Entries[0].CoverChoice);
+        Assert.Equal("自动推荐封面", (await lab.Library.DetailsAsync("a")).CoverDescription);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public async Task ChangedOrUnreadyAutomaticPreviewCannotSilentlySaveDifferentRecommendation(bool pending)
+    {
+        var recommendations = new Recommendations(); await using var lab = new Lab(recommendations: recommendations); await lab.Init();
+        var options = await lab.Options(); var bytes = File.ReadAllBytes(lab.Profile.Main);
+        recommendations.Value = pending ? new(null, null, false) : recommendations.Value with { Url = "https://images.example/another" };
+        Assert.False((await lab.Client.SaveAsync(options, null, default)).IsCommitted); Assert.Equal(bytes, File.ReadAllBytes(lab.Profile.Main));
+        Assert.True((await lab.Client.SaveAsync(options, Default.Id, default)).IsCommitted); // pin primary even while auto is pending
+        Assert.Equal(Default.Url, lab.Library.Snapshot.Entries[0].CoverChoice!.Cover.Url);
     }
 
     [Fact]

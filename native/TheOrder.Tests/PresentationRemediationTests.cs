@@ -12,7 +12,77 @@ public sealed class PresentationRemediationTests
     private static Task<UnsavedChoice> Stay() => Task.FromResult(UnsavedChoice.Stay);
     private static GameDetails Detail(string id, string notes = "") => new(id, new(id, "planned", null, false, notes, [], []), "", "", "", "", "", "", new(Guid.Empty, id, Guid.Empty, new(id, "planned", null, false, notes, [], [])));
     private static LibraryQueryResult Rows(string id = "a") => new([new(id, id, "planned", null, false, "", 0, 0)], 1, [], []);
-    private static WorkspaceViewModel Vm(Client client, Preferences? preferences = null, IClientTextRules? text = null) => new(client, preferences ?? new(), new("synthetic"), text ?? new LegacyClientTextRules());
+    private static WorkspaceViewModel Vm(Client client, Preferences? preferences = null, IClientTextRules? text = null, ICachedCoverRecommendationSource? covers = null) => new(client, preferences ?? new(), new("synthetic"), text ?? new LegacyClientTextRules(), covers);
+
+    private static GameSummary Automatic(string id = "a", string workId = "200") => new(id, id, "planned", null, false, "", 0, 0)
+        { CatalogWorkId = workId, AutomaticCover = true, CoverKey = "old-" + workId };
+    private sealed class CachedCovers : ICachedCoverRecommendationSource
+    {
+        public Func<string, CancellationToken, Task<CachedCoverRecommendation?>> Read = (id, _) => Task.FromResult<CachedCoverRecommendation?>(new("saved-" + id));
+        public readonly List<string> Calls = [];
+        public Task<CachedCoverRecommendation?> ReadCoverAsync(string id, CancellationToken token) { Calls.Add(id); return Read(id, token); }
+    }
+    [Fact] public async Task FirstPublishedShelfWaitsForSavedCoverAndNeverPublishesTheOldOne()
+    {
+        var entered = Gate<bool>(); var saved = Gate<CachedCoverRecommendation?>();
+        var covers = new CachedCovers { Read = (_, _) => { entered.TrySetResult(true); return saved.Task; } };
+        var client = new Client { Search = (_, _) => Task.FromResult(new LibraryQueryResult([Automatic()], 1, [], [])) };
+        await using var vm = Vm(client, covers: covers); var frames = new List<string?>();
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.Items)) frames.AddRange(vm.Items.Select(i => i.CoverKey)); };
+        var startup = vm.InitializeAsync(); await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert.Empty(vm.Items); Assert.Empty(frames);
+        saved.SetResult(new("persisted-choice")); await startup;
+        Assert.NotEmpty(frames); Assert.All(frames, key => Assert.Equal("persisted-choice", key));
+    }
+    [Fact] public async Task SavedCoverRestorationPreservesManualAndLocalChoicesAndMissingCache()
+    {
+        var covers = new CachedCovers { Read = (id, _) => Task.FromResult<CachedCoverRecommendation?>(id == "201" ? null : new("saved")) };
+        var rows = ImmutableArray.Create(Automatic(), Automatic("manual") with { AutomaticCover = false, CoverKey = "manual" },
+            Automatic("local") with { AutomaticCover = false, HasLocalCover = true, CoverKey = "local" }, Automatic("missing", "201"));
+        var client = new Client { Search = (_, _) => Task.FromResult(new LibraryQueryResult(rows, 4, [], [])) };
+        await using var vm = Vm(client, covers: covers); await vm.InitializeAsync();
+        Assert.Equal(new[] { "saved", "manual", "local", "old-201" }, vm.Items.Select(i => i.CoverKey));
+        Assert.Equal(new[] { "200", "201", "200", "201" }, covers.Calls); // Two startup projections, once per work in each.
+    }
+    [Fact] public async Task FirstShelfRestoresMoreThanTheTransientPreparedEventLimit()
+    {
+        var rows = Enumerable.Range(1, 260).Select(i => Automatic(i.ToString(), i.ToString())).ToImmutableArray();
+        var client = new Client { Search = (_, _) => Task.FromResult(new LibraryQueryResult(rows, rows.Length, [], [])) };
+        await using var vm = Vm(client, covers: new CachedCovers()); await vm.InitializeAsync();
+        Assert.Equal(260, vm.Items.Count); Assert.All(vm.Items, item => Assert.Equal("saved-" + item.CatalogWorkId, item.CoverKey));
+    }
+    [Fact] public async Task ANewPreparedEventWinsOverAnInFlightSavedCoverRead()
+    {
+        var entered = Gate<bool>(); var saved = Gate<CachedCoverRecommendation?>();
+        var covers = new CachedCovers { Read = (_, _) => { entered.TrySetResult(true); return saved.Task; } };
+        var client = new Client { Search = (_, _) => Task.FromResult(new LibraryQueryResult([Automatic()], 1, [], [])) };
+        await using var vm = Vm(client, covers: covers); var startup = vm.InitializeAsync(); await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        vm.RefreshPreparedCover("200", "latest"); saved.SetResult(new("older-saved")); await startup;
+        Assert.Equal("latest", vm.Items.Single().CoverKey);
+    }
+    [Fact] public async Task CancelledSavedCoverReadCannotReplaceANewerQuery()
+    {
+        var covers = new CachedCovers(); var client = new Client();
+        await using var vm = Vm(client, covers: covers); await vm.InitializeAsync();
+        var entered = Gate<bool>(); var saved = Gate<CachedCoverRecommendation?>();
+        client.Search = (q, _) => Task.FromResult(new LibraryQueryResult([Automatic(q.Text, q.Text == "old" ? "200" : "201")], 1, [], []));
+        covers.Read = (id, _) => { if (id == "200") { entered.TrySetResult(true); return saved.Task; } return Task.FromResult<CachedCoverRecommendation?>(new("latest")); };
+        var old = vm.SetQueryAsync(new("old")); await entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await vm.SetQueryAsync(new("new")); saved.SetResult(new("stale")); await old;
+        Assert.Equal("new", vm.Items.Single().Id); Assert.Equal("latest", vm.Items.Single().CoverKey); Assert.False(vm.IsSearching);
+    }
+
+    [Fact] public async Task RejectedAutomaticCoverClearsOldPixelsAcrossReloadWithoutTouchingPersonalChoices()
+    {
+        GameSummary automatic = new("a", "a", "planned", null, false, "", 0, 0) { CatalogWorkId = "200", AutomaticCover = true, CoverKey = "old-scan" };
+        var client = new Client { Search = (_, _) => Task.FromResult(new LibraryQueryResult([automatic, automatic with { Id = "b", AutomaticCover = false, CoverKey = "personal" }], 2, [], [])) };
+        await using var vm = Vm(client); await vm.InitializeAsync();
+        vm.RefreshPreparedCover("200", "temporary"); vm.RefreshPreparedCover("200", null);
+        Assert.Null(vm.Items.Single(i => i.Id == "a").CoverKey);
+        Assert.Equal("personal", vm.Items.Single(i => i.Id == "b").CoverKey);
+        await vm.ReloadAsync(); Assert.Null(vm.Items.Single(i => i.Id == "a").CoverKey);
+        vm.RefreshPreparedCover("200", "verified"); Assert.Equal("verified", vm.Items.Single(i => i.Id == "a").CoverKey);
+    }
 
     [Theory]
     [InlineData(true)]

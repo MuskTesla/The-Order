@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Threading.Channels;
 using TheOrder.Domain;
 
@@ -80,7 +81,7 @@ public sealed class SessionEngine : IAsyncDisposable
         {
             if (closing || disposed) return launch.Status with { Outcome = LaunchOutcome.Closed };
             if (launching is { IsCompleted: false }) return launch.Status with { Outcome = LaunchOutcome.AlreadyLaunching };
-            if (Snapshot.Session?.Native is { IsTerminal: false }) return launch.Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = "已有自有会话待处理。" };
+            if (Snapshot.Session?.Native is { IsTerminal: false }) return launch.Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = UiText.Get("已有自有会话待处理。") };
             task = launching = Task.Run(() => LaunchWithRecoveredOccupancyAsync(gameId, installation, cancellation));
         }
         var result = await task.ConfigureAwait(false);
@@ -96,8 +97,8 @@ public sealed class SessionEngine : IAsyncDisposable
             var presence = RevalidateRecoveredOccupancy(reservation);
             if (presence != ProcessPresence.Inactive)
                 return launch.Status with { Outcome = LaunchOutcome.AlreadyRunning, Message = presence == ProcessPresence.Active
-                    ? "原恢复游戏仍在运行；停止观察不会释放启动占用。"
-                    : "无法确认原恢复游戏已结束，未启动另一个游戏；可稍后重试。" };
+                    ? UiText.Get("原恢复游戏仍在运行；停止观察不会释放启动占用。")
+                    : UiText.Get("无法确认原恢复游戏已结束，未启动另一个游戏；可稍后重试。") };
             // No other LaunchAsync can pass the launching gate between this release and 5A admission.
             recoveredOccupancy = null;
         }
@@ -266,15 +267,15 @@ public sealed class SessionEngine : IAsyncDisposable
     }
     private void ReportFailure(Exception e)
     {
-        if (active is { } r) { Freeze(r); r.Timing = SessionTiming.PersistenceBlocked; r.Error = $"会话未能保存或验证：{e.GetType().Name}。可重试；游戏不会被关闭。"; }
-        else Volatile.Write(ref snapshot, snapshot with { Error = $"会话核心不可用：{e.GetType().Name}。" });
+        if (active is { } r) { Freeze(r); r.Timing = SessionTiming.PersistenceBlocked; r.Error = UiText.Format($"会话未能保存或验证：{e.GetType().Name}。可重试；游戏不会被关闭。"); }
+        else Volatile.Write(ref snapshot, snapshot with { Error = UiText.Format($"会话核心不可用：{e.GetType().Name}。") });
     }
 
     private async Task HandleStatusAsync(LaunchStatus status)
     {
         if (!status.ProcessCreated || status.Snapshot is not { } origin) return;
         if (active?.Record.Id == origin.OperationId.ToString()) return;
-        if (active is { Native.IsTerminal: false }) throw new SessionConflictException("不允许第二个 owned Session。");
+        if (active is { Native.IsTerminal: false }) throw new SessionConflictException(UiText.Get("不允许第二个 owned Session。"));
         active?.Observed?.Dispose();
         var n = new NativeSession(1, origin.Game.GameId, origin.Installation.Id, CreationUtc(status.Initial), Utc(), null, null,
             0, SessionLifecycle.Open, null, false, 0, library.SessionWriterOwner, new(0, null), null);
@@ -381,7 +382,7 @@ public sealed class SessionEngine : IAsyncDisposable
         if (r.Time.AtCapacity)
         {
             await SaveAsync(r).ConfigureAwait(false); r.Time.Freeze(); r.Timing = SessionTiming.PersistenceBlocked;
-            r.Error ??= "此会话已达到历史格式的时长上限，计时已冻结；原记录保留。";
+            r.Error ??= UiText.Get("此会话已达到历史格式的时长上限，计时已冻结；原记录保留。");
         }
         else if (r.Time.Accumulated - r.Time.Durable >= SessionAccumulator.CheckpointTicks) await SaveAsync(r).ConfigureAwait(false);
     }
@@ -429,7 +430,7 @@ public sealed class SessionEngine : IAsyncDisposable
             return true;
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or OverflowException)
-        { Freeze(r); r.Timing = SessionTiming.PersistenceBlocked; r.Error = $"游戏状态保留，记录未保存（{e.GetType().Name}）；请重试。"; return false; }
+        { Freeze(r); r.Timing = SessionTiming.PersistenceBlocked; r.Error = UiText.Format($"游戏状态保留，记录未保存（{e.GetType().Name}）；请重试。"); return false; }
     }
     private static DateTimeOffset? CreationUtc(ProcessIdentity? identity)
     { try { return identity is null ? null : DateTimeOffset.FromFileTime(identity.CreationFileTime); } catch (ArgumentOutOfRangeException) { return null; } }

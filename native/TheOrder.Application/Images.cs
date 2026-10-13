@@ -21,6 +21,7 @@ public interface IThumbnailDiskCache
 public interface IImageSourceProvider { Task<byte[]?> ReadAsync(string key, CancellationToken cancellation); }
 public interface IImagePipeline : IAsyncDisposable
 {
+    bool TryGet(string key,int edge,out RasterPixels? pixels){pixels=null;return false;}
     Task<ImageResult> LoadAsync(string? key, int edge, CancellationToken cancellation);
     ImageMetrics Metrics { get; }
 }
@@ -29,6 +30,8 @@ public interface IImagePipeline : IAsyncDisposable
 // Decoder slots bound simultaneous IO/decode; realized views cancel recycled requests.
 public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec codec, IThumbnailDiskCache disk, ImageOptions options) : IImagePipeline
 {
+    public bool TryGet(string key,int edge,out RasterPixels? pixels)
+    {lock(gate){pixels=TryCachedImage(key,edge);if(pixels is not null)hits++;return pixels is not null;}}
     private readonly SemaphoreSlim slots = new(Math.Clamp(options.DecodeConcurrency, 1, 8));
     private readonly CancellationTokenSource stopping = new();
     private readonly object gate = new();
@@ -57,9 +60,9 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
             if (countRequest) requests++;
             if (cancellation.IsCancellationRequested) return Task.FromResult(new ImageResult(null, "cancelled"));
             if (string.IsNullOrEmpty(key)) return Task.FromResult(new ImageResult(null, "placeholder"));
-            edge = Math.Clamp(edge, 16, Math.Clamp(options.MaximumEdge, 16, 1600));
+            edge = Math.Clamp(edge, 16, Math.Clamp(options.MaximumEdge, 16, ArtworkSizing.MaximumEdge));
             var cacheKey = key + "-" + edge;
-            if (TryCached(cacheKey) is { } cached) { hits++; return Task.FromResult(new ImageResult(cached, "memory")); }
+            if (TryCachedImage(key, edge) is { } cached) { hits++; return Task.FromResult(new ImageResult(cached, "memory")); }
             if (waiters >= Math.Clamp(options.PendingRequests, 1, 1024)) { rejected++; return Task.FromResult(new ImageResult(null, "busy")); }
             operations.TryGetValue(cacheKey, out var shared);
             // A completed abandoned request may still be waiting for its cleanup continuation.
@@ -108,12 +111,17 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
         try
         {
             token.ThrowIfCancellationRequested();
-            lock (gate) if (TryCached(cacheKey) is { } cached) { hits++; return new(cached, "memory"); }
+            lock (gate) if (TryCachedImage(key, edge) is { } cached) { hits++; return new(cached, "memory"); }
             await slots.WaitAsync(token).ConfigureAwait(false); acquired = true;
-            lock (gate) if (TryCached(cacheKey) is { } cached) { hits++; return new(cached, "memory"); }
+            lock (gate) if (TryCachedImage(key, edge) is { } cached) { hits++; return new(cached, "memory"); }
             lock (gate) misses++;
             RasterPixels? pixels = null;
             try { pixels = await disk.ReadAsync(cacheKey, token).ConfigureAwait(false); } catch (Exception e) when (e is IOException or UnauthorizedAccessException or DataIsolationException) { }
+            // Import prepares full-resolution CGs. Reuse them after reopening instead of
+            // decoding a second bitmap for every window/DPI bucket. Cover requests stay small.
+            if (pixels is null && options.MaximumEdge >= ArtworkSizing.MaximumEdge && edge >= 1200 && edge < ArtworkSizing.MaximumEdge)
+                try { pixels = await disk.ReadAsync(key + "-" + ArtworkSizing.MaximumEdge, token).ConfigureAwait(false); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or DataIsolationException) { }
             if (pixels is null)
             {
                 var encoded = await source.ReadAsync(key, token).ConfigureAwait(false);
@@ -141,6 +149,14 @@ public sealed class ImagePipeline(IImageSourceProvider source, IRasterCodec code
     }
     private RasterPixels? TryCached(string key)
     { if (!cache.TryGetValue(key, out var node)) return null; lru.Remove(node); lru.AddFirst(node); return node.Value.Pixels; }
+    private RasterPixels? TryCachedImage(string key, int edge)
+    {
+        if (TryCached(key + "-" + edge) is { } exact) return exact;
+        if (edge >= 1200 && edge < ArtworkSizing.MaximumEdge)
+            foreach (var larger in new[] { ArtworkSizing.MaximumEdge, 2560, 1920, 1600 })
+                if (larger > edge && TryCached(key + "-" + larger) is { } prepared) return prepared;
+        return null;
+    }
     public ValueTask DisposeAsync()
     {
         lock (gate)

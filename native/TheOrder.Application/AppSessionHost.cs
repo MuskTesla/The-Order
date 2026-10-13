@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using TheOrder.Domain;
 
 namespace TheOrder.Application;
@@ -34,7 +35,7 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
     public string? Error => error ?? engine?.Snapshot.Error;
     public SessionEngineSnapshot? Session => engine?.Snapshot;
     public LibrarySnapshot? Library => ready ? readLibrary() : null;
-    public LaunchStatus Status => engine?.LaunchStatus ?? new(LaunchOutcome.Ready, ProcessTrackingState.None, null, null, null, ready ? "当前资料不可启动游戏。" : "正在恢复上次会话…");
+    public LaunchStatus Status => engine?.LaunchStatus ?? new(LaunchOutcome.Ready, ProcessTrackingState.None, null, null, null, ready ? UiText.Get("当前资料不可启动游戏。") : UiText.Get("正在恢复上次会话…"));
     public Task InitializeAsync()
     {
         lock (gate)
@@ -57,13 +58,13 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
     public async Task<LaunchPreparation> PrepareAsync(string id, string? installation = null, CancellationToken cancellation = default)
     {
         await InitializeAsync().ConfigureAwait(false);
-        if (!CanMutate) return new(LaunchOutcome.Closed, null, "正在关闭或当前书架不可写。");
+        if (!CanMutate) return new(LaunchOutcome.Closed, null, UiText.Get("正在关闭或当前书架不可写。"));
         return await engine!.PrepareAsync(id, installation, cancellation).ConfigureAwait(false);
     }
     public async Task ConfirmPositionAsync(LaunchSnapshot snapshot, CancellationToken cancellation = default)
     {
         await InitializeAsync().ConfigureAwait(false);
-        if (!CanMutate) throw new InvalidOperationException("当前不能修改启动位置。");
+        if (!CanMutate) throw new InvalidOperationException(UiText.Get("当前不能修改启动位置。"));
         await engine!.ConfirmPositionAsync(snapshot, cancellation).ConfigureAwait(false);
     }
     public async Task<LaunchStatus> LaunchAsync(string id, string? installation = null, CancellationToken cancellation = default)
@@ -97,9 +98,9 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
         {
             await InitializeAsync().ConfigureAwait(false);
             if (engine is null || await engine.CheckpointForExitAsync(reason).ConfigureAwait(false)) return true;
-            error = "游玩记录保存失败，退出已取消；游戏继续运行，请重试退出。";
+            error = UiText.Get("游玩记录保存失败，退出已取消；游戏继续运行，请重试退出。");
         }
-        catch (Exception) { if (engine is null) return true; error = "必要的记录尚未保存，退出已取消，请重试。"; }
+        catch (Exception) { if (engine is null) return true; error = UiText.Get("必要的记录尚未保存，退出已取消，请重试。"); }
         closing = false; return false;
     }
     // OS deadline is an observation limit, not cancellation of an already-started atomic write.
@@ -107,7 +108,7 @@ public sealed class AppSessionHost(Func<Task<SessionEngine?>> create, Func<Libra
     {
         var work = PrepareExitAsync(SessionReason.SystemShutdown);
         try { return await work.WaitAsync(budget).ConfigureAwait(false); }
-        catch (TimeoutException) { error = "系统结束会话的保存预算已用尽；仅已落盘的记录可保证保留。"; return false; }
+        catch (TimeoutException) { error = UiText.Get("系统结束会话的保存预算已用尽；仅已落盘的记录可保证保留。"); return false; }
     }
     public async Task CancelSystemEndAsync()
     {

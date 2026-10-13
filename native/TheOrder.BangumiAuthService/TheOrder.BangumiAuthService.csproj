@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup><ProjectReference Include="../TheOrder.Application/TheOrder.Application.csproj" /></ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="TheOrder.Tests" /></ItemGroup>
+</Project>

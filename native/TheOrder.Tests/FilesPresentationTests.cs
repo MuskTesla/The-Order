@@ -12,6 +12,62 @@ public sealed class FilesPresentationTests
     private static TaskCompletionSource<T> Gate<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     private static InstallationView View(string id) => new(new(new(Guid.Empty, id, Guid.Empty, [], null), [], null), []);
     private static WorkspaceViewModel Workspace(Library client) => new(client, new Preferences(), new("synthetic"), new LegacyClientTextRules());
+    private static ScanCandidate Candidate(string id, bool available = true)
+    {
+        var path = new PathObservation(id, id, id, new("synthetic", id), true, false, 0);
+        return new(id, id, path, [], "", new(new(available ? PreflightStatus.Valid : PreflightStatus.DuplicateExistingInstall, path, available ? "可导入" : "已在书架中")));
+    }
+    [Fact]
+    public async Task ImportSelectionCountsOnlyCurrentAttachableItemsAndClearsOnNewDiscovery()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        await using var files = new FilesViewModel(new Files(), workspace);
+        var first = Candidate("first"); var duplicate = Candidate("duplicate", false); var stale = Candidate("stale");
+        files.ReviewDiscovered([first, duplicate]);
+        Assert.True(files.HasCandidates); Assert.True(files.CanSelectImportItems); Assert.False(files.CanImportSelection);
+        var changed = new List<string?>(); files.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        files.SelectForImport([first, first, duplicate, stale]);
+        Assert.Equal(1, files.SelectedImportCount); Assert.Same(first, Assert.Single(files.SelectedImportCandidates)); Assert.True(files.CanImportSelection);
+        files.ReviewDiscovered([duplicate]);
+        Assert.Equal(0, files.SelectedImportCount); Assert.False(files.CanImportSelection); Assert.False(files.CanSelectImportItems);
+        Assert.Contains(nameof(files.SelectedImportCount), changed); Assert.Contains(nameof(files.CanSelectImportItems), changed);
+    }
+    [Fact]
+    public async Task ImportSelectionSurvivesFailedSaveAndClearsOnlyAfterCommit()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync();
+        var client = new Files { SaveResult = new(ClientOutcome.IoFailure, "未能保存") };
+        await using var files = new FilesViewModel(client, workspace); var item = Candidate("game");
+        files.ReviewDiscovered([item]); files.SelectForImport([item]);
+        await files.ImportAsync(files.SelectedImportCandidates);
+        Assert.Equal(ImportStage.Review, files.Stage); Assert.True(files.CanImportSelection); Assert.False(files.HasImportResult); Assert.Single(files.Candidates);
+        client.SaveResult = new(ClientOutcome.Committed, "已经保存"); await files.ImportAsync(files.SelectedImportCandidates);
+        Assert.True(files.HasImportResult); Assert.False(files.HasCandidates); Assert.False(files.CanImportSelection); Assert.Equal(0, files.SelectedImportCount);
+    }
+    [Fact]
+    public async Task RescanClearsSelectionAndOnlyManualFoldersOfferRetry()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync(); var gate = Gate<ScanResult>();
+        var client = new Files { Scan = (_, _) => gate.Task }; await using var files = new FilesViewModel(client, workspace);
+        var item = Candidate("first"); files.ReviewDiscovered([item]); files.SelectForImport([item]); Assert.False(files.CanRetryScan);
+        var scanning = files.ScanAsync("manual-folder"); Assert.True(files.HasScanRoot); Assert.False(files.CanRetryScan); Assert.False(files.CanImportSelection); Assert.Empty(files.SelectedImportCandidates);
+        gate.SetResult(new(ScanStatus.Cancelled, [], new(0, 0, 0, "manual-folder"), [], "")); await scanning;
+        Assert.True(files.CanRetryScan); Assert.Equal(ImportStage.Cancelled, files.Stage);
+        files.ReviewDiscovered([]); Assert.False(files.CanRetryScan); Assert.False(files.HasScanRoot); Assert.False(files.HasCandidates);
+    }
+    [Fact] public async Task DiscoveryActionsAreLimitedToSourceReviewAndNeverRetryAnOldManualRoot()
+    {
+        await using var workspace = Workspace(new()); await workspace.InitializeAsync(); var client = new Files();
+        await using var files = new FilesViewModel(client, workspace);
+        await files.ScanAsync("old-manual-root"); var scans = client.Scans;
+        var candidate = new ScanCandidate("discovered", "Synthetic", null!, [], "", null!);
+        var changes = new List<string?>(); files.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+        files.ReviewDiscovered([candidate]); Assert.True(files.IsSourceDiscovery); Assert.Null(files.ScanRoot);
+        await files.RetryScanAsync(); Assert.Equal(scans, client.Scans);
+        files.ReviewDiscovered([]); Assert.False(files.IsSourceDiscovery); Assert.Equal(ImportStage.NoCandidates, files.Stage);
+        await files.ScanAsync("new-manual-root"); Assert.False(files.IsSourceDiscovery);
+        Assert.Contains(nameof(files.IsSourceDiscovery), changes);
+    }
     [Theory][InlineData(ClientOutcome.Committed)][InlineData(ClientOutcome.CommittedWithWarning)]
     public async Task SavedDraftClosesAndRefreshFailureCannotBecomeSaveFailure(ClientOutcome outcome)
     {
@@ -82,6 +138,20 @@ public sealed class FilesPresentationTests
         held.SetResult(View("a")); await opening; Assert.Equal(WorkspacePage.Installations, workspace.Page); Assert.Equal("a", files.Installations!.Details.Token.GameId);
     }
     [Fact]
+    public async Task BackFromInstallationPageUsesLoadedGameAfterDetailsSelectionWasCleared()
+    {
+        var library = new Library { Detail = id => new(id, new(id, "planned", null, false, "", [], []), "", "", "", "", "", "", new(Guid.Empty, id, Guid.Empty, new(id, "planned", null, false, "", [], []))) };
+        await using var workspace = Workspace(library); await workspace.InitializeAsync();
+        Assert.True(await workspace.NavigateAsync(WorkspacePage.Details, "a", () => Task.FromResult(UnsavedChoice.Stay)));
+        await using var files = new FilesViewModel(new Files(), workspace);
+        await new InstallationNavigation(files).OpenAsync("a", () => Task.FromResult(true), async () =>
+            await workspace.NavigateAsync(WorkspacePage.Installations, null, () => Task.FromResult(UnsavedChoice.Stay)));
+        Assert.Null(workspace.SelectedId); Assert.Equal("a", files.GameId);
+        var returnId = ShellNavigationPolicy.ParentGameId(workspace.Page, workspace.SelectedId, files.GameId);
+        Assert.True(await workspace.NavigateAsync(ShellNavigationPolicy.Parent(workspace.Page)!.Value, returnId, () => Task.FromResult(UnsavedChoice.Stay)));
+        Assert.Equal(WorkspacePage.Details, workspace.Page); Assert.Equal("a", workspace.SelectedId);
+    }
+    [Fact]
     public async Task NewestInstallationNavigationWinsEvenWhenOlderLoadFinishesLast()
     {
         await using var workspace = Workspace(new()); await workspace.InitializeAsync(); var a = Gate<InstallationView>(); var b = Gate<InstallationView>();
@@ -148,10 +218,11 @@ public sealed class FilesPresentationTests
     }
     private sealed class Library : IOfflineLibraryClient
     {
+        public Func<string, GameDetails> Detail = _ => throw new NotSupportedException();
         public LibraryCapability CapabilityValue = new(true, true, ""); public LibraryCapability Capability => CapabilityValue;
         public Task<ClientResult> LoadAsync(CancellationToken cancellation) => Task.FromResult(new ClientResult(ClientOutcome.Success, ""));
         public Task<LibraryQueryResult> QueryAsync(LibraryQuery query, CancellationToken cancellation) => Task.FromResult(new LibraryQueryResult([], 0, [], []));
-        public Task<GameDetails> DetailsAsync(string id, CancellationToken cancellation) => throw new NotSupportedException();
+        public Task<GameDetails> DetailsAsync(string id, CancellationToken cancellation) => Task.FromResult(Detail(id));
         public Task<ClientResult> SaveAsync(GameDetails details, PersonalInput input, CancellationToken cancellation) => throw new NotSupportedException();
         public Task<ClientResult> BatchAsync(ImmutableArray<string> ids, BulkPersonalPatch patch, CancellationToken cancellation) => throw new NotSupportedException();
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

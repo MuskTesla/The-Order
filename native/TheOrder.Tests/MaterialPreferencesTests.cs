@@ -28,11 +28,11 @@ public sealed class MaterialPreferencesTests
     }
     [Theory]
     [InlineData("Auto")][InlineData("Advanced")]
-    public void SavedIntentCannotAuthorizeOrdinaryOrProduction(string mode)
+    public void OrdinaryGlassChoiceDoesNotRequireTestQualification(string mode)
     {
-        Assert.Equal("Standard", MaterialActivationPolicy.Effective(mode, NativeProfileKind.Test, false));
-        Assert.Equal("Standard", MaterialActivationPolicy.Effective(mode, NativeProfileKind.Production, true));
-        Assert.Equal("Standard", MaterialActivationPolicy.Effective(mode, NativeProfileKind.Development, true));
+        Assert.Equal(mode, MaterialActivationPolicy.Effective(mode, NativeProfileKind.Test, false));
+        Assert.Equal(mode, MaterialActivationPolicy.Effective(mode, NativeProfileKind.Production, true));
+        Assert.Equal(mode, MaterialActivationPolicy.Effective(mode, NativeProfileKind.Development, true));
         Assert.Equal(mode, MaterialActivationPolicy.Effective(mode, NativeProfileKind.Test, true));
     }
     [Theory]

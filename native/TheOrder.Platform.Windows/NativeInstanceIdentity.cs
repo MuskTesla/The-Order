@@ -23,9 +23,9 @@ public static class NativeInstanceIdentity
     private static string Key(string root)
     {
         var identity = new WindowsFilesystemIdentity().Inspect(root).Observation?.Identity
-            ?? throw new DataIsolationException("无法验证资料目录的物理身份。");
+            ?? throw new DataIsolationException(UiText.Get("无法验证资料目录的物理身份。"));
         using var user = WindowsIdentity.GetCurrent();
-        var sid = user.User?.Value ?? throw new DataIsolationException("无法验证当前用户。");
+        var sid = user.User?.Value ?? throw new DataIsolationException(UiText.Get("无法验证当前用户。"));
         return "dev.local.kungalmanager.native." + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sid + "|" + identity)));
     }
 }

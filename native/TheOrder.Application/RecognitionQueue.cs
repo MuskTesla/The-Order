@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using System.Threading.Channels;
 
@@ -51,16 +52,16 @@ public sealed class RecognitionQueue : IAsyncDisposable
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
-            if (pending >= MaximumJobs) throw new InvalidOperationException("识别队列已满，请等待当前批次完成。");
+            if (pending >= MaximumJobs) throw new InvalidOperationException(UiText.Get("识别队列已满，请等待当前批次完成。"));
             // Retain bounded completed history, never evict active work or silently discard valid reviews.
             if (jobs.Count >= MaximumJobs)
             {
                 var retired = jobs.Values.FirstOrDefault(j => settled.Contains(j.Id) && j.State is RecognitionJobState.Completed or RecognitionJobState.Cancelled or RecognitionJobState.Failed or RecognitionJobState.Stale);
-                if (retired is null) throw new InvalidOperationException("待核对队列已满，请先处理已有结果。");
+                if (retired is null) throw new InvalidOperationException(UiText.Get("待核对队列已满，请先处理已有结果。"));
                 jobs.Remove(retired.Id);
                 settled.Remove(retired.Id);
             }
-            InvalidateLocked(gameId, "已重新识别，旧结果失效。");
+            InvalidateLocked(gameId, UiText.Get("已重新识别，旧结果失效。"));
             lifetime = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token, cancellation);
             jobs[id] = new(id, gameId, gameId, mode, RecognitionJobState.Queued, DateTimeOffset.UtcNow);
             // Reserve the latest generation before any await, so older capture completion cannot win.
@@ -71,7 +72,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
         try
         {
             var input = (await library.CaptureRecognitionAsync(gameId, lifetime.Token).ConfigureAwait(false)) with { Mode = mode };
-            if (input.Entry.Installations.IsEmpty) throw new InvalidDataException("愿望条目没有本地安装，不参与本地识别。");
+            if (input.Entry.Installations.IsEmpty) throw new InvalidDataException(UiText.Get("愿望条目没有本地安装，不参与本地识别。"));
             var work = new Work(id, input, online, includePe, lifetime);
             lock (gate)
             {
@@ -96,7 +97,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
             throw;
         }
     }
-    private static string SafeMessage(Exception e) => e switch { InvalidDataException or InvalidOperationException => e.Message, OperationCanceledException => "识别已取消。", _ => "识别未完成，请重试。" };
+    private static string SafeMessage(Exception e) => e switch { InvalidDataException or InvalidOperationException => e.Message, OperationCanceledException => UiText.Get("识别已取消。"), _ => UiText.Get("识别未完成，请重试。") };
     private bool IsCurrentLocked(Work work) => current.TryGetValue(work.Input?.Entry.Id ?? jobs[work.Id].GameId, out var currentWork) && currentWork.Id == work.Id;
     private void InvalidateLocked(string gameId, string reason)
     {
@@ -111,7 +112,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
         {
             if (!jobs.TryGetValue(id, out var job)) return;
             if (current.TryGetValue(job.GameId, out var work) && work.Id == id) work.Cancellation.Cancel();
-            jobs[id] = job with { State = RecognitionJobState.Cancelled, Result = null, Message = "识别已取消。" };
+            jobs[id] = job with { State = RecognitionJobState.Cancelled, Result = null, Message = UiText.Get("识别已取消。") };
             if (settled.Contains(id) && current.TryGetValue(job.GameId, out var finished) && finished.Id == id) { current.Remove(job.GameId); finished.Cancellation.Dispose(); }
         }
         Notify();
@@ -123,7 +124,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
             foreach (var work in current.Values.ToArray())
             {
                 if (!jobs.TryGetValue(work.Id, out var job) || job.State is RecognitionJobState.Completed or RecognitionJobState.Failed or RecognitionJobState.Cancelled or RecognitionJobState.Stale) continue;
-                work.Cancellation.Cancel(); jobs[work.Id] = job with { State = RecognitionJobState.Cancelled, Result = null, Message = "识别已取消。" };
+                work.Cancellation.Cancel(); jobs[work.Id] = job with { State = RecognitionJobState.Cancelled, Result = null, Message = UiText.Get("识别已取消。") };
                 if (settled.Contains(work.Id)) { current.Remove(job.GameId); work.Cancellation.Dispose(); }
             }
         }
@@ -157,7 +158,7 @@ public sealed class RecognitionQueue : IAsyncDisposable
         lock (gate)
         {
             if (jobs.TryGetValue(id, out var job) && job.State == RecognitionJobState.NeedsReview && job.Result is { } result)
-                jobs[id] = job with { Result = result.WithoutEnrichment(), Message = "在线补充已失效，本地结果保留。" };
+                jobs[id] = job with { Result = result.WithoutEnrichment(), Message = UiText.Get("在线补充已失效，本地结果保留。") };
         }
         Notify();
     }

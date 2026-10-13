@@ -8,12 +8,11 @@ public interface IMaterialPreferencesStore
     Task SaveAsync(MaterialPreference preference, CancellationToken cancellation = default);
 }
 
-// Persisted intent never authorizes the optical path. Qualification is per launch,
-// requires a real Test manifest, and is independent of system effects policy.
+// Ordinary settings select the optical path. Windows effects, power, remote-session
+// and accessibility policy still decide whether that path can be rendered.
 public static class MaterialActivationPolicy
 {
     public static bool Known(string mode) => mode is "Auto" or "Advanced" or "Standard" or "Opaque";
     public static string Effective(string requested, NativeProfileKind kind, bool controlledTest)
-        => !Known(requested) ? "Standard" : requested is "Auto" or "Advanced"
-            ? kind == NativeProfileKind.Test && controlledTest ? requested : "Standard" : requested;
+        => requested is "Auto" or "Advanced" or "Standard" ? requested : "Standard";
 }

@@ -1,6 +1,616 @@
 # 开发与维护
 
-## 当前 Recognition v6：公共泛化复核与集成准备（2026-10-09）
+## 番组计划快捷登录与配套授权服务（2026-10-13）
+
+本轮按用户明确授权安装正式版且禁止 Computer Use。当前没有注册的 Bangumi 应用及授权服务，`BangumiOAuthDefaults.ServiceUrl` 保持空值；主入口正确禁用并显示“尚未开通”，手动授权可用。仅有客户端／服务代码和合成闭环，不是已完成的真人 OAuth 功能或公网部署；配置完成前不得宣称“快捷登录可以使用”。
+
+维护入口及继承分支／HEAD 不变。新增应用层 `BangumiOAuth`／`BangumiOAuthBrowserPolicy`、基础设施 `BangumiOAuthProvider`、Windows 浏览器实现及 `TheOrder.BangumiAuthService`；设置入口首选 OAuth。客户端只向编译指定的 HTTPS 服务发送领取证明／刷新请求，只打开固定 `https://bgm.tv/oauth/authorize`，核对授权 URL 的全部字段及第一方 callback；原 NextMoe 浏览器和凭据不复用。取消／三分钟超时清理会话，失败不替换旧授权；服务器返回的身份还需客户端 `/v0/me` 核验。
+
+`WindowsBangumiCredentialStore` 兼容 v1 手动文件；手动保存／清除仍写 v1，OAuth 才写 v2，并将 access token、refresh token、期限、服务来源与账号作为同一个原子 DPAPI 记录。匿名／授权缓存边界沿用。每分钟在空闲时续期，实际 snapshot 同时检查过期，服务来源变更不发送旧刷新令牌。退出取消并等待正在验证／原子提交的个人请求，再释放资料。
+
+服务启动前必须完成以下外部配置：
+
+1. 在自己的 Bangumi 开发者应用中取得 App ID／App Secret，将回调登记为 `https://<自己的授权域名>/v1/bangumi/callback`。不借用其他项目应用身份。
+2. 将服务部署到具有 HTTPS 的自有主机。运行环境配置 `Bangumi__AppId`、`Bangumi__ClientSecret`、`Bangumi__ServiceUrl`；ServiceUrl 必须为域名根路径，如 `https://auth.example.com/`。App Secret 放入主机秘密管理／私有环境，不写源码、前端或普通配置样例。
+3. 用 HTTPS 反向代理承接公开入口，服务进程只监听受控的内网／回环地址。只有 HTTP 的公网部署不满足客户端验证规则。还需完成代理日志脱敏（回调含短期授权码／state）、TLS、公网限流、进程守护及真人验收。
+4. 服务的 `/health` 可检查启动状态；实际成功／失败／拒绝及刷新须另验。设置 `BangumiOAuthDefaults.ServiceUrl` 为上述第一方地址后重新编译／包装客户端，主按钮才启用；这些公开参数不需要用户填写个人密钥。
+
+配套服务采用 .NET 10 的 ASP.NET Core，无新第三方包；服务本体不进入桌面安装包。可使用仓库固定 SDK `dotnet publish native/TheOrder.BangumiAuthService/TheOrder.BangumiAuthService.csproj -c Release -p:Platform=x64 -p:UseSharedCompilation=true --no-restore -o <新的输出目录>` 生成框架依赖产物，部署主机需对应 ASP.NET Core Runtime。客户端沿用原 WinUI publish 参数。不要使用测试中的 HTTP 转发／合成凭据来配置正式服务。
+
+后台接口为 POST `/v1/bangumi/login/start`、`poll`、`cancel`、`refresh` 与 GET `/v1/bangumi/callback`。短会话有独立随机 ID／state，native 私有 verifier 的 S256 摘要绑定领取；state 防止错回调，令牌只领取一次，三分钟超时且最多 128 项。默认出站间隔一秒；请求／响应限制、IP 固定窗口、禁重定向／cookie、不记录响应或秘密、no-store 与固定上游共同约束网络。该领取证明是中继协议，并非 Bangumi API 已支持 PKCE。服务不建立用户数据库，也不预建其他 Provider 框架。
+
+产物 `.artifacts/bangumi-quick-login-20261013/`：`before-manifest.json` 仅保存 11 份相关原文件；`publish-final` 为桌面构建、`service-publish` 为未部署服务；`tests/quick-login-related-final.trx` 为 389/0/0，执行四秒。真实本地 Kestrel Host 和合成账号覆盖授权／callback／领取／续期，全程无 Computer Use、真实账号或 UI 自动化；原音乐、关联、拒绝缓存、持久化及导航测试保留。初次编译出现服务全局 Program 与既有性能 Program 名称冲突，已改为服务命名空间内入口，原失败日志保留。依赖锁文件仅增加新项目关系，既有外部包版本及哈希不变。
+
+用户已授权本机安装：检测原实例退出后，CLI 校验复制旧程序及 1916 份 Production 资料到外部 `TheOrder-Local-Rollback/20261013-235525`，不解密秘密，不导出私人清单到仓库。新 Setup 退出 0，658 份 payload、GUI 入口与原快捷方式校验通过，安装期间资料全部未变；回执在 `local-install/`。保持原分支／HEAD／index、版本 1.1.0 与继承修改，没有 GitHub／发布操作。源码与模拟验证已完成，实际快捷登录仍等待注册和部署。
+
+## 番组计划授权本机应用（2026-10-13）
+
+用户后续明确授权安装新候选到正式版。复用 `.artifacts/bangumi-authorization-20261013/publish-v1`，核对 23 份任务文件与已测试程序集后，使用既有 release／installer 包装流程生成 `local-install/release-package` 和 `local-install/installer`。本轮不重新构建应用或重跑无关测试；已有 `authorization-related-v3.trx` 为 360/0/0。生成摘要的测试计数已修正为显式数字，原 TRX 与早期失败日志保留。
+
+桌面组件可控制 The Order 窗口但不能定位系统托盘，故用户正常退出旧实例后继续。先校验复制 666 份旧程序及 1838 份 Production 文件到仓库外 `TheOrder-Local-Rollback/20261013-225114`；私人清单不写入仓库。新 Setup 使用原安装身份、目录与静默参数安装，退出 0，658 份 payload、额外入口／身份、原快捷方式及安装入口校验通过。安装期间全部 1838 份资料哈希未变。
+
+原快捷方式启动普通 Production／诊断关闭窗口，实际查看 36 部书架作品和新番组计划授权区；未点击授权、填写凭据或改变设置。启动后的 17 份非锁顶层文件中 15 份未变，仅 `native-nextmoe-auth.dpapi` 与运行日志发生正常启动更新；没有读取其内容，运行中的 writer lock 不做哈希。截图保存在外部回退目录 `ui/installed-bangumi-settings.jpg`，部署回执／简要 UI 证据在 `local-install/`。HEAD、分支与 index 保留；源码仅补写这两份原交接文档，没有提交、推送、合并、发布或版本升级。
+
+## 番组计划个人访问令牌（2026-10-13）
+
+新增 `BangumiAuthorization`／`BangumiAccessContext`、`BangumiAccountProvider`、`WindowsBangumiCredentialStore`、`BangumiSettingsViewModel` 和原设置页 partial。固定官方 PAT 页面 `https://next.bgm.tv/demo/access-token`；用户粘贴后先通过 `/v0/me` 验证，成功才原子保存到 `native-bangumi-key.dpapi`，读写绑定当前资料身份并复用路径固定／原子文件机制。取消发生在替换前保留旧值；替换完成后仍发布对应内存状态。明文仅在应用进程内用于受限请求，不进入设置 JSON、库、错误、快照 ToString 或日志。
+
+现有 Bangumi Providers 接收同一可选 access context，匿名构造与旧测试接口兼容；请求本身由快照检查固定 HTTPS origin／GET／许可 subject 路径，再附加 Bearer。共享 PublicArtworkNetwork 仍禁用 cookies／重定向，NextMoe、VNDB、MusicBrainz 和图片不接触该令牌。CacheKey 的 anonymous 值保持；新增可选 AccessScope 将授权缓存隔离到令牌 SHA256 指纹。Root、目录与发现页的关联身份同步带入该 scope，切换授权取消旧响应和视图内容，保留游戏／个人库格式与原导航。明确拒绝不返回旧缓存作为成功读取；七天以内的临时离线、超时、限流或服务错误可降级。
+
+输出 `.artifacts/bangumi-authorization-20261013/`。最终 `tests/authorization-related-v3.trx` 360/0/0，测试执行两秒；无全仓审计或长任务。最早 User-Agent 非标准 product 写法导致请求前失败并取消该次回归；随后修正合法格式，旧品牌断言和拒绝缓存降级的旧测试按实际行为调整，保留早期日志。WinUI x64／NativeProductionCandidate／禁用多语言 publish 和原 RC 包装成功。实际隔离设置页布局及正常退出已核验；测试不访问 Production 或真实令牌。`Start-Bangumi-Test.cmd` 默认诊断关闭；真实授权、受限条目完整响应及 Win10 实机尚未验收。不要自动安装新授权候选、推送或发布。
+
+## MusicBrainz 本机应用（2026-10-13）
+
+用户已授权将最新候选应用到原正式安装。复用 `musicbrainz-20261013/publish-v5`，先核对 26 份任务源码检查点和 19 份 native 产物，再由原 `package-native-release.ps1`／`package-native-installer.ps1` 生成 `.artifacts/musicbrainz-promotion-20261013/release-package` 和 `installer`，未重新编译或重跑无关审计。安装前确认没有 The Order 进程；回退程序及资料只复制到仓库外 `TheOrder-Local-Rollback/20261013-212031`，不解密凭据、不把私人清单写入仓库。
+
+新 Setup 以 `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-` 升级已核验原安装目录，保留桌面入口，安装退出 0。安装前后 1790 份资料哈希一致，658 份 payload、额外 GUI 入口／身份和 `TheOrder.exe --validate-only` 通过。原快捷方式启动 Production 普通窗口，实际渲染和响应确认；启动后的运行 writer lock 正常占用，不在运行时读取它做哈希。17 份其他顶层文件中 15 份未变，仅登录伴随文件和运行日志哈希变化，未读取秘密内容；部署回执保存在本轮输出目录。原分支、HEAD 和 index 保留，只补写原交接文档，无 GitHub／公开发布动作。
+
+## MusicBrainz 与音乐页（2026-10-13）
+
+当前未发布源码是唯一基线，原分支与版本 1.1.0 保持不变。应用／基础设施／展示层分别由 `MusicBrainz.cs`、`MusicBrainzService`、独立 `MusicBrainzProvider`（含 Mapping／Covers／SearchQueries）、`MusicAlbumViewModel` 和 `MusicBrainzAlbumView` 组成。既有 `RelatedMediaDetailView` 只在 Music 类型下委派新视图；书架、嵌套 KunGal 与发现页通过原内部媒体宿主配置同一单例 reader。初始化或进入游戏详情不触发音乐请求。
+
+Bangumi Subject 的可选 `MusicFacts` 仅用于公开发行事实，读取有界 infobox 中的商品编号／品番、艺术家、厂牌、碟数、条码与明确的类型化 MusicBrainz URL。不会把正文 UUID、标题或单曲 Recording 编号当专辑发行版。匹配检索与自动选择独立；原始标题和关系不因检索变体而改写。最终发行版 lookup 再核验编号、碟数与曲目结构。手动查询不能绕过预览与确认，确认指纹包含原 Bangumi 编号及发行事实。
+
+`PublicArtworkNetwork` 继续与带 NextMoe 鉴权的 transport 分开。单例／静态 MusicBrainz 协调器串行等待单调时钟 1.1 秒间隔，含重试；429／503／5xx 采用有限重试并遵守 Retry-After，35 秒总预算。JSON 8 MiB、25 候选、最多 50 碟／5000 曲目。Cover Art Archive 的 JSON 和图片仅接受相同发行版路径的 HTTPS archive.org 或明确 ia/dn 数字 CDN，已核验实际 ca.archive.org 路由；其他原图片源仍禁止重定向。
+
+`IsolatedMusicBrainzCache` 位于当前 profile 的 `native-musicbrainz-v1`，不属于 `library.json` 或备份迁移。128 文件／64 MiB／单条 4 MiB，profile/store 身份、payload 哈希、目录钉住、原子写入；未知／损坏／未来文件保留。检索一小时、专辑一天新鲜，临时故障最多回退七天旧资料；拒绝／移除结果保存失效标记，防止重启后复活。检索策略版本独立于确认指纹；确认可跨进程保留。生成旧请求不能覆盖新缓存，UI 代际及取消拒绝迟到详情／预览／确认。
+
+音乐页全局 ScrollViewer＋各碟 ItemsRepeater，没有碟内滚动框；Title／Artist／Credits 用原 TagFlowPanel 自然换行。普通行实测约 33 DIP，窄窗口长曲目自动两行。页面打开时等待测量再恢复顶端，用户滚动／键盘／点击中止该恢复；返回游戏继续由原宿主恢复原状态。
+
+短回归过滤 `MusicBrainz|MusicAlbum|Bangumi|RelatedWorksProjection|RelatedGameIdentity|StartupNavigation|KunGalRelatedWorks|CatalogPresentation|RemoteCover|ArtworkRouting`，每项使用 `FullyQualifiedName~`；`tests/music-related-delivery.trx` 为 367/0/0。原 x64 publish 参数及原包装脚本生成 `.artifacts/musicbrainz-20261013/package-v5`，无依赖升级。普通入口 `Start-Music-Test.cmd` 默认关闭诊断、两条虚构书架。真实 API／UI 与合成故障用例分别记录于 `live/`、`ui-evidence/`、TRX；已核验实际三碟 56 曲、标题有前缀／错字的四曲单曲发行、发行版选择、缓存重启、明暗窄窗与整页滚轮。最终清单／本地增量提交／原工作区保护记录在 `checkpoint/`。
+
+没有访问 Production、启动真实游戏、安装、合并、推送或发布；Win10 实机、长稳和不同 MusicBrainz 出站客户端的合计 IP 请求速率未实测。现有来源的缺字段与曲目译名版需要保守确认；未来 VGMdb 可另建 Provider，当前不引入通用音乐管理数据库。
+
+## 多层关联与来源呈现（2026-10-13）
+
+当前维护源码和继承边界见 [BRIEF](docs/ai/BRIEF.md) 顶部。本轮仅保存 10 份相关文件的开始状态；新增 `CatalogBrowserView.Related.cs`，没有全仓审计或源码提交。产物 `.artifacts/related-depth-20261013/`，最终 `package-v2`／`Start-Related-Test.cmd` 指向本轮新建的两条合成 Test 资料。早期候选和证据保留。
+
+`BangumiRelationIdentityResolver.TryCreateCatalog` 复用原有 refs 校验，使用 `catalog:作品编号` 缓存命名和浏览实例／请求代际生命周期；不需要伪造书架条目，不接受个人混合来源替代 NextMoe 基础层。`CatalogBrowserView.Related` 在每个 Work 页复用统一关联组件及媒体详情，显式注入原 reader、语义 reader 和编号 reader；身份谓词绑定当前作品、代际、鉴权和媒体可见性。旧 `CatalogContentView` 的大关联卡在这些 Work 页关闭，其他实体页的相关游戏浏览保留。
+
+导航历史只保存轻量展示偏好及滚动值；重建视图时复用现有缓存，待测量／关系读取完成后恢复位置，用户输入取消恢复。媒体覆盖层保留原目录视图；返回恢复筛选、来源状态和焦点。视图销毁取消请求并释放回调；壳层退出同时释放书架和发现页的组件。原来源证据不丢弃；第二层展开才构建详细文本控件。
+
+263 项相关短测试通过，过滤 `Bangumi|RelatedWorksProjection|RelatedGameIdentity|StartupNavigation|KunGalRelatedWorks|CatalogPresentation`（每项前缀 `FullyQualifiedName~`），TRX 为 `tests/related-depth.trx`。最终 publish 使用原 x64、`NativeProductionCandidate=true`、`NativeMultilingualEnabled=false`、`UseSharedCompilation=true` 参数，无依赖升级。实际桌面和受限 Test 控制检查多层游戏、内部音乐、逐层返回、缺编号降级、来源分层及小窗口明暗布局；诊断窗口经正常退出，书架文件哈希不变。最终普通入口不启用诊断。没有 Production、安装、发布、长稳或无关回归操作。
+
+## KunGal 详情优先与返回修复（2026-10-13）
+
+当前增量入口不变。本轮 `.artifacts/related-preference-20261013/baseline/` 仅保存改动范围内的开始状态；新增 `NextMoeCatalog.RelatedIdentities.cs` 和 `RelatedGameIdentityTests.cs`。`RelatedGameIdentity` 为展示层编号证据，Reader 使用原 CatalogTransport 的鉴权代际、限速、大小、超时、取消与来源边界；一次最多 100 条、UI 最多 64 个当前已有的 KunGal 关系身份。API 只读 refs，不按名称搜索，也不逐项加载完整详情。Reader 显式由实际 catalog 注入，目录浏览装饰器不负责提供身份映射。
+
+`RelatedWorksProjection` 验证 KunGal claim、Bangumi 游戏类型和一一对应编号后，保留 KunGal 卡片并附上 Bangumi 原始证据；原始两组数据不删除。相同名称、冲突编号、跨媒体或多个 KunGal 身份指向同一 Bangumi 身份均不合并。View 以作品快照和代际拒绝迟到结果，离开／取消停止请求；手动刷新可重新核验，失败在折叠来源区提示并保留原卡片。五个筛选按钮显式使用 Default/Accent 样式及相同圆角。
+
+文件页返回通过 `ShellNavigationPolicy.ParentGameId` 选择 `FilesViewModel.GameId`，不依赖已被清空的 `WorkspaceViewModel.SelectedId`。相关真实导航回归覆盖详情→文件页→原详情；未保存安装草稿仍走原确认流程。最终短回归 `tests/targeted-final.trx` 为 287 通过／0 失败／0 跳过。WinUI 采用原发布参数包装为 `package-v3`，普通入口 `Start-Related-Test.cmd` 指向本轮独立 `test-profile`。最终实际结果及截图见 `validation-summary.json`。未进行 Production 操作、版本升级或公开发布。
+
+## 统一关联与内部媒体浏览（2026-10-13）
+
+当前源码及继承状态见 [BRIEF](docs/ai/BRIEF.md) 顶部。此轮仅维护源码与独立 Test，不安装或访问 Production。产物为 `.artifacts/related-experience-20261013/`；`baseline-manifest.json` 核验开始时 784 份文件，`checkpoint/manifest.json` 记录本轮差异及新增文件，HEAD 不变。不可把整个继承快照当作本轮原创提交。
+
+`RelatedWorksProjection` 统一展示模型，保留 `nextmoe:ID` / `bangumi:ID`、媒体类别、原始关系、来源和证据；仅精确身份去重。`CatalogEntityRef.RelationEvidence` 为展示缓存的可选字段，`CatalogRelatedWorks.Schema=2` 触发旧展示缓存重新读取，不是个人书架迁移。`BangumiRelationsProvider.Semantics` 复用原 HTTP 请求通道和限速，对最多八个粗粒度动画请求反向关系，只有来源与目标编号、游戏媒体类型一致才接受；一次共享 25 秒预算、有限内存缓存，失败保守展示，不递归关系图。
+
+`BangumiSubjectDetailsService` / `BangumiSubjectDetailsProvider` / `BangumiSubjectDetailsViewModel` 分离匿名读取、缓存、取消与界面时效。固定 subject GET，检查返回编号、媒体类型及匿名可访问性；25 秒预算、2 MiB 响应上限。内存缓存最多 64 项，一小时新鲜、最多七天旧值仅用于临时网络故障；拒绝访问、私密内容或身份错误不回退旧内容。新增事实不写入个人库。
+
+`BangumiRelatedView` 保留旧类名但承载统一关联入口；`RelatedMediaDetailView` 复用当前 DetailsPage 宿主。隐藏原详情保留滚动和草稿，壳层返回先退出媒体详情，再处理原导航；恢复未完成的关系细分。`CatalogBrowserView` 的 UI 层 `CatalogIncomingRelation` 和历史保存入站关系、原始证据及滚动位置，不构造新的全局导航或数据库。来源链接继续受固定来源与现有外链校验约束。
+
+使用固定 `.artifacts/native-phase1/tools/dotnet/dotnet.exe`，顺序运行 Release test 与 WinUI publish；本机 `UseSharedCompilation=true`。测试过滤 `Bangumi|RelatedWorksProjection|KunGalRelatedWorks|ShellNavigation|CatalogPresentation`（每项完整前缀 `FullyQualifiedName~`），最终 `tests/related-delivery.trx` 为 236/0/0。发布构建使用 x64、`NativeProductionCandidate=true`、`NativeMultilingualEnabled=false`，然后原 `package-native-rc.ps1` 包装到 `package-v5`。`Start-Related-Test.cmd` 固定该包与 `related-test-profile`，三条合成书架条目、不含凭据，默认关闭诊断。通过包内 launcher 校验后启动，不使用裸 EXE。
+
+实际网络证据 `relation-semantics-live.json`；受限 Test 控制与桌面截图在 `ui-evidence/`，最终验证摘要 `validation-summary.json`。诊断入口只接受既有页面、当前关系项和有限操作，不接受任意执行代码／路径。测试使用正常匿名 API；离线、超时、取消和过期缓存由确定性回归覆盖，不冒充真实断网或长期压力验收。详情缓存不跨重启持久化。没有重跑无关全仓审计、长稳、真实游戏或正式数据操作。
+
+## 本机导入体验更新与 Bangumi 公开关联（2026-10-13）
+
+本轮输出根为 `.artifacts/ux-promotion-acgn-20261013/`，权威源码仍在 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`。保持分支 `codex/library-ui-refinement`、HEAD `7facc502fde52532518171384cd77b45c9a60c9c`、1.1.0 版本与继承 dirty。`baseline/`／`baseline-manifest.json` 保存开始时 776 份文件及哈希；`checkpoint-data-ui/` 保存本轮数据层与界面层的 17 份代码及 manifest。它们是恢复检查点，不是新的开发入口，也不应把继承快照作为本轮原创修改提交。
+
+用户先授权将上一轮导入体验 `import-file-ux-20261013/package-v3`（含复选框修正）安装到本机。该步骤已完成：Setup 退出 0，核验 658 份 payload，安装前后 1790 份 Production 文件哈希相同，原桌面快捷方式启动普通窗口成功。准确路径及回执见 `installation-receipt.json`／`installed-launch.json`；回退副本固定在仓库外 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261013-111856`。后续 ACGN 开发仅生成独立 Test 候选，不能把这次已用完的安装授权延伸为安装 ACGN 或公开发布的授权。
+
+应用层入口 `native/TheOrder.Application/BangumiRelations.cs` 定义来源身份、四种关联、校验与读取服务。身份来自 `MetadataMix.Base` 或未混合的 NextMoe 基础资料，要求全部 Bangumi 引用一致；人工补充层不能替代基础来源。持久键含 schema、本地作品、NextMoe 编号、Bangumi 编号与来源指纹；进程生命周期只用于拦截旧请求，不进入磁盘键，因此同一明确关联可以跨重启命中。缓存新鲜期一小时，强制刷新及错误保留旧值的状态分别呈现。
+
+基础设施入口 `native/TheOrder.Infrastructure/Online/BangumiRelationsProvider.cs` 先读取原作并核验其为游戏，再读取直接关联。固定 HTTPS Bangumi 端点、匿名访问、禁用 cookie／重定向，不访问认证服务；排队、间隔、两次请求、读取及最多两次重试共用 25 秒预算。单响应上限 2 MiB／1000 行，映射最多 256 项，仅保留动画、音乐、书籍、游戏。401／403／404、429、服务错误、超时、取消、畸形响应与真实空列表有不同结果，不通过放宽来源或匿名权限补救。封面通过现有图片管线的 Bangumi 白名单与专用 key 注册；网络接线在 `NetworkOwnership.cs`／`RemoteCoverSource.cs`／`Startup/Composition.cs`。
+
+`native/TheOrder.Platform.Windows/IsolatedBangumiRelationsCache.cs` 使用当前 `NativeProfileStore` 的 ProfileId／StoreId、完整持久身份及 SHA-256 封套；没有 native 资料租约时不创建无身份缓存。伴随目录 `native-bangumi-relations-v1` 有 128 项、32 MiB 总量和 1 MiB 内容上限，仅回收已验证的本资料记录，保留损坏、外来及未来格式。目录链固定后使用既有原子替换，替换前取消保留旧值，替换后完成新值；不迁移 schema，不写主库，不保存账号信息。回退程序只忽略该派生目录，无需用旧资料覆盖新编辑。
+
+界面入口为 `native/TheOrder.Presentation/BangumiRelatedViewModel.cs`、`native/TheOrder.WinUI/Views/BangumiRelatedView.cs` 及现有详情页。展开触发读取，默认动画分类，按需创建当前分类前 12 项图片控件，再由“更多”增加；切分类、折叠、卸载释放当前卡片。请求代次与作品生命周期共同阻止 A→B→A、关联变更、取消后的迟到结果。展示公开关系不改变识别、混合资料或书架模型，也未引入递归关系图、动漫独立管理、播放或收藏同步。
+
+最新定向测试过滤 `FullyQualifiedName~Bangumi`，`tests/bangumi-final.trx` 为 122/0/0；早期 `tests/focused.trx` 的 210 项中包含 91 项既有短回归，其余与 Bangumi 重叠，不能直接相加。既有过滤为 `FilesPresentationTests|P1SourcesTests|P1SourcesUsabilityTests|LaunchSetupTests|P1LaunchTests|OfflineFilesystemTests|LibraryBackupPresentationTests`。固定 SDK 的 Release／x64 构建已生成 `acgn-publish-final`，再经现有 `native/scripts/package-native-rc.ps1` 生成 `acgn-package-final`；日志分别为 `acgn-publish-final.log`、`acgn-package-final.log`。不重跑长稳、Win10 实机或全量历史基线。
+
+`live-nextmoe-mapping.json` 记录匿名公开 NextMoe 查得 CLANNAD 的作品编号 86、明确 Bangumi 引用 13；`live-api.json` 记录本轮实际 provider 取得 30 项关系（动画 6、音乐 14、书籍 4、游戏 6）。早期 seed 把 NextMoe 写成 13，不是可靠映射样例；初始 `acgn-test-profile` 的占位封面使用合成传输，也不是网络封面失败证据。最终验证固定到三条虚构条目的 `acgn-canonical-test-profile`，其中 CLANNAD 使用已验证的 86→13，采用正常匿名公开传输，不使用真实用户资料或账号。桌面已观察到六张真实动画封面，并点击 CLANNAD 卡片打开 canonical Bangumi 51 页面；浅色 707×773 DIP 窗口书籍卡片三列换行，实际截图为 `ui-evidence/related-books-light-narrow.png`。音乐首次 12 项、更多后 14 项，`canonical-music-ready.json` 记录 12 张封面加载完成。缺 ID／冲突分别拒绝读取。`canonical-exit.json` 记录正常退出与书架哈希不变，`ui-evidence/restart-cache.json` 记录重启 Ready／30 项／FromCache=true／Stale=false。更多操作键盘焦点移交已实现，但未由实际焦点观察确认，不作为全键盘验收。
+
+交付入口为本轮根目录的 `Start-ACGN-Test.cmd`，绑定 `acgn-package-final` 与 `acgn-canonical-test-profile`；`ordinary-test-launch.json` 记录包内正式 Test 校验入口成功启动、diagnostics=false。所有本轮诊断实例已正常退出，普通隔离 Test 保留可用。`checkpoint-final/manifest.json` 保存最终 17 份功能代码与两份文档，`source-preservation.json` 核验未触及本任务以外的基线文件。候选不安装正式版、不改公开发行、不提交／推送；真人 NSFW 权限、真实书架、游戏启动、动漫独立管理和长期运行不在本轮验收内。
+
+## 导入／文件操作语义与选择状态（2026-10-13）
+
+本轮源代码仍在 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`；输出 `.artifacts/import-file-ux-20261013/`。继承修改保留，修改前相关文件分存 `before-root/`、`before-import/`、`before-installation/`、`before-sources/`。本机日用安装仍为上一轮 `local-promotion-20261013`，新候选 `package-v3` 仅通过本轮 `Start-The-Order-Test.cmd` 打开合成 Test，不更新正式资料或版本号。
+
+`FilesViewModel` 保存当前可导入选择、按钮适用性及结果状态，新的扫描／发现清选择，提交失败保留选择，成功才清除。`ImportPage` 初始化及状态变化同步按钮；`ListViewItem` 自定义样式必须继承 `DefaultListViewItemStyle`，否则会丢失 WinUI 多选框选中底色。未另写固定颜色模板，明暗／悬停／按下／禁用及高对比度继续用框架资源。
+
+安装页复用既有草稿与导航协调器：当前首选或首行默认选中；存档、辅助工具和高级参数采用折叠区；目录查找与文件选择返回时检查原草稿身份，查找还检查原文件夹，避免旧结果回填到新编辑。自动发现手动扫描使用 `LibrarySourcesService.ScanAsync(waitForTurn: true)`，以取消／生命周期链接等待互斥；后台扫描保持忙时跳过。来源对话框重新生成后更新按钮可用性；恢复忽略后同时恢复导入和忽略操作。
+
+短测试过滤 `FilesPresentationTests|P1SourcesTests|P1SourcesUsabilityTests|LaunchSetupTests|P1LaunchTests|OfflineFilesystemTests|LibraryBackupPresentationTests`，`tests/focused-final.trx` 为 91/0/0，运行 21 秒。新增五项覆盖选择／失败／重扫及手动扫描等待／取消，不重复跑全量基线。WinUI 最终输出 `publish-v3`，之后调用 `package-native-rc.ps1` 到新 `package-v3`。本轮使用固定 SDK 的 `-p:UseSharedCompilation=true --no-restore`：第一次独立 csc 编译进程处于 Suspended，终止已核验的本次编译进程后改用共享编译成功；没有恢复被挂起程序或修改系统防护，原因未确认，原日志保留。
+
+受限 Test 的新选择／按钮操作同时登记于 `MainWindow.Visual.cs` 分派及 `MainWindow.P1Fixture.cs`；仅允许既有合成 Test 的可导入项索引与白名单按钮。`validate-ui.ps1` 验证实际控件回执：v2 的完整交互检查与 v3 唯一后续产品修改（首帧按钮初始化）的复验分开记录。实际图像可确认复选框选中色与局部布局，但系统材质层不在 RenderTargetBitmap 内。没有以这些证据宣称通用鼠标／原生文件选择器、真实游戏生态或长期运行通过。
+
+## 短审后本机部署（2026-10-13）
+
+用户已授权将 P1 测试成果替换本机正式程序，且要求避免长时间测试。本轮输出 `.artifacts/local-promotion-20261013/`：修改前小范围文件在 `before/`、`before-data/`，继承状态保留；`source-build-manifest.json` 绑定 776 份构建时源码，后续仅补写本文及 BRIEF 的部署结果。仍维护原 worktree／分支／HEAD 和 1.1.0 版本，不推送／发布。
+
+修复点：`LibrarySourcesService.IgnoreAsync` 先验证可见选择，再按目录物理身份跨全部重叠来源保存各自键，原子失败不更新内存；`OpenSourcesAsync.SourceToggle` 捕获请求值、禁用控件，在 finally 从提交态同步并抑制递归事件；`MetadataMixing.Merge` 在组合双方来源层前验证目标作品身份，不确定或矛盾的跨作品层阻止整次事务；`package-native-installer.ps1` 在创建输出／查询编译器前校验正式入口、release identity 及 launcher 哈希，复制后再校验。
+
+相关验证为 91 项导入／识别／来源／启动／备份退出测试和 32 项资料合并／扩展／同步测试，0 失败／跳过。没有重跑全量、长稳或历史资源基线。实际 Test 用已知合成资料，未启用 Production 诊断控制；配置文件 Read sharing 阻止替换的负向检查证明保存失败后开关回退，随后成功切换并恢复文件哈希。测试实例正常退出，未强杀；菜单非空和闲置识别收起有 XAML 回执。
+
+构建顺序：固定 SDK Release test → `publish`（x64、`NativeProductionCandidate=true`、`NativeMultilingualEnabled=false`、`UseSharedCompilation=false`）→ `package-native-release.ps1` → `package-native-installer.ps1`。RC 缺少 `launch.ps1` 不可直接作为 Setup 输入；旧 `test-native-installer.ps1` 的临时注册／卸载路径不用于本机现有安装。本次只用新的 Setup `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-` 对已核验的原安装目录升级，保留桌面快捷方式。
+
+`installation-receipt.json` 核验安装退出 0、658 份正式 payload、额外 GUI 入口／安装身份及 `TheOrder.exe --validate-only`，1772 份正式资料安装前后逐文件不变。仓库外完整回退副本见 `rollback-receipt.json`；私人文件清单只保存在该回退目录内，未解密凭据。`production-startup.json` 记录通过原桌面快捷方式启动安装版、Production 普通入口、诊断关闭和窗口响应；`post-start-data-check.json` 核对启动后书架／身份／界面／材质／识别配置。此为本机短时验证，不是 Win10、长期运行或真实外部工具验收。当前已打开的正式程序可直接使用，历史 Test 包仅保留作证据。
+
+## P1 体验修正与相关验证（2026-10-13）
+
+本轮维护源码仍为 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`。`.artifacts/p1-usability-20261013/before.json` 和 `before/` 保存开始时 773 份源码哈希与文件，继承 dirty 保留。功能及入口见 [BRIEF](docs/ai/BRIEF.md) 顶部；不升级版本、不发布、不操作正式资料或真实游戏。
+
+`ITitleIndex.ContainsReferenceAsync` 复用有界、可取消的索引加载，按完整 Steam 引用精确查询；`WindowsSteamLibraryScanner` 标记候选，`LibrarySourcesService.Candidates` 默认筛选，并允许每个 Steam 库显式显示未确认项目。旧 `native-library-sources-v1.json` 缺少的新可选字段取默认值；`ShowUnconfirmedSteam` 和 `IgnoredCandidates` 与原根目录清单一同绑定当前 ProfileId／StoreId、校验并原子保存。忽略键包含来源、目录物理身份及 Steam ID，不保存游戏内容。忽略提交重新核对扫描快照和路径身份，只有保存成功后更新内存；坏配置、写入失败、取消和目录替换的正反场景均覆盖。最多管理 16 个根目录和 2000 条忽略记录，不放宽原扫描边界。
+
+`FilesViewModel.ReviewDiscovered` 清除旧手动扫描根目录，并仅在来源候选审阅阶段显示忽略操作。书架提示关闭经过 `IgnoreDiscoveredAsync` 持久化，错误保留重试入口；识别栏复用 `HasRecognitionWork`。菜单从卡片／列表根元素的绑定 Id 取得当前条目，生成后再 `ShowAt`，不在 Opening 中依赖尚未设置的 Target。详情和右键启动设置均复用 `InstallationNavigation.OpenAsync`、未保存检查和意图时效保护，创建当前首选安装草稿后定位启动辅助区。
+
+使用固定 SDK，顺序执行针对性 Release 测试和 WinUI publish／包装。过滤 `P1Sources|TitleIndex|FilesPresentation|RecognitionPresentation|P1Launch|P1DirectMetadata` 的最终 `tests/targeted-final.trx` 为 79/0/0。本轮没有重跑全量基线，旧 P1 全量结果只作为历史证据保留。`publish-v2`／`package-v2` 成功，交付入口通过原包内校验器核验 653 份文件；不从裸 EXE 启动。
+
+`fixture-request.ps1` 仅对本轮合成 Test 发送有界、带 nonce 的现有控制请求；新 `LibraryPage.ContextFixture.cs` 复用生产菜单构造，菜单调用仅允许详情／选择／启动设置。发现／忽略／恢复等入口不接受任意路径、代码、认证或 Production 操作。`ui-evidence/` 保存实际 XAML 状态、操作回执及窄窗口图片；根窗口截图缺少系统合成层，不能当作桌面材质像素验收。`exit-owned-test.ps1` 校验完整程序路径、PID、启动时间和合成 Test 身份，等待与托盘相同的正常退出，不强杀；退出前后书架哈希一致。所有诊断实例已正常关闭，交付 `Start-The-Order-Test.cmd` 默认关闭诊断控制。
+
+## 全部 P1 候选与复验（2026-10-13）
+
+维护入口仍为 `D:/Projects/The-Order-worktrees/claude-recognition-rnd/native`，本轮 `.artifacts/p1-completion-20261013/` 保存修改前全源码哈希／继承状态、新候选、失败与最终证据；没有清理／重置继承 dirty、升级版本、发布或访问正式资料。用户授权全部报告 P1，范围及普通入口见 [BRIEF](docs/ai/BRIEF.md)。
+
+主要新增服务：`LibrarySourcesService` 管理最多 16 个显式根目录，有界扫描和选择导入；Windows watcher 以约三秒防抖、四秒检查及十五分钟低频重核，不扫描整盘。Steam 只读取选定库的已安装 appmanifest，不取账号资料。`LibraryExtrasTransactions` 和 `MetadataMixing` 保持原子事务／时效校验，人工账本不改原会话；`PlaytimeStatistics` 保留未知日期。`WindowsLocalResources` 只检查有限深度的常见存档目录和用户选定文档。直接资料 API 固定官方 Bangumi／VNDB、无重定向／Cookie、有界响应／超时／限速、正式作品类型与内容策略核验；不携带 NextMoe 凭据。LE／Steam 使用结构化参数和物理身份核验；DPI 只影响子进程，管理员 EXE 由系统授权，Magpie 打开选定工具。`WindowsGameAudioPlatform` 通过 CoreAudio 仅取得强身份对应的单进程会话，带事件上下文的静音租约不改变系统或其他程序音量。经典 COM Jump List 使用 profile 绑定激活，不创建第二个 writer。
+
+`nativeExtras` 可选扩展版号为 1；原无扩展库继续读取，未知扩展拒绝写入并保存原文。根目录伴随文件为 `native-library-sources-v1.json`，绑定当前资料身份并原子保存。备份仍是书架数据，包含人工时长、存档／工具配置、攻略路径、混合资料层；不复制存档或攻略内容，也不复制登录／根目录配置。不要用旧 writer 重写新增扩展后宣称无损回退，先保留新程序导出的完整书架。
+
+复验使用现有固定 `.artifacts/native-phase1/tools/dotnet/dotnet.exe` 和锁文件，先执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:Platform=x64 -p:UseSharedCompilation=false`，再顺序 `publish native/TheOrder.WinUI/TheOrder.WinUI.csproj --no-restore -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false -p:UseSharedCompilation=false -o <本轮新目录>`；测试／publish 不并行以免共享 obj。之后调用原 `native/scripts/package-native-rc.ps1` 包装到新目录，使用自带 `launch-test.ps1 -DataDirectory <本轮合成 Test>` 验证全部文件哈希。不能将文件夹中的裸 EXE 作为日用入口。
+
+最终全量 `tests/full-handshake-final.trx` 2753/0/0，专项 `tests/p1-audio.trx` 103/0/0 为其子集。旧 fixture 的报告文件写入竞争和固定睡眠交接时序失败原日志保留，最终夹具等待真实报告／进程观察，不放宽应用规则。新增 `MainWindow.P1Fixture.cs` 扩展既有受限 Test 操作，只允许当前合成书架条目和实际控件，不接受 arbitrary 文件路径／执行代码或认证操作；安装入口复用 `InstallationNavigation.OpenAsync`，不能直接切页面绕过安装加载。退出测试与托盘共用 `App.RequestExitAsync`，不以强杀替代排空。最终包／重启回执及界面边界见本轮 `validation-summary.json`；新对话框 XAML 捕获可验证布局，根窗口捕获缺少系统合成层。通用桌面控制、真实文件选择器、Win10 实机、真实管理员／外部工具／Steam 游戏及长期音频兼容未验收。
+
+最后的窄窗口整理只修改 WinUI XAML 与 Test 证据入口，不涉及上述已全量测试的领域／应用／平台逻辑。交付包 `package-final-5` 重新 publish、包装和哈希核验；存档操作使用既有 `TagFlowPanel` 自然换行，选项保留可访问名称。`p1ScrollInstallation` 只允许合成 Test 当前安装的存档或保存控件，不接受任意选择器；布局回执含相对坐标。遇到同名旧证据时拒绝覆盖，使用新证据名重试。`exit-owned-test.ps1` 同时核验 PID、启动时间、完整 EXE 路径及 Test 身份，等待正常退出并核对书架哈希，不强杀。`Start-The-Order-Test.cmd` 通过 package 自带校验入口运行，默认关闭全部诊断／视觉控制。
+
+## 当前在线目录与托盘退出修正（2026-10-12）
+
+最新候选根 `.artifacts/settings-exit-20261012/`。维护源码中 `LibraryBackupViewModel.DisposeAsync` 同时由 MainWindow.StopAsync 和 NativeHost 的容器清理调用；应共享同一个释放任务，不重复 Cancel 已 Dispose 的 CancellationTokenSource。新请求在停止后不执行，已接受的写入必须排空；不可用强制退出替代必要的会话保存。修复前的三个失败用例与日志保留在 exit-reproduction.log／test-results/exit-reproduction.trx，最终退出相关 35 项通过，在线相关 41 项通过。涉及原会话保存失败、暂缓写入、取消、权限与账号时效保护，全部为合成无窗口回归。
+
+设置在线目录采用 12 DIP 节内距，空状态文本、闲置取消／进度及默认未测试说明不占空间；绑定复用 SettingsPage 的可见性函数，实际连接结果与错误继续显示。编译配置仍为 x64、NativeProductionCandidate=true、NativeMultilingualEnabled=false、UseSharedCompilation=false；固定 SDK 执行 Release test 后 publish 到本轮 fresh publish 目录，再调用原 package-native-rc.ps1。包与生成绑定核对见 verify-delivery.ps1／validation-summary.json，不代表像素或托盘菜单实际验收。
+
+新 Start-The-Order-Test.cmd 绑定全新 12 条虚构 Native Test，代理未执行；只有 seed 工具源码复用上一轮，旧 profile 不复制或覆盖。没有真实游戏、Production、凭据、GUI 自动化、日用安装替换、版本升级或发布。用户正在使用电脑，继续避免打开窗口或控制输入；修复不能改变仍在内存中运行的旧程序，需用户结束旧进程后从新入口核验。
+
+## 当前设置留白修正（2026-10-12）
+
+本轮仅修改 `Views/SettingsPage.xaml`、其 code-behind 的可见性转换及 `TheOrder.Presentation/RecognitionViewModel.cs` 的 `HasRecognitionWork` 属性通知。识别容器和取消按钮同用现有活动状态；空错误／备份提示 Collapsed。资料存储移入原备份组，采用 16 DIP 节内间距。格式、识别／取消算法及现有导航、启动、备份行为不变。
+
+输出 `.artifacts/settings-spacing-20261012/`，保留修改前五份原文件和继承状态。固定 SDK 的 Release 无窗口检查过滤 `FullyQualifiedName~AutomaticRecognitionTests|FullyQualifiedName~LibraryBackupPresentationTests`，41 通过／0 失败／0 跳过，含等待导入、取消、图片准备和备份提示相关流程。随后按既有 x64／NativeProductionCandidate／禁用多语言配置 publish，并用原 `package-native-rc.ps1` 打包。`verify-delivery.ps1` 核对包哈希、生成的实时绑定接线、状态通知及空控件收起结构；不作为实际像素证据。
+
+新入口 `.artifacts/settings-spacing-20261012/Start-The-Order-Test.cmd` 绑定全新合成 Native Test，由用户自行打开。代理不启动窗口、不用 computer use、不触及真实库／凭据／游戏，不替换安装或发布。合成资料工具首次直接 apphost 因未注册全局 .NET 失败，原日志保留；使用原固定 SDK 执行 DLL 后成功，没有安装系统运行时。实际设置视觉和动态显隐仍待核验。
+
+## 当前导航与多引擎排版修正（2026-10-12）
+
+在同一维护工作区上窄修复 `MainWindow.xaml`、新增 `Views/RailNavigationItem.cs`、`Views/TagFlowPanel.cs` 和 `Views/CatalogFactsView.cs`，不升级版本或改动资料。返回键当前位于主内容的固定 44 DIP 工具栏，不再使用标题栏的中间 Content 槽。侧栏继承原生 NavigationViewItem 模板，依据锁定 `microsoft.windowsappsdk.winui/2.3.9/.../generic.xaml` 的 ContentGrid／IconColumn／ContentPresenter 精确修正留白；复用默认原生样式和现有导航事件。未来升级 WinUI 依赖时需重新核验这些模板部件及中心位置，不能直接沿用阴性检查。
+
+`TagFlowPanel.CenterInlineItems` 默认 true，原标签和链接保持中心线；只有横幅事实外层设为 false，并开放到实际信息框宽度，使多个长引擎组换行而非挤成窄列。没有修改元数据、识别、玻璃效果、横幅原图比例或下方回退条件。
+
+本轮输出 `.artifacts/layout-corrections-20261012/`；固定 SDK 用 `dotnet test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release --filter "FullyQualifiedName~StartupNavigationTests|FullyQualifiedName~BannerAestheticsTests"` 得到 22 通过／0 失败／0 跳过。最后 publish 使用同一 x64／NativeProductionCandidate／无 Multilingual 的既有配置，输出 publish-final，再由原 package-native-rc.ps1 打包。候选仅供用户自行从 `Start-The-Order-Test.cmd` 打开；新建合成 Native Test，不复制任何旧 profile、缓存、设置或密钥。没有 computer use 或真实应用窗口验证，实际渲染仍待手动验收；下方第一批返回位置为历史方案。
+
+## 第一批备份／导航／冷启动候选（2026-10-12）
+
+维护入口为 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`。本轮候选不升级公开版本，不提交／推送、不安装日用更新；用户要求不使用 computer use，所有验证为隔离、无窗口检查。功能、格式兼容性和未验收范围见 BRIEF 顶部。不要复用旧私库、Production 或已删除资料进行这轮验证。
+
+实现入口为 `native/TheOrder.Application/LibraryBackups.cs`、`LibraryBackupService.cs`、`native/TheOrder.Platform.Windows/WindowsLibraryBackupStore.cs`、`native/TheOrder.Presentation/LibraryBackupViewModel.cs`，设置及恢复流程位于 `SettingsPage.Backups.cs`／`MainWindow.Backups.cs`。可移植导出仍为原版书架 JSON；自动快照另加绑定当前 ProfileId／StoreId 的版本 1 封套、SHA-256 与内容摘要，保留最近十份。内部伴随目录 `native-library-backups-v1` 不替换主库或既有 last-good 恢复机制；旧版本忽略该目录。回退程序与主动恢复书架是不同操作。重置／删除资料时只在获准范围处理该目录。
+
+恢复默认添加缺失作品，整份恢复需预览确认且无活跃／待恢复会话；保存并读回验证恢复前的便携快照后才进入主库原子写盘。预览绑定当前 writer 及完整快照，预览后发生个人编辑／会话／其他写入会拒绝旧确认，需重做预览。原子主库提交一旦开始仍不在半途取消；提交成功后界面／旧队列失败必须按已提交处理。恢复暂停自动个人同步，用户可在重新预览云端差异后恢复同步。备份不包含登录凭据、设置、独立自选横幅或游戏内容；原路径不存在的安装仍需用户自行定位。
+
+本轮输出 `.artifacts/first-batch-backup-shell-20261012/`，保存修改前文件与哈希、继承状态、测试日志和独立 publish／package。针对性检查：使用固定 SDK 执行 `dotnet test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release`，过滤 `LibraryBackup|StartupNavigation|SessionPersistence|OfflineClient|NativeTransaction|RecognitionLifecycle` 的 FullyQualifiedName。首批相关 141 项与最终新增 34 项有重叠，按 TRX 测试 ID 去重共 144 项，不能相加为 175 项。启动 gate 的异步顺序、失败与并发启动由 `StartupNavigationTests` 验证；不包含真实 XAML 帧或视觉证据。
+
+WinUI 编译／publish 使用 `NativeProductionCandidate=true`、`NativeMultilingualEnabled=false`、Platform=x64，输出到本轮新的 publish 目录，再调用已有 `native/scripts/package-native-rc.ps1` 生成独立自包含 package。最终 `Start-The-Order-Test.cmd` 固定到本轮新的合成 Native Test，清除继承测试环境并验证包哈希；只提供给用户自行打开，代理未运行该入口。侧栏宽度／返回固定槽与首屏加载切换仍须手工核验，不将历史桌面证据套用于本轮。
+
+## 1.1.0 公开发布完成（2026-10-12）
+
+The Order **1.1.0 已公开发布并标记为 Latest**：https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0 。Release ID `410369204`；标签源码提交 `751da886a1a4e313b465df6f9497e612c46b19d8`，全部 734 份 Git blob、冻结源码 ZIP 与六个公开附件已核对；实际 1.1.0 更新读取探针通过，包括新版本、安装包、块表和主要升级说明。发布未重新编译，未安装、替换日用程序或访问 Production。
+
+本机回执位于 `.artifacts/github-publication-1.1.0-20261012/`：`publication.json`、`public-source-verification.json`、`public-download-verification.json`、`actual-update-feed.json` 与 `closure.json`。维护入口、原 HEAD 和继承未提交成果保留；发布暂存仓库不是开发入口。下方候选的“尚未发布”等表述为各阶段当时的历史状态。1.0.1 首次需手动安装 1.1.0，之后可从软件内更新。个人同步默认关闭；真实云端写入／删除、收藏夹额外权限、Win10 实机、真实安装升级与长稳范围仍未验收，本次发布不把这些未验证项改为通过。
+
+## 1.1.0 GitHub 发布记录（2026-10-12）
+
+用户明确授权将已验收的 1.1.0 上传 GitHub。本次公开入口为 https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0；安装器、完整对应源码、差量块表、校验与原验证报告一同发布。源码保持当前 native 实现、锁文件和必需数据，公开文档更新下载入口与范围；原开发编号 1.0.2 的真实 OAuth／完整回归按实际版本保留。
+
+真实云端写入／删除、收藏夹额外权限、Win10 实机、真实安装升级和长期稳定性仍未验收。同步默认关闭；双向模式后台本地时长／状态上传仍需手动预览。旧标签／附件与日用程序不变；发布暂存目录不作为维护入口。
+
+## 当前功能版本 1.1.0（原开发编号 1.0.2）
+
+用户已确认改用 1.1.0。维护入口仍为 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`；当前构建、完整对应源码、安装包和验收绑定使用新的 `.artifacts/release-1.1.0-20261012/`，原认证与真人只读证据保留在 `auth-sync-20261011`。复现命令和功能边界见 [1.1.0 BUILD](docs/release/1.1.0/BUILD.md) 及 [认证与隐私](docs/release/1.1.0/AUTHENTICATION.md)。没有公开发布或日用安装授权；旧 AppId、资料身份与格式保持，安装器可从 1.0.1 直接升级，更新比较拒绝降级。下方 1.0.2 记录保留为原开发阶段历史，不使用其中的旧版本打包命令生成当前候选。
+
+
+## 当前 1.0.2 NextMoe 认证、个人同步与设置候选
+
+维护入口仍为 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`，保留此前 Win10／更新／差量功能和全部 dirty。新证据和候选根 `.artifacts/auth-sync-20261011`，没有公开发布、提交／推送、操作日用安装或真实 Production。最终入口、源码身份、回归结果和未完成 gate 见该目录 `validation-summary.json`；上一轮 `delta-update-20261011/distribution-final` 原样保留为程序回退点，不用旧资料覆盖新编辑。
+
+`NextMoeAuthentication` 复用 OnlineAuthContext 代次，默认匿名或保留旧 Key；`WindowsOAuthLogin` 使用系统浏览器、127.0.0.1:0 与 PKCE；OAuth/个人 API 请求固定官方端点并禁止重定向。当前 Windows 用户 DPAPI 刷新伴随文件、ProfileId/StoreId 绑定、串行轮换标记和原子替换保护未知结果；退出清除本机登录，不假称远程撤销。
+
+`PersonalSyncCoordinator` 与 `PersonalSyncPlanning` 分离读取、三方比较、确认、远端写入和本地事务。同步全部默认关闭，检查点／UUID 待恢复任务／收藏映射／导入汇总按账号和 Client ID 存在独立伴随文件，旧库与 Key 不迁移。评分结构只读；未知 POST 保留同键／同内容，逐项响应检查后才标成功。秒／分钟、不可信增量、completion、删除、作品合并、取消与迟到账号数据有正反测试。暂停自动同步持久保存，无法恢复的旧任务可明确读取现状后结束，再重新预览。
+
+官方替换接口未提供条件更新。受控双向比较、手动确认与单向能力可用，但严格并发无覆盖的全自动双向替换不能承诺；后台双向本地上传改为提示预览，其他设备新数据可安全导入。真人 OAuth 只读闭环已由用户授权后验证（`oauth-real-readonly.json`）；这不等同于真实云端写入或严格全自动双向验收，不直接提出无条件 Release Candidate GO。详细见 [认证与隐私](docs/release/1.0.2/AUTHENTICATION.md)。
+
+构建／测试统一 `-p:Platform=x64`，测试夹具沿实际输出路径寻找同配置子进程。完整历史安全存储测试按现有 npm 锁文件恢复 Electron 44.5.1，只使用测试自己生成的合成秘密和临时目录。常规自动化、Test 原生 UI、真实匿名和真人授权分别记录；禁止在同一 Test 资料上并行启动应用／探针。
+
+真人 OAuth 验收使用新建隔离 Test 和 `THE_ORDER_NATIVE_READ_ONLY_OAUTH_ACCEPTANCE=1`，该入口从程序层阻止所有个人写入，标题标记“只读登录验收”。先由用户授权并正常退出 Test，再用 RecognitionLab `oauth-readonly-smoke` 验证新进程刷新、目录／获准个人只读接口及本机退出；记录仅含状态／数量。合成 `PERSONAL_FIXTURE` 还要求 Test、VISUAL_TEST、DIAGNOSTICS、ONLINE_FIXTURE 同时启用，不能用于 Production 或真人判定。不要读取／导出旧真实 Key、把测试凭据放进源码或尝试真实账号写入。源码许可与第三方许可保持。
+
+## 当前差量更新候选 1.0.2（2026-10-11，包含程序更新与 Win10 适配）
+
+权威源码仍为 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`，本轮输出 `.artifacts/delta-update-20261011`。公开版本仍为 1.0.1；没有发布、提交／推送、安装日用更新或接触正式资料。最新交付包 `distribution-final/The-Order-1.0.2-Setup-x64.exe`（79,209,628 字节），SHA-256 `AE1791B91917D2EB10D451FB00F70ECD724F9AF7B7EFC0257CAB4617F0AE4C4D`；同目录有对应源码、块表和校验摘要。旧候选及失败记录保持。
+
+`AppUpdateBlocks` 定义内容边界、逐块 SHA-256、比较及重建；`TheOrder.UpdateTool` 与客户端共用该格式，不增加 NuGet 依赖。`GitHubUpdateFeed.Differential` 验证同一正式发行的可选块表 digest，再发准确 Range 请求。`WindowsUpdatePackages` 仅读取托管安装内同应用／版本的单份 `update-base.bin`，重新算块表，按预计收益选择差量或全包；合成后按整包 SHA-256、大小、MZ 和既有 PE 身份验证。失败只截断当前临时文件并回退一次，取消不回退。主进程保存与 worker 交接不变。
+
+`package-native-installer.ps1` 以固定 SDK、锁文件构建发布工具，生成 `.exe.blocks.json`，校验清单收录两个附件；发布时需将其同时上传。Inno 独立文件压缩方便复用，安装时由已验证载荷生成 662 个 SHA-256 条件条目，使用共享 `installer/PayloadFiles.iss`，相同程序文件不写入、缺项或变化才替换。预安装检查所有目标与父目录，拒绝链接；额外文件和使用资料不清理。当前安装包自行复制为一份 `.bin` 基包，普通卸载管理它。
+
+Release 构建／publish、109 项相关测试、12 项真实 Inno 合成文本探针及 GUI 最终 657 份载荷校验通过。公开 GitHub 的实际 Range 请求读取 65,536 字节通过。两份内部 1.0.2 包比较：全包 79,209,628 字节，差量含块表 5,439,527 字节，复用 73,890,172 字节、23 个 Range；重建字节哈希相同。这不是公开版本的真实升级。前轮 worker／界面／Win10 测试不重复计入本轮结果。
+
+本轮最终证据：`tests/delta-tests.trx`、`selective-probe-2/summary.json`、`real-range-validation.json`、`delivery-validation.json`、`benchmark-final.json` 和 `validation-summary.json`。最新完整载荷为 `package-candidate`，安装器为 `installer-candidate`；第一次编译失败和早期中间包保留，不作为交付。复现命令与有界回退条件见 [1.0.2 BUILD](docs/release/1.0.2/BUILD.md)。
+
+真实应用安装／升级／重启、Production、Win10 实机、完整历史回归和长稳未运行。`test-native-selective-install.ps1` 只安装几份虚构文本到新建 `.artifacts` 目录，不创建系统卸载注册或快捷方式，不安装日用程序；其成功不能等同真实应用升级验收。1.0.1 尚无内置更新和基包缓存，首次迁移需全包。后续输出使用新目录，不覆盖已完成证据。
+
+## 前轮程序更新候选 1.0.2（2026-10-11，已由差量候选替代）
+
+最新源码仍在 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`，新增更新的开发验证位于 `.artifacts/self-update-20261011`。公开版本仍为 1.0.1；本轮没有发布、安装日用更新或接触用户资料。最新候选安装包为 `distribution-final/The-Order-1.0.2-Setup-x64.exe`，SHA-256 `CC85F7CAFA35352011C6DD16D28B25ABE92A15DD2C2A1D3706C9967C24E965A9`；对应源码及验证摘要与其同目录。旧 `win10-compat-20261011` 安装包已由本候选替代，保留历史证据。
+
+`AppUpdateViewModel` 处理静默／手动检查、版本、主要说明、下载状态与取消，`GitHubUpdateFeed` 使用独立无鉴权 transport；`WindowsUpdatePackages` 在当前 profile 的固定 updates 子目录存储校验过的下载。`WindowsUpdateInstaller` 只允许 Production，核对托管安装目录与真实 Setup 的 PE 身份，启动随包 worker。`AppUpdateShutdown` 复用普通退出的草稿、会话及事务收尾，再通过命名事件提交安装；worker 必须等待准确的原进程退出。安装失败写入固定短结果，恢复原入口；不终止游戏、不清理资料。
+
+Production 启动后 15 秒和每 12 小时静默检查，Test／Development 不启动定时器。后台不下载或弹窗；设置导航的提示点及辅助功能名称同步 `HasUpdate`。手动检查可抢占后台请求；说明在本地从发布者的更新段落提取，不使用 LLM 或个人密钥。完整说明保留为可展开的纯文本。
+
+本轮 build／publish、72 项相关测试、worker 18 项、实际命名事件交接 4 项、隔离界面状态 18 项、最终入口 27 项及 657 份载荷校验通过。现有公开安装包的真实下载与 SHA-256 核对通过，未执行它。测试使用新建合成 Test；`-ValidateOnly -ProbeHandoff` 永远在安装／重启前退出。没有 Production、实际安装升级、Win10 实机或历史全量／长稳验证；截图透明合成层不完整，不能把它们算作像素验收。
+
+沿用下方固定 SDK、CPU ONNX 和 Win10 能力守卫。构建命令见 [1.0.2 BUILD](docs/release/1.0.2/BUILD.md)；更新测试可用 `AppUpdateTests|WindowsAppUpdateTests|WindowsCompatibilityTests` 过滤器。本轮最终 TRX 是 `tests/update-background.trx`，最终界面状态 `ui-smoke-final/summary.json`，最终 worker／交接 `worker-tests-final-2/summary.json` 和 `handoff-tests-final/summary.json`，最终包 `package-final`。所有完成的输出必须保持，后续使用新目录。
+
+## 当前 Windows 10 兼容候选 1.0.2（2026-10-11）
+
+维护入口仍为 `D:\Projects\The-Order-worktrees\claude-recognition-rnd/native`；本轮输出 `.artifacts/win10-compat-20261011` 仅是候选与证据。公开发行仍为 1.0.1，本轮没有推送、安装升级或操作用户资料。版本与验证范围见 BRIEF 顶部；完整构建说明见 [1.0.2 BUILD](docs/release/1.0.2/BUILD.md)。
+
+`native/Directory.Build.targets` 将 Windows 程序集的最低运行系统与 CA1416 检查下限统一为 17763，保留 26100 的参考 SDK。Windows 平台层引用既有同版 Windows ML 包以使用自包含 CPU ONNX Runtime；消费它的 x64 测试／诊断工具显式 RID 并保持原输出路径。不要因兼容任务升级依赖或模型。`restore --locked-mode`、Release build 与 publish 使用固定 .NET SDK 10.0.401；安装器使用已有 Inno Setup 6.7.3、VS C++ x64 与 Windows SDK 26100。
+
+最终输出依次为 `publish-final`、`package-final`、`installer-final`。安装器接收 `-CandidatePayload <完整候选绝对路径>` 并核对 1.0.2.0／文件哈希，不接受旧发行 ZIP。交付 Setup、完整源码 ZIP 与校验文件位于本轮 `distribution-final`。Setup 未签名；在用户已有安装上运行旧 `test-native-installer.ps1` 会违反本轮无人值守边界，不作为兼容验收步骤。
+
+本轮三个针对性 TRX 在 `tests/`，去重 604 项通过，覆盖版本能力、实际 CPU 模型、图片选择／缓存、合成资料持久化／恢复、启动计时、移除与识别状态。最终 27 项入口测试在 `launcher-tests-final`。`fallback-smoke-final-2` 使用四份新建三条虚构资料、生成横幅、不含密钥或游戏 EXE；74 项窗口与帧检查通过，实例均经内部退出正常结束。其早期失败结果保留，不能用缺图或标准 Acrylic 的 rendererActive=false 判定低模糊玻璃成功／失败。
+
+兼容模拟开关 `THE_ORDER_NATIVE_COMPATIBILITY_TEST=win10|native-caption|mica-fault` 只在 Test 且 `THE_ORDER_NATIVE_VISUAL_TEST=1` 时有效，实际宿主版本始终报告真实值。Production 不接受该开关。真实 Win10 不可用，所以独立安装、文件选择器、Win10 显卡／缩放、真实 API、真实游戏和长稳仍未验收；当前宿主检查不能替代它们。没有迁移数据格式、改默认正式资料路径或恢复已删除的私人 Test。
+
+## 当前 1.0.1 已公开发布（2026-10-11）
+
+用户回复“可以了，更新 GitHub 平台”，已明确授权本次源码提交、发行及下载说明更新。公开发行 https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.1 已标记 Latest，README 推荐直接下载 Setup.exe。v1.0.1 固定提交 a4c82decf8fc44d106afee86542a13da9919d2cc，tree 2ad653090dd278bf3ac63a64cc9d428cb5d9f071；原 v1.0.0 标签与附件保留。
+
+上传的是用户确认的 home-progress-20261011 安装包，没有重新编译或改动；Setup SHA-256 12092E7B8DB3D077056D6A4C434BC020D9437CFD934712C13079FAA100C2B4BB，72419445 字节。完整源码含安装器，669 份文件和清单，源包 SHA-256 0B216C68EA6B894C0A9520AA565961C5CC1202E2FA3456860E818E41F4808B0E。四份公开附件（Setup、源码 ZIP、SHA256SUMS、ACCEPTANCE）均回下载比对大小与 SHA-256 一致，源码归档清单逐文件一致；223 份可验证编译源码与 PDB 文档哈希一致。打包时 release-identity 的 STAGED_NOT_PUBLISHED/sourceSnapshot:null 是历史构建记录，未重写已确认的安装器，公开身份另由发行页和源码清单说明。
+
+170 个前轮针对性用例和后续 49 项存在重叠，不相加，不声称全量回归通过。用户确认提醒、移除交互和继续游玩布局，并同意发布；真实 API／游戏识别、用户安装卸载、独立干净 Windows 和长期稳定性仍不计入自动验收。未签名和可能的下载信誉提示如实保留。
+
+维护源码与继承 dirty 成果保持，未整体提交开发工作树。发布暂存 .artifacts/github-publication-1.0.1-20261011/repository 仅用于公开快照，不作为开发入口；完整发布凭证 publication.json、public-download-verification.json 和 published-release.png 在同一输出目录。未操作 Production、个人凭据或真实游戏，未自动安装日用版；本次授权不扩大到未来任意发布。下方“尚未发布”反映候选阶段。
+
+
+## 当前首页进度修复候选（2026-10-11）
+
+1.0.1 最新本地候选位于 .artifacts/home-progress-20261011，替代下方 usability-20261011 候选。维护源码与数据边界不变。publish → package-native-release.ps1 → package-native-installer.ps1（CandidatePayload）链路已通过；安装器 SHA-256 及用户确认范围见 BRIEF 顶部。
+
+本轮只运行 AutomaticRecognitionTests 和 RecognitionPresentationTests，共 49 项通过，记录在 tests/home-progress.trx；没有扩展到完整基线或真实私库测试。新的自动批次计数覆盖识别器外的等待项及图片准备，首页和设置共用。继续游玩为普通封面卡片，Library 的 StageEvidence/AuditStageAsync 现在报告 cover-and-text/material=none，不能再把它当作液态材质受测区域；详情材质不受影响。
+
+Start-The-Order-Test.cmd 只打开本轮 visual-test。用户已确认新继续游玩布局，实际游戏识别进度待其安装后验证。自动代理不得在运行中的个人安装上做升级／卸载，不能自行复用已删除的旧私人 Test 资料。
+
+## 当前 1.0.1 修复候选（2026-10-11）
+
+权威源码仍为 claude-recognition-rnd/native。用户要求本轮集中修复，不做重型历史基线审计。已恢复固定 SDK 10.0.401 和锁定依赖；未升级依赖或操作正式资料。七项行为、证据范围和用户局部确认见 BRIEF 最新节。
+
+构建／发布仍使用 native/scripts/native.ps1；候选发布目录为 .artifacts/usability-20261011/publish-final，package-native-release.ps1 输出 package-final。安装器脚本现改用 `-CandidatePayload <完整候选包绝对路径>`，要求 1.0.1.0，不再接受旧 `-ReleasedArchive`；其余 InnoCompiler／OutputDirectory 参数不变。详见 native/installer/BUILD.md。下方 1.0.0 构建命令是历史记录。
+
+本轮针对性测试位于 .artifacts/usability-tests/usability-2.trx、usability-3.trx、usability-4.trx，共 170 个不重复用例通过。覆盖自动重试／队列、确认跳转、原子批量移除、活跃计时保护、快捷方式变更等。卸载清理函数验证脚本为 native/scripts/test-native-uninstall-data.ps1，使用全新合成目录和受限目录链接。旧 test-native-installer.ps1 固定 1.0.0，未在本轮用户安装上运行。
+
+Test 入口 .artifacts/usability-20261011/Start-The-Order-Test.cmd 固定新建的 visual-test-3（三条虚构条目，无真实目录或凭据）。用户已确认首页提示和移除交互；其余实用行为等待后续核验。安装候选在 installer-final/distribution，未自动安装到日用程序或公开上传。后续安装须先正常退出所有 The Order 实例，升级保留现有数据；卸载默认保留，只有用户明确选择删除才清理默认 Production。
+
+## 当前 1.0.0 安装器维护与验证（2026-10-11）
+
+已按用户授权补充 Setup.exe 分发，当前发行页为 https://github.com/Ph-Rank/The-Order/releases/tag/v1.0.0 。安装器维护源码位于当前权威工作区的 native/installer，完整操作说明见 [安装器构建与检查](native/installer/BUILD.md)。继续保护继承 dirty 状态；原 v1.0.0 标签、应用源码 ZIP 和程序 ZIP 不改变。
+
+在维护工作区根目录使用 PowerShell 7 运行 native/scripts/package-native-installer.ps1，参数为 -ReleasedArchive <已发布原 ZIP 的绝对路径>、-InnoCompiler <隔离 Inno Setup 6.7.3 的 ISCC.exe>、-OutputDirectory <新的 .artifacts 输出目录>。脚本固定验证原 ZIP 和全部应用文件哈希、编译器身份；655 份原程序只作为安装器载荷，不作为开发源码。需要现有 Visual Studio C++ x64 Build Tools 和 Windows SDK 10.0.26100.0；本次 MSVC 为 14.50.35717。不因安装器任务升级应用依赖。
+
+验证入口 native/scripts/test-native-installer.ps1 接收 -Setup <Setup.exe>、-BuildDirectory <构建目录>、-OutputDirectory <新的 .artifacts 验证目录>。发现已安装本安装器、既有同名快捷方式或运行实例时拒绝，避免覆盖用户环境。验证只创建本轮合成 Test，不使用已删除的 experience-profile-v2 或 Production；会临时真实安装、修复、卸载并检查保留 Test 资料，退出时移除自己创建的注册和快捷方式。49 项结果见 .artifacts/installer-20261011/validation-final/summary.json。启动烟测不代表正常退出、干净 Windows 或长期稳定性通过。
+
+已公开下载核对新增三个附件，Setup SHA-256 为 F3F75D8AAE79147022D422CE3580563AB446D5FEF97E9A4DECA9696F5E12E8ED。安装包、全部应用文件和新增入口的 Defender 自定义扫描均未发现威胁；使用 -DisableRemediation 只避免本次扫描自动修改证据，不关闭实时防护。日志在 .artifacts/installer-20261011/defender-*-scan.log。包当前未签名，下载信誉提示仍可能出现；不得把本机扫描当作微软认证，不用关闭防护、自签名信任或重新打包规避提示。公共说明和完整发布复核见该目录 report.md、publication.json。
+
+## 当前本机清理后的开发状态（2026-10-11）
+
+用户已明确授权删除全部 The Order 使用资料、历史程序／发行副本及旧源码工作树，准备从 GitHub 重新下载从头使用。原 experience-profile-v2、候选包、源码恢复副本及根 Start-The-Order-Test.cmd 已删除；下方旧启动路径和“保留 37 项”仅反映历史阶段，不能继续使用或自行恢复旧库。现有维护源码及原 dirty 成果保留在 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native，长期仓库 D:/Projects/The-Order 未集成，两个原 HEAD 和 Git 分支保持。后续新测试资料需在新的明确任务范围内准备；不要默认打开 Production。
+
+生成的 bin／obj、node_modules、旧 Release 及本地 SDK 副本已清理，未来构建需重新按锁文件恢复依赖，必要时使用 native/scripts/native.ps1 -InstallSdk 准备固定 SDK。本轮没有功能、版本或依赖升级，没有重新构建／启动应用。1.0.0 公开发行和少量原验收／发布凭证保留，原 artifact 文件大部分已删除，历史链接不保证仍有效。
+
+用户已删除受保护目录并永久删除回收站七项；最终复核 267 个目标原路径和回收站 The Order 残留均为 0，应用实例为 0，维护源码及分支／标签保护检查通过。资料清空与清理状态为 PASS，清单和状态以 BRIEF 最新节及 .artifacts/cleanup-20261011/final-verification.json 为准，result.json、recycle-cleanup.json 保留首次删除和等待用户操作的历史结果。此次明确清空授权不扩大到真实游戏文件、密钥读取、公开仓库改动或以后任意 Production 操作。
+
+## 当前 1.0.0 公开发行与维护入口（2026-10-11）
+
+正式发行已完成：https://github.com/MuskTesla/The-Order/releases/tag/v1.0.0 ，公开源码仓库 https://github.com/MuskTesla/The-Order 。用户已明确授权本次上传、必要的公开提交和记忆更新；没有扩大到日用替换、Production 或未来任务的任意推送。
+
+v1.0.0 固定源码提交 f8d0115f097894e0b86a1415f6262b13ca6def4d，tree 9f963eab975415514e8f4692ae5e5411dddd483c。完整冻结 653 文件、manifest 和公开身份说明共 655 个 Git blob 全部一致；两个 ZIP 和另外三份附件经公开下载复核大小与 SHA-256。main 的 bd8062aebc07f751b2cca9946caaa88dbd5018da 只更改两份发行说明，未移动标签或改变源包／程序包。源码供给完整性与发布附件下载检查为 PASS，详见 .artifacts/github-publication-1.0.0-20261011/publication.json。
+
+维护工作继续使用 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native 和 codex/library-ui-refinement 的原 dirty 状态，HEAD 7facc502fde52532518171384cd77b45c9a60c9c。本轮 .artifacts/github-publication-1.0.0-20261011/repository 仅供发行暂存，不作为开发入口；长期 D:/Projects/The-Order 没有整体集成。不要从发布包或冻结恢复副本继续开发。
+
+根 Start-The-Order-Test.cmd 仍只使用既有 experience-profile-v2；未启动新的 Test 资料、Production 或真实游戏，未操作普通 Test 窗口或替换日用程序。程序回退只更换完整包，不以旧库覆盖新编辑。原 18 条、仅简体中文、个人记录与最终 v24 外观继续有效。
+
+本轮仅更新发行和交接信息，没有改运行代码、版本或依赖，不重复构建和整套回归。此前 2413/2413、27/27 以及本机持续／显示检查的证据与范围保留；独立干净 Windows 未重验、整进程长期稳定性延后验证，缓慢内存增长未标为长期稳定 PASS。下方发布准备阶段的授权与状态文本按历史时间点理解，以本节的最新公开发行状态为准。
+
+## 历史 1.0.0 发布前准备（2026-10-11）
+
+维护入口仍为 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native；分支、HEAD、有效要求见 BRIEF 顶部和原 18 条。用户授权首版发布前准备，未授权公开发布／日用替换／Production。根 Start-The-Order-Test.cmd 固定 .artifacts/first-release-20261010/launch-1.0.0.ps1，仅使用原 experience-profile-v2，不能改成发行包默认的空白 Test 或正式入口。本轮用户明确不验证虚拟机，继续只用本机既有隔离资料。
+
+版本为 1.0.0，文件版本 1.0.0.0；UI 设置可查看版本。保留仅简体中文、全宽原比例横幅、罕见极窄下移、无折射／无色散 σ1 玻璃和 v24 的封面恢复／横幅完整首帧。原资料和手动图片选择必须保留，回退程序不能恢复旧库覆盖后续编辑。闭合资料检查点保存在本轮 .artifacts 的 private-profile-checkpoint，含私人资料，只供本机恢复保障，不能复制到源码或公开包。
+
+本轮执行记录（重跑须使用新输出目录，不覆盖本轮证据）：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' restore native/TheOrder.slnx --locked-mode -p:NuGetAudit=true -p:NuGetAuditMode=all
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' build native/TheOrder.slnx -c Release --no-restore -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-build --no-restore --logger 'trx;LogFileName=full-release.trx' --results-directory .artifacts/first-release-20261010/tests-release
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o .artifacts/first-release-20261010/publish-a1
+& './native/scripts/package-native-release.ps1' -PublishedDirectory '.artifacts/first-release-20261010/publish-a1' -OutputDirectory '.artifacts/first-release-20261010/candidate-1.0.0' -SourceManifest '.artifacts/first-release-20261010/source-1.0.0.json'
+```
+
+完整回归 2413/2413，无跳过；新增启动入口回归 27/27，真实 Windows PowerShell 5.1 执行。异常包、大小／哈希错误、目录逃逸、重复路径、错误 Test 类型与正式目录及父子目录均拒绝；ValidateOnly 只验证文件，不打开任何资料。正式入口仅由最终用户启动时传入 Production 授权参数。代理验证必须使用固定的隔离入口。发布脚本只写新的 .artifacts 输出，绑定完整当前源码 manifest，程序和源码 ZIP 的所有条目另逐字节验证；不能仅靠 HEAD／MVID 绑定 dirty 源码。
+
+发行包使用自包含运行时，并提供 files.json、release-identity.json、dependencies.json、完整许可、README.md 和 CHANGELOG.md。对应源包包含 653 份源码和三份 docs/release/1.0.0 文档，依赖锁文件不变；source-1.0.0.patch 包含相对 HEAD 的继承变更，不是 15 文件的单任务补丁。task-delta-1.0.0.json 才是相对本轮 647 文件基线的任务差异。构建环境与普通使用说明见 docs/release/1.0.0/BUILD.md／README.md。
+
+本轮最终持续运行、退出／重启、资料差异、普通入口以及用户显示核验的结果统一保存在 .artifacts/first-release-20261010/report.md。高对比度及缺图等注入是明确限定的代码检查；新包没有在独立干净 Windows 上重验，没有访问 Production 或真实游戏，也不把较早宿主证据、单位回归或未回复当作本版全部通过。所有历史候选／失败记录保留，不提交、不推送、不整体集成长期仓库。
+
+## 历史简体中文 Test v24：首次封面与横幅完整首帧（2026-10-10）
+
+源码仍为 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native，分支、HEAD、18 条有效要求见 BRIEF。普通入口为根 Start-The-Order-Test.cmd（multilingual 同名历史入口同步），固定 .artifacts/cover-startup-v24/launch-v24.ps1 → candidate-v24-frame-ready。651 项 payload，manifest SHA256 82612135D4414B3B18239076C89ED7F23475849988297AEEF2C1BC389EFBDEBD，MVID 7107477d-593c-4549-8033-1a5ca2a661b8。普通启动 PID 5252／UTC 2026-10-11T05:59:34.5836220Z，诊断／Advanced／控制器关闭；只用 experience-profile-v2 的原 37 项 Test。
+
+ICachedCoverRecommendationSource.ReadCoverAsync 只读本地经过身份／签名和 CoverSchema 验证的推荐，查询结果首次发布前恢复，保留个人选图与较新事件优先。首个 candidate-v24 的“只清临时底色”修复已被用户否定（变成全透明闪现）；最终新增 BannerPresentation，把横幅、文字、玻璃的首帧作为整体，在绘制及当前几何均就绪后的合成帧才揭示。保留布局测量、失败回退、取消和生命周期释放；无新增空闲绘制／轮询。σ1 无折射外观及全宽原比例保持。
+
+本轮最终执行记录：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~CatalogPreparationTests|FullyQualifiedName~PresentationRemediationTests|FullyQualifiedName~UiRefinementTests|FullyQualifiedName~ArtworkReadabilityTests|FullyQualifiedName~MaterialPreferencesTests|FullyQualifiedName~BannerSelectionTests|FullyQualifiedName~ImagePipelineTests|FullyQualifiedName~DecodedSurfaceCacheTests' --logger 'trx;LogFileName=frame-ready.trx' --results-directory .artifacts/cover-startup-v24/tests-frame-ready
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o .artifacts/cover-startup-v24/publish-frame-audit
+& './native/scripts/package-native-rc.ps1' -PublishedDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/cover-startup-v24/publish-frame-audit' -OutputDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/cover-startup-v24/candidate-v24-frame-ready'
+```
+
+再次执行必须使用新产物目录，不能覆盖历史候选。143/143 上述回归通过，与首轮 212/212 去重共 277 项，初轮 78 不重复累计。最终 Test 内部 heroFrames 只由既有隔离控制器触发，每轮最多记录 120 个实际合成帧快照并及时解除订阅；8 场景共 621 样本，未出现可见但未准备好的横幅，最终均可见。另有图片缺失／挂起／迟到完成、系统保护和高对比度注入检查。它们不是逐帧像素录像或完整发布验收。3 个宽窗布局全部叠放、无越界；解码缓存仍小于 64 MiB、最多 2 并发；无网络资料加载或重新分析。37 项的个人字段／library.json hash、选图 URL 均不变。
+
+用户正常关闭失败首个 v24 后，PID 21472 受控实例完成检查并通过应用正常退出，再从根 CMD 打开最终普通实例。用户已回复“已检查，本轮显示合适”，记录为最终 v24 本轮显示通过；检查提示后没有操作窗口，不扩大为全部历史任务或正式发布验收。 不再操作该窗口。
+
+report.md、TRX、frames-*/summary.json、hero-stage-audit.json、普通入口记录及源码恢复位于 .artifacts/cover-startup-v24。source-v24-confirmed/（647 文件）和 source-v24-confirmed.json/patch 含全部继承源码；task-delta-v24-confirmed.json 是相对 645 文件基线的 18 个任务变化文件。旧 candidate-v24、candidate-first-attempt-summary.json、launch-v24-first-attempt.ps1 仅供失败追溯／程序回退，不能恢复旧库覆盖新编辑。未提交、推送、正式发布、操作 Production 或执行真实游戏。
+
+## 历史简体中文 Test v23：横幅评分、全宽原比例与澄澈玻璃（2026-10-10）
+
+维护源码仍为 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native，分支 codex/library-ui-refinement、HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加完整继承 dirty 成果。读取 BRIEF 最前面的 v23 及全部 18 条有效要求。最新用户决定是横幅必须横向铺满，按源图比例确定高度，信息框仅在极窄窗口实在放不下时下移；文字框采用无折射、无色散、低模糊 σ1，保留明暗适配与细高光。旧居中缩窄方案已被用户否定，不可恢复；σ2.5 历史候选也不是当前入口。
+
+根 Start-The-Order-Test.cmd 与 .artifacts/multilingual-20261010/Start-The-Order-Test.cmd 固定 .artifacts/banner-aesthetics-v23/launch-v23.ps1 → candidate-v23-clearer。651 项 payload，manifest SHA256 E6860070EFE37026993EEF6D7F6C37E92E28BBC6B83DF5C95714278253A859B7，WinUI MVID 0a4c718f-95aa-4d01-96ce-96315ec04b85。实际普通入口 PID 19956／UTC 2026-10-11T05:02:41.4007270Z，诊断、Advanced 资格与控制器关闭。只使用既有 experience-profile-v2：ProfileId 22c746b9-c20b-50d9-efea-1ce4281261ee、StoreId eb86f351-0960-fd91-3469-bb46c947018e，37 项个人资料与 library.json 哈希不变。
+
+横幅评分 landscape-composition-v1 在同作品／可靠版本及 OCR 门槛后，按场景结构 25、叠层留白 25、明暗层次 20、有效分辨率 30 评分，约 1600×500 后像素加分封顶；不是人脸或训练审美模型。最多 32 张有界准备并写入 BannerSchema 1，CoverSchema 2／MediaSchema 6／ArtworkSchema 4 不变；同画面近似图优先更清晰原图，未分类封面不充当 CG。布局先并排事实和游玩统计、压缩间距、加宽文字框，最后才按实测高度保底下移。评分不在滚动或逐帧执行，玻璃复用已有 GPU 渲染器；系统保护、标准材质／高对比度及失败回退保留。
+
+37 项准备完成，31 项有合格 CG，15 个横幅 URL 变化（含移除 1 张误用封面），7 项像素增加；11 张仍受低清源图限制。封面推荐 0 改变，手动／本地素材优先。最终包运行 Ready、无待保存编辑／计时，图片错误／过期图／排队均 0，解码 66,699,568 bytes <64 MiB，最大并发 2；重启 CatalogLoads／Analyses 均 0。完整缓存与用户图片留在原 Test 目录，不复制入源码或程序包。
+
+412 项相关 Release 回归、31 项材质／可读性回归通过（有重叠，不相加）；最终 σ1 GPU 回读验证零几何偏移、框外保持原图、7 背景×两极性可读边界及资源释放。37 部实测：常用 1150 DIP 窗口中全部 31 张 CG 全宽且信息在图内；620 DIP 的 4 个短／常规样例仍在图内，480 DIP 的超宽 34 样例才下移，常规 5980 仍叠层。仅调低模糊后复跑 GPU 和最终包两例实际布局；完整布局矩阵来自相同布局代码的 σ2.5 包，保留明确证据来源。受控暗色及强制 Solid 回退也已检查；强制策略不等于实际 Windows 高对比度／远程环境验收。
+
+```powershell
+& './native/scripts/test-optical-source.ps1' -OutputDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/banner-aesthetics-v23/optical-low-blur' -Packages 'C:/Users/MUSK/.nuget/packages'
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/banner-aesthetics-v23/publish-clearer'
+& './native/scripts/package-native-rc.ps1' -PublishedDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/banner-aesthetics-v23/publish-clearer' -OutputDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/banner-aesthetics-v23/candidate-v23-clearer'
+```
+
+以上是本轮命令记录，再次执行必须使用新输出目录，不覆盖历史包。正常退出受控验证实例后，已通过根 CMD 打开最终普通候选；用户回复“已检查，本轮显示合适”，仅记录本轮显示通过，不能据此宣称全部历史任务或正式发布 PASS。检查提示之后未操作窗口。回退只更换程序，不以旧资料覆盖新编辑。
+
+详细证据在 .artifacts/banner-aesthetics-v23/report.md。baseline-source/ 与 baseline-source.json 是本轮 641 文件继承基线；source-v23/、source-v23.json、source-v23.patch 保存完整当前源码，task-delta-v23.json 标明相对本轮基线的变化。完整源码恢复含继承成果，不是单任务集成补丁。未提交、推送、集成长期仓库、发布、操作 Production／日用程序或执行真实游戏。
+
+## 历史简体中文 Test v22：封面构图评分（2026-10-10）
+
+当前维护源码仍为 D:/Projects/The-Order-worktrees/claude-recognition-rnd/native，保留 codex/library-ui-refinement／HEAD 7facc502fde52532518171384cd77b45c9a60c9c 的全部继承 dirty 成果。用户明确要求美观度权重，并选择“均衡：构图优先，清晰度达标”；读取 BRIEF 最前面的 v22 及全部 18 条有效要求。
+
+根 Start-The-Order-Test.cmd 和 .artifacts/multilingual-20261010/Start-The-Order-Test.cmd 固定 .artifacts/cover-aesthetics-v22/launch-v22.ps1 → candidate-v22-final。651 项 payload，manifest B32327B0E334BCF97EB1538FABBB26D91F93D1CBECD42E0428F617935FD8C62E，WinUI MVID 5199bfea-3ddc-4a0e-9337-27b50bfaffcf；实际普通入口 PID 12888／UTC 2026-10-11T03:48:00.0544070Z，diagnostics／Advanced／controller 关闭。仅 experience-profile-v2 原 Test：ProfileId 22c746b9-c20b-50d9-efea-1ce4281261ee、StoreId eb86f351-0960-fd91-3469-bb46c947018e。
+
+CoverAesthetics 在应用层实现 bookshelf-composition-v1：3:4 书架构图、细节、裁切边界、重心共 80%，有效分辨率 20%，约 360 像素卡片宽度后不再加分。候选最多 3 个，沿用 v21 的 primary／精确来源门槛；未分类图库只允许手动选。4 分内保留目录 primary、否则 2 分内保留原推荐。不是人脸／标题检测或已训练的个人审美模型。像素分析只在准备阶段执行，CoverDecision 持久保存；CoverSchema 2／MediaSchema 6，ArtworkSchema 4 与横幅不变。自动推荐预览通过 ICoverRecommendationSource 读取同一结果，保存前复核签名与 URL；手动固定／本地封面优先且不迁移。
+
+实际 37 项准备完成，28 个自动 URL 改变，32 张横幅不变，个人字段与 library.json hash 全同。重启资料请求 0，原有 CG 不重做 OCR；最终 Ready、37 项、图片错误／过期图／待处理均 0，解码缓存 66,494,704 bytes <64 MiB。完整照片原文件仍在原 Test 派生缓存，不复制到程序包／源码恢复。623 项相关 Release 回归、后续命名补齐的 51 项回归全通过，两组含重复；初始 2 个旧 schema 断言失败已修复并保留证据。
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/cover-aesthetics-v22/publish-v22-final'
+& './native/scripts/package-native-rc.ps1' -PublishedDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/cover-aesthetics-v22/publish-v22-final' -OutputDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/cover-aesthetics-v22/candidate-v22-final'
+```
+
+以上是已执行记录；再次构建／打包必须用新目录，现有候选不可覆盖。普通入口直接双击根 Start-The-Order-Test.cmd，先正常退出旧 Test。回退可用 .artifacts/cover-selection-v21/launch-v21.ps1，只换程序，不能恢复旧库。用户已关闭 v21；v22 视觉反馈偏好《魔女的夜宴》下方群像和《西历2236年》下方作品封面，同时明确“目前水平也完全够用”。本轮保留 v22，两例偏好仍未满足，不签署视觉全 PASS、不按作品写特例。提示后没有操作窗口，也未替用户保存封面。桌面控制工具 kernel assets 初始化故障仍未恢复，内部运行检查用既有应用 Test 接口，不自制 UIA 绕过。
+
+详细研究、各作品评分、日志和运行记录在 .artifacts/cover-aesthetics-v22；维护报告为 report.md。baseline-source/ 为开始时 638 文件基线；source-v22/、source-v22.json、source-v22.patch 是包含继承成果的完整恢复，task-delta-v22.json 才是本轮范围。没有提交／推送／发布、Production／日用替换或真实游戏执行。视觉与整体发布门槛分开记录；不能沿用 v21 确认宣称 v22 或正式发布 PASS。
+
+## 历史简体中文 Test v21：封面用途优先（2026-10-10，评分及预览由 v22 接续）
+
+继续从 D:/Projects/The-Order-worktrees/claude-recognition-rnd 的 native/ 开发；分支、HEAD 与继承 dirty 成果不变。用户指出 v20 自动封面包含盘面／封底／粉丝书／原声带／PS 包装，明确授权修正。详情见 BRIEF 最前面及全部 18 条有效要求。
+
+普通入口是根 Start-The-Order-Test.cmd（或 .artifacts/multilingual-20261010/Start-The-Order-Test.cmd），两者固定到 .artifacts/cover-selection-v21/launch-v21.ps1。candidate-v21 为 651 个 payload，manifest 957805A1AAE094B8A8E41D1DADE179757CB9D75F169852BF20F6CE2BF1217CBB，WinUI MVID 63ed08b7-3d03-47cf-863c-63edf735f696。已实际普通启动 PID 22988／UTC 2026-10-11T03:12:28.7134830Z。始终仅用既有 experience-profile-v2；不恢复旧资料、不复制缓存进源码、不执行真实游戏。
+
+CoverQuality 不再对任意 catalog covers 按像素排序：仅规范 URL 与保留 provider ID 匹配的同作品 VNDB 主图／Steam 书库海报可自动替换；目录明确 primary 为回退。图库候选仍可手动选择。CoverSchema 1／MediaSchema 5 升级派生缓存，ArtworkSchema 4 不变；无可信补充图的旧缓存重新查询 primary，离线失败保持可重试。用户库 JSON、手动选择与本地封面不迁移。实际 37 项升级、30 个自动 URL 更新，横幅 32 张与来源全保留，个人字段及 library.json 哈希相同。
+
+本轮 Release 验证：579 个图片／目录／在线用例、31 个界面状态用例，去重 607 个，全部通过无跳过。构建命令保持 NativeMultilingualEnabled=false、NativeProductionCandidate=true，仅表示候选编译；publish 到 .artifacts/cover-selection-v21/publish-v21，package-native-rc.ps1 输出 candidate-v21。不覆盖历史产物；日志、TRX、包身份、普通入口记录与完整源码恢复见该目录 report.md、source-v21.json/source-v21/、source-v21.patch、task-delta-v21.json。
+
+原生控制工具本轮初始化报 kernel assets 路径不存在，用户已正常关闭 v20。候选运行验证仅使用既有 Test 请求接口，完成后正常退出验证实例，再通过真正普通入口打开 v21，诊断与控制器关闭。用户已回复“已检查，本轮封面合适”，仅记录本轮封面确认；没有继续操作窗口。代码／缓存检查通过不等于视觉或发布验收通过。
+
+## 历史简体中文 Test v20：图片质量与发布前修复（2026-10-10，封面选择已由 v21 修正）
+
+维护源码仍在 D:/Projects/The-Order-worktrees/claude-recognition-rnd，codex/library-ui-refinement，HEAD 7facc502fde52532518171384cd77b45c9a60c9c 加完整继承工作；native/ 是 C#/WinUI 实现。用户本轮明确授权 12 项开发修复和无人值守检查复验，原正式数据／密钥／日用替换／提交推送边界保持。先读 BRIEF 当前状态和全部 18 条有效要求；以下 v19 及更早节为历史记录。
+
+最新普通入口（仅既有 37 项隔离 Test，先正常退出旧候选）：
+
+```powershell
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/release-readiness-20261010/launch-v20.ps1'
+# 或工作区根 Start-The-Order-Test.cmd／.artifacts/multilingual-20261010/Start-The-Order-Test.cmd
+```
+
+candidate-v20-audit9：651 项 payload，manifest SHA256 E32364149858BD627D24F3138463A5E11CB94644AEE00D66665279E7AE109375，WinUI MVID cc3d02f9-a918-43c6-8259-470e7699ad09。入口固定核对包和 experience-profile-v2 的 Test 身份：ProfileId 22c746b9-c20b-50d9-efea-1ce4281261ee，StoreId eb86f351-0960-fd91-3469-bb46c947018e。普通入口关闭 diagnostics、Advanced Test flag 与请求控制器；内部测量实例启用既有 Test-only 控制器或性能 harness，必须区分。NativeMultilingualEnabled=false；四种语言资源／代码保留。
+
+本版图片准备使用 MediaSchema 4、ArtworkSchema 4，旧公共展示缓存有界升级并保留仍有效的已筛选图，库和个人编辑不迁移。Steam 用同作品唯一独立 app ID，或官方 API 确认的唯一正式版／试玩版父子关系（最多两个既有编号，128 KiB 响应和 20 秒上限）；VNDB 用唯一精确作品 ID 和当前 API 确认的安全图片，均无 NextMoe 鉴权、cookie 或重定向。不同游戏／不明关系不选图，失败保留旧结果并可重试。固定原图通道允许系统 VPN／代理路由，一般远端图片仍做公网 DNS 核验。官方宽幅按设计比例评估质量，OCR 仍排除对话框。原图缓存 2 GiB／20000、解码 64 MiB／最多 2 并发等预算保留；不递归预取 A→B→C，不预加载所有未选封面。来源低清／无合格纯 CG 仍如实报告；本地横幅选择及恢复自动图保留。
+
+EXE/CMD 初次选择仅在安装目录内有界枚举，不执行来识别；唯一完整的正常游戏候选自动选择，唯一卸载／安装／配置工具须明确选择，其他完整或部分列表由用户选择。保存保留参数、工作目录、其他安装和记录。CMD 通过固定 System32 cmd.exe、私有 Unicode 子进程环境和既有非杀死型 Job 范围启动；GUI 接续只接受唯一窗口／完整范围／精确进程身份，遗漏出生或竞争窗口不猜测结束。日常玻璃无色散，标题框宽窗 16:9／紧凑窗 4:3，按实际内容高度扩展。系统保护、失败回退、NSFW、版本事实与内部导航规则保留。
+
+已执行的最终构建命令（打包总使用新目录，不能覆盖历史候选）：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:NativeMultilingualEnabled=false --logger 'trx;LogFileName=full-release-final7.trx' --results-directory '.artifacts/release-readiness-20261010/tests'
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/release-readiness-20261010/publish-v20-audit8'
+& './native/scripts/package-native-rc.ps1' -PublishedDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/release-readiness-20261010/publish-v20-audit8' -OutputDirectory 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/release-readiness-20261010/candidate-v20-audit9'
+```
+
+audit9 打包复用已通过完整回归和 10 分钟 actual XAML 的 publish-v20-audit8；package-audit9-delta.json 核对全部应用文件相同，仅 launcher／CMD／包身份和许可证清单字段顺序变化，许可证事实相同。普通入口显式从 PSHOME 加载系统 Utility，不依赖宿主的模块自动发现。NativeProductionCandidate 是可移植自包含构建开关，不是 Production 访问授权。2359/2359 完整 Release PASS，0 FAIL、0 SKIP，TRX 218.43 秒；构建／包成功、651 项 payload 逐文件 SHA256 校验通过。37 项缓存准备完成，32 部有合格横幅，16 个自动封面改进。audit8 实际 Ready、诊断关闭；未设程序的 9-nine 启动按钮可用且可访问，未调用真实游戏。宽窄窗口、标题文字边界、明暗主题和应用内强制回退／恢复已测。audit7 完成一小时、9199 轮 actual XAML 操作，图片错误／过期封面为 0，缓存预算通过；进程内存中位数仍上升，长期稳定未签署。audit8 应用二进制完成 10 分钟、1535 轮复验，图片错误／过期封面为 0，缓存预算通过。audit9 保持全部应用字节，只修复 Windows PowerShell 5.1 显式加载系统 Utility 和 CMD 保留失败退出码；根 Test.cmd 已实际打开固定 Test（PID 34328、UTC 2026-10-10T23:50:20.3868470Z），诊断／控制器关闭。缺失 payload 反例正确退出码 1、未启动／未改库，见 launcher-negative-audit9.json。最终记录见 report.md。不要把应用内策略模拟说成真实系统高对比度切换，也不以有限时段签署所有机器通过。
+
+`.artifacts/release-readiness-20261010/report.md` 保存 12 项映射、失败历史、候选运行、数据哈希、未验证范围；source-v20/、source-v20.json、source-v20.patch 是完整 dirty 源码恢复（含继承成果），task-delta-v20.json 比较已核对的 620 文件 v19 基线。不得整体盲目套用主仓库。测试资料和图片缓存不进入源码／包；回退只换程序，不用旧 profile 覆盖新编辑。v20 用户视觉检查和正式发布验收尚未完成，旧 v19 的“已检查”只对应旧轮次。
+
+## 历史简体中文 Test v19：CG 局部明暗自适应标题玻璃（2026-10-10，已由 v20 取代）
+
+v19 当时入口（历史程序保留；当前普通入口见前述 v20）：
+
+```powershell
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/multilingual-20261010/launch-language-v19.ps1'
+# 或工作区根 Start-The-Order-Test.cmd／同 artifact 目录 Start-The-Order-Test.cmd
+```
+
+固定包 candidate-language-v19，647 项 payload；manifest SHA256 83D5B258E9F087EFB53D09BB8341E80DA13DF1846129AFABCD84D812780FEB53；WinUI MVID 144754e9-3678-451f-a1df-118cb2d7de3c。启动入口逐文件检查包身份与 Test profile，普通启动不需要 SDK／个人密钥／诊断入口。当前人工检查实例 PID 34812，诊断关闭，额外只启用旧请求文件控制器；不能将它混称无控制器的普通入口。
+
+新增 ArtworkReadability 在标题区域有界采样，并按原 shader 的 scrim／线性亮度／tint 规则估算深／浅文字的遮盖成本；选择较清透的可读极性，不降低原对比界限，不改 shader 或原 Daily 参数，不增加图像副本或定时绘制。ArtworkStage 在 CG／布局改变时更新极性，字体／链接通过已有 HeroPlate 主题与前景联动。v18 的铺满裁剪／日常玻璃无色散／角遮罩和 v17 的原文件本地横幅／3840 上限继承。
+
+验证命令：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:NativeMultilingualEnabled=false --filter 'FullyQualifiedName~ArtworkReadabilityTests|FullyQualifiedName~CoverCroppingTests|FullyQualifiedName~PersonalBannerTests|FullyQualifiedName~MaterialPreferencesTests|FullyQualifiedName~ImagePipelineTests' --logger 'trx;LogFileName=artwork-v19.trx' --results-directory '.artifacts/multilingual-20261010/tests-v19'
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/multilingual-20261010/publish-language-v19'
+```
+
+48/48 相关 Release 测试、无跳过，publish／打包成功。用户检查 v19 后回复“已检查”；没有助手桌面视觉巡检、全仓或资源长测，不扩大为历史整体或正式发布验收。源码 source-v19/、source-v19.json、source-v19.patch 与报告 report.md 均在上述 artifact 目录；完整 dirty 恢复包含继承工作，不能整体盲目集成。旧版日志、包和 source-v18 快照不可变。
+
+工作继续在 claude-recognition-rnd 的维护源码，先读 BRIEF 最前面的当前候选与“用户有效要求与后续代理身份”。新代理是负责开发与维护的 GPT／Codex；v19 当时没有后续开发目标，现有授权见前述 v20。不能擅自启用多语言、放宽识别／NSFW／KunGal 规则、无限预取或替换正式程序。正式资料、凭据、日用程序保持原边界。
+
+
+## 历史简体中文 Test v18：封面填满裁剪、日常玻璃与本地横幅（2026-10-10，已由 v19 取代）
+
+正常退出旧 Test 后使用已有 Start-The-Order-Test.cmd 或以下固定入口；profile 仍为 experience-profile-v2，不使用正式资料。
+
+```powershell
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/multilingual-20261010/launch-language-v18.ps1'
+```
+
+候选 candidate-language-v18，647 项 payload；入口核验 manifest SHA256 A8623A3D2A6995B2EE61539B5955B04E7275E3101FE79DCF8ECF0C4F9FCCD09D。普通启动遵循保存的材质偏好，无诊断 Gallery；当前人工检查实例附加了既有请求文件控制入口，用于安全启动／退出，不等于正式发布验收。
+
+封面使用 CoverCropping 的最小等比裁剪窗口保证铺满；分析限制为 128×160 采样和 65 个候选位置，按弱身份缓存结果，保留底部标题细节但不能保证所有作品审美。角色及选择预览使用完整显示。横幅源文件和选中的 CG 准备上限提高至 3840，显示按窗口／DPI 请求；源素材低清仍是限制。详情“…”可选择本地 PNG/JPEG/WebP 或恢复自动横幅；本地原文件受既有数量、容量、路径与原子写入保护，储存在 profile/native-personal-artwork-v1，旧书架备份不包含该伴随目录，备份须保留整个正常退出后的 Test profile。
+
+日常玻璃采用历史第二候选 Daily，关闭色散；移除手动关闭透明效果选项，旧 Opaque 兼容映射 Standard。系统保护条件不撤销。CG 四角由外围遮罩及复用的 composition clip 处理，生命周期离开时释放。
+
+相关 Release 回归 43/43、无跳过，覆盖裁剪、个人横幅、图片缓存及材质偏好；日志为 .artifacts/multilingual-20261010/tests-v18.log 和 tests-v18/artwork-v18.trx。首次 build-language-v18.log 编译失败，修复后 build-language-v18-repair1.log 成功；package-language-v18.log 成功。用户要求自行检查界面，不重复助手桌面验证、全仓／资源长测。
+
+当前源码副本 source-v18/、完整清单 source-v18.json、tracked 差异 source-v18.patch 与 report.md 均在上述 artifact 目录，包含继承源码，不可整体盲目集成主开发。回退只更换程序候选，不能恢复旧 profile 覆盖用户较新编辑；v17 的留边封面已被用户否定。主开发与正式程序保持原状。
+
+
+## 历史简体中文 Test v16：封面四角裁切（2026-10-10，已由上节取代）
+
+接续下节 v13。v14 去除紧凑声优链接下划线，并以一次有界批量请求补全实体相关作品缺少的封面，保留 Galgame／KunGal、返回编号、分页和取消检查。v15 的四角裁切仍有图片溢出问题，用户截图判定未解决；v16 改为裁切 CoverPresenter 的实际显示边界，用户随后确认“解决了”。失败历史和此前候选保留。
+
+```powershell
+# 普通权限，仅既有隔离 Test；先正常退出旧 Test。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/multilingual-20261010/launch-language-v16.ps1'
+# 同目录 Start-The-Order-Test.cmd 指向 v16。
+```
+
+固定包 candidate-language-v16，647 项 payload；manifest SHA256 `8A0D53005776A23631F83A5016C4791152E0E3707BBF40466639EECD5EE6AEE7`。有效 Standard、诊断关闭、Advanced 资格关闭，当前固定简体中文。四种语言实现保留，复用时需另行验证。Test profile、凭据和图片缓存不在包或源码恢复副本中。
+
+Release publish／打包成功。v14 相关 Release 126/126、v15 图片／性能定向 60/60 按原版本保留；v16 未重复这些测试，也未运行助手桌面核验，由用户检查显示效果。用户确认仅对应本次圆角修复。v16 未生成完整源码恢复副本，不能声称存在 source-v16 清单。当前 v18 恢复副本与版本边界见 `.artifacts/multilingual-20261010/report.md`、`source-v18.json`、`source-v18/` 和 `source-v18.patch`；包含继承修改，需结合记录的 HEAD，不是独立集成补丁。
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/multilingual-20261010/publish-language-v16'
+```
+
+正常退出 v16 后可用同目录 launch-language-v14.ps1 回退程序，保留声优链接／相关封面补全，但会恢复旧圆角行为。不要恢复旧资料、删除缓存或覆盖较新编辑；v15 是已知圆角失败候选。没有主开发集成、提交、推送、发布、日用替换、Production 写入或真实游戏执行。
+
+## 历史简体中文 Test v13：无图角色两行布局（2026-10-10，已由上节取代）
+
+接续下面 v11 的全局关联规则，只改 WinUI 角色显示。没有图片地址时显示两行姓名／声优，不分配空图片框；姓名与声优仍可在当前窗口导航，长内容不换行并提供提示。有图卡片、剧透边界、缓存和书架事务不变。四种核心语言代码与旧候选保留，当前入口固定简体中文。
+
+```powershell
+# 普通权限，仅已有隔离 Test；先正常退出旧 Test。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/multilingual-20261010/launch-language-v13.ps1'
+# 同目录 Start-The-Order-Test.cmd 指向 v13。
+```
+
+固定包 `candidate-language-v13`，647 项 payload；入口核验 manifest SHA256 `F21815F9F94E03AE3AE5A80BCA0463D297C0D68421D0FF7B4FCEBFA8511650D2` 后调用包内 Test 身份保护入口。Test 根仍是 `experience-profile-v2`；有效 Standard、诊断 0、Advanced 资格 0。程序包不含 profile、凭据、私有输入或图片缓存。完整源码清单及副本为 `.artifacts/multilingual-20261010/source-v13.json`、`source-v13/`、`source-v13.patch`；含继承工作，不能整体盲目集成。
+
+Release publish／打包成功。v13 的 Domain、Application、Infrastructure、Presentation、Platform.Windows 五个 DLL 与 v11 相同，保留 v11 的 230/230 定向回归证据；布局修改用真实桌面检查，未重复全仓或 Phase 7 长测。74 个无图角色的两行显示、长内容省略、两类链接和返回均完成实机检查；v12 分隔符问题已修复并保留历史记录。结果与截图见同目录 `report.md`。
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/multilingual-20261010/publish-language-v13'
+```
+
+程序回退：正常退出 v13，运行同目录 `launch-language-v11.ps1`，保留全局 Galgame 关联修复，恢复此前角色布局。只回退程序，不恢复旧资料、不删除缓存、不覆盖较新编辑。历史多语言 v7 入口仍保留，不能冒充带 v13 修复的新版。没有集成主开发、提交、推送、发布、日用替换或 Production 写入。
+
+## 历史简体中文 Test v11：全局 Galgame 关联与缓存（2026-10-10，已由上节取代）
+
+源码在 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`，`codex/library-ui-refinement`，HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加未提交工作。恢复使用 `.artifacts/multilingual-20261010/source-v11.json`、完整 tracked 差异 `source-v11.patch` 和新文件／源码副本 `source-v11/`；包含继承成果，不能盲目套用主开发或整体引入 `5b574f0`。
+
+```powershell
+# 普通权限，仅已有隔离 Test，不替换日用。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/multilingual-20261010/launch-language-v11.ps1'
+# 也可双击该目录 Start-The-Order-Test.cmd。
+```
+
+固定包 `candidate-language-v11`，启动前校验 manifest SHA256 `FA2EE271BBFACC0F783ED45E0778A92E028A2B9711953A7A296B5674C72F8171` 和 647 项 payload。默认 Test 根仍为 `.artifacts/ui-refinement-20261009/experience-profile-v2`，37 项隔离书架。有效 Standard、诊断 0、Advanced 资格 0。启动拒绝非 Test 身份；不要把此入口改名当 Production。普通入口不启用桌面控制文件。测试包没有 profile、真实凭据、私有输入或图片缓存。
+
+目前固定简体中文，四种核心语言实现留存。后续复用可构建 `-p:NativeMultilingualEnabled=true` 并重新验证；历史 `Start-The-Order-Multilingual.cmd` 固定 v7。当前发布命令沿用本机 SDK 与锁文件，不升级依赖：
+
+```powershell
+& '.artifacts/native-phase1/tools/dotnet/dotnet.exe' publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release -p:Platform=x64 -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false --no-restore -o '.artifacts/multilingual-20261010/publish-language-v11'
+```
+
+新关联契约为 `CatalogRelatedWorks.Schema=1`，媒体准备版本 2：只展示接口明确给出的 Galgame／KunGal 页面事实。`KunGalGalgameId` 独立于 NextMoe Id；null 字段不写入旧缓存序列化，兼容旧签名。旧缓存先过滤不明关联，再排队补齐展示事实，复用仍有效的已选 CG；离线保留既有资料和图片、不清空用户库、不重跑 OCR。覆盖作品、角色、制作人员、公司、引擎、系列、标签和发现入口。分页游标保留，不能以一页过滤为空推定后续没有结果。NSFW 仍按既有 KunGal 分类，仅作用于搜索及标签；不改变已入库作品身份。
+
+图片持久缓存为独立 profile 内派生数据，2 GiB／20000 文件上限，解码 64 MiB，有限并发；预热当前作品及直接相关卡片，不遍历关联图谱。导入后失败的准备任务不会冒充导入回滚或覆盖个人编辑；用户主动打开未准备条目时优先排队，取消及过期结果保护保留。
+
+最终相关 Release 230/230、0 skipped；历史 tests16 的 3 项失败为旧语言测试夹具缺少新的 Galgame／KunGal 契约，修订夹具后 tests17 通过，未删测／跳过。此前 tests11／12 失败及修复、v9 全量 1633/1633、v10 定向 73/73 保留原版本范围。最终 Release publish／647 文件打包成功。实机验证旧缓存升级后 3 张关联封面正常、关联游戏在当前窗口打开／返回、21 张非剧透角色图片可用；6 个资料／加密凭据文件 hash 未变。实际证据见本轮 report 与 probe；不声称全部 37 项在任何网络状态下绝对零等待。
+
+程序回退：正常退出 Test 后运行 `.artifacts/multilingual-20261010/launch-language-v9.ps1`，保留旧包／入口。v9 不具备全局关联过滤，可能再次显示动画关联；只回退程序，不恢复旧资料、删除缓存或覆盖较新编辑。多语言 v7 为另一个保留选择，不包含 v11 修复。原主开发 HEAD45b77f4／34 项修改未集成；未提交、推送、发布、改 Production 或运行真实游戏。
+
+## 历史 Catalog v9：隔离体验、标签分组与 NSFW 设置（2026-10-10，已由上节取代）
+
+工作区 `D:/Projects/The-Order-worktrees/claude-recognition-rnd`，分支 `codex/library-ui-refinement`，HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加未提交源码。应用父版本 `03f1f7bb0dfcc35957fe5ba4301cf21551a8dc88`；最终恢复清单为 `.artifacts/ui-catalog-refinement-20261009/source-catalog-v9.json`、完整 tracked 差异 `source-catalog-v9.patch` 和源码／新文件副本 `source-catalog-v9/`。包含继承成果，不能当作可以整体套用主开发现场的补丁；禁止整体引入 `5b574f0`。
+
+```powershell
+# 普通权限，仅独立 Test；不替换日用入口。
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/ui-catalog-refinement-20261009/launch.ps1'
+# 或双击同目录 Start-The-Order-Test.cmd。
+```
+
+入口固定 `candidate-catalog-v9`，先核验 manifest SHA256 `910F5D93B2165E86E7E41BF2C649C7BBDD3708592CF1C3AACC7AC29B50D9187D` 及 647 项 payload，再绑定已核验的 `experience-profile-v2` Test 根。默认有效 Standard、诊断 0、受控 Advanced 资格 0；不要将 Test 入口改名当作 Production。该 Test 保留 37 项隔离资料，目录关联仅供只读资料验证，本轮不启动游戏。凭据、profile、日志和缓存不在源码交付或程序包内。
+
+标签分组依据完整已提交书架的作品编号，不依赖当前搜索／筛选可见范围。愿望条目属于书架，多安装不重复计数；原版／重制版仍保留各自身份。分页追加前后均归组，计数只表示已加载结果。资料导航、CG 准备／缓存、Markdown、CV 链接、居中标题和最终按钮间距的实际验证索引见本轮 `report.md`。
+
+NSFW 偏好使用独立 `native-catalog-browse-v1.json`（Version 1、ProfileId、StoreId、ShowNsfw），默认 false；未知版本或身份不匹配时只读并保持隐藏。该开关不改书架／识别／封面选择或原有 `native-ui.json`。发现与标签通过浏览专用客户端使用 `catalog/works?q=...`／`tag_id=...` 和 `content_limit=sfw`；`nsfw=true` 是独立的事实年龄闸，保留 KunGal 标为 SFW 的 R18 作品。关闭时必须取得明确 `content_limit`，缺失或未知报错，不能推定安全。设置变化使旧搜索、标签页面和在途结果失效；提交中的资料事务不因此中断。
+
+回归：v8 标签相关 Release 128/128，最终 v9 浏览／设置／网络／异步专项 Release 165/165，无跳过；真实 Test 验证回车搜索、标签分组与分页、开关开／关对照、保存退出重开，两次 v9 exit 0，37 项书架 hash 未变。此前 1012 项 Debug 和 83 项 Release CG／缓存回归按其版本继承；没有重新运行全仓、资源长测或整套虚拟机验收。历史失败和后续修复记录保留，不改成首次通过。
+
+程序回退：从托盘正常退出新版，运行 `.artifacts/ui-catalog-refinement-20261009/launch-catalog-v8.ps1`，固定旧包 hash `225DF57FC36FE7B15CC3C9D1F01CE99945CC61DF2FC7E9B11979B37742324876`。同一 Test 身份，旧程序忽略新增 NSFW 偏好；v8 不具备新筛选行为。更早候选及入口保留。程序回退不恢复旧资料，不删除新缓存，不覆盖较新编辑。正式日用更新和 Production 资料恢复仍需各自授权。
+
+本轮没有提交、主开发集成、日用替换、Production 写入、游戏执行或推送。源码身份、包 hash、进程与 Profile／Store、公开分类 API 证据、截图和完整回退边界见同目录 `report.md`／`checkpoint-progress.json`。
+
+## 历史 UI v5／Recognition v7：隔离体验与可回退源码（2026-10-09，已由上节取代）
+
+工作分支 `codex/library-ui-refinement`，HEAD `7facc502fde52532518171384cd77b45c9a60c9c` 加本轮未提交源码；应用父版本 `03f1f7bb0dfcc35957fe5ba4301cf21551a8dc88`。本轮没有创建应用提交，完整恢复须同时使用 `.artifacts/ui-refinement-20261009/delivery-source.json`、`candidate-ui-v5-runtime-tests.patch` 与同目录新文件副本。禁止用 HEAD 或相同 apphost 哈希代表当前候选，也禁止整体引入 `5b574f0` 基线复制。
+
+普通权限体验入口：
+
+```powershell
+& 'D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/ui-refinement-20261009/launch.ps1'
+# 或双击同目录 Start-The-Order-Test.cmd。
+```
+
+固定 `candidate-ui-v5`，核验 641 项 payload 和 manifest SHA256 `EBE6912CFD8FC9A367884B4A8DA393D50B055F8BE2E20B46217C49442A312222`。默认绑定 `experience-profile-v2` 的已核验独立 Test 身份，三项公开资料样本、三项隔离 dummy 安装、启动 EXE 为空、无真实 Session；Standard、诊断关闭、受控 Advanced 资格关闭。不访问 Production；不要把此入口改名当日用入口。设置 API 密钥使用现有隔离资料的凭据机制，密钥、profile、缓存及私人输入不进 Git／包。
+
+体验 C1 前先从托盘正常退出普通 Test，再运行同目录 `launch-controlled-glass.ps1`，在 Settings 手动选 Auto 或高级优先；它使用另一 Test 根 `controlled-glass-profile-v2`，初始仍为 Standard，含明确标注的合成继续游玩记录与待核对建议。`launch-diagnostic.ps1` 独立开启诊断，使用自己的 Test 根，不改变普通入口 250 ms JSON 轮询关闭的设置。不要并行启动这些入口来冒充不同 profile 的独立窗口。
+
+本轮新增识别选项存入独立 `native-recognition-ui-v1.json`：大小上限、严格版本／Profile／Store 身份、原子保存及备份保留，未来版本拒绝写回。既有 library/profile/store/writer 与 `native-ui.json` 契约未变；旧程序忽略附加选项，程序回退不自动恢复旧资料快照。个人编辑、封面选择、取消和异步提交保护继续有效。
+
+识别 `recognition-v2-release-aware-7` 仅扩展检索层：最多 6 条有界查询、24 条近似索引记录，精确与同名集合优先；原有总搜索／富化预算不扩张。模糊命中只供候选召回，不能作为独立身份／精确索引证明。32 项新公开合成错字召回 0→32，不是自动应用结果；真实公共响应回放仍 54/60 正确自动、6 人工、20 负例拒绝，24 项真实在线样本回放 24/24；离线模拟单独报告。没有本轮新 HTTP 请求、公开索引重建或对私库定制名称／ID规则，普遍优于 PotatoVN 未证明。
+
+验证：全量 native Debug 1994/1994、Release 相关 576/576，无跳过，native optical 回归；最后 Debug WinUI 0 warning／0 error、Release publish。v5 七项核心组件与受测版本 hash 一致；后续 XAML／布局修改完成真实点击／键盘、Light／Dark 与 480 DIP 请求尺寸补验。稳定 10 秒零绘制，最终 Library 4 创建／4 释放、Details 2／2、正常退出 0。不能据此覆盖新的全量 Private／GPU Gate；历史 Phase 7 证据保留原范围，未重跑资源长测。
+
+集成准备仅提供补丁与新文件清单，**没有应用到主开发、替换日用或提交**。原主开发和长期源码工作区的 958 个文件／状态／分支未变。若后续获准集成，先保存主开发既有修改，按上轮 v6 的限定 runtime/tests 基线，再应用本轮 runtime/tests 差异及新文件；Lab、研究资料、生成器不是发行依赖。当前完整 diff 的逆向补丁只适用于其记录的基线且须先检查，不能直接在混有后续修改的工作区反向应用。
+
+体验程序回退只需正常退出新版，再使用已保留 v6 `.artifacts/rnd/gpt-generalization-20261009/launch.ps1`；两入口使用各自 Test 根，不恢复或覆盖较新资料。需要共享 Test 根时先一致性快照，遵守原 Store 身份／writer 保护；旧算法建议需重查。正式日用仍保持当前已批准版本，Production 程序／资料回退分别授权。
+
+实际结果、失败修复、源码身份、命令与截图索引：`.artifacts/ui-refinement-20261009/report.md`、`review.html`、`evidence-index.json`。没有录制新视频；系统主题托盘外观和宿主策略没有在本轮重做实机切换。正常入口启动后 Sky 前台识别错误的日志单列，不把工具故障写成应用 FAIL。
+
+## 历史 Recognition v6：公共泛化复核与集成准备（已由上节取代，2026-10-09）
 
 源码03f1f7bb0dfcc35957fe5ba4301cf21551a8dc88，算法recognition-v2-release-aware-6，codex/recognition-v2-generalization。**集成／日用更新仍待用户最终批准**。用户的普遍优于PotatoVN目标尚未由配对评测证明；主开发45b77f4和34项修改未动，历史候选与错误保留。
 

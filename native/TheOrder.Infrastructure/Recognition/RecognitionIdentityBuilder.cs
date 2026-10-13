@@ -67,6 +67,10 @@ public static class RecognitionIdentityBuilder
             .Concat(primary.Take(3).SelectMany(LocalQueryVariants.Retrieval)).Concat(primary.Skip(3))
             .Concat(primary.SelectMany(TitleMatching.Variants)).Concat(unambiguous.SelectMany(m => m.Record.Names))
             .Where(v => TitleMatching.Compare(v, v).Score > 0).DistinctBy(v => TitleMatching.Compact(TitleMatching.Normalize(v)), StringComparer.Ordinal).Take(6).ToImmutableArray();
-        return new(combined, matches, queries, References(combined.References.Select(r => r.Value)));
+        // Near-title rows broaden candidate retrieval only after all exact proof/homonym work is
+        // finished. They never contribute trusted identifiers, exact bridges or observed titles.
+        var similar = matches.Length >= 128 ? [] : await index.FindSimilarAsync(primary.Take(3).ToImmutableArray(), cancellation).ConfigureAwait(false);
+        var localCandidates = matches.Concat(similar.Where(s => !matches.Any(m => m.Row == s.Row))).Take(128).ToImmutableArray();
+        return new(combined, localCandidates, queries, References(combined.References.Select(r => r.Value)));
     }
 }

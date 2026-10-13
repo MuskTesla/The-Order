@@ -104,7 +104,7 @@ internal sealed class OpticalRenderer : IDisposable
     }
     // Artwork stage: one revision per cover/size/theme change. The ambient band is the app's own decoded
     // cover pixels (never a capture), filled and blurred on the renderer's device, then a polarity scrim.
-    internal void RenderArtwork(TheOrder.Application.RasterPixels art, double widthDip, double heightDip, double scale, float sigma, uint background, uint scrim)
+    internal void RenderArtwork(TheOrder.Application.RasterPixels art, double widthDip, double heightDip, double scale, float sigma, uint background, uint scrim, bool contain = false)
     {
         ObjectDisposedException.ThrowIf(!Active, this);
         if (Environment.CurrentManagedThreadId != thread) throw new InvalidOperationException("Owning UI thread required");
@@ -117,8 +117,11 @@ internal sealed class OpticalRenderer : IDisposable
         var ended = false;
         try
         {
+            var ratio = contain ? Math.Min(widthDip / art.Width, heightDip / art.Height) : 1;
+            var destinationWidth = contain ? art.Width * ratio : widthDip;
+            var destinationHeight = contain ? art.Height * ratio : heightDip;
             Marshal.ThrowExceptionForHR(OpticalScenePixels(handle, art.Bgra, checked((uint)art.Width), checked((uint)art.Height), checked((uint)art.Bgra.Length),
-                0, 0, (float)widthDip, (float)heightDip, 1, sigma));
+                (float)(contain ? widthDip - destinationWidth : 0), (float)((heightDip - destinationHeight) / 2), (float)destinationWidth, (float)destinationHeight, contain ? 0 : 1, sigma));
             if ((scrim >> 24) != 0) Marshal.ThrowExceptionForHR(OpticalSceneRect(handle, 0, 0, (float)widthDip, (float)heightDip, scrim));
             var result = OpticalSceneEnd(handle); ended = true;
             Marshal.ThrowExceptionForHR(result);

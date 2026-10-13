@@ -43,11 +43,11 @@ internal sealed class WindowsProcessLifetimeScope(SafeFileHandle job) : IProcess
     }
     public void Dispose() => job.Dispose();
 
-    internal static (SafeProcessHandle Handle, int Pid, WindowsProcessLifetimeScope Scope) Start(string executable, IEnumerable<string> arguments, string cwd)
+    internal static (SafeProcessHandle Handle, int Pid, WindowsProcessLifetimeScope Scope) Start(string executable, IEnumerable<string> arguments, string cwd, WindowsCommandScript? script = null, bool highDpi = false)
     {
         var job = CreateJobObject(IntPtr.Zero, null);
         if (job.IsInvalid) { job.Dispose(); throw new Win32Exception(); }
-        IntPtr attributes = IntPtr.Zero, jobList = IntPtr.Zero;
+        IntPtr attributes = IntPtr.Zero, jobList = IntPtr.Zero, environment = IntPtr.Zero;
         bool initialized = false, transferred = false;
         try
         {
@@ -61,8 +61,17 @@ internal sealed class WindowsProcessLifetimeScope(SafeFileHandle job) : IProcess
             var startup = new StartupEx { Info = new() { Size = Marshal.SizeOf<StartupEx>() }, Attributes = attributes };
             var command = new StringBuilder(Quote(executable));
             foreach (var argument in arguments) command.Append(' ').Append(Quote(argument));
-            if (command.Length >= 32767) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, "启动参数总长度超过 Windows 限制，未执行程序。");
-            if (!CreateProcess(executable, command, IntPtr.Zero, IntPtr.Zero, false, 0x00080000, IntPtr.Zero, cwd, ref startup, out var result)) throw new Win32Exception();
+            if (script is not null) { executable = script.Interpreter; command = new(script.Command); environment = Marshal.StringToHGlobalUni(script.EnvironmentBlock); }
+            if (highDpi)
+            {
+                if (environment != IntPtr.Zero) { Marshal.FreeHGlobal(environment); environment = IntPtr.Zero; }
+                var entries = script is null ? Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>().Select(x => x.Key + "=" + x.Value)
+                    : script.EnvironmentBlock.Split('\0', StringSplitOptions.RemoveEmptyEntries).AsEnumerable();
+                var block = string.Join('\0', entries.Where(x => !x.StartsWith("__COMPAT_LAYER=", StringComparison.OrdinalIgnoreCase)).Append("__COMPAT_LAYER=HIGHDPIAWARE").Order(StringComparer.OrdinalIgnoreCase)) + "\0\0";
+                environment = Marshal.StringToHGlobalUni(block);
+            }
+            if (command.Length >= 32767) throw new LaunchValidationException(LaunchOutcome.LaunchFailed, UiText.Get("启动参数总长度超过 Windows 限制，未执行程序。"));
+            if (!CreateProcess(executable, command, IntPtr.Zero, IntPtr.Zero, false, 0x00080000 | (environment == IntPtr.Zero ? 0u : 0x400u), environment, cwd, ref startup, out var result)) throw new Win32Exception();
             // All ownership transfers immediately after OS creation; no fallible image query here.
             using var thread = new SafeFileHandle(result.Thread, true);
             var handle = new SafeProcessHandle(result.Process, true);
@@ -74,12 +83,13 @@ internal sealed class WindowsProcessLifetimeScope(SafeFileHandle job) : IProcess
             if (initialized) DeleteProcThreadAttributeList(attributes);
             if (attributes != IntPtr.Zero) Marshal.FreeHGlobal(attributes);
             if (jobList != IntPtr.Zero) Marshal.FreeHGlobal(jobList);
+            if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
             if (!transferred) job.Dispose();
         }
     }
 
     // Windows CRT argument encoding, never shell syntax. Tested through the real fixture argv.
-    private static string Quote(string value)
+    internal static string Quote(string value)
     {
         var output = new StringBuilder("\""); int slashes = 0;
         foreach (char c in value)

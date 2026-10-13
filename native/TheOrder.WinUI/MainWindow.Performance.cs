@@ -22,6 +22,7 @@ public sealed partial class MainWindow
     private async Task RunPerformanceFixtureAsync()
     {
         string output = Path.GetFullPath(Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT")!);
+        var originalTheme = ViewModel.Theme; var originalLayout = ViewModel.Layout;
         var samples = new List<object>();
         string stage = "startup"; int currentRound = -1;
         try
@@ -72,7 +73,13 @@ public sealed partial class MainWindow
         {
             if (Directory.Exists(output)) await Task.Run(() => WritePerformance(output, "ui-failure.json", new { type = e.GetType().Name, e.Message, e.HResult, e.StackTrace, stage, currentRound, samples }));
         }
-        finally { if (App.Instance is { } app) await app.RequestExitAsync(); }
+        finally
+        {
+            // A Test workload may exercise grid/list, but its original preference is retained.
+            if (ViewModel.IsLoaded && (ViewModel.Theme != originalTheme || ViewModel.Layout != originalLayout))
+                await ViewModel.ChangeAppearanceAsync(originalTheme, originalLayout);
+            if (App.Instance is { } app) await app.RequestExitAsync();
+        }
     }
     private static int CountCoverPresenters(DependencyObject root)
     {

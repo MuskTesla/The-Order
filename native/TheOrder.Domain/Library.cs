@@ -3,7 +3,12 @@ using System.Collections.Immutable;
 namespace TheOrder.Domain;
 
 // Domain objects deliberately have no JSON attributes or file/network dependencies.
-public sealed record Installation(string Id, string Folder, string? Executable, ImmutableArray<string> Arguments, string? WorkingDirectory = null);
+public sealed record Installation(string Id, string Folder, string? Executable, ImmutableArray<string> Arguments, string? WorkingDirectory = null)
+{
+    public string? SaveFolder { get; init; }
+    public string? SteamAppId { get; init; }
+    public LaunchCompatibility? Compatibility { get; init; }
+}
 public sealed record PlaySession(string Id, string StartedAt, string EndedAt, long Seconds, NativeSession? Native = null);
 public sealed record LocalCover(string DataUrl, int Width, int Height);
 public sealed record CoverPreference(bool IsSpecified, string? Mode);
@@ -26,6 +31,8 @@ public sealed record WorkMetadata(
 {
     [System.Text.Json.Serialization.JsonIgnore]
     public CatalogWorkIdentity? CatalogIdentity { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CatalogPresentation? Presentation { get; init; }
 }
 
 public sealed record LibraryEntry(
@@ -34,7 +41,14 @@ public sealed record LibraryEntry(
     string Status, double? PersonalRating, bool Favorite, ImmutableArray<string> Categories,
     ImmutableArray<string> CustomTags, string Notes, long TotalPlaySeconds, long PlayCount,
     ImmutableArray<PlaySession> Sessions, string AddedAt, string? LastPlayedAt,
-    LocalCover? LocalCover, CoverChoice? CoverChoice, CoverPreference CoverDisplay);
+    LocalCover? LocalCover, CoverChoice? CoverChoice, CoverPreference CoverDisplay)
+{
+    public ImmutableArray<ManualPlaytime> ManualPlaytime { get; init; } = [];
+    public ImmutableArray<string> GuidePaths { get; init; } = [];
+    public MetadataMix? MetadataMix { get; init; }
+    // Process accounting remains an immutable fact. Corrections are a separate, undoable ledger.
+    public long EffectivePlaySeconds => checked(TotalPlaySeconds + ManualPlaytime.Where(x => !x.Undone).Sum(x => x.Seconds));
+}
 
 // Lists bind only summaries. Metadata, embedded images and history stay out of each visual item.
 public sealed record LibrarySummary(string Id, string Name, string Progress, int Installations, long TotalPlaySeconds)
@@ -43,5 +57,5 @@ public sealed record LibrarySummary(string Id, string Name, string Progress, int
     public string Subtitle => $"{Progress} · {Installations} 个安装 · {TotalPlaySeconds / 60} 分钟";
     public static LibrarySummary From(LibraryEntry entry) => new(entry.Id, entry.Name,
         entry.Status switch { "playing" => "在玩", "completed" => "已完成", "paused" => "暂停", "dropped" => "搁置", _ => "计划游玩" },
-        entry.Installations.Length, entry.TotalPlaySeconds);
+        entry.Installations.Length, entry.EffectivePlaySeconds);
 }

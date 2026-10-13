@@ -271,14 +271,8 @@ internal sealed class ProfileFixture : IDisposable
     public static string[] Hashes(string root) => Directory.GetFiles(root).Where(p => Path.GetFileName(p) != ".the-order-writer.lock").Order().Select(p => Path.GetFileName(p) + ":" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(p)))).ToArray();
     public Process Start(string name, string fault, bool wait)
     {
-        var native = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-#if DEBUG
-        const string configuration = "Debug";
-#else
-        const string configuration = "Release";
-#endif
-        var dll = Path.Combine(native, "TheOrder.ProfileProbe", "bin", configuration, "net10.0-windows10.0.26100.0", "TheOrder.ProfileProbe.dll");
-        var dotnet = Path.Combine(native, "..", ".artifacts", "native-phase1", "tools", "dotnet", "dotnet.exe");
+        var dll = Path.Combine(ReferenceSources.FixtureOutput("TheOrder.ProfileProbe"), "TheOrder.ProfileProbe.dll");
+        var dotnet = Path.Combine(ReferenceSources.Repository(), ".artifacts", "native-phase1", "tools", "dotnet", "dotnet.exe");
         var start = new ProcessStartInfo(dotnet) { UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in new[] { dll, Root, name, fault, wait ? "wait" : "once" }) start.ArgumentList.Add(a);
         return Process.Start(start)!;

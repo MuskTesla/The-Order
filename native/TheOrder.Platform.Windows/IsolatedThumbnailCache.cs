@@ -15,9 +15,9 @@ public sealed partial class IsolatedThumbnailCache(NativeConfiguration configura
         {
             using var file = IsolatedLibrarySource.OpenChecked(Path.Combine(root, key + ".thumb"));
             using var reader = new BinaryReader(file);
-            if (file.Length < 44 || file.Length > 1600L * 1600 * 4 + 44 || reader.ReadInt32() != Magic) return null;
+            if (file.Length < 44 || file.Length > (long)ArtworkSizing.MaximumEdge * ArtworkSizing.MaximumEdge * 4 + 44 || reader.ReadInt32() != Magic) return null;
             int width = reader.ReadInt32(), height = reader.ReadInt32();
-            if (width is < 1 or > 1600 || height is < 1 or > 1600 || file.Length != 44L + (long)width * height * 4) return null;
+            if (width < 1 || width > ArtworkSizing.MaximumEdge || height < 1 || height > ArtworkSizing.MaximumEdge || file.Length != 44L + (long)width * height * 4) return null;
             var hash = reader.ReadBytes(32); var pixels = reader.ReadBytes(width * height * 4);
             return CryptographicOperations.FixedTimeEquals(hash, SHA256.HashData(pixels)) ? new(width, height, pixels) : null;
         }
@@ -49,7 +49,7 @@ public sealed partial class IsolatedThumbnailCache(NativeConfiguration configura
     }, key, cancellation);
     private async Task<T> Run<T>(Func<string, T> action, string key, CancellationToken cancellation)
     {
-        if (!CacheKey().IsMatch(key)) throw new InvalidDataException("缩略图键无效。");
+        if (!CacheKey().IsMatch(key)) throw new InvalidDataException(UiText.Get("缩略图键无效。"));
         await queue.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
@@ -71,5 +71,7 @@ public sealed partial class IsolatedThumbnailCache(NativeConfiguration configura
         }
         finally { queue.Release(); }
     }
-    [GeneratedRegex("^[A-F0-9]{64}-[0-9]{2,4}$", RegexOptions.CultureInvariant)] private static partial Regex CacheKey();
+    // Personal banners use a fixed namespace plus the same SHA-256 identity.
+    // Admit that exact namespace; paths, arbitrary prefixes and non-hex IDs stay rejected.
+    [GeneratedRegex("^(?:local-banner-)?[A-F0-9]{64}-[0-9]{2,4}$", RegexOptions.CultureInvariant)] private static partial Regex CacheKey();
 }

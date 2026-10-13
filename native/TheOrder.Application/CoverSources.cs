@@ -14,6 +14,6 @@ public static class CoverSources
         string? Permitted(string? url) => !includeExplicit && work?.Covers?.Any(c => c.Url == url && c.Sexual == "explicit") == true ? null : url;
         if (choice is not null && (includeExplicit || choice.Sexual != "explicit") && Permitted(choice.Url) is { Length: > 0 } selected) return selected;
         if (!includeExplicit && choice?.Sexual == "explicit" && choice.Url == work?.CoverUrl) return null;
-        return Permitted(work?.CoverUrl);
+        return work is null ? null : Permitted(CoverQuality.Select(work.Covers ?? [], work.CoverUrl, includeExplicit));
     }
 }

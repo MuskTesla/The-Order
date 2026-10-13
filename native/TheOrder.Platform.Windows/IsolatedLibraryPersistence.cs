@@ -44,7 +44,7 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
             for (DirectoryInfo? directory = new(root); directory is not null; directory = directory.Parent)
             {
                 var handle = CreateFile(directory.FullName, 0, 3, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
-                if (handle.IsInvalid) { handle.Dispose(); throw new IOException("无法固定合成目录。", new Win32Exception()); }
+                if (handle.IsInvalid) { handle.Dispose(); throw new IOException(UiText.Get("无法固定合成目录。"), new Win32Exception()); }
                 handles.Add(handle);
             }
             return handles;
@@ -59,9 +59,9 @@ public sealed class IsolatedLibraryPersistence : ILibraryPersistence
         try
         {
             using var stream = IsolatedLibrarySource.OpenChecked(Path.Combine(root, name));
-            if (stream.Length > 32 * 1024 * 1024) throw new InvalidDataException("游戏库超过 32 MiB。");
+            if (stream.Length > 32 * 1024 * 1024) throw new InvalidDataException(UiText.Get("游戏库超过 32 MiB。"));
             using var buffer = new MemoryStream(); stream.CopyTo(buffer);
-            if (buffer.Length > 32 * 1024 * 1024) throw new InvalidDataException("游戏库超过 32 MiB。");
+            if (buffer.Length > 32 * 1024 * 1024) throw new InvalidDataException(UiText.Get("游戏库超过 32 MiB。"));
             return buffer.ToArray();
         }
         catch (FileNotFoundException) { return null; }

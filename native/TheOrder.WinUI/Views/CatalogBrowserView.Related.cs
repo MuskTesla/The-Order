@@ -1,0 +1,152 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using TheOrder.Application;
+using TheOrder.Domain;
+
+namespace TheOrder.WinUI.Views;
+
+public sealed partial class CatalogBrowserView
+{
+    private IBangumiRelationsReader? relationsReader;
+    private IRelatedSemanticReader? relationSemantics;
+    private IRelatedGameIdentityReader? relationIdentities;
+    private BangumiRelatedView? relatedWorks;
+    private RelatedMediaDetailView? mediaDetail;
+    private WorkMetadata? currentWork;
+    private CatalogPresentationEntry? currentPresentation;
+    private BangumiRelationIdentity? relatedIdentity;
+    private readonly string browseLifetime = Guid.NewGuid().ToString("N");
+    private readonly Grid mediaHost = new() { Visibility = Visibility.Collapsed };
+    private bool mediaActive, catalogLoading, restoreQueued;
+    private NavigationEntry? restoreTarget;
+    private double mediaReturnOffset;
+    private Func<string> bangumiAccessScope = () => "anonymous";
+
+    public void ConfigureRelatedWorks(IBangumiRelationsReader reader, IBangumiSubjectDetailsReader subjects,
+        IRelatedSemanticReader semantics, IRelatedGameIdentityReader? identities, Func<string>? accessScope = null)
+    {
+        bangumiAccessScope = accessScope ?? (() => "anonymous");
+        relationsReader = reader; relationSemantics = semantics; relationIdentities = identities;
+        mediaDetail?.Dispose(); mediaDetail = new();
+        mediaDetail.Configure(subjects, Images, registry, OpenBangumiSourceAsync);
+        mediaHost.Children.Clear(); mediaHost.Children.Add(mediaDetail);
+        if (!Children.Contains(mediaHost)) { SetRowSpan(mediaHost, 3); Children.Add(mediaHost); }
+    }
+    public void ConfigureMusic(IMusicBrainzReader music) => mediaDetail?.ConfigureMusic(music);
+
+    private void ShowRelated(WorkMetadata work, long auth)
+    {
+        if (relationsReader is null) return;
+        var version = generation;
+        var view = new BangumiRelatedView(); relatedWorks = view;
+        view.Configure(relationsReader, Images, registry, OpenBangumiSourceAsync,
+            identity => generation == version && stop?.IsCancellationRequested == false && authGeneration() == auth
+                && !mediaActive && current?.Kind == CatalogEntityKind.Work && current.Id == currentWork?.Id && relatedIdentity == identity);
+        if (relationSemantics is not null) view.ConfigureSemantics(relationSemantics);
+        view.ConfigureGameIdentities(relationIdentities);
+        view.OpenMedia = OpenMediaAsync;
+        view.OpenCatalog = card => card.Catalog is not { } entity || currentWork is not { } origin ? Task.CompletedTask
+            : OpenAsync(entity, incoming: new(origin.Id, origin.Title, card.Label, card.RawRelation, card.Evidence, card.Url));
+        view.PresentationChanged = QueueRestore;
+        body.Children.Add(view);
+        UpdateRelated(work, auth);
+    }
+
+    private void UpdateRelated(WorkMetadata work, long auth)
+    {
+        if (relatedWorks is null || authGeneration() != auth || mediaActive) return;
+        currentWork = work;
+        var lifecycle = browseLifetime + ":" + generation;
+        BangumiRelationIdentityResolver.TryCreateCatalog(work, lifecycle, out relatedIdentity, out var reason);
+        if (relatedIdentity is not null) relatedIdentity = relatedIdentity with { AccessScope = bangumiAccessScope() };
+        relatedWorks.SetCatalog(work);
+        relatedWorks.SetContext(relatedIdentity, reason);
+    }
+
+    private async Task OpenMediaAsync(RelatedWorkCard card)
+    {
+        if (mediaDetail is null || card.Bangumi is not { } item || currentWork is not { } work || stop?.IsCancellationRequested != false) return;
+        restoreTarget = null; mediaReturnOffset = scroll.VerticalOffset; mediaActive = true;
+        relatedWorks?.SuspendNavigation(); hero?.ReleaseBeforeLeave();
+        foreach (var child in Children.Where(child => !ReferenceEquals(child, mediaHost))) child.Visibility = Visibility.Collapsed;
+        mediaHost.Visibility = Visibility.Visible;
+        mediaDetail.RelationLabel = card.Label; mediaDetail.RelationEvidence = card.Evidence;
+        await mediaDetail.OpenAsync(item, work.Title, stop.Token);
+    }
+
+    private void CloseMedia()
+    {
+        if (!mediaActive) return;
+        mediaDetail?.Deactivate(); mediaActive = false; mediaHost.Visibility = Visibility.Collapsed;
+        foreach (var child in Children.Where(child => !ReferenceEquals(child, mediaHost))) child.Visibility = Visibility.Visible;
+        relatedWorks?.ResumeNavigation();
+        if (current is not null) restoreTarget = new(current, incoming, mediaReturnOffset, relatedWorks?.CaptureBrowsing());
+        QueueRestore();
+        if (currentPresentation is { } cached) hero?.SetPresentation(cached);
+    }
+
+    private void StopRelated()
+    {
+        mediaDetail?.Deactivate(); mediaActive = false; mediaHost.Visibility = Visibility.Collapsed;
+        foreach (var child in Children.Where(child => !ReferenceEquals(child, mediaHost))) child.Visibility = Visibility.Visible;
+        relatedWorks?.Dispose(); relatedWorks = null; currentWork = null; relatedIdentity = null; currentPresentation = null;
+    }
+    public void InvalidateBangumiAccess()
+    {
+        CloseMedia(); relatedIdentity = null;
+        relatedWorks?.SetContext(null, "番组计划访问方式已变化，请重新打开作品。");
+        if (IsLoaded && currentWork is { } work) UpdateRelated(work, authGeneration());
+    }
+
+    // Cached relations and identity proofs can arrive after the catalog body is
+    // first measured. Restore through that bounded settling period; user input
+    // cancels restoration immediately, so later results cannot pull them back.
+    private void QueueRestore()
+    {
+        if (restoreTarget is null || restoreQueued) return;
+        restoreQueued = true; var version = generation;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            restoreQueued = false;
+            if (version != generation || stop?.IsCancellationRequested != false || restoreTarget is not { } target) return;
+            scroll.UpdateLayout(); scroll.ChangeView(null, target.ScrollOffset, null, true);
+            if (catalogLoading || relatedWorks?.IsSettled == false) return;
+            restoreTarget = null;
+            relatedWorks?.RestoreNavigationFocus();
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (version == generation && stop?.IsCancellationRequested == false && !mediaActive)
+                    scroll.ChangeView(null, target.ScrollOffset, null, true);
+            });
+        });
+    }
+
+    private static async Task OpenBangumiSourceAsync(string url)
+    {
+        if (!BangumiRelationIdentityResolver.TryReferenceId(url, out var id) || url != "https://bgm.tv/subject/" + id
+            || !await Windows.System.Launcher.LaunchUriAsync(new Uri(url))) throw new InvalidOperationException("未能打开来源网页。");
+    }
+
+    internal void DisposeRelated() { StopRelated(); mediaDetail?.Dispose(); mediaDetail = null; }
+    internal async Task RelatedFixtureAsync(string action, BangumiRelationKind? kind, string? id)
+    {
+        switch (action)
+        {
+            case "expand": if (relatedWorks is not null) await relatedWorks.ExpandForFixtureAsync(); break;
+            case "collapse": relatedWorks?.CollapseForFixture(); break;
+            case "refresh": if (relatedWorks is not null) await relatedWorks.RefreshForFixtureAsync(); break;
+            case "cancel": relatedWorks?.CancelForFixture(); break;
+            case "select" when kind is { } value: relatedWorks?.SelectForFixture(value); break;
+            case "all": relatedWorks?.AllForFixture(); break;
+            case "open" when id is not null: if (relatedWorks is not null) await relatedWorks.OpenForFixtureAsync(id); break;
+            case "openCatalog" when id is not null: if (relatedWorks is not null) await relatedWorks.OpenCatalogForFixtureAsync(id); break;
+            case "mediaCancel": mediaDetail?.CancelForFixture(); break;
+            case "mediaRefresh": if (mediaDetail is not null) await mediaDetail.RefreshForFixtureAsync(); break;
+            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
+                if (mediaActive && mediaDetail is not null) await mediaDetail.MusicFixtureAsync(action, id); break;
+            case "sources": relatedWorks?.SourcesForFixture(); break;
+            case "rawEvidence": relatedWorks?.RawEvidenceForFixture(); break;
+            case "show": relatedWorks?.StartBringIntoView(); break;
+        }
+    }
+}

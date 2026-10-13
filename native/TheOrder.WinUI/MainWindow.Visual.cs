@@ -48,14 +48,15 @@ public sealed partial class MainWindow
                 catch (Exception) { /* An incomplete old Test request has no authority. */ }
                 visualFixtureTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
                 visualFixtureTimer.Tick += OnVisualFixture;
-                Root.Loaded += StartVisualFixture;
+                if (Root.IsLoaded) StartVisualFixture(Root, new RoutedEventArgs());
+                else Root.Loaded += StartVisualFixture;
             }
             if (configuration.Diagnostics)
             {
-            var item = new NavigationViewItem { Content = "材质实验室 · Test", Tag = "visual-gallery", Icon = new SymbolIcon(Symbol.Pictures) };
+            var item = TestRailItem("材质", Symbol.Pictures, "visual-gallery");
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(item, "VisualGallery");
             Navigation.FooterMenuItems.Add(item);
-            var states = new NavigationViewItem { Content = "会话状态 · Test", Tag = "visual-states", Icon = new SymbolIcon(Symbol.Play) };
+            var states = TestRailItem("会话", Symbol.Play, "visual-states");
             Navigation.FooterMenuItems.Add(states);
             }
         }
@@ -63,20 +64,30 @@ public sealed partial class MainWindow
         ApplyMaterialPolicy();
     }
 
-    // NavigationView Auto: expanded ≥1008, compact ≥641, minimal below. The pane toggle lives in the TitleBar.
+    private static NavigationViewItem TestRailItem(string label, Symbol icon, string tag)
+    {
+        var content = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
+        content.Children.Add(new SymbolIcon(icon) { Width = 23, Height = 23, HorizontalAlignment = HorizontalAlignment.Center });
+        content.Children.Add(new TextBlock { Text = label, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center });
+        return new NavigationViewItem { Content = content, Tag = tag, Height = 74, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Center };
+    }
+    // One compact labeled rail at every window width.
     private void OnNavigationDisplayModeChanged(NavigationView sender, NavigationViewDisplayModeChangedEventArgs args) => UpdateNavigationChrome();
     private void UpdateNavigationChrome()
     {
         if (ContentLayer is null) return;
-        var minimal = Navigation.DisplayMode == NavigationViewDisplayMode.Minimal;
-        // Minimal mode has no pane edge, so the content layer drops its top-left radius and side stroke.
-        ContentLayer.CornerRadius = minimal ? new CornerRadius(0) : new CornerRadius(8, 0, 0, 0);
-        ContentLayer.BorderThickness = minimal ? new Thickness(0, 1, 0, 0) : new Thickness(1, 1, 0, 0);
+        ContentLayer.CornerRadius = new CornerRadius(0);
+        ContentLayer.BorderThickness = new Thickness(0);
     }
     private void OnPaneToggle(TitleBar sender, object args) => Navigation.IsPaneOpen = !Navigation.IsPaneOpen;
-    private void OnShellSizeChanged(object sender, SizeChangedEventArgs args) => TitleSearch.MinWidth = args.NewSize.Width < 641 ? 120 : 200;
+    private void OnShellSizeChanged(object sender, SizeChangedEventArgs args) { }
 
-    private void StartVisualFixture(object sender, RoutedEventArgs e) => visualFixtureTimer?.Start();
+    private void StartVisualFixture(object sender, RoutedEventArgs e)
+    {
+        visualFixtureTimer?.Start();
+        if (fixtureDirectory is not null)
+            File.WriteAllText(Path.Combine(fixtureDirectory, "fixture-ready.json"), JsonSerializer.Serialize(new { ready = true, isolatedTest = true }));
+    }
     private void ApplyMaterialPolicy()
     {
         if (visualStopped || materialPolicy is null) return;
@@ -85,12 +96,14 @@ public sealed partial class MainWindow
         materialPolicy.Apply(Microsoft.UI.Xaml.Application.Current.Resources);
         RefreshCaptionTheme();
         var visible = visualWindowVisible && AppWindow.IsVisible && App.Instance?.WindowHidden != true;
-        // Mica is the window backdrop; system/app transparency rules replace it with the solid canvas.
+        // Win10 uses a solid window canvas. That does not disable supported in-app
+        // Acrylic or the artwork-owned banner glass; their existing policy is independent.
         ApplyBackdrop(materialPolicy.EffectsAllowed);
         // Hidden windows hold no glass renderer: stages drop to their XAML layers and release swapchains.
         var stageAllowed = materialPolicy.EffectsAllowed && visible;
         libraryPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, effectiveMode);
         detailsPage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, effectiveMode);
+        onlinePage.SetStagePolicy(stageAllowed, materialPolicy.HighContrast, effectiveMode);
         settingsPage.ShowMaterialState(materialMode, materialPolicy.EffectsAllowed, materialPolicy.HighContrast,
             controlledAdvanced, materialReadOnly || !materialInitialized, materialPreferenceNotice);
         gallery?.SetAdvanced(materialPolicy.EffectsAllowed && visible);
@@ -196,8 +209,13 @@ public sealed partial class MainWindow
         direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), effectiveMaterialMode = EffectiveMaterialMode.ToString(), controlledAdvanced,
         diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
-        stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence }, shell = ShellEvidence(),
+        catalogPreparation = presentations.Metrics, stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence, online = onlinePage.StageEvidence }, shell = ShellEvidence(),
         round3 = Round3Evidence(), managed = MaterialManagedEvidence(), displayBitmaps = Views.DisplayBitmaps.Evidence(images), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
+        updates = new { updates.CurrentVersion, latest = updates.Latest?.Version, updates.Message, updates.Highlights, updates.CanCheck, updates.CanInstall, updates.CanCancel, updates.IsBusy, updates.Progress, badgeVisible = UpdateBadge.Visibility == Visibility.Visible },
+        nextMoe = new { mode = nextMoeSettings.Status?.Mode.ToString(), nextMoeSettings.Status?.NeedsLogin, nextMoeSettings.TimeDirection, nextMoeSettings.StateDirection,
+            nextMoeSettings.FolderDirection, nextMoeSettings.ReadRatings, nextMoeSettings.Automatic, nextMoeSettings.HasPending, nextMoeSettings.HasPreview, nextMoeSettings.PreviewSummary, nextMoeSettings.Message,
+            rows = nextMoeSettings.Rows.Select(x => new { x.Title, x.Values, x.Explanation, x.Choice }) },
+        settings = settingsPage.LayoutEvidence(),
         treeProbe = new { bitmapFailures = bitmapTreeProbe.Failures, bitmapError = bitmapTreeProbe.LastError, staleFailures = staleTreeProbe.Failures, staleError = staleTreeProbe.LastError },
         glassWindowVisible = AppWindow.IsVisible, glassWindowActive = MaterialWindowActive, accent = TestAccentEvidence(),
         widthDip = Root.ActualWidth, heightDip = Root.ActualHeight,
@@ -236,6 +254,8 @@ public sealed partial class MainWindow
                     if (layout is not ("grid" or "list")) throw new InvalidDataException("Unknown layout.");
                     await ViewModel.ChangeAppearanceAsync(ViewModel.Theme, layout); break;
                 case "resize":
+                    if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter && presenter.State != Microsoft.UI.Windowing.OverlappedPresenterState.Restored)
+                        presenter.Restore();
                     var scale = Root.XamlRoot.RasterizationScale;
                     AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(Math.Clamp(root.GetProperty("width").GetInt32(), 480, 1600) * scale), (int)(Math.Clamp(root.GetProperty("height").GetInt32(), 480, 1000) * scale))); break;
                 case "solid": materialPolicy!.ForceSolid = root.GetProperty("value").GetBoolean(); ApplyMaterialPolicy(); break;
@@ -256,7 +276,7 @@ public sealed partial class MainWindow
                 case "dialog": ShowRound3Dialog(); break;
                 case "closeDialog": round3Dialog?.Hide(); break;
                 case "timer": round3TimerOverride = root.GetProperty("value").GetString() ?? ""; break;
-                case "focusSearch": TitleSearch.Focus(FocusState.Keyboard); break;
+                case "focusSearch": libraryPage.OpenSearch(); break;
                 case "editName":
                     var name = root.GetProperty("value").GetString() ?? "";
                     if (name.Length > 2000 || ViewModel.Draft is null) throw new InvalidDataException("Test draft unavailable or name too long.");
@@ -273,6 +293,22 @@ public sealed partial class MainWindow
                 case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
                 case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;
                 case "probe": break;
+                case "bangumi":
+                    if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || ViewModel.Page != WorkspacePage.Details)
+                        throw new InvalidOperationException("Related works fixture requires isolated Test details.");
+                    BangumiRelationKind? relatedKind = null;
+                    if (root.TryGetProperty("kind", out var requestedKind))
+                    {
+                        if (!Enum.TryParse<BangumiRelationKind>(requestedKind.GetString(), out var parsedKind) || !Enum.IsDefined(parsedKind))
+                            throw new InvalidDataException("Unknown related media kind.");
+                        relatedKind = parsedKind;
+                    }
+                    await detailsPage.BangumiFixtureAsync(root.GetProperty("value").GetString() ?? "", relatedKind, root.TryGetProperty("subjectId", out var relatedSubject) ? relatedSubject.GetString() : null);
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "bangumi-evidence.json"), JsonSerializer.Serialize(detailsPage.BangumiEvidence));
+                    break;
+                case "checkUpdate": await Navigate(WorkspacePage.Settings); await updates.CheckAsync(); settingsPage.ShowUpdatesTest(); break;
+                case "automaticUpdate": await updates.CheckAutomaticallyAsync(); break;
+                case "personalFixture": await RunPersonalFixtureAsync(root.GetProperty("value").GetString()); break;
                 case "opticalProbe":
                     await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "optical-probe.json"), JsonSerializer.Serialize(OpticalRenderer.Diagnostics()));
                     break;
@@ -280,9 +316,20 @@ public sealed partial class MainWindow
                     var audit = await libraryPage.AuditStageAsync();
                     await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "stage-audit.json"), JsonSerializer.Serialize(audit));
                     break;
+                case "heroFrames":
+                    var heroAudit = await AuditHeroFramesAsync(root.GetProperty("id").GetString());
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "hero-frames.json"), JsonSerializer.Serialize(heroAudit));
+                    break;
+                case "heroStageAudit":
+                    var heroStageAudit = await detailsPage.AuditStageAsync();
+                    await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "hero-stage-audit.json"), JsonSerializer.Serialize(heroStageAudit));
+                    break;
                 case "treeProbeFault":
                     _ = bitmapTreeProbe.Read(() => throw new System.Runtime.InteropServices.COMException("Test tree read failure", unchecked((int)0x80004005)));
                     break;
+                case "p1Dialog": case "p1Close": case "p1Tab": case "p1Capture": case "p1Evidence": case "p1Statistics": case "p1Fill": case "p1Invoke": case "p1Installation": case "p1CancelInstallation": case "p1ScrollInstallation":
+                case "p1ContextMenu": case "p1ContextClose": case "p1ContextInvoke": case "p1LaunchSettings": case "p1DismissDiscovery": case "p1SourceToggle": case "p1ReviewDiscovery": case "p1IgnoreCandidate": case "p1Recognize": case "p1ImportSelect": case "p1ImportInvoke":
+                    await RunP1FixtureAsync(root); break;
                 case "exit": if (App.Instance is { } app) await app.RequestExitAsync(); return;
                 default: throw new InvalidDataException("Unsupported visual fixture action.");
             }
@@ -300,7 +347,7 @@ public sealed partial class MainWindow
     private void DisposeVisualSystem()
     {
         visualStopped = true;
-        libraryPage.ReleaseStageBeforeLeave(); detailsPage.ReleaseStageBeforeLeave();
+        libraryPage?.ReleaseStageBeforeLeave(); detailsPage?.ReleaseStageBeforeLeave(); onlinePage?.Cancel();
         Root.Loaded -= StartVisualFixture;
         if (visualFixtureTimer is not null) { visualFixtureTimer.Stop(); visualFixtureTimer.Tick -= OnVisualFixture; }
         gallery?.Dispose(); gallery = null;

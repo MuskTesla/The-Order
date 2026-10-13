@@ -347,8 +347,12 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
     {
         if (uiSettings is not null && !effectsSubscribed)
             effectsSubscribed = TryAttach("subscribe.advancedEffects", () => uiSettings.AdvancedEffectsEnabledChanged += OnEffectsChanged);
-        if (uiSettings is not null && !animationsSubscribed)
-            animationsSubscribed = TryAttach("subscribe.animations", () => uiSettings.AnimationsEnabledChanged += OnAnimationsChanged);
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041) && uiSettings is not null && !animationsSubscribed)
+            animationsSubscribed = TryAttach("subscribe.animations", () =>
+            {
+                if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+                    uiSettings.AnimationsEnabledChanged += OnAnimationsChanged;
+            });
         if (accessibility is not null && !contrastSubscribed)
             contrastSubscribed = TryAttach("subscribe.highContrast", () => accessibility.HighContrastChanged += OnContrastChanged);
     }
@@ -372,10 +376,11 @@ public sealed partial class RefractionGallery : UserControl, IDisposable
                 uiSettings.AdvancedEffectsEnabledChanged -= OnEffectsChanged;
                 effectsSubscribed = false;
             });
-        if (animationsSubscribed && uiSettings is not null)
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041) && animationsSubscribed && uiSettings is not null)
             TryDetach("unsubscribe.animations", () =>
             {
-                uiSettings.AnimationsEnabledChanged -= OnAnimationsChanged;
+                if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+                    uiSettings.AnimationsEnabledChanged -= OnAnimationsChanged;
                 animationsSubscribed = false;
             });
         if (contrastSubscribed && accessibility is not null)

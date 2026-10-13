@@ -29,7 +29,7 @@ internal static class WindowsAtomicFile
             await Reach(probe, PersistenceStage.Replace).ConfigureAwait(false);
             // Same-directory MoveFileEx REPLACE_EXISTING | WRITE_THROUGH, one atomic namespace switch.
             // No target is ever truncated or deleted first. The backup is the canonical lastGood.
-            if (!MoveFileEx(temp, target, 0x1 | 0x8)) throw new IOException("原子替换失败。", new Win32Exception());
+            if (!MoveFileEx(temp, target, 0x1 | 0x8)) throw new IOException(UiText.Get("原子替换失败。"), new Win32Exception());
             committed = true;
             await Reach(probe, PersistenceStage.AfterReplace).ConfigureAwait(false);
             return new();
@@ -38,7 +38,7 @@ internal static class WindowsAtomicFile
         {
             // The primary namespace switch has already succeeded. Never report it as rolled back.
             // Backup-only warnings are safe to continue: its new contents equal lastGood.
-            return new("替换已完成；提交后检查发生 I/O 错误。");
+            return new(UiText.Get("替换已完成；提交后检查发生 I/O 错误。"));
         }
         finally { try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
     }

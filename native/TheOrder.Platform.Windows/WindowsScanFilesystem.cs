@@ -17,14 +17,14 @@ public sealed class WindowsScanFilesystem : IScanFilesystem
             for (string? part = start; part is not null; part = Path.GetDirectoryName(part))
             {
                 var handle = CreateFile(part, 0x80, 1, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
-                if (handle.IsInvalid) { handle.Dispose(); throw new IOException("目录正在变化或无法安全枚举，请稍后重试。"); }
+                if (handle.IsInvalid) { handle.Dispose(); throw new IOException(UiText.Get("目录正在变化或无法安全枚举，请稍后重试。")); }
                 leases.Add(handle);
             }
             var identity = new WindowsFilesystemIdentity();
             var rootNow = identity.Inspect(authorizedRoot.StoredPath); var current = identity.Inspect(directory.StoredPath);
             if (!rootNow.IsValid || !InstallationPreflightService.SameObservation(authorizedRoot, rootNow.Observation!)
                 || !current.IsValid || !InstallationPreflightService.SameObservation(directory, current.Observation!))
-                throw new InvalidDataException("枚举前目录身份已变化，扫描已停止。请重新选择目录。");
+                throw new InvalidDataException(UiText.Get("枚举前目录身份已变化，扫描已停止。请重新选择目录。"));
             foreach (var entry in Enumerate(directory.StoredPath)) yield return entry;
         }
         finally { foreach (var handle in leases) handle.Dispose(); }

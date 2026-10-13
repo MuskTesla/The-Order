@@ -1,21 +1,27 @@
+using TheOrder.Application;
 using TheOrder.Domain;
 
 namespace TheOrder.Application;
 
-public sealed record OnlineCoverOptions(CoverEditToken Token, WorkMetadata Work, OnlineAuthSnapshot Auth);
+public sealed record OnlineCoverOptions(CoverEditToken Token, WorkMetadata Work, OnlineAuthSnapshot Auth)
+{
+    public CoverRecommendation? Recommendation { get; init; }
+}
 
 // Reuses the catalog/auth/transaction contracts. The dialog owns no secret or persistent handle.
-public sealed class OnlineCoverSelectionClient(OfflineLibraryClient offline, IOnlineCatalog catalog, OnlineAuthContext auth)
+public sealed class OnlineCoverSelectionClient(OfflineLibraryClient offline, IOnlineCatalog catalog, OnlineAuthContext auth, ICoverRecommendationSource? recommendations = null)
 {
     public async Task<OnlineCoverOptions> LoadAsync(GameDetails details, CancellationToken cancellation)
     {
         if (details.CoverToken is not { WorkId: not null } token || details.WorkId != token.WorkId)
-            throw new InvalidDataException("请先关联作品资料，再选择作品封面。");
+            throw new InvalidDataException(UiText.Get("请先关联作品资料，再选择作品封面。"));
         var stamp = await auth.CaptureAsync(cancellation).ConfigureAwait(false);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellation, stamp.Changed);
         var work = await catalog.DetailsAsync(token.WorkId, true, stop.Token).ConfigureAwait(false);
         if (work.Id != token.WorkId) throw new StaleLibraryRequestException();
-        return auth.Accept(stamp, () => { stop.Token.ThrowIfCancellationRequested(); return new OnlineCoverOptions(token, work, stamp); });
+        var recommendation = recommendations is null ? new CoverRecommendation(work.CoverUrl, null, true) :
+            await recommendations.RecommendationAsync(work.Id, stop.Token).ConfigureAwait(false);
+        return auth.Accept(stamp, () => { stop.Token.ThrowIfCancellationRequested(); return new OnlineCoverOptions(token, work, stamp) { Recommendation = recommendation }; });
     }
 
     public async Task<ClientResult> SaveAsync(OnlineCoverOptions options, string? coverId, CancellationToken cancellation)
@@ -29,6 +35,12 @@ public sealed class OnlineCoverSelectionClient(OfflineLibraryClient offline, IOn
             if (coverId is null)
             {
                 if (work.CoverUrl != options.Work.CoverUrl) throw new StaleLibraryRequestException();
+                if (recommendations is not null)
+                {
+                    var current = await recommendations.RecommendationAsync(work.Id, stop.Token).ConfigureAwait(false);
+                    if (!current.Ready || options.Recommendation is not { Ready: true } shown || current != shown)
+                        throw new StaleLibraryRequestException();
+                }
             }
             else
             {

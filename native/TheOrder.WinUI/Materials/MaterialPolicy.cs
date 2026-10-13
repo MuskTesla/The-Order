@@ -63,7 +63,14 @@ internal sealed class MaterialPolicy : IDisposable
         if (ui is not null)
         {
             effectsSubscribed = TrySubscribe("subscribe.advancedEffects", () => ui.AdvancedEffectsEnabledChanged += EffectsChanged);
-            animationSubscribed = TrySubscribe("subscribe.animations", () => ui.AnimationsEnabledChanged += AnimationsChanged);
+            // The getter exists on 1809; this notification was added in 2004.
+            // Older hosts still refresh it through WM_SETTINGCHANGE.
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+                animationSubscribed = TrySubscribe("subscribe.animations", () =>
+                {
+                    if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
+                        ui.AnimationsEnabledChanged += AnimationsChanged;
+                });
         }
         if (accessibility is not null)
             contrastSubscribed = TrySubscribe("subscribe.highContrast", () => accessibility.HighContrastChanged += ContrastChanged);
@@ -266,7 +273,11 @@ internal sealed class MaterialPolicy : IDisposable
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
         TryDetach(() => { if (effectsSubscribed && ui is not null) ui.AdvancedEffectsEnabledChanged -= EffectsChanged; });
-        TryDetach(() => { if (animationSubscribed && ui is not null) ui.AnimationsEnabledChanged -= AnimationsChanged; });
+        TryDetach(() =>
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041) && animationSubscribed && ui is not null)
+                ui.AnimationsEnabledChanged -= AnimationsChanged;
+        });
         TryDetach(() => { if (contrastSubscribed && accessibility is not null) accessibility.HighContrastChanged -= ContrastChanged; });
         TryDetach(() => { if (capabilitySubscribed && capabilities is not null) capabilities.Changed -= CapabilityChanged; });
         TryDetach(() => { if (powerSubscribed) PowerManager.EnergySaverStatusChanged -= PowerChanged; });

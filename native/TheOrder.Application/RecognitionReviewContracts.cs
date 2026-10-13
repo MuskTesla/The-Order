@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 
 namespace TheOrder.Application;
@@ -12,7 +13,7 @@ public sealed record RecognitionReview(Guid Id, string GameId, string Title, Dat
 public sealed record RecognitionReviewDocuments(byte[]? Native, byte[]? Legacy);
 public sealed class ReviewCapacityException : IOException
 {
-    public ReviewCapacityException() : base("ReviewCapacity：核对队列容量不足，请先处理有效建议；已有建议保持不变。") { }
+    public ReviewCapacityException() : base(UiText.Get("ReviewCapacity：核对队列容量不足，请先处理有效建议；已有建议保持不变。")) { }
 }
 public interface IRecognitionReviewStorage
 {

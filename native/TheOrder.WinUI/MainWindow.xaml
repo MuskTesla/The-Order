@@ -1,71 +1,86 @@
-<Window x:Class="TheOrder.WinUI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="The Order">
+﻿<?xml version="1.0" encoding="utf-8"?><Window x:Class="TheOrder.WinUI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="The Order" xmlns:l="using:TheOrder.WinUI.Localization">
  <Grid x:Name="Root" SizeChanged="OnShellSizeChanged">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
   <!-- Solid canvas replaces Mica when transparency is off (system, app setting, HC or policy fault). -->
-  <Border x:Name="OpaqueCanvas" Grid.RowSpan="3" Background="{ThemeResource CanvasBrush}" Visibility="Collapsed"/>
-  <!-- Fluent title bar: back, pane toggle, brand, library search and the session indicator. There is no in-app Exit (R5): × keeps
-       The Order in the tray and the tray menu exits. -->
-  <TitleBar x:Name="AppTitleBar" Title="The Order" IsBackButtonVisible="True" IsBackButtonEnabled="False" IsPaneToggleButtonVisible="True"
-            BackRequested="OnTitleBack" PaneToggleRequested="OnPaneToggle" AutomationProperties.AutomationId="AppTitleBar">
-   <TitleBar.IconSource><ImageIconSource ImageSource="Assets/Brand.png"/></TitleBar.IconSource>
-   <TitleBar.Content>
-    <AutoSuggestBox x:Name="TitleSearch" PlaceholderText="搜索书架" QueryIcon="Find" MinWidth="200" MaxWidth="420" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                    TextChanged="OnTitleSearchChanged" QuerySubmitted="OnTitleSearchSubmitted" AutomationProperties.AutomationId="LibrarySearch" AutomationProperties.Name="搜索书架，支持名称、原名、标签、开发商及安装目录"/>
-   </TitleBar.Content>
+  <Border x:Name="OpaqueCanvas" Grid.RowSpan="3" Background="{ThemeResource CanvasBrush}" />
+  <!-- Back belongs to the page toolbar, not TitleBar.Content's centered region.
+       × keeps The Order in the tray and the tray menu exits. -->
+  <TitleBar x:Name="AppTitleBar" Title="The Order" IsBackButtonVisible="False" IsBackButtonEnabled="False" IsPaneToggleButtonVisible="False" BackRequested="OnTitleBack" PaneToggleRequested="OnPaneToggle" AutomationProperties.AutomationId="AppTitleBar">
+   <TitleBar.IconSource><ImageIconSource ImageSource="ms-appx:///Assets/Brand.Light.png" /></TitleBar.IconSource>
    <TitleBar.RightHeader>
     <Button x:Name="SessionSurface" Visibility="Collapsed" Style="{StaticResource SubtleButtonStyle}" Padding="8,4,10,4" Margin="0,0,4,0" CornerRadius="16" AutomationProperties.AutomationId="SessionIndicator">
      <StackPanel Orientation="Horizontal" Spacing="8">
-      <FontIcon x:Name="SessionIcon" Glyph="&#xE768;" FontSize="14" VerticalAlignment="Center"/>
-      <TextBlock x:Name="SessionChipTitle" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
-      <TextBlock x:Name="SessionDuration" FontFamily="Cascadia Mono" FontSize="12" VerticalAlignment="Center" TextWrapping="NoWrap" AutomationProperties.AutomationId="SessionDuration"/>
+      <FontIcon x:Name="SessionIcon" Glyph="" FontSize="14" VerticalAlignment="Center" />
+      <TextBlock x:Name="SessionChipTitle" MaxWidth="180" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" />
+      <TextBlock x:Name="SessionDuration" FontFamily="Cascadia Mono" FontSize="12" VerticalAlignment="Center" TextWrapping="NoWrap" AutomationProperties.AutomationId="SessionDuration" />
      </StackPanel>
      <Button.Flyout>
       <Flyout Placement="BottomEdgeAlignedRight">
        <StackPanel Width="320" Spacing="8">
-        <TextBlock x:Name="SessionTitle" Text="当前没有游玩会话" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="SessionTitle"/>
-        <TextBlock x:Name="SessionState" Text="正在恢复上次会话…" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="SessionState"/>
-        <TextBlock x:Name="SessionFlyoutDuration" FontFamily="Cascadia Mono" FontSize="14" AutomationProperties.AutomationId="SessionFlyoutDuration"/>
-        <TextBlock x:Name="SessionHistory" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="SessionHistory"/>
+        <TextBlock x:Name="SessionTitle" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="SessionTitle" l:Localize.Text="当前没有游玩会话" />
+        <TextBlock x:Name="SessionState" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="SessionState" l:Localize.Text="正在恢复上次会话…" />
+        <TextBlock x:Name="SessionFlyoutDuration" FontFamily="Cascadia Mono" FontSize="14" AutomationProperties.AutomationId="SessionFlyoutDuration" />
+        <TextBlock x:Name="SessionHistory" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="SessionHistory" />
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-         <Button x:Name="PauseTiming" Content="暂停计时" IsEnabled="False" Click="OnPauseTiming" AutomationProperties.AutomationId="PauseTiming"/>
-         <Button x:Name="ResumeTiming" Content="恢复计时" IsEnabled="False" Click="OnResumeTiming" AutomationProperties.AutomationId="ResumeTiming"/>
-         <Button x:Name="SessionDetails" Content="打开详情" Click="OnSessionDetails" AutomationProperties.AutomationId="SessionDetails"/>
+         <Button x:Name="PauseTiming" IsEnabled="False" Click="OnPauseTiming" AutomationProperties.AutomationId="PauseTiming" l:Localize.Content="暂停计时" />
+         <Button x:Name="ResumeTiming" IsEnabled="False" Click="OnResumeTiming" AutomationProperties.AutomationId="ResumeTiming" l:Localize.Content="恢复计时" />
+         <Button x:Name="SessionDetails" Click="OnSessionDetails" AutomationProperties.AutomationId="SessionDetails" l:Localize.Content="打开详情" />
         </StackPanel>
-        <TextBlock Text="关闭窗口后 The Order 留在系统托盘并继续计时；从托盘图标菜单可完全退出。" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap"/>
+        <TextBlock Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" l:Localize.Text="关闭窗口后 The Order 留在系统托盘并继续计时；从托盘图标菜单可完全退出。" />
        </StackPanel>
       </Flyout>
      </Button.Flyout>
     </Button>
    </TitleBar.RightHeader>
   </TitleBar>
-  <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Auto" OpenPaneLength="240" CompactPaneLength="48" ExpandedModeThresholdWidth="1008" CompactModeThresholdWidth="641"
-                  IsBackButtonVisible="Collapsed" IsPaneToggleButtonVisible="False" IsSettingsVisible="False" IsTitleBarAutoPaddingEnabled="False"
-                  ItemInvoked="OnNavigationInvoked" DisplayModeChanged="OnNavigationDisplayModeChanged">
+  <NavigationView x:Name="Navigation" xmlns:views="using:TheOrder.WinUI.Views" Grid.Row="1" Opacity="0" IsHitTestVisible="False" PaneDisplayMode="Left" IsPaneOpen="True" OpenPaneLength="72" CompactPaneLength="72" IsBackButtonVisible="Collapsed" IsPaneToggleButtonVisible="False" IsSettingsVisible="False" IsTitleBarAutoPaddingEnabled="False" ItemInvoked="OnNavigationInvoked" DisplayModeChanged="OnNavigationDisplayModeChanged">
+   <NavigationView.Resources>
+    <ResourceDictionary>
+     <ResourceDictionary.ThemeDictionaries>
+      <!-- The built-in ContentGrid otherwise paints a second gray slab over Mica. -->
+      <ResourceDictionary x:Key="Light"><SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" /></ResourceDictionary>
+      <ResourceDictionary x:Key="Default"><SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" /></ResourceDictionary>
+      <ResourceDictionary x:Key="HighContrast"><SolidColorBrush x:Key="NavigationViewContentBackground" Color="{ThemeResource SystemColorWindowColor}" /></ResourceDictionary>
+     </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+   </NavigationView.Resources>
    <NavigationView.MenuItems>
-    <NavigationViewItem x:Name="LibraryNavigation" Content="书架" Tag="library" AutomationProperties.AutomationId="LibraryNavigation"><NavigationViewItem.Icon><FontIcon Glyph="&#xE8F1;"/></NavigationViewItem.Icon></NavigationViewItem>
-    <NavigationViewItem x:Name="OnlineNavigation" Content="发现作品" Tag="online" AutomationProperties.AutomationId="OnlineNavigation"><NavigationViewItem.Icon><FontIcon Glyph="&#xE774;"/></NavigationViewItem.Icon></NavigationViewItem>
-    <NavigationViewItem x:Name="RecognitionNavigation" Content="识别与核对" Tag="recognition" AutomationProperties.AutomationId="RecognitionNavigation"><NavigationViewItem.Icon><FontIcon Glyph="&#xE721;"/></NavigationViewItem.Icon></NavigationViewItem>
+    <views:RailNavigationItem x:Name="LibraryNavigation" Tag="library" HorizontalContentAlignment="Stretch" Padding="0" Height="74" AutomationProperties.AutomationId="LibraryNavigation" l:Localize.Name="书架"><StackPanel Spacing="6" HorizontalAlignment="Center"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" /><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="书架" /></StackPanel></views:RailNavigationItem>
+    <views:RailNavigationItem x:Name="OnlineNavigation" Tag="online" HorizontalContentAlignment="Stretch" Padding="0" Height="74" AutomationProperties.AutomationId="OnlineNavigation" l:Localize.Name="发现"><StackPanel Spacing="6" HorizontalAlignment="Center"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" /><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="发现" /></StackPanel></views:RailNavigationItem>
    </NavigationView.MenuItems>
    <NavigationView.FooterMenuItems>
-    <NavigationViewItem x:Name="SettingsNavigation" Content="设置" Tag="settings" AutomationProperties.AutomationId="SettingsNavigation"><NavigationViewItem.Icon><FontIcon Glyph="&#xE713;"/></NavigationViewItem.Icon></NavigationViewItem>
+    <views:RailNavigationItem x:Name="SettingsNavigation" Tag="settings" HorizontalContentAlignment="Stretch" Padding="0" Height="74" AutomationProperties.AutomationId="SettingsNavigation" l:Localize.Name="设置"><StackPanel Spacing="6" HorizontalAlignment="Center"><Grid Width="34" Height="28"><FontIcon Glyph="" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center" /><Ellipse x:Name="UpdateBadge" Width="6" Height="6" Fill="{ThemeResource AccentFillColorDefaultBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" /></Grid><TextBlock FontSize="12" HorizontalAlignment="Center" l:Localize.Text="设置" /></StackPanel></views:RailNavigationItem>
    </NavigationView.FooterMenuItems>
-   <!-- Content sits on one layer over Mica with the Windows 11 top-left radius. -->
-   <Grid x:Name="ContentLayer" Background="{ThemeResource LayerBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <StackPanel x:Name="NoticeStack" Spacing="8" Margin="24,8,24,0">
-     <InfoBar x:Name="NoticeBar" IsClosable="True" IsOpen="{x:Bind ViewModel.HasNotice, Mode=OneWay}" Message="{x:Bind ViewModel.Notice.Message, Mode=OneWay}" AutomationProperties.AutomationId="TransactionNotice"/>
-     <InfoBar Title="当前书架为只读" Severity="Warning" IsClosable="False" IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}" Message="{x:Bind ViewModel.CapabilityMessage, Mode=OneWay}" AutomationProperties.AutomationId="ReadOnlyNotice"/>
-     <InfoBar x:Name="LifecycleNotice" Severity="Warning" IsClosable="False" IsOpen="False" AutomationProperties.AutomationId="LifecycleNotice"/>
-     <InfoBar x:Name="LaunchNotice" IsClosable="True" IsOpen="False" AutomationProperties.AutomationId="QuickLaunchNotice" AutomationProperties.LiveSetting="Polite"/>
+   <!-- Transparent page content shares the shell backdrop; high contrast keeps its system surface. -->
+   <Grid x:Name="ContentLayer" Background="{ThemeResource LayerBrush}" BorderBrush="{ThemeResource StrokeBrush}" BorderThickness="0">
+    <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+    <!-- Always reserve the same page-toolbar row. Back aligns to the content's left
+         edge, immediately beside the rail; visibility never moves menu items or pages. -->
+    <Grid x:Name="PageNavigationToolbar" Margin="24,0,24,0">
+     <Button x:Name="RailBack" Width="36" Height="36" HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed" Click="OnRailBack" Style="{StaticResource SubtleButtonStyle}" AutomationProperties.AutomationId="GoBack" l:Localize.Name="返回上一页" ToolTipService.ToolTip="返回上一页"><FontIcon Glyph="" FontSize="18" /></Button>
+    </Grid>
+    <StackPanel x:Name="NoticeStack" Grid.Row="1" Spacing="8" Margin="24,8,24,0">
+     <InfoBar x:Name="NoticeBar" IsClosable="True" IsOpen="{x:Bind ViewModel.HasNotice, Mode=OneWay}" Message="{x:Bind ViewModel.Notice.Message, Mode=OneWay}" AutomationProperties.AutomationId="TransactionNotice" />
+     <InfoBar Severity="Warning" IsClosable="False" IsOpen="{x:Bind ViewModel.IsReadOnly, Mode=OneWay}" Message="{x:Bind ViewModel.CapabilityMessage, Mode=OneWay}" AutomationProperties.AutomationId="ReadOnlyNotice" l:Localize.Title="当前书架为只读" />
+     <InfoBar x:Name="LifecycleNotice" Severity="Warning" IsClosable="False" IsOpen="False" AutomationProperties.AutomationId="LifecycleNotice" />
+     <InfoBar x:Name="LaunchNotice" IsClosable="True" IsOpen="False" AutomationProperties.AutomationId="QuickLaunchNotice" AutomationProperties.LiveSetting="Polite" />
     </StackPanel>
-    <ContentControl x:Name="PageContent" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsTabStop="False"/>
+    <ContentControl x:Name="PageContent" Grid.Row="2" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsTabStop="False" />
    </Grid>
   </NavigationView>
+  <Grid x:Name="StartupSurface" Grid.Row="1" Background="{ThemeResource CanvasBrush}" AutomationProperties.AutomationId="StartupLoadingPage">
+   <StackPanel Spacing="28" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420" Margin="24">
+    <Image x:Name="StartupLogo" Width="100" Height="100" Source="ms-appx:///Assets/Brand.Light.png" AutomationProperties.Name="The Order" />
+    <ProgressRing x:Name="StartupRing" Width="28" Height="28" IsActive="True" AutomationProperties.Name="正在加载书架" />
+    <TextBlock x:Name="StartupError" Visibility="Collapsed" TextWrapping="Wrap" TextAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+    <Button x:Name="StartupExit" Visibility="Collapsed" HorizontalAlignment="Center" Content="退出" Click="OnStartupExit" />
+   </StackPanel>
+  </Grid>
   <!-- Test diagnostics only. Receipts keep reading RuntimeState; Ctrl+Shift+D toggles visibility in diagnostics builds. -->
   <StackPanel x:Name="DiagnosticsPanel" Grid.Row="2" Visibility="Collapsed">
-   <StackPanel x:Name="RecognitionBoundaryControls" Orientation="Horizontal" Spacing="8" Visibility="Collapsed"><Button Content="延迟候选 200" Click="OnDelayCandidate"/><Button Content="候选放行" Click="OnReleaseCandidate"/><Button Content="模拟凭据变化" Click="OnSyntheticAuthChange"/></StackPanel>
-   <StackPanel x:Name="SyntheticControls" Orientation="Horizontal" Spacing="8"><TextBlock Text="合成验收控制"/><Button Content="延迟详情" Click="OnDelayDetails"/><Button Content="刷新故障" Click="OnFailRefresh"/><Button Content="延迟批量" Click="OnDelayBatch"/><Button Content="重读故障" Click="OnFailReload"/><Button Content="放行" Click="OnRelease"/><Button Content="取消操作" Click="OnCancelOperation"/><Button Content="延迟搜索" Click="OnDelayQuery"/><Button Content="延迟扫描" Click="OnDelayScan"/></StackPanel>
-   <TextBlock x:Name="RuntimeState" TextTrimming="CharacterEllipsis" MaxHeight="18" FontSize="10" AutomationProperties.AutomationId="RuntimeEvidence"/>
+   <StackPanel x:Name="RecognitionBoundaryControls" Orientation="Horizontal" Spacing="8" Visibility="Collapsed"><Button Click="OnDelayCandidate" l:Localize.Content="延迟候选 200" /><Button Click="OnReleaseCandidate" l:Localize.Content="候选放行" /><Button Click="OnSyntheticAuthChange" l:Localize.Content="模拟凭据变化" /></StackPanel>
+   <StackPanel x:Name="SyntheticControls" Orientation="Horizontal" Spacing="8"><TextBlock l:Localize.Text="合成验收控制" /><Button Click="OnDelayDetails" l:Localize.Content="延迟详情" /><Button Click="OnFailRefresh" l:Localize.Content="刷新故障" /><Button Click="OnDelayBatch" l:Localize.Content="延迟批量" /><Button Click="OnFailReload" l:Localize.Content="重读故障" /><Button Click="OnRelease" l:Localize.Content="放行" /><Button Click="OnCancelOperation" l:Localize.Content="取消操作" /><Button Click="OnDelayQuery" l:Localize.Content="延迟搜索" /><Button Click="OnDelayScan" l:Localize.Content="延迟扫描" /></StackPanel>
+   <TextBlock x:Name="RuntimeState" TextTrimming="CharacterEllipsis" MaxHeight="18" FontSize="10" AutomationProperties.AutomationId="RuntimeEvidence" />
   </StackPanel>
  </Grid>
 </Window>

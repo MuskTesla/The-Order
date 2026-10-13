@@ -1,3 +1,4 @@
+using TheOrder.Application;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
@@ -18,6 +19,8 @@ public sealed record ScanProgress(int Directories, int Entries, int Candidates, 
 public sealed record ScanCandidate(string Id, string Name, PathObservation Folder, ImmutableArray<string> Executables,
     string Evidence, InstallationPreflight Preflight)
 {
+    public string? SteamAppId { get; init; }
+    public bool SteamCatalogMatch { get; init; }
     public override string ToString() => $"{Name} · {Preflight.Path.Message}";
 }
 public sealed record ScanResult(ScanStatus Status, ImmutableArray<ScanCandidate> Candidates, ScanProgress Progress, ImmutableArray<string> Warnings, string Message)
@@ -29,6 +32,7 @@ public sealed record ScanResult(ScanStatus Status, ImmutableArray<ScanCandidate>
 public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFilesystem filesystem)
 {
     public static bool IsGameExecutable(string name) => name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && !ExcludedExecutable().IsMatch(name);
+    public static bool IsLauncherScript(string name) => name.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) && !ExcludedExecutable().IsMatch(Path.ChangeExtension(name, ".exe"));
     public static readonly ImmutableHashSet<string> SkippedDirectories = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase,
         "node_modules", ".git", ".svn", ".potatovn", "$recycle.bin", "system volume information", "windows", "redist", "_commonredist", "汉化补丁", "补丁", "patches", "_patch", "backup", "beifen");
     public Task<ScanResult> ScanAsync(string root, ImmutableArray<ExistingInstallation> existing, ScanLimits? limits = null,
@@ -43,10 +47,10 @@ public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFi
         try
         {
             if (limits.MaxDepth is < 0 or > 6 || limits.MaxDirectories is < 1 or > 5000 || limits.MaxEntries is < 1 or > 50000 || limits.MaxCandidates is < 1 or > 2000)
-                throw new InvalidDataException("扫描上限不在允许范围内。");
+                throw new InvalidDataException(UiText.Get("扫描上限不在允许范围内。"));
             var probe = identity.Inspect(root); if (!probe.IsValid) throw new InvalidDataException(probe.Message);
             if (filesystem.IsForbiddenRoot(probe.Observation!) || PatchDirectory().IsMatch(probe.Observation!.FinalPath))
-                throw new InvalidDataException("请选择具体游戏目录；不能扫描磁盘根目录、系统目录或补丁备份目录。");
+                throw new InvalidDataException(UiText.Get("请选择具体游戏目录；不能扫描磁盘根目录、系统目录或补丁备份目录。"));
             // This authorization never moves to a newly resolved root during the scan.
             var authorizedRoot = probe.Observation!;
             var queue = new Queue<(PathObservation Observation, int Depth)>(); queue.Enqueue((authorizedRoot, 0));
@@ -57,14 +61,14 @@ public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFi
                 cancellation.ThrowIfCancellationRequested();
                 var itemPath = item.Observation.StoredPath;
                 current = current with { Directories = current.Directories + 1, CurrentDirectory = itemPath };
-                if (current.Directories > limits.MaxDirectories || candidates.Count >= limits.MaxCandidates) throw new InvalidDataException("扫描范围达到上限，请选择更具体的目录。");
+                if (current.Directories > limits.MaxDirectories || candidates.Count >= limits.MaxCandidates) throw new InvalidDataException(UiText.Get("扫描范围达到上限，请选择更具体的目录。"));
                 RequireCurrentRoot();
                 var directory = identity.Inspect(itemPath);
                 if (!directory.IsValid) { Warn(directory.Message); continue; }
                 if (!InstallationPreflightService.SameObservation(item.Observation, directory.Observation!) || !InScope(directory.Observation!))
-                { Warn("排队目录的身份、链接或授权范围已变化，已跳过。请重新扫描。"); continue; }
+                { Warn(UiText.Get("排队目录的身份、链接或授权范围已变化，已跳过。请重新扫描。")); continue; }
                 if (!visited.Add(directory.Observation!.Identity)) continue;
-                var executables = new List<string>(); var subdirectories = new List<PathObservation>();
+                var executables = new List<string>(); var scripts = new List<string>(); var subdirectories = new List<PathObservation>();
                 bool deeperDirectory = false;
                 try
                 {
@@ -81,25 +85,29 @@ public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFi
                             {
                                 var child = identity.Inspect(entry.Path);
                                 if (child.IsValid && InScope(child.Observation!)) subdirectories.Add(child.Observation!);
-                                else Warn("子目录不可读取或包含不支持的链接，已跳过。");
+                                else Warn(UiText.Get("子目录不可读取或包含不支持的链接，已跳过。"));
                             }
                         }
                         else if (IsGameExecutable(entry.Name)) executables.Add(entry.Path);
+                        else if (IsLauncherScript(entry.Name)) scripts.Add(entry.Path);
                     }
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Warn("有目录无法读取或已消失，已跳过。"); continue; }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { Warn(UiText.Get("有目录无法读取或已消失，已跳过。")); continue; }
                 RequireCurrentRoot();
                 // Discard discoveries if the enumerated path changed while its entries were read.
                 var after = identity.Inspect(itemPath);
                 if (!after.IsValid || !InstallationPreflightService.SameObservation(item.Observation, after.Observation!))
-                { Warn("枚举期间目录发生变化，本目录结果已丢弃。请重新扫描。"); continue; }
+                { Warn(UiText.Get("枚举期间目录发生变化，本目录结果已丢弃。请重新扫描。")); continue; }
+                // A launcher-only folder is also importable; recognition still reads titles
+                // and available exe evidence only. No script is interpreted or executed.
+                if (executables.Count == 0) executables.AddRange(scripts);
                 if (executables.Count > 0)
                 {
                     var name = Path.GetFileName(directory.Observation.DisplayPath);
                     var sorted = executables.OrderByDescending(p => Compact(Path.GetFileNameWithoutExtension(p)) == Compact(name))
                         .ThenBy(p => p, StringComparer.CurrentCulture).ToImmutableArray();
                     candidates.Add(new(Guid.NewGuid().ToString(), name, directory.Observation, sorted,
-                        $"根目录发现 {sorted.Length} 个候选 exe；未执行、未识别作品资料。", preflight.Check(itemPath, observed, cancellation)));
+                        UiText.Format($"根目录发现 {sorted.Length} 个候选启动文件；未执行、未识别作品资料。"), preflight.Check(itemPath, observed, cancellation)));
                 }
                 else if (item.Depth < limits.MaxDepth)
                     foreach (var child in subdirectories)
@@ -113,14 +121,14 @@ public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFi
             }
             RequireCurrentRoot();
             return Result(candidates.Count == 0 ? ScanStatus.NoCandidates : ScanStatus.Completed,
-                truncation == ScanTruncation.DepthLimit ? "扫描已完成，但因深度限制可能未检查全部目录。请缩小扫描范围后重试。" :
-                candidates.Count == 0 ? "未发现候选游戏。" : "扫描完成，请核对并选择要导入的候选。");
+                truncation == ScanTruncation.DepthLimit ? UiText.Get("扫描已完成，但因深度限制可能未检查全部目录。请缩小扫描范围后重试。") :
+                candidates.Count == 0 ? UiText.Get("未发现候选游戏。") : UiText.Get("扫描完成，请核对并选择要导入的候选。"));
 
             void RequireCurrentRoot()
             {
                 var actual = identity.Inspect(authorizedRoot.StoredPath);
                 if (!actual.IsValid || !InstallationPreflightService.SameObservation(authorizedRoot, actual.Observation!))
-                    throw new InvalidDataException("扫描根目录的身份或目标已变化，扫描已停止。请重新选择目录。");
+                    throw new InvalidDataException(UiText.Get("扫描根目录的身份或目标已变化，扫描已停止。请重新选择目录。"));
             }
             bool InScope(PathObservation directory) => directory.IsDirectory
                 && directory.Identity.Volume == authorizedRoot.Identity.Volume
@@ -130,9 +138,9 @@ public sealed partial class BoundedScanner(IFilesystemIdentity identity, IScanFi
                 && directory.ReparseTag == authorizedRoot.ReparseTag
                 && directory.ReparsePaths.SequenceEqual(authorizedRoot.ReparsePaths, StringComparer.OrdinalIgnoreCase);
         }
-        catch (OperationCanceledException) { return Result(ScanStatus.Cancelled, "扫描已取消，未导入任何候选。"); }
+        catch (OperationCanceledException) { return Result(ScanStatus.Cancelled, UiText.Get("扫描已取消，未导入任何候选。")); }
         catch (Exception e) when (e is InvalidDataException or ScanLimitException or IOException or UnauthorizedAccessException)
-        { return Result(ScanStatus.Failed, e is ScanLimitException ? "扫描范围达到上限，请选择更具体的目录。" : e.Message); }
+        { return Result(ScanStatus.Failed, e is ScanLimitException ? UiText.Get("扫描范围达到上限，请选择更具体的目录。") : e.Message); }
         void Warn(string message) { if (warnings.Count < 100) warnings.Add(message); }
         ScanResult Result(ScanStatus status, string message) => new(status, candidates.ToImmutable(), current with { Candidates = candidates.Count }, warnings.ToImmutable(), message) { Truncation = truncation };
     }

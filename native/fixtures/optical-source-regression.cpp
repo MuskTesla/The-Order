@@ -195,6 +195,26 @@ void ClearTests(void* handle) {
  Require(worst<=3,"Clear shows an inner boundary on a uniform field");
  Require(minLight>=.40&&maxDark<=.09,"Clear luminance bound violated");
 }
+void UnrefractedTests(void* handle) {
+ auto r=static_cast<Renderer*>(handle);const UINT w=256,h=128;
+ // Neutral shading isolates geometric registration, including the outer rim.
+ float p[28]={w,h,w,h, 128,64,104,48, 18,4,0,0, 0,0,0,0, 1,0,0,0, .98f,.98f,.98f,0, 0,.30f,1,0};
+ DrawStripes(handle,w,h,0xffd8e4ea);
+ const auto source=ReadTexture(r,r->sourceTexture.Get());
+ Require(RenderOffscreen(r,r->pixel.Get(),p,w,h,false)==source,"Zero-refraction geometry displaced the source");
+ Check(OpticalSceneFrost(handle,1));
+ p[12]=.10f;p[20]=p[21]=p[22]=250/255.f;p[23]=.055f;p[24]=1;p[27]=.04f;
+ const auto soft=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);
+ for(UINT y=0;y<h;++y)for(UINT x=0;x<20;++x)for(int c=0;c<4;++c)
+  Require(soft[(y*w+x)*4+c]==source[(y*w+x)*4+c],"Soft plate blurred pixels outside its bounds");
+ const UINT backs[]={0xff000000,0xffffffff,0xffff0000,0xffffff00,0xff0000ff,0xff00ff00,0xff808080};
+ double minLight=1,maxDark=0;
+ for(UINT b:backs){Check(OpticalSceneBegin(handle,w,h,1,b));Check(OpticalSceneEnd(handle));Check(OpticalSceneFrost(handle,1));
+  p[20]=p[21]=p[22]=250/255.f;p[23]=.055f;p[25]=.30f;p[26]=1;auto lt=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);minLight=std::min(minLight,SrgbLuminance(&lt[(64*w+128)*4]));
+  p[20]=p[21]=p[22]=32/255.f;p[23]=.075f;p[25]=.10f;p[26]=-1;auto dk=RenderOffscreen(r,r->pixel.Get(),p,w,h,true);maxDark=std::max(maxDark,SrgbLuminance(&dk[(64*w+128)*4]));}
+ Require(minLight>=.29&&maxDark<=.11,"Soft plate weakened the existing readable bounds");
+ std::cout<<"PASS: unrefracted registration equals source; soft blur stays inside plate; 7 backdrops x 2 polarities bounded (light "<<minLight<<", dark "<<maxDark<<").\n";
+}
 int main(int argc,char** argv) {
  if(argc!=2||std::strcmp(argv[1],"Test")!=0)return 2;
  try {
@@ -241,7 +261,7 @@ int main(int argc,char** argv) {
   panel.failDetach=true;Require(OpticalDestroy(handle)==E_FAIL,"Scene failed detach lost owner");
   panel.failDetach=false;Check(OpticalDestroy(handle));
   Require(resourceCounts[0]==resourceCounts[1]&&panel.refs==1,"Scene graph retained after destroy");
-  Check(OpticalCreate(&panel,&handle));FrostTests(handle);ContinuousTests(handle);ClearTests(handle);
+  Check(OpticalCreate(&panel,&handle));FrostTests(handle);ContinuousTests(handle);ClearTests(handle);UnrefractedTests(handle);
   panel.failDetach=true;Require(OpticalDestroy(handle)==E_FAIL,"Frost failed detach lost owner");
   panel.failDetach=false;Check(OpticalDestroy(handle));
   Require(resourceCounts[0]==resourceCounts[1]&&panel.refs==1,"Frost graph retained after destroy");

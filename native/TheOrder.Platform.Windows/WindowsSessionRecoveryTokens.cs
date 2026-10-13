@@ -11,7 +11,7 @@ public sealed class WindowsSessionRecoveryTokens : ISessionRecoveryTokens
     private readonly WindowsFilesystemIdentity filesystem = new();
     public WindowsSessionRecoveryTokens(string explicitSyntheticDirectory) => root = IsolatedLibrarySource.ValidateDirectory(explicitSyntheticDirectory);
     public WindowsSessionRecoveryTokens(NativeConfiguration configuration) => root = NativeProfileAccess.Validate(configuration);
-    public FilesystemIdentity ProfileIdentity => filesystem.Inspect(root).Observation?.Identity ?? throw new IOException("无法核对恢复资料目录身份。");
+    public FilesystemIdentity ProfileIdentity => filesystem.Inspect(root).Observation?.Identity ?? throw new IOException(UiText.Get("无法核对恢复资料目录身份。"));
     public uint? BootId
     {
         get
@@ -26,13 +26,13 @@ public sealed class WindowsSessionRecoveryTokens : ISessionRecoveryTokens
     }
     public string Seal(SessionRecoveryIdentity value)
     {
-        if (value.Version != 1 || value.ProfileIdentity != ProfileIdentity || value.BootId != BootId) throw new InvalidDataException("恢复身份已失效。");
+        if (value.Version != 1 || value.ProfileIdentity != ProfileIdentity || value.BootId != BootId) throw new InvalidDataException(UiText.Get("恢复身份已失效。"));
         var plain = JsonSerializer.SerializeToUtf8Bytes(value);
         try
         {
-            if (plain.Length > 20000) throw new InvalidDataException("恢复身份过大。");
+            if (plain.Length > 20000) throw new InvalidDataException(UiText.Get("恢复身份过大。"));
             var encoded = Convert.ToBase64String(WindowsDataProtection.Protect(plain, true));
-            return encoded.Length <= 32768 ? encoded : throw new InvalidDataException("恢复身份过大。");
+            return encoded.Length <= 32768 ? encoded : throw new InvalidDataException(UiText.Get("恢复身份过大。"));
         }
         finally { CryptographicOperations.ZeroMemory(plain); }
     }

@@ -19,7 +19,7 @@ public sealed class MaterialPreferencesStore(NativeConfiguration configuration,
 
     private static MaterialPreferenceRead Decode(byte[] bytes, NativeProfileStore profile)
     {
-        if (bytes.Length > 4096) return new(new(), "材质设置文件过大，已使用标准材质；原文件保留。", true);
+        if (bytes.Length > 4096) return new(new(), UiText.Get("材质设置文件过大，已使用标准材质；原文件保留。"), true);
         try
         {
             using var document = JsonDocument.Parse(bytes);
@@ -28,16 +28,16 @@ public sealed class MaterialPreferencesStore(NativeConfiguration configuration,
             foreach (var property in document.RootElement.EnumerateObject())
                 if (!names.Add(property.Name)) throw new JsonException();
             if (!document.RootElement.TryGetProperty("Version", out var version) || !version.TryGetInt32(out var number) || number != 1)
-                return new(new(), "材质设置版本不受支持，已使用标准材质；原文件保留。", true);
+                return new(new(), UiText.Get("材质设置版本不受支持，已使用标准材质；原文件保留。"), true);
             if (names.Any(name => name is not ("Version" or "ProfileId" or "StoreId" or "Mode")))
-                return new(new(), "材质设置包含不受支持的字段，已使用标准材质；原文件保留。", true);
+                return new(new(), UiText.Get("材质设置包含不受支持的字段，已使用标准材质；原文件保留。"), true);
             var value = JsonSerializer.Deserialize<Envelope>(bytes, Options) ?? throw new JsonException();
             if (value.ProfileId != profile.Manifest.ProfileId || value.StoreId != profile.Manifest.StoreId)
-                return new(new(), "材质设置不属于当前资料，已使用标准材质；原文件保留。", true);
+                return new(new(), UiText.Get("材质设置不属于当前资料，已使用标准材质；原文件保留。"), true);
             return MaterialActivationPolicy.Known(value.Mode) ? new(new(value.Mode))
-                : new(new(), "材质选项未知，已使用标准材质；可重新选择。");
+                : new(new(), UiText.Get("材质选项未知，已使用标准材质；可重新选择。"));
         }
-        catch (JsonException) { return new(new(), "材质设置格式损坏，已使用标准材质；可重新选择。"); }
+        catch (JsonException) { return new(new(), UiText.Get("材质设置格式损坏，已使用标准材质；可重新选择。")); }
     }
     private static byte[]? Read(string path)
     {

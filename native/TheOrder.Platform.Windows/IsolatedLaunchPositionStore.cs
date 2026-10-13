@@ -19,24 +19,24 @@ public sealed class IsolatedLaunchPositionStore(NativeConfiguration configuratio
             using Stream stream = configuration.Profile is { } profile
                 ? new MemoryStream(profile.ReadComponent(FileName) ?? throw new FileNotFoundException())
                 : IsolatedLibrarySource.OpenChecked(Path.Combine(root, FileName));
-            if (stream.Length is < 1 or > Maximum) throw new InvalidDataException("启动位置核对记录大小无效。");
+            if (stream.Length is < 1 or > Maximum) throw new InvalidDataException(UiText.Get("启动位置核对记录大小无效。"));
             var encrypted = new byte[(int)stream.Length]; stream.ReadExactly(encrypted);
             var plain = WindowsDataProtection.Protect(encrypted, false);
-            var envelope = JsonSerializer.Deserialize<Envelope>(plain) ?? throw new InvalidDataException("启动位置记录无效。");
-            if (envelope.Version != 1) throw new InvalidDataException("启动位置记录版本不支持。");
+            var envelope = JsonSerializer.Deserialize<Envelope>(plain) ?? throw new InvalidDataException(UiText.Get("启动位置记录无效。"));
+            if (envelope.Version != 1) throw new InvalidDataException(UiText.Get("启动位置记录版本不支持。"));
             Validate(envelope.Positions); return envelope.Positions;
         }
         catch (FileNotFoundException) { return []; }
         catch (Exception error) when (error is JsonException or CryptographicException)
-        { throw new InvalidDataException("本机启动位置记录损坏或不属于当前用户，未自动覆盖。", error); }
+        { throw new InvalidDataException(UiText.Get("本机启动位置记录损坏或不属于当前用户，未自动覆盖。"), error); }
     }, cancellation);
     public Task WriteAsync(ImmutableArray<LaunchPosition> positions, CancellationToken cancellation) => Run(root =>
     {
         Validate(positions);
         var plain = JsonSerializer.SerializeToUtf8Bytes(new Envelope(1, positions));
-        if (plain.Length > Maximum - 1024) throw new InvalidDataException("启动位置记录容量不足。");
+        if (plain.Length > Maximum - 1024) throw new InvalidDataException(UiText.Get("启动位置记录容量不足。"));
         var bytes = WindowsDataProtection.Protect(plain, true);
-        if (bytes.Length > Maximum) throw new InvalidDataException("启动位置记录容量不足。");
+        if (bytes.Length > Maximum) throw new InvalidDataException(UiText.Get("启动位置记录容量不足。"));
         if (configuration.Profile is { } profile) { profile.WriteComponent(FileName, bytes); return true; }
         var target = Path.Combine(root, FileName); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var existing = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }
@@ -51,20 +51,20 @@ public sealed class IsolatedLaunchPositionStore(NativeConfiguration configuratio
     }, cancellation);
     private static void Validate(ImmutableArray<LaunchPosition> positions)
     {
-        if (positions.IsDefault || positions.Length > 10000) throw new InvalidDataException("启动位置记录容量或结构无效。");
+        if (positions.IsDefault || positions.Length > 10000) throw new InvalidDataException(UiText.Get("启动位置记录容量或结构无效。"));
         var keys = new HashSet<(string, string)>();
         foreach (var position in positions)
         {
             if (position is null || string.IsNullOrWhiteSpace(position.GameId) || string.IsNullOrWhiteSpace(position.InstallationId)
-                || !keys.Add((position.GameId, position.InstallationId))) throw new InvalidDataException("启动位置记录身份无效。");
+                || !keys.Add((position.GameId, position.InstallationId))) throw new InvalidDataException(UiText.Get("启动位置记录身份无效。"));
             foreach (var path in new[] { position.FolderObservation, position.ExecutableObservation, position.WorkingObservation })
                 if (path is null || path.Identity is null || string.IsNullOrEmpty(path.Identity.Volume) || string.IsNullOrEmpty(path.Identity.FileId)
                     || string.IsNullOrEmpty(path.StoredPath) || string.IsNullOrEmpty(path.FinalPath)
                     || !Path.IsPathFullyQualified(path.StoredPath) || !Path.IsPathFullyQualified(path.FinalPath) || path.ReparsePaths.IsDefault)
-                    throw new InvalidDataException("启动位置观察无效。");
+                    throw new InvalidDataException(UiText.Get("启动位置观察无效。"));
             if (!position.FolderObservation.IsDirectory || position.ExecutableObservation.IsDirectory || !position.WorkingObservation.IsDirectory
                 || position.Folder != position.FolderObservation.StoredPath || position.Executable != position.ExecutableObservation.StoredPath
-                || position.WorkingDirectory != position.WorkingObservation.StoredPath) throw new InvalidDataException("启动位置与观察不一致。");
+                || position.WorkingDirectory != position.WorkingObservation.StoredPath) throw new InvalidDataException(UiText.Get("启动位置与观察不一致。"));
         }
     }
     private async Task<T> Run<T>(Func<string, T> action, CancellationToken cancellation)

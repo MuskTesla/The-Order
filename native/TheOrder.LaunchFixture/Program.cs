@@ -7,6 +7,23 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        // Test-only broker adapters mirror LE's joined arguments and Steam's structured
+        // forwarding. Targets are restricted to this project's marked synthetic fixture.
+        var imageName = Path.GetFileName(Environment.ProcessPath);
+        if (imageName?.Equals("LEProc.exe", StringComparison.OrdinalIgnoreCase) == true && args.Length >= 4)
+        {
+            var reports = args[1].Trim('"'); var target = Path.Combine(AppContext.BaseDirectory, "simple_game.exe");
+            if (Path.GetFullPath(args[0]) != target || !File.Exists(Path.Combine(reports, ".the-order-launch-fixture"))) return;
+            using var child = Process.Start(new ProcessStartInfo(target) { UseShellExecute = false, WorkingDirectory = Environment.CurrentDirectory, Arguments = string.Join(' ', args.Skip(1)) });
+            return;
+        }
+        if (imageName?.Equals("Steam.exe", StringComparison.OrdinalIgnoreCase) == true && args.Length >= 5 && args[0] == "-applaunch" && args[1] == "480")
+        {
+            if (!File.Exists(Path.Combine(args[2], ".the-order-launch-fixture"))) return;
+            var start = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "simple_game.exe")) { UseShellExecute = false, WorkingDirectory = AppContext.BaseDirectory };
+            foreach (var arg in args.Skip(2)) start.ArgumentList.Add(arg);
+            using var child = Process.Start(start); return;
+        }
         if (args.Length < 3) return;
         var root = Path.GetFullPath(args[0]); var mode = args[1]; var name = args[2];
         if (!File.Exists(Path.Combine(root, ".the-order-launch-fixture"))) return;
@@ -19,7 +36,7 @@ internal static class Program
             throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error(), "Synthetic fixture extension-point isolation failed.");
         var stopFile = Path.Combine(root, name + ".stop");
         File.WriteAllText(Path.Combine(root, name + ".json"), JsonSerializer.Serialize(new
-        { pid = Environment.ProcessId, cwd = Environment.CurrentDirectory, arguments = args.Skip(3).ToArray(), commandLine = System.Runtime.InteropServices.Marshal.PtrToStringUni(GetCommandLine()), mode, started = DateTimeOffset.UtcNow, extensionPointsDisabled = applied == 1 }));
+        { pid = Environment.ProcessId, cwd = Environment.CurrentDirectory, arguments = args.Skip(3).ToArray(), commandLine = System.Runtime.InteropServices.Marshal.PtrToStringUni(GetCommandLine()), mode, started = DateTimeOffset.UtcNow, extensionPointsDisabled = applied == 1, compatibilityLayer = Environment.GetEnvironmentVariable("__COMPAT_LAYER") }));
         if (mode == "empty") return;
         if (mode == "gap-helper") { Spawn("child_game.exe", "game", name + "-game"); return; }
         if (mode is "launcher" or "chain" or "helper" or "multiple" or "quick-launcher")

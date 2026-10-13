@@ -42,7 +42,9 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
                     token.ThrowIfCancellationRequested();
                     foreach (var candidate in candidates.Take(128)) { if (works.Count >= 128 && !works.ContainsKey(candidate.Id)) break; works[candidate.Id] = candidate; }
                 }
-                if (!identity.References.IsEmpty) Accept(await catalog.ResolveReferencesAsync(identity.References, token).ConfigureAwait(false));
+                var retrievalReferences = identity.References.Concat(RecognitionIdentityBuilder.References(identity.LocalCandidates.Where(c => !c.Exact).SelectMany(c => c.Record.References)))
+                    .Distinct(StringComparer.Ordinal).Take(8).ToImmutableArray();
+                if (!retrievalReferences.IsEmpty) Accept(await catalog.ResolveReferencesAsync(retrievalReferences, token).ConfigureAwait(false));
                 var exactQueries = identity.Evidence.Titles.Where(t => ReleaseAwareRanking.IdentitySource(t.Source)).Select(t => TitleMatching.IndexKey(t.Value)).ToHashSet(StringComparer.Ordinal);
                 var singletonQueries = new Dictionary<string, int>(StringComparer.Ordinal);
                 foreach (var query in identity.Queries.Take(6))
@@ -67,7 +69,7 @@ public sealed class RecognitionEngine(ITitleIndex index, IRecognitionEvidenceRea
                     .Select(e => TitleMatching.IndexKey(e.ObservedTitle).Length).DefaultIfEmpty().Max();
                 var specificIncomplete = preliminary.Where(c => !c.Vetoed && Incomplete(c.Work) && singletonQueries.GetValueOrDefault(c.Work.Id) > longestStrongSupport)
                     .OrderByDescending(c => singletonQueries[c.Work.Id]);
-                var requestedReferences = identity.References.ToHashSet(StringComparer.Ordinal);
+                var requestedReferences = retrievalReferences.ToHashSet(StringComparer.Ordinal);
                 var incompleteReferenced = preliminary.Where(c => !c.Vetoed && Incomplete(c.Work)
                     && c.Work.References.Any(r => requestedReferences.Contains(r.Source + ":" + r.Id)));
                 // Only repair weak-card retrieval when there is no strong compatible title.

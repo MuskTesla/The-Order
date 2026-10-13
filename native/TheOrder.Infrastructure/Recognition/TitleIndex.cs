@@ -7,14 +7,21 @@ using TheOrder.Application;
 namespace TheOrder.Infrastructure.Recognition;
 
 // Loaded on demand on a worker. A cancelled/invalid load never publishes a partial index.
-public sealed class TitleIndex(Func<Stream> open) : ITitleIndex
+public sealed partial class TitleIndex(Func<Stream> open) : ITitleIndex
 {
-    private sealed record Loaded(ImmutableArray<TitleIndexRecord> Rows,Dictionary<string,int[]> Names, (string Key, string Value)[] Readme);
+    private sealed record Loaded(ImmutableArray<TitleIndexRecord> Rows,Dictionary<string,int[]> Names, (string Key, string Value)[] Readme, HashSet<string> References);
     private readonly SemaphoreSlim load = new(1,1);
     private Loaded? current;
     public int RecordCount=>current?.Rows.Length??0;
     public int TitleCount=>current?.Rows.Sum(r=>r.Names.Length)??0;
     public double LoadMilliseconds {get;private set;}
+    public async Task<bool> ContainsReferenceAsync(string reference, CancellationToken cancellation)
+    {
+        if (string.IsNullOrWhiteSpace(reference) || reference.Length > 100) throw new InvalidDataException("索引编号查询无效。");
+        await FindAsync([], cancellation).ConfigureAwait(false);
+        cancellation.ThrowIfCancellationRequested();
+        return current!.References.Contains(reference);
+    }
     public async Task<ImmutableArray<string>> FindReadmeTitlesAsync(ImmutableArray<string> headings, CancellationToken cancellation)
     {
         if (headings.Length > 300 || headings.Any(h => h.Length > 3000)) throw new InvalidDataException("说明标题查询超过上限。");
@@ -67,7 +74,8 @@ public sealed class TitleIndex(Func<Stream> open) : ITitleIndex
         var readme = result.SelectMany(r => r.Names).Select(v => (Key: TitleMatching.IndexKey(v), Value: v))
             .GroupBy(p => p.Key, StringComparer.Ordinal).Select(g => g.Last()).Where(p => p.Key.Length is >= 7 and <= 160).OrderByDescending(p => p.Key.Length).ToArray();
         cancellation.ThrowIfCancellationRequested(); LoadMilliseconds=watch.Elapsed.TotalMilliseconds;
-        return new(result.ToImmutable(),lookup.ToDictionary(p=>p.Key,p=>p.Value.ToArray(),StringComparer.Ordinal),readme);
+        return new(result.ToImmutable(),lookup.ToDictionary(p=>p.Key,p=>p.Value.ToArray(),StringComparer.Ordinal),readme,
+            result.SelectMany(r => r.References).ToHashSet(StringComparer.Ordinal));
     }
     private static MemoryStream Bounded(Stream stream,int maximum,CancellationToken cancellation)
     {

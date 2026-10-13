@@ -24,19 +24,27 @@ public sealed partial class ArtworkStage
             SetPolicy(true, true, MaterialMode.Advanced);
             var contrast = Effective == "HighContrast" && optical is null && fallbackArt.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed;
             var highContrastEvidence = Evidence;
+            Images = new MissingAuditImages();
+            SetPolicy(true, false, MaterialMode.Auto);
+            CoverKey = "isolated-missing-artwork";
+            await Task.Delay(80);
+            var missingImage = PresentationReady && HasCurrentPresentation && imageFailed && optical is null
+                && Plate?.Background is SolidColorBrush { Color.A: > 0 };
+            var missingImageEvidence = Evidence;
             // An intentionally cancellation-ignoring completion proves the consumer's lease guard,
             // rather than relying on cooperative decoders. No global cache/source is changed.
             var delayed = new DelayedAuditImages();
             Images = delayed;
             SetPolicy(true, false, MaterialMode.Advanced);
             CoverKey = "isolated-stage-audit";
+            var pendingImage = !PresentationReady && !HasCurrentPresentation;
             ReleaseBeforeLeave();
             var createdAtLeave = RenderersCreated;
             delayed.Result.SetResult(new(new RasterPixels(2, 2, new byte[16]), "audit"));
             await Task.Delay(80);
-            var lateCompletion = optical is null && pixelsKey is null && !attached && RenderersCreated == createdAtLeave;
+            var lateCompletion = optical is null && pixelsKey is null && !attached && !PresentationReady && RenderersCreated == createdAtLeave;
             var released = Evidence;
-            return new { passed = invalidation && safety && contrast && lateCompletion, invalidation, safety, contrast, lateCompletion, invalidated, blocked, highContrastEvidence, released };
+            return new { passed = invalidation && safety && contrast && missingImage && pendingImage && lateCompletion, invalidation, safety, contrast, missingImage, pendingImage, lateCompletion, invalidated, blocked, highContrastEvidence, missingImageEvidence, released };
         }
         finally
         {
@@ -48,6 +56,12 @@ public sealed partial class ArtworkStage
     {
         internal readonly TaskCompletionSource<ImageResult> Result = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task<ImageResult> LoadAsync(string? key, int edge, CancellationToken cancellation) => Result.Task;
+        public ImageMetrics Metrics => new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+    private sealed class MissingAuditImages : IImagePipeline
+    {
+        public Task<ImageResult> LoadAsync(string? key, int edge, CancellationToken cancellation) => Task.FromResult(new ImageResult(null, "audit-missing"));
         public ImageMetrics Metrics => new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

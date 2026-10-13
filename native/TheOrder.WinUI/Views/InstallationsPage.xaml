@@ -1,29 +1,90 @@
-<Page x:Class="TheOrder.WinUI.Views.InstallationsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:p="using:TheOrder.Presentation">
- <Grid Padding="{StaticResource PagePadding}" RowSpacing="16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-  <TextBlock Text="本地安装" Style="{StaticResource PageTitleStyle}"/>
-  <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.InstallationMessage, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="InstallationNotice" AutomationProperties.LiveSetting="Polite"/>
-  <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"><StackPanel Spacing="24" MaxWidth="1040" HorizontalAlignment="Stretch">
-   <Border Style="{StaticResource SurfaceStyle}" Padding="24"><StackPanel Spacing="16">
-    <TextBlock Text="已关联的安装" Style="{StaticResource SectionTitleStyle}"/>
-    <ListView x:Name="InstallationList" ItemsSource="{x:Bind ViewModel.Installations.Rows, Mode=OneWay}" MaxHeight="230" SelectionMode="Single" AutomationProperties.AutomationId="Installations" AutomationProperties.Name="当前作品的本地安装"><ListView.ItemTemplate><DataTemplate x:DataType="app:InstallationRow"><StackPanel Padding="12" Spacing="8"><TextBlock Text="{x:Bind Installation.Folder}" Style="{StaticResource CardTitleStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind StatusText}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind Installation.Executable}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/><TextBlock Text="{x:Bind PreferredText}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListView.ItemTemplate></ListView>
-    <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="152" ItemHeight="44" MaximumRowsOrColumns="4"><Button Content="添加安装" Click="OnAdd" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="编辑所选" Click="OnEdit" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="设为首选" Click="OnPrefer" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/><Button Content="移除安装关系" Click="OnRemove" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}"/></VariableSizedWrapGrid>
-   </StackPanel></Border>
-   <ContentControl HorizontalContentAlignment="Stretch" Visibility="{x:Bind Show(ViewModel.HasDraft), Mode=OneWay}" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}">
-    <Border Style="{StaticResource SurfaceStyle}" Padding="24"><StackPanel Spacing="16">
-     <TextBlock Text="安装资料" Style="{StaticResource SectionTitleStyle}"/>
-     <TextBox Header="安装目录" Text="{x:Bind ViewModel.Draft.Folder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationFolder" AutomationProperties.Name="安装目录"/>
-     <Button Content="选择安装文件夹" Click="OnFolder"/>
-     <TextBox Header="启动程序（不启动）" Text="{x:Bind ViewModel.Draft.Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationExecutable" AutomationProperties.Name="安装的启动程序路径"/>
-     <Button Content="选择 exe" Click="OnExecutable"/>
-     <TextBox Header="工作目录 · 留空沿用 exe 所在目录" Text="{x:Bind ViewModel.Draft.WorkingDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationWorkingDirectory" AutomationProperties.Name="启动工作目录，可留空"/>
-     <Button Content="选择工作目录" Click="OnWorking"/>
-     <TextBlock Text="启动参数 · 每个输入框是一项参数，空格无需额外引号" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap"/>
-     <ItemsControl ItemsSource="{x:Bind ViewModel.Draft.Arguments, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="p:ArgumentDraft"><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="8192" AutomationProperties.Name="单项启动参数"/><Button Grid.Column="1" Content="移除此参数" Tag="{x:Bind}" Click="OnRemoveArgument"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-     <Button Content="添加参数" Click="OnArgument"/>
-     <CheckBox Content="设为首选安装" IsChecked="{x:Bind ViewModel.Draft.Preferred, Mode=TwoWay}"/>
-     <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="保存安装" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation"/><Button Content="取消草稿" Click="OnCancel"/></StackPanel>
-    </StackPanel></Border>
-   </ContentControl>
-  </StackPanel></ScrollViewer>
+<?xml version="1.0" encoding="utf-8"?>
+<Page x:Class="TheOrder.WinUI.Views.InstallationsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:app="using:TheOrder.Application" xmlns:p="using:TheOrder.Presentation" xmlns:views="using:TheOrder.WinUI.Views">
+ <Grid Padding="{StaticResource PagePadding}" RowSpacing="16">
+  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+  <TextBlock Style="{StaticResource PageTitleStyle}" Text="游戏文件与启动" />
+  <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.InstallationMessage, Mode=OneWay}" Visibility="{x:Bind ShowText(ViewModel.InstallationMessage), Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="InstallationNotice" AutomationProperties.LiveSetting="Polite" />
+  <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+   <StackPanel Spacing="16" MaxWidth="1040" HorizontalAlignment="Stretch">
+    <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+     <StackPanel Spacing="12">
+      <TextBlock Style="{StaticResource SectionTitleStyle}" Text="这部作品的游戏文件夹" />
+      <TextBlock Text="选择已有的游戏文件夹即可关联；游戏文件仍保存在原位置。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+      <ListView x:Name="InstallationList" ItemsSource="{x:Bind ViewModel.Installations.Rows, Mode=OneWay}" SelectionChanged="OnSelectionChanged" MaxHeight="230" SelectionMode="Single" HorizontalContentAlignment="Stretch" AutomationProperties.AutomationId="Installations" AutomationProperties.Name="选择这部作品的游戏文件夹">
+       <ListView.ItemTemplate><DataTemplate x:DataType="app:InstallationRow"><StackPanel Padding="8" Spacing="4">
+        <TextBlock Text="{x:Bind Installation.Folder}" Style="{StaticResource CardTitleStyle}" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Bind StatusText}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Bind Installation.Executable}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+        <TextBlock Text="{x:Bind PreferredText}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+       </StackPanel></DataTemplate></ListView.ItemTemplate>
+      </ListView>
+      <TextBlock x:Name="EmptyInstallations" Text="还未关联游戏文件夹。选择这部作品在电脑上的文件夹后，即可配置启动。" TextWrapping="Wrap" Visibility="Collapsed" />
+      <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000">
+       <Button x:Name="AddInstallationButton" Click="OnAdd" Content="关联游戏文件夹" AutomationProperties.AutomationId="AddInstallation" />
+       <Button x:Name="EditInstallationButton" Click="OnEdit" Content="修改路径与启动设置" AutomationProperties.AutomationId="EditInstallation" />
+       <Button x:Name="PreferInstallationButton" Click="OnPrefer" Content="设为默认启动" AutomationProperties.AutomationId="PreferInstallation" />
+       <Button x:Name="RemoveInstallationButton" Click="OnRemove" Content="解除此文件夹关联" AutomationProperties.AutomationId="RemoveInstallation" />
+      </views:TagFlowPanel>
+      <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000">
+       <Button x:Name="OpenGameFolderButton" Content="打开游戏文件夹" Click="OnOpenGameFolder" AutomationProperties.AutomationId="OpenGameFolder" />
+       <Button x:Name="OpenSaveFolderButton" Content="打开存档文件夹" Click="OnOpenSave" AutomationProperties.AutomationId="OpenSaveFolder" />
+      </views:TagFlowPanel>
+      <TextBlock x:Name="SaveNotice" TextWrapping="Wrap" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+     </StackPanel>
+    </Border>
+    <ContentControl HorizontalContentAlignment="Stretch" Visibility="{x:Bind Show(ViewModel.HasDraft), Mode=OneWay}" IsEnabled="{x:Bind Workspace.CanEdit, Mode=OneWay}">
+     <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+      <StackPanel Spacing="16">
+       <TextBlock x:Name="DraftHeading" Style="{StaticResource SectionTitleStyle}" Text="路径与启动设置" />
+       <StackPanel Spacing="8">
+        <TextBox Text="{x:Bind ViewModel.Draft.Folder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationFolder" Header="游戏文件夹" PlaceholderText="选择包含游戏程序的文件夹" AutomationProperties.Name="游戏文件夹" />
+        <Button Click="OnFolder" Content="选择游戏文件夹" />
+       </StackPanel>
+       <StackPanel Spacing="8">
+        <TextBox Text="{x:Bind ViewModel.Draft.Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationExecutable" Header="启动文件" PlaceholderText="选择平时用来打开游戏的 exe 或 cmd" AutomationProperties.Name="游戏启动文件" />
+        <Button Click="OnExecutable" Content="选择启动文件…" />
+        <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="选择文件不会启动游戏；留空可在首次启动时再选择。" TextWrapping="Wrap" />
+       </StackPanel>
+       <CheckBox Content="默认从此文件夹启动" IsChecked="{x:Bind ViewModel.Draft.Preferred, Mode=TwoWay}" />
+       <CheckBox Content="通过 Steam 启动" IsChecked="{x:Bind ViewModel.Draft.UseSteam, Mode=TwoWay}" Visibility="{x:Bind ShowSteam(ViewModel.Draft.SteamAppId), Mode=OneWay}" />
+       <Expander x:Name="SaveFolderSection" Header="存档文件夹（可选）" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <StackPanel Spacing="12">
+         <TextBlock Text="记录存档位置，方便一键打开；此处不会复制或备份存档。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+         <TextBox x:Name="SaveFolderPath" Header="存档位置" PlaceholderText="未设置" Text="{x:Bind ViewModel.Draft.SaveFolder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="SaveFolderPath" />
+         <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000"><Button Content="选择存档文件夹…" Click="OnSaveFolder" /><Button x:Name="FindSaveFolderButton" Content="在游戏目录中查找" Click="OnFindSave" /></views:TagFlowPanel>
+         <TextBlock x:Name="SaveCandidates" TextWrapping="Wrap" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+         <StackPanel x:Name="SaveChoices" Spacing="8" Visibility="Collapsed" />
+        </StackPanel>
+       </Expander>
+       <Expander x:Name="LaunchHelpersSection" Header="启动辅助 · LE / Magpie（可选）" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <StackPanel Spacing="12">
+         <TextBlock x:Name="LaunchHelpersHeading" Text="为此游戏使用已安装的辅助工具" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchHelpers" />
+         <TextBox Header="Locale Emulator（日文转区）" PlaceholderText="选择已安装的 LEProc.exe" Text="{x:Bind ViewModel.Draft.LocaleEmulator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="LocaleEmulatorPath" />
+         <Button Content="选择 LEProc.exe…" Click="OnLocaleTool" />
+         <TextBox Header="Magpie（窗口缩放）" PlaceholderText="选择已安装的 Magpie.exe" Text="{x:Bind ViewModel.Draft.ScalingTool, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="MagpiePath" />
+         <Button Content="选择 Magpie.exe…" Click="OnScalingTool" />
+         <TextBlock Text="保存后，启动游戏时会调用所选工具；清空路径可停用。Magpie 的缩放方式在 Magpie 中设置。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+         <CheckBox IsChecked="{x:Bind ViewModel.Draft.MuteInBackground, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="切出游戏时静音，切回时恢复"><TextBlock Text="切出游戏时静音，切回时恢复" TextWrapping="Wrap" /></CheckBox>
+        </StackPanel>
+       </Expander>
+       <Expander x:Name="AdvancedLaunchSection" Header="高级启动设置" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <StackPanel Spacing="12">
+         <TextBlock Text="通常无需修改，仅在游戏或辅助工具有特殊要求时调整。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+         <TextBox Text="{x:Bind ViewModel.Draft.WorkingDirectory, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="InstallationWorkingDirectory" Header="启动工作目录" PlaceholderText="留空使用启动文件所在文件夹" AutomationProperties.Name="启动工作目录，可留空" />
+         <Button Click="OnWorking" Content="选择工作目录…" />
+         <CheckBox IsChecked="{x:Bind ViewModel.Draft.Administrator, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="以管理员身份启动，Windows 会请求授权"><TextBlock Text="以管理员身份启动（Windows 会请求授权）" TextWrapping="Wrap" /></CheckBox>
+         <CheckBox IsChecked="{x:Bind ViewModel.Draft.HighDpi, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="由游戏处理高分辨率缩放"><TextBlock Text="由游戏处理高分辨率缩放（DPI）" TextWrapping="Wrap" /></CheckBox>
+         <TextBlock Text="启动参数（可选）" />
+         <TextBlock Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" Text="每个输入框填一项参数，空格无需额外引号。" />
+         <ItemsControl ItemsSource="{x:Bind ViewModel.Draft.Arguments, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="p:ArgumentDraft"><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="8192" AutomationProperties.Name="单项启动参数" /><Button Grid.Column="1" Tag="{x:Bind}" Click="OnRemoveArgument" Content="移除" AutomationProperties.Name="移除此启动参数" /></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+         <Button Click="OnArgument" Content="添加一项参数" />
+        </StackPanel>
+       </Expander>
+       <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000"><Button x:Name="SaveInstallationButton" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation" Content="保存设置" /><Button Click="OnCancel" Content="放弃修改" /></views:TagFlowPanel>
+      </StackPanel>
+     </Border>
+    </ContentControl>
+   </StackPanel>
+  </ScrollViewer>
  </Grid>
 </Page>

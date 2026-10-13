@@ -18,14 +18,14 @@ public sealed class IsolatedUiPreferencesStore(NativeConfiguration configuration
     }
     internal static ClientPreferences Decode(byte[] bytes)
     {
-        if (bytes.Length > 200000) throw new InvalidDataException("界面偏好过大。");
+        if (bytes.Length > 200000) throw new InvalidDataException(UiText.Get("界面偏好过大。"));
         Envelope envelope;
         try { envelope = JsonSerializer.Deserialize<Envelope>(bytes, new JsonSerializerOptions(Options) {
-            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow, RespectRequiredConstructorParameters = true }) ?? throw new InvalidDataException("界面偏好无效。"); }
+            UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow, RespectRequiredConstructorParameters = true }) ?? throw new InvalidDataException(UiText.Get("界面偏好无效。")); }
         catch (JsonException e)
         {
             try { using var document = JsonDocument.Parse(bytes); }
-            catch (JsonException) { throw new InvalidDataException("界面偏好损坏。", e); }
+            catch (JsonException) { throw new InvalidDataException(UiText.Get("界面偏好损坏。"), e); }
             throw new NativeProfileException("UnsupportedPreferenceSchema");
         }
         if (envelope.Version != 1 || envelope.Preferences is null) throw new NativeProfileException("UnsupportedPreferenceVersion");
@@ -40,21 +40,21 @@ public sealed class IsolatedUiPreferencesStore(NativeConfiguration configuration
         try
         {
             using var stream = IsolatedLibrarySource.OpenChecked(file);
-            if (stream.Length > 200000) throw new InvalidDataException("界面偏好过大，旧文件未覆盖。");
-            var envelope = JsonSerializer.Deserialize<Envelope>(stream, Options) ?? throw new InvalidDataException("界面偏好无效。");
-            if (envelope.Version != 1 || envelope.Preferences is null) throw new InvalidDataException("不支持此界面偏好版本。");
+            if (stream.Length > 200000) throw new InvalidDataException(UiText.Get("界面偏好过大，旧文件未覆盖。"));
+            var envelope = JsonSerializer.Deserialize<Envelope>(stream, Options) ?? throw new InvalidDataException(UiText.Get("界面偏好无效。"));
+            if (envelope.Version != 1 || envelope.Preferences is null) throw new InvalidDataException(UiText.Get("不支持此界面偏好版本。"));
             var value = envelope.Preferences;
             var preferences = new ClientPreferences(value.Theme, value.Layout, value.Sort, value.SavedFilters);
             PreferenceValidation.Validate(preferences); return preferences;
         }
         catch (FileNotFoundException) { return new(); }
-        catch (JsonException error) { throw new InvalidDataException("界面偏好格式损坏，旧文件未覆盖。", error); }
+        catch (JsonException error) { throw new InvalidDataException(UiText.Get("界面偏好格式损坏，旧文件未覆盖。"), error); }
     }, cancellation);
     public Task SaveAsync(ClientPreferences preferences, CancellationToken cancellation) => RunAsync(root =>
     {
         PreferenceValidation.Validate(preferences);
         var bytes = Encode(preferences);
-        if (bytes.Length > 200000) throw new InvalidDataException("界面偏好过大，未保存。");
+        if (bytes.Length > 200000) throw new InvalidDataException(UiText.Get("界面偏好过大，未保存。"));
         if (configuration.Profile is { } profile) { profile.WriteComponent("native-ui.json", bytes); return true; }
         var target = Path.Combine(root, "native-ui.json"); var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         void Check() { try { using var held = IsolatedLibrarySource.OpenChecked(target); } catch (FileNotFoundException) { } }

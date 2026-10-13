@@ -15,11 +15,17 @@ internal static class Program
     private static AppInstance? current;
     public static int Activations;
     public static string ActivationArguments = "";
+    internal static RecentGameActivation? JumpActivation;
     internal static NativeProfileStore? Profile;
     [STAThread]
     public static int Main(string[] args)
     {
         _ = StartupClock.Elapsed; // Force the marker before profile I/O even on beforefieldinit runtimes.
+        if (!OperatingSystem.IsWindows() || !WindowsCompatibility.IsSupported(Environment.OSVersion.Version))
+        {
+            MessageBox(IntPtr.Zero, "The Order 需要 Windows 10 1809（系统版本 17763）或更高版本的 64 位 Windows。尚未打开书架资料。", "The Order", 0x10);
+            return 1;
+        }
         WinRT.ComWrappersSupport.InitializeComWrappers();
         try
         {
@@ -34,6 +40,15 @@ internal static class Program
             var authorizeProduction = args.Contains("--allow-production-profile", StringComparer.Ordinal);
             if (fixture && authorizeProduction) throw new NativeProfileException("ProductionAuthorizationFixtureForbidden");
             var request = fixture ? null : NativeProfilePaths.Select(buildKind, Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND"), directory, authorizeProduction);
+            JumpActivation = RecentGameActivation.Parse(args);
+            if (JumpActivation is { } jump)
+            {
+                if (fixture) throw new NativeProfileException("JumpActivationFixtureForbidden");
+                request = NativeProfilePaths.Select(buildKind, jump.Kind, jump.Root, jump.Kind == nameof(NativeProfileKind.Production))
+                    with { ExpectedProfileId = jump.ProfileId, ExpectedStoreId = jump.StoreId };
+                var root = NativeProfilePaths.Validate(request);
+                if (!File.Exists(Path.Combine(root, NativeProfileStore.ManifestName))) throw new NativeProfileException("JumpProfileMissing");
+            }
             var key = request is null ? NativeInstanceIdentity.ForProfile(directory) : NativeInstanceIdentity.ForNativeProfile(request);
             current = AppInstance.GetCurrent();
             current.Activated += Activated; // Subscribe before registration exposes us to a simultaneous secondary.
@@ -51,6 +66,7 @@ internal static class Program
                 catch { return 3; } // Failed forwarding still exits without creating an application/writer.
             }
             if (request is not null) Profile = NativeProfileStore.Open(request, new NativeLibraryCodec());
+            if (Profile is not null) WindowsRecentGames.SetAppId(Profile);
             ProfileOpenMilliseconds = StartupClock.Elapsed.TotalMilliseconds;
             Microsoft.UI.Xaml.Application.Start(p =>
             {
@@ -59,15 +75,18 @@ internal static class Program
             });
             return 0;
         }
-        catch (Exception e) { MessageBox(IntPtr.Zero, "The Order 无法安全启动：" + e.GetType().Name + "。请核对隔离资料目录；没有打开第二个书架。", "The Order", 0x10); return 1; }
+        catch (Exception e) { MessageBox(IntPtr.Zero, UiText.Get("The Order 无法安全启动：") + e.GetType().Name + "。请核对启动入口和资料目录，退出仍在运行的旧版本后重试。没有打开第二个书架。", "The Order", 0x10); return 1; }
         finally { Profile?.Dispose(); if (current is not null) current.Activated -= Activated; if (primary?.IsCurrent == true) primary.UnregisterKey(); }
     }
     private static void Activated(object? sender, AppActivationArguments args)
     {
-        // Current CLI supports showing the library only. Arguments are forwarded, never executed.
+        // Only exact profile-bound recent-game IDs can enter the ordinary launch workflow.
         var text = (args.Data as Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs)?.Arguments ?? "";
         ActivationArguments = text.Length <= 32768 ? text : "";
         Interlocked.Increment(ref Activations); App.Instance?.RequestActivation();
+        var tokens = WindowsRecentGames.Split(ActivationArguments);
+        if (tokens.Length > 0 && tokens[0].EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) tokens = tokens[1..];
+        if (RecentGameActivation.Parse(tokens) is { } jump) App.Instance?.RequestGameActivation(jump);
     }
     [DllImport("ole32.dll")] private static extern int CoWaitForMultipleObjects(uint flags, uint timeout, uint count, IntPtr[] handles, out uint index);
     [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(uint pid);

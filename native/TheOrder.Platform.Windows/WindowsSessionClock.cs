@@ -16,7 +16,7 @@ public sealed class WindowsSessionClock : ISessionClock
         lock (gate)
         {
             var (awake, before, after) = read();
-            if (awake < 0 || before < 0 || after < before) throw new IOException("Windows awake clock 无效。");
+            if (awake < 0 || before < 0 || after < before) throw new IOException(UiText.Get("Windows awake clock 无效。"));
             long lower = before - awake, upper = after - awake;
             // Conservative bracket plus 1ms quantization allowance; false discontinuities lose time, never add sleep.
             if (lastAwake >= 0 && (awake < lastAwake || lower > offsetUpper + 10_000)) epoch++;
