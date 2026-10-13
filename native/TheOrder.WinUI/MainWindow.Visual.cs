@@ -328,7 +328,7 @@ public sealed partial class MainWindow
                     _ = bitmapTreeProbe.Read(() => throw new System.Runtime.InteropServices.COMException("Test tree read failure", unchecked((int)0x80004005)));
                     break;
                 case "p1Dialog": case "p1Close": case "p1Tab": case "p1Capture": case "p1Evidence": case "p1Statistics": case "p1Fill": case "p1Invoke": case "p1Installation": case "p1CancelInstallation": case "p1ScrollInstallation":
-                case "p1ContextMenu": case "p1ContextClose": case "p1ContextInvoke": case "p1LaunchSettings": case "p1DismissDiscovery": case "p1SourceToggle": case "p1ReviewDiscovery": case "p1IgnoreCandidate": case "p1Recognize": case "p1ImportSelect": case "p1ImportInvoke":
+                case "p1ContextMenu": case "p1ContextClose": case "p1ContextInvoke": case "p1LaunchSettings": case "p1DismissDiscovery": case "p1SourceToggle": case "p1ReviewDiscovery": case "p1IgnoreCandidate": case "p1Recognize": case "p1ImportSelect": case "p1ImportInvoke": case "p1DetailsInspect":
                     await RunP1FixtureAsync(root); break;
                 case "exit": if (App.Instance is { } app) await app.RequestExitAsync(); return;
                 default: throw new InvalidDataException("Unsupported visual fixture action.");

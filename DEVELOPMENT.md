@@ -1,5 +1,17 @@
 # 开发与维护
 
+## Argon 详情页隔离视觉候选（2026-10-14）
+
+本次候选在 `D:/Projects/The-Order-worktrees/argon-details-20261014`／`codex/argon-details-20261014`，沿用当前未发布原 worktree 的完整源码快照，不是从历史 Electron 主目录重新开发。视觉提交 `642d086e8bd16cf218fed45be57d7e4c6c4aa0c8` 只含 7 个展示文件；继承快照 `22806dcf4c6cde1a236e9223cc5e696d80fdb999` 不应整包集成。最终构建位于 `.artifacts/argon-details-20261014/gpt-publish-final/`，工程及真实 UI 验收范围见原 `docs/ai/BRIEF.md` 顶部。Gate 为 CONDITIONAL PASS，未获合并／安装／发布授权。
+
+复验只使用该证据根内的 `test-profile-v2`，manifest 明确为 Test。`Start-IsolatedTest.ps1` 要求固定生成目录名称、新的 control 目录，设置 `THE_ORDER_NATIVE_DATA_DIR`、`PROFILE_KIND=Test`、`VISUAL_TEST=1`、`DIAGNOSTICS=0`、`FIXTURE_PROFILE=0`、`ONLINE_FIXTURE=0` 与受控更新 fixture 后才启动候选；不能双击原始 EXE，避免默认打开 Production。`Control.ps1` 等待 fixture-ready 和对应 nonce 回执；已有 Test 命令处理导航、主题、尺寸和正常退出。新增 `p1DetailsInspect` 严格要求 Test／visual fixture、清洁详情草稿，允许固定的编辑／结束、顶部／标签／角色滚动、关闭测试提示与固定合成长提示，仅用于检查实际控件；不能保存、执行游戏或读取任意目录。长提示测试修改的只是当前控件显示，随后重启隔离实例获取干净截图。
+
+完整窗口截图使用证据根内 `capture-window.exe`，检查指定 PID 的准确 EXE 路径及 Test manifest，输出也限制在该实验根内；捕获指定 HWND 的实际 Composition，不读取全桌面，不发鼠标／键盘输入。早期 Root RenderTargetBitmap 对 Composition 截图不完整，不作为视觉通过依据。`.artifacts/` 内源码复制清单、模型日志、公开 Test 缓存／图片、截图与构建均不提交。
+
+本机 CLI 实际 PowerShell 位于 Codex bundled runtime，普通 `C:/Program Files/PowerShell/7/pwsh.exe` 不存在；WT 的带空格标题和完整命令需正确引用。Gemini 使用 direct Node CLI、UTF-8 提示词、仅隔离目录信任与工具路径白名单，禁用任意 shell、外部读写和模型回退；用户环境 API Key 只注入进程，不输出／存入文件。alias 在后续工具回合可能解析为 actual-model 名称，需同时配置 `gemini-4-argon` 的 HIGH override。稳定 BeforeModel hook 会省略 thinking 字段，因此另在实际 API 出站请求上核验模型／HIGH；异常请求发送前拒绝。这是工具级隔离，未宣称操作系统沙箱。主要实现与整改日志具有出站 HIGH 证据，Stage B 的部分早期回合不能追溯确认。
+
+构建仍用固定 .NET 10.0.401 SDK，`publish --no-restore -c Release -p:Platform=x64 -p:UseSharedCompilation=true -p:NativeProductionCandidate=true -p:NativeMultilingualEnabled=false` 输出到新目录。GPT 最终定点测试覆盖目录准备／浏览、关联语义／身份、MusicBrainz、导航及图片可读性／横幅审美／材质策略，TRX `gpt-final.trx` 为 320/0/0；没有进行无关全仓审计或长时间测试。原开发树 827 个文件及 HEAD／分支／index、Test 库／库备份／manifest 均有未变回执；Production 没有被读写或用作默认测试输入。
+
 ## 番组计划快捷登录与配套授权服务（2026-10-13）
 
 本轮按用户明确授权安装正式版且禁止 Computer Use。当前没有注册的 Bangumi 应用及授权服务，`BangumiOAuthDefaults.ServiceUrl` 保持空值；主入口正确禁用并显示“尚未开通”，手动授权可用。仅有客户端／服务代码和合成闭环，不是已完成的真人 OAuth 功能或公网部署；配置完成前不得宣称“快捷登录可以使用”。

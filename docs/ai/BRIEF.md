@@ -1,5 +1,19 @@
 # The Order：当前实现与评审交接
 
+## Argon High 游戏详情页实验与 GPT 独立验收（2026-10-14，隔离候选）
+
+本轮唯一开发基线为 `D:/Projects/The-Order-worktrees/claude-recognition-rnd` 的 `codex/library-ui-refinement`／`7facc502fde52532518171384cd77b45c9a60c9c` 加全部继承修改。827 份源码逐文件复制到独立 worktree `D:/Projects/The-Order-worktrees/argon-details-20261014`，分支 `codex/argon-details-20261014`；`22806dcf4c6cde1a236e9223cc5e696d80fdb999` 只是继承基线快照，不能作为本轮设计成果整包合并。视觉提交为 `642d086e8bd16cf218fed45be57d7e4c6c4aa0c8`，7 份产品文件、215 行增加／85 行删除。未合并、推送、发布、升版或替换正式程序。原工作区 827 份文件、HEAD、分支及 index 均再次核验未变。
+
+**独立 Gate：CONDITIONAL PASS。** 候选的工程检查与已覆盖的真实 UI 场景通过，建议保留为用户可评审的视觉成果。未在本轮重新验收 Win10、系统高对比度／放大文字、真实游戏启动状态及长时间资源稳定性；《樱之诗》深绿 CG 只有用户提供的修改前截图，没有候选实拍，不声称这些项目已经通过。本 Gate 不是 Production 或发布许可。
+
+Gemini CLI 0.63.0 真实调用 `argon-high`／`gemini-4-argon`。Argon 实际阅读 5 张用户正式版截图及必要源码，独立提出方案并直接实现：面包屑与操作同排并响应式折行；制作、发行、引擎自然流排、评分字重及客观／个人资料分层；系列前缀、标签描边、角色底衬／无图徽章；关联卡片层次及结构化编辑面板。实际修改 `DetailsPage.xaml`、`DetailsPage.xaml.cs`、`DetailsPage.Catalog.cs`、`CatalogFactsView.cs`、`CatalogContentView.cs`、`BangumiRelatedView.cs` 和 `DesignTokens.xaml` 中 3 个目录展示样式。全局图片可读性公式、材质、Provider、存储、迁移、会话、游戏启动引擎及依赖未改。
+
+GPT 检查全部实际 diff 后独立构建／测试／运行候选，要求一轮定点整改：水平 StackPanel 中的长提示缺少宽度约束，480 DIP 下编辑头部拥挤。Argon 修为可约束文字的 Grid，并在原紧凑断点下让编辑标题与操作分行。GPT 最终重建 `gpt-publish-final`，`tests/gpt-final.trx` 为 **320/0/0**，执行 872 ms；Argon 自测两轮均为 **296/0/0**。真实窗口覆盖浅／深主题、1160×820／720×800／480×800 DIP、缺图、超长个人标题、复杂引擎、81 个目录标签的默认展示、角色及关联卡片、主题切换、清洁草稿编辑／结束、固定合成长提示换行。CLANNAD → 智代 After → 在线 CLANNAD → 连续返回核验了原游戏、Game 筛选与 1900.5 DIP 滚动恢复；前台仍允许用户查看 Gemini 终端，故实际键盘交互和导航焦点不作全面通过声明。
+
+证据根 `.artifacts/argon-details-20261014/`：`before-final/` 为相同基线真实 Test 应用修改前截图；`after-clean-final/` 为最终完整窗口截图；`after-final/light-narrow-editor-long-notice.png` 是真实控件的固定合成文字边界场景。全部截图通过指定 Test PID／EXE／profile 的 Windows Graphics Capture 获取，没有 Computer Use 输入，没有以设计图替代真实程序。早期 RenderTargetBitmap 缺失 Composition 的截图保留为失败证据，不用于视觉验收。测试书架是 3 个虚构个人记录，仅复用旧 Test profile 中的公开目录／图片缓存；未复制 Production、设置或凭据。Test 的库、库备份和 profile manifest 哈希未变，所有实例正常退出。GPT 新增的 `MainWindow.P1Fixture.cs`／`MainWindow.Visual.cs` 检查入口只在现有 Test／visual fixture 内接受固定只读动作，不可保存、启动游戏或访问任意路径。
+
+模型评价：Argon 能保留原有 Fluent、自然图片比例、导航与资源机制，提出 GPT 未预设的流排、层次与组件改善；实现有质量，定点整改有效，适合继续承担有边界的 UI 设计任务。独立验收仍必要：Stage B 把静态推演误写为测试通过与逐像素比对，Stage C 已纠正；GPT 另外发现了首次实现的窄窗布局缺陷。首阶段终端启动、提示词传递和重复只读调用属于 GPT 调用基础设施问题。Stage B 部分工具回合的 HIGH 设置无法追溯确认，之后修正 actual-model override，并在实际出站 API 上验证模型及 HIGH；实现和整改阶段均有该验证，无其他模型回退。CLI 留存总 token 3,717,261（含缓存及前期失败／重复只读调用），缓存输入 2,585,067，非缓存输入 1,032,821；仅为 CLI 统计，未取得账单或精确费用。详细分阶段统计、原始报告／日志、来源保护回执和独立 Gate 在证据根中，不能把 Argon 自评当作 GPT 实测。
+
 ## 番组计划快捷登录代码与本机更新（2026-10-13，服务尚未开通）
 
 用户要求快捷登录为第一选择、直接更新本机正式版、禁止 Computer Use；同时确认尚未注册 Bangumi 应用或部署授权服务。已实现客户端与独立配套服务代码，并安装到原正式位置；**当前仍不能实际快捷登录**，缺少的外部条件是 The Order 自己的 Bangumi 应用身份和运行中的 HTTPS 授权服务。没有借用 PotatoVN 的 AppID／服务，没有嵌入 Client Secret 或填写虚构服务地址。设置将“快捷登录番组计划”置于首位并使用主按钮样式；未配置时禁用并明确提示，手动令牌授权继续可用。

@@ -21,6 +21,46 @@ public sealed partial class MainWindow
     {
         if (visualFixtureTimer is null || fixtureDirectory is null || Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test) throw new InvalidOperationException();
         var action = request.GetProperty("action").GetString();
+        if (action == "p1DetailsInspect")
+        {
+            // Read-only inspection of the isolated Test page. Invoke existing edit controls
+            // without desktop input; this action cannot save a draft or launch a game.
+            if (ViewModel.Page != TheOrder.Presentation.WorkspacePage.Details || p1Dialog is not null || ViewModel.IsDirty)
+                throw new InvalidOperationException("A clean Test details page is required.");
+            var value = request.GetProperty("value").GetString();
+            var controls = P1Elements(detailsPage).OfType<FrameworkElement>().ToArray();
+            if (value == "clear-notice") NoticeBar.IsOpen = false;
+            else if (value == "long-notice")
+            {
+                // Fixed synthetic text exercises wrapping in the actual control, without
+                // changing LaunchViewModel, bindings' source, installations or persistence.
+                controls.OfType<TextBlock>().Single(t => AutomationProperties.GetAutomationId(t) == "LaunchMessage").Text =
+                    "尚未选定启动程序。请从这部作品的游戏文件夹中选择正确的 exe 或 cmd；如果路径已经移动，请在启动设置中更新位置并重新确认，然后再启动游戏。";
+            }
+            else if (value is "edit" or "finish")
+            {
+                var button = controls.OfType<Button>().Single(b => value == "edit"
+                    ? AutomationProperties.GetAutomationId(b) == "EditGame"
+                    : AutomationProperties.GetName(b) == "结束编辑");
+                if (!button.IsEnabled) throw new InvalidOperationException("Action disabled.");
+                var peer = FrameworkElementAutomationPeer.CreatePeerForElement(button) ?? new ButtonAutomationPeer(button);
+                if (peer.GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException();
+                invoke.Invoke(); await Task.Delay(200);
+            }
+            else if (value is "top" or "tags" or "characters")
+            {
+                var scroll = controls.OfType<ScrollViewer>().Single(s => s.Name == "DetailsScroll");
+                var y = 0d;
+                if (value != "top")
+                {
+                    var heading = controls.OfType<TextBlock>().Single(t => t.Text == (value == "tags" ? "标签" : "角色"));
+                    y = heading.TransformToVisual((UIElement)scroll.Content).TransformPoint(new Windows.Foundation.Point()).Y - 12;
+                }
+                scroll.ChangeView(null, Math.Max(0, y), null, true);
+            }
+            else throw new InvalidDataException("Unknown read-only details inspection.");
+            await Task.Delay(200);
+        }
         if (action is "p1ContextMenu" or "p1LaunchSettings" or "p1Recognize")
         {
             var id = request.GetProperty("id").GetString() ?? throw new InvalidDataException();
