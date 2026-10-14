@@ -7,11 +7,13 @@ using System.Text.RegularExpressions;
 namespace TheOrder.Application;
 
 // Provider identities stay typed: a recording or release-group MBID is never a release MBID.
-public enum MusicBrainzEntityKind { ReleaseGroup, Release, Recording }
+public enum MusicBrainzEntityKind { ReleaseGroup, Release, Recording, Work, Artist }
 public sealed record MusicBrainzReference(MusicBrainzEntityKind Kind, string Id)
 {
     public string Url => "https://musicbrainz.org/" + (Kind switch
-    { MusicBrainzEntityKind.ReleaseGroup => "release-group", MusicBrainzEntityKind.Release => "release", _ => "recording" }) + "/" + Id;
+    { MusicBrainzEntityKind.ReleaseGroup => "release-group", MusicBrainzEntityKind.Release => "release",
+        MusicBrainzEntityKind.Recording => "recording", MusicBrainzEntityKind.Work => "work", MusicBrainzEntityKind.Artist => "artist",
+        _ => throw new InvalidDataException("MusicBrainz 资料类型无效。") }) + "/" + Id;
     public static bool ValidId(string? id) => id is not null && Guid.TryParseExact(id, "D", out var parsed)
         && parsed != Guid.Empty && id == parsed.ToString("D");
     public static bool TryParse(string? url, out MusicBrainzReference? reference)
@@ -22,7 +24,8 @@ public sealed record MusicBrainzReference(MusicBrainzEntityKind Kind, string Id)
         var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 2 || !ValidId(parts[1])) return false;
         MusicBrainzEntityKind? kind = parts[0] switch
-        { "release-group" => MusicBrainzEntityKind.ReleaseGroup, "release" => MusicBrainzEntityKind.Release, "recording" => MusicBrainzEntityKind.Recording, _ => null };
+        { "release-group" => MusicBrainzEntityKind.ReleaseGroup, "release" => MusicBrainzEntityKind.Release, "recording" => MusicBrainzEntityKind.Recording,
+            "work" => MusicBrainzEntityKind.Work, "artist" => MusicBrainzEntityKind.Artist, _ => null };
         if (kind is null) return false;
         reference = new(kind.Value, parts[1]); return reference.Url == url;
     }
@@ -52,11 +55,28 @@ public sealed record MusicAlbumSource(string BangumiId, string Title, string? Re
 }
 public sealed record MusicBrainzLabel(string Name, string? CatalogNumber);
 public sealed record MusicBrainzCredit(string Role, string Name, string? ArtistId);
+public sealed record MusicBrainzWork(string Id, string Title, string? Type, string[] Languages, MusicBrainzCredit[] Credits)
+{
+    public string Url => new MusicBrainzReference(MusicBrainzEntityKind.Work, Id).Url;
+}
 public sealed record MusicBrainzTrack(int Position, string Number, string Title, string Artist, int? LengthMs,
-    string? RecordingId, MusicBrainzCredit[] Credits);
+    string? RecordingId, MusicBrainzCredit[] Credits)
+{
+    // Optional additions retain the original serialized track/constructor contract.
+    public MusicBrainzWork[] Works { get; init; } = [];
+}
 public sealed record MusicBrainzDisc(int Position, string Title, string Format, MusicBrainzTrack[] Tracks);
+public sealed record MusicBrainzReleaseEvent(string? Date, string? Country);
 public sealed record MusicBrainzReleaseCandidate(string Id, string? ReleaseGroupId, string Title, string Artist,
-    string? Date, string? Country, string Status, string? Barcode, MusicBrainzLabel[] Labels, int? DiscCount, int? TrackCount);
+    string? Date, string? Country, string Status, string? Barcode, MusicBrainzLabel[] Labels, int? DiscCount, int? TrackCount)
+{
+    public string? Disambiguation { get; init; }
+    public string? Packaging { get; init; }
+    public string? TextLanguage { get; init; }
+    public string? TextScript { get; init; }
+    public string[] MediaFormats { get; init; } = [];
+    public MusicBrainzReleaseEvent[] ReleaseEvents { get; init; } = [];
+}
 public sealed record MusicBrainzSearchResult(MusicBrainzReleaseCandidate[] Candidates, int Total, bool Truncated,
     string? ExplicitReleaseId, string? Notice);
 public sealed record MusicBrainzAlbum(MusicBrainzReleaseCandidate Release, string? GroupTitle, string? GroupType,
@@ -134,7 +154,8 @@ public static class MusicBrainzMatching
     }
     public static string? Automatic(MusicAlbumSource source, MusicBrainzSearchResult result)
     {
-        if (result.Truncated || source.Facts.ExternalIds.Where(x => x.Kind == MusicBrainzEntityKind.Release).Select(x => x.Id).Distinct().Count() > 1) return null;
+        if (result.Truncated || source.Facts.ExternalIds.Any(x => x.Kind is MusicBrainzEntityKind.Work or MusicBrainzEntityKind.Artist)
+            || source.Facts.ExternalIds.Where(x => x.Kind == MusicBrainzEntityKind.Release).Select(x => x.Id).Distinct().Count() > 1) return null;
         var strong = result.Candidates.Select(x => Assess(source, x)).Where(x => x.Strong).ToArray();
         return strong.Length == 1 ? strong[0].Candidate.Id : null;
     }
@@ -153,19 +174,27 @@ public static class MusicBrainzValidation
         && (c.Date is null || Date(c.Date)) && (c.Country is null || Text(c.Country, 100)) && Text(c.Status, 100)
         && (c.Barcode is null || Text(c.Barcode, 100)) && c.Labels is { Length: <= 64 }
         && c.Labels.All(x => x is not null && Text(x.Name, 500) && (x.CatalogNumber is null || Text(x.CatalogNumber, 200)))
-        && c.DiscCount is null or >= 0 and <= 50 && c.TrackCount is null or >= 0 and <= 5000;
+        && c.DiscCount is null or >= 0 and <= 50 && c.TrackCount is null or >= 0 and <= 5000
+        && (c.Disambiguation is null || Text(c.Disambiguation, 1000)) && (c.Packaging is null || Text(c.Packaging, 100))
+        && (c.TextLanguage is null || Text(c.TextLanguage, 20)) && (c.TextScript is null || Text(c.TextScript, 20))
+        && Texts(c.MediaFormats, 50, 100) && c.ReleaseEvents is { Length: <= 256 }
+        && c.ReleaseEvents.All(e => e is not null && (e.Date is null || Date(e.Date)) && (e.Country is null || Text(e.Country, 100)));
     public static bool Search(MusicBrainzSearchResult? s) => s is not null && s.Candidates is { Length: <= 25 }
         && s.Total >= s.Candidates.Length && s.Truncated == (s.Total > s.Candidates.Length) && s.Candidates.All(Candidate) && s.Candidates.Select(x => x.Id).Distinct().Count() == s.Candidates.Length
         && (s.ExplicitReleaseId is null || s.Candidates.Any(x => x.Id == s.ExplicitReleaseId)) && (s.Notice is null || Text(s.Notice, 2000));
     private static bool Credit(MusicBrainzCredit x) => x is not null && Text(x.Role, 200, false) && Text(x.Name, 500, false)
         && (x.ArtistId is null || MusicBrainzReference.ValidId(x.ArtistId));
+    public static bool Work(MusicBrainzWork? work) => work is not null && MusicBrainzReference.ValidId(work.Id)
+        && Text(work.Title, 2000, false) && (work.Type is null || Text(work.Type, 100)) && Texts(work.Languages, 16, 20)
+        && work.Credits is { Length: <= 64 } && work.Credits.All(Credit);
     public static bool Album(MusicBrainzAlbum? a) => a is not null && Candidate(a.Release) && a.FetchedAtUtc != default
         && (a.GroupTitle is null || Text(a.GroupTitle, 2000)) && (a.GroupType is null || Text(a.GroupType, 100))
         && Texts(a.SecondaryTypes, 16, 100) && a.Discs is { Length: <= 50 }
         && a.Discs.All(d => d is not null && d.Position is > 0 and <= 50 && Text(d.Title, 2000) && Text(d.Format, 100)
             && d.Tracks is { Length: <= 1000 } && d.Tracks.All(t => t is not null && t.Position is > 0 and <= 1000
                 && Text(t.Number, 100) && Text(t.Title, 2000, false) && Text(t.Artist, 2000) && (t.LengthMs is null or >= 0 and <= 86400000)
-                && (t.RecordingId is null || MusicBrainzReference.ValidId(t.RecordingId)) && t.Credits is { Length: <= 64 } && t.Credits.All(Credit))
+                && (t.RecordingId is null || MusicBrainzReference.ValidId(t.RecordingId)) && t.Credits is { Length: <= 64 } && t.Credits.All(Credit)
+                && t.Works is { Length: <= 16 } && t.Works.All(Work) && t.Works.Select(w => w.Id).Distinct().Count() == t.Works.Length)
             && d.Tracks.Select(t => t.Position).Distinct().Count() == d.Tracks.Length)
         && a.Discs.Select(d => d.Position).Distinct().Count() == a.Discs.Length && a.Discs.Sum(d => d.Tracks.Length) <= 5000
         && (a.Release.DiscCount is null || a.Release.DiscCount == a.Discs.Length)

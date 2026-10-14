@@ -165,7 +165,7 @@ public sealed partial class DetailsPage
     private async Task OpenCatalogLinkAsync(string url)
     {
         if (KunGalNavigation.TryEntity(url, out var entity)) { await OpenCatalogAsync(entity); return; }
-        if (MarkdownContent.AllowedLink(url)) await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+        if (!MarkdownContent.AllowedLink(url) || !await Windows.System.Launcher.LaunchUriAsync(new Uri(url))) throw new InvalidOperationException("链接暂时无法打开。");
     }
 
     private Func<string> bangumiAccessScope = () => "anonymous";
@@ -187,6 +187,8 @@ public sealed partial class DetailsPage
     }
     public void ConfigureMusic(IMusicBrainzReader music) { relatedMedia?.ConfigureMusic(music); browser?.ConfigureMusic(music); }
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) { relatedMedia?.ConfigureAniList(reader, watchPreferences, watchReader); browser?.ConfigureAniList(reader, watchPreferences, watchReader); }
+    public void ConfigureReleases(ICatalogReleaseReader reader, Func<long> auth) { RichCatalog.ReleasesAuthGeneration = auth; RichCatalog.ReleasesReader = reader; browser?.ConfigureReleases(reader, auth); }
+    public void ConfigureEpisodes(IBangumiEpisodesReader reader) { relatedMedia?.ConfigureEpisodes(reader); browser?.ConfigureEpisodes(reader); }
     public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations) { relatedMedia?.ConfigureBooks(books, relations); browser?.ConfigureBooks(books, relations); }
     private async Task OpenRelatedMediaAsync(RelatedWorkCard card)
     {
@@ -240,13 +242,19 @@ public sealed partial class DetailsPage
         BangumiRelated.SetContext(null, "番组计划访问方式已变化，请重新打开作品。");
         if (IsLoaded && ViewModel.Page == WorkspacePage.Details) SynchronizeBangumi();
     }
-    internal object BangumiEvidence => new { relations = BangumiRelated.Evidence, mediaVisible = RelatedMediaHost.Visibility == Visibility.Visible, media = relatedMedia?.Evidence, catalogVisible = CatalogHost.Visibility == Visibility.Visible, catalog = browser?.RelationEvidence, gameId = ViewModel.Draft?.Source.Id, gameScroll = DetailsScroll.VerticalOffset };
+    internal object BangumiEvidence => new { relations = BangumiRelated.Evidence, mediaVisible = RelatedMediaHost.Visibility == Visibility.Visible, media = relatedMedia?.Evidence, catalogVisible = CatalogHost.Visibility == Visibility.Visible, catalog = browser?.RelationEvidence, gameId = ViewModel.Draft?.Source.Id, gameScroll = DetailsScroll.VerticalOffset, releases = RichCatalog.ReleaseEvidence };
     internal async Task BangumiFixtureAsync(string action, BangumiRelationKind? kind = null, string? subjectId = null)
     {
         if (CatalogHost.Visibility == Visibility.Visible && browser is not null && action != "back")
         { await browser.RelatedFixtureAsync(action, kind, subjectId); return; }
         switch (action)
         {
+            case "catalogOpen" when subjectId is not null:
+                if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || !TheOrder.Infrastructure.Online.RemoteWorkDto.ValidId(subjectId)) throw new InvalidDataException("Isolated catalog fixture required.");
+                await OpenCatalogAsync(new(CatalogEntityKind.Work, subjectId, "公开目录只读验证")); break;
+            case "releaseExpand": await RichCatalog.ReleasesFixtureAsync("expand"); break;
+            case "releaseRefresh": await RichCatalog.ReleasesFixtureAsync("refresh"); break;
+            case "releaseInspect": await RichCatalog.ReleasesFixtureAsync("inspect"); break;
             case "aniOpen" when subjectId is not null:
                 if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test
                     || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null) throw new InvalidDataException("Isolated public subject fixture required.");
@@ -266,9 +274,9 @@ public sealed partial class DetailsPage
             case "back": await GoBackCatalogAsync(); break;
             case "mediaCancel": relatedMedia?.CancelForFixture(); break;
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
-            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
+            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;

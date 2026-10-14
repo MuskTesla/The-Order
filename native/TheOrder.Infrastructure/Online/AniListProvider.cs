@@ -14,7 +14,7 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
     public const string Endpoint = "https://graphql.anilist.co";
     public const string UserAgent = "TheOrder/1.1.0 (https://github.com/Ph-Rank/The-Order)";
     private const string Fields = "id idMal type title { romaji english native } synonyms format status coverImage { large } startDate { year month day } endDate { year month day } episodes chapters volumes";
-    private const string People = "characters(page:$page,perPage:24,sort:[ROLE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } voiceActors(language:JAPANESE) { id name { full native } image { large } } } } staff(page:$page,perPage:32,sort:[RELEVANCE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } } }";
+    private const string People = "characters(page:$page,perPage:24,sort:[ROLE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } voiceActors(language:JAPANESE) { id name { full native } image { large } } voiceActorRoles(language:JAPANESE) { voiceActor { id name { full native } image { large } } roleNotes dubGroup } } } staff(page:$page,perPage:32,sort:[RELEVANCE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } } }";
     public static string DetailQuery => "query($id:Int!,$type:MediaType!,$page:Int!){ Media(id:$id,type:$type){" + Fields + " description(asHtml:false) genres tags { name isGeneralSpoiler isMediaSpoiler } studios(isMain:true){ nodes { name } } externalLinks { id url site type language notes isDisabled } trailer { id site } " + People + " relations { edges { relationType node { " + Fields + " } } } }}";
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public async Task<AniListMedia[]> SearchAsync(AniListSource source, string? query, CancellationToken cancellation)
@@ -112,7 +112,7 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
         var result = new AniListDetails(MapMedia(row), Plain(Str(row, "description")), Rows(Node(row, "studios"), "nodes").Select(x => Str(x, "name")).Where(x => x.Length > 0).Distinct().Take(40).ToArray(),
             Rows(row, "genres").Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).Where(x => x.Length > 0).Take(50).ToArray(),
             Rows(row, "tags").Where(x => !Flag(x, "isGeneralSpoiler") && !Flag(x, "isMediaSpoiler")).Select(x => Str(x, "name")).Where(x => x.Length > 0).Distinct().Take(100).ToArray(),
-            Rows(characters, "edges").Take(24).Select(x => new AniListCharacter(Person(Node(x, "node")), Str(x, "role"), Rows(x, "voiceActors").Take(8).Select(Person).ToArray())).ToArray(),
+            Rows(characters, "edges").Take(24).Select(MapCharacter).ToArray(),
             Rows(staff, "edges").Take(32).Select(x => new AniListStaff(Person(Node(x, "node")), Str(x, "role"))).ToArray(),
             Rows(Node(row, "relations"), "edges").Take(100).Where(x => Str(Node(x, "node"), "type") is "ANIME" or "MANGA").Select(x => new AniListRelation(MapMedia(Node(x, "node")), Str(x, "relationType"))).ToArray(),
             page, Flag(Node(characters, "pageInfo"), "hasNextPage"), Flag(Node(staff, "pageInfo"), "hasNextPage"), fetched)
@@ -125,6 +125,11 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
         if (!AniListValidation.Details(result)) throw Invalid(); return result;
     }
     private static AniListPerson Person(JsonElement row) => new(Number(row, "id") ?? 0, Str(Node(row, "name"), "full"), Str(Node(row, "name"), "native"), Image(Node(row, "image"), "large"));
+    private static AniListCharacter MapCharacter(JsonElement row) => new(Person(Node(row, "node")), Str(row, "role"), Rows(row, "voiceActors").Take(8).Select(Person).ToArray())
+    {
+        VoiceRoles = Rows(row, "voiceActorRoles").Take(8).Select(x => new AniListVoiceRole(Person(Node(x, "voiceActor")), Optional(x, "roleNotes"), Optional(x, "dubGroup")))
+            .DistinctBy(x => (x.Person.Id, x.RoleNotes, x.DubGroup)).ToArray()
+    };
     private static string? Optional(JsonElement row, string key) => Str(row, key) is { Length: > 0 } value ? value : null;
     private static AniListTrailer? MapTrailer(JsonElement row)
     {

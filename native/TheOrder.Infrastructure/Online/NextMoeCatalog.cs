@@ -6,14 +6,18 @@ using static TheOrder.Infrastructure.Online.RemoteWorkDto;
 
 namespace TheOrder.Infrastructure.Online;
 
-public sealed partial class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IRecognitionCatalog, IEntityCatalog, ICatalogCoverSource
+public sealed partial class NextMoeCatalog(CatalogTransport transport, bool includeExplicit = true, Func<DateTimeOffset>? clock = null) : IRecognitionCatalog, IEntityCatalog, ICatalogCoverSource, ICatalogReleaseReader
 {
     private readonly object gate = new();
     private sealed record CachedDetail(WorkMetadata Work, DateTimeOffset Until, int Bytes, long AuthGeneration);
     private readonly Dictionary<string, CachedDetail> cache = [];
     private long cacheGeneration;
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
-    public void ClearCache() { lock (gate) { cache.Clear(); cacheGeneration++; } }
+    public void ClearCache()
+    {
+        lock (gate) { cache.Clear(); cacheGeneration++; }
+        lock (releaseGate) { releasePages.Clear(); releaseLoads.Clear(); releaseGeneration++; }
+    }
     private Dictionary<string, string> Parameters() => new() { ["nsfw"] = includeExplicit ? "true" : "false" };
     public Task<OnlinePage> SearchAsync(string query, string? cursor, CancellationToken cancellation)
     {

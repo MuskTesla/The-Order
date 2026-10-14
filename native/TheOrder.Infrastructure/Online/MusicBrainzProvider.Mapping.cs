@@ -28,14 +28,21 @@ public sealed partial class MusicBrainzProvider
             }
         }
         int? discs = null, tracks = Number(root, "track-count");
+        string[] formats = [];
         if (root.TryGetProperty("media", out var media) && media.ValueKind != JsonValueKind.Null)
         {
             if (media.ValueKind != JsonValueKind.Array || media.GetArrayLength() > 50) throw Invalid();
             discs = media.GetArrayLength(); tracks = media.EnumerateArray().Sum(x => Number(x, "track-count") ?? 0);
+            formats = media.EnumerateArray().Select(x => OptionalText(x, "format", 100)).OfType<string>().Distinct().ToArray();
         }
         var date = OptionalText(root, "date", 100); if (date is not null && !MusicBrainzValidation.Date(date)) throw Invalid();
         var value = new MusicBrainzReleaseCandidate(id, Id(group, "id"), Text(root, "title", 2000, required: true), Artist(root), date,
-            OptionalText(root, "country", 100), Text(root, "status", 100), OptionalText(root, "barcode", 100), labels.ToArray(), discs, tracks);
+            OptionalText(root, "country", 100), Text(root, "status", 100), OptionalText(root, "barcode", 100), labels.ToArray(), discs, tracks)
+        {
+            Disambiguation = OptionalText(root, "disambiguation", 1000), Packaging = OptionalText(root, "packaging", 100),
+            TextLanguage = TextRepresentation(root, "language"), TextScript = TextRepresentation(root, "script"),
+            MediaFormats = formats, ReleaseEvents = ReleaseEvents(root)
+        };
         if (!MusicBrainzValidation.Candidate(value)) throw Invalid(); return value;
     }
     public static MusicBrainzAlbum MapAlbum(string releaseId, JsonElement root, DateTimeOffset stamp)
@@ -56,15 +63,66 @@ public sealed partial class MusicBrainzProvider
                     foreach (var rel in relations.EnumerateArray().Take(256))
                         if (rel.ValueKind == JsonValueKind.Object && rel.TryGetProperty("work", out var work)) credits.AddRange(Credits(work));
                 songs.Add(new(Number(track, "position") ?? 0, Text(track, "number", 100), Text(track, "title", 2000, required: true),
-                    Artist(track), Number(track, "length") ?? Number(recording, "length"), Id(recording, "id"), credits.Distinct().Take(64).ToArray()));
+                    Artist(track), Number(track, "length") ?? Number(recording, "length"), Id(recording, "id"), credits.Distinct().Take(64).ToArray())
+                { Works = Works(recording) });
             }
-            discs.Add(new(Number(row, "position") ?? 0, Text(row, "title", 2000), Text(row, "format", 100), songs.ToArray()));
+            discs.Add(new(Number(row, "position") ?? 0, Text(row, "title", 2000), Text(row, "format", 100), songs.OrderBy(x => x.Position).ToArray()));
         }
         root.TryGetProperty("release-group", out var group);
         var types = ArrayStrings(group, "secondary-types", 16, 100);
         var value = new MusicBrainzAlbum(candidate, OptionalText(group, "title", 2000), OptionalText(group, "primary-type", 100),
             types, discs.OrderBy(x => x.Position).ToArray(), Credits(root).Take(128).ToArray(), null, stamp);
         if (!MusicBrainzValidation.Album(value)) throw Invalid(); return value;
+    }
+    private static string? TextRepresentation(JsonElement root, string field)
+    {
+        if (!root.TryGetProperty("text-representation", out var value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.Object) throw Invalid();
+        return OptionalText(value, field, 20);
+    }
+    private static MusicBrainzReleaseEvent[] ReleaseEvents(JsonElement root)
+    {
+        if (!root.TryGetProperty("release-events", out var rows) || rows.ValueKind == JsonValueKind.Null) return [];
+        if (rows.ValueKind != JsonValueKind.Array || rows.GetArrayLength() > 256) throw Invalid();
+        return rows.EnumerateArray().Select(row =>
+        {
+            if (row.ValueKind != JsonValueKind.Object) throw Invalid();
+            string? country = null;
+            if (row.TryGetProperty("area", out var area) && area.ValueKind != JsonValueKind.Null)
+            {
+                if (area.ValueKind != JsonValueKind.Object) throw Invalid();
+                country = ArrayStrings(area, "iso-3166-1-codes", 8, 10).FirstOrDefault();
+            }
+            return new MusicBrainzReleaseEvent(OptionalText(row, "date", 100), country);
+        }).ToArray();
+    }
+    private static MusicBrainzWork[] Works(JsonElement recording)
+    {
+        if (recording.ValueKind != JsonValueKind.Object || !recording.TryGetProperty("relations", out var rows)) return [];
+        if (rows.ValueKind != JsonValueKind.Array) throw Invalid();
+        var works = new List<MusicBrainzWork>();
+        foreach (var row in rows.EnumerateArray().Take(256))
+        {
+            if (row.ValueKind != JsonValueKind.Object || !row.TryGetProperty("work", out var work)) continue;
+            if (work.ValueKind != JsonValueKind.Object) throw Invalid();
+            // Existing partial relation snapshots can contain credits without an entity identity.
+            // Keep those legacy credits, but never invent a Work ID from the Recording ID.
+            if (!work.TryGetProperty("id", out _) && !work.TryGetProperty("title", out _)) continue;
+            var languages = ArrayStrings(work, "languages", 16, 20);
+            if (languages.Length == 0 && OptionalText(work, "language", 20) is { } language) languages = [language];
+            var value = new MusicBrainzWork(Id(work, "id", required: true)!, Text(work, "title", 2000, required: true),
+                OptionalText(work, "type", 100), languages, Credits(work).Distinct().Take(64).ToArray());
+            if (!MusicBrainzValidation.Work(value)) throw Invalid();
+            var prior = works.FirstOrDefault(x => x.Id == value.Id);
+            if (prior is not null)
+            {
+                if (prior.Title != value.Title || prior.Type != value.Type || !prior.Languages.ToHashSet().SetEquals(value.Languages)
+                    || !prior.Credits.ToHashSet().SetEquals(value.Credits)) throw Invalid();
+                continue;
+            }
+            works.Add(value); if (works.Count > 16) throw Invalid();
+        }
+        return works.ToArray();
     }
     private static IEnumerable<MusicBrainzCredit> Credits(JsonElement root)
     {

@@ -16,6 +16,9 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
     private readonly IOnlineCatalog catalog;
     private readonly CatalogPresentationService presentations;
     private CatalogContentView? workContent;
+    private ICatalogReleaseReader? releasesReader;
+    private Func<long>? releasesAuth;
+    public void ConfigureReleases(ICatalogReleaseReader reader, Func<long> auth) { releasesReader = reader; releasesAuth = auth; }
     private readonly IEntityCatalog entities;
     private readonly IRemoteCoverRegistry registry;
     private readonly Func<long> authGeneration;
@@ -67,6 +70,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
         relations = relatedWorks?.Evidence,
         mediaVisible = mediaActive,
         media = mediaDetail?.Evidence,
+        releases = workContent?.ReleaseEvidence,
         focus = XamlRoot is not null && Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) is DependencyObject focused
             ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(focused) : null
     };
@@ -110,7 +114,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
         return true;
     }
     public void Reset() { Cancel(); history.Clear(); current = null; incoming = null; body.Children.Clear(); }
-    public void Cancel() { generation++; restoreTarget = null; stop?.Cancel(); StopRelated(); hero?.ReleaseBeforeLeave(); hero = null; progress.Visibility = Visibility.Collapsed; }
+    public void Cancel() { workContent?.DeactivateReleases(); generation++; restoreTarget = null; stop?.Cancel(); StopRelated(); hero?.ReleaseBeforeLeave(); hero = null; progress.Visibility = Visibility.Collapsed; }
 
     private async Task LoadAsync(CatalogEntityRef entity, WorkMetadata? loadedWork, bool refresh = false, NavigationEntry? restore = null)
     {
@@ -198,7 +202,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
         } catch (OperationCanceledException) { } catch (Exception e) { App.TraceVisualFailure(e); }
     }
     private void Failure(string text, CatalogEntityRef entity) { message.Text = text; var retry = new Button { Content = UiText.Get("重试"), HorizontalAlignment = HorizontalAlignment.Left }; retry.Click += async (_, _) => await LoadAsync(entity, null); body.Children.Add(retry); }
-    private CatalogContentView Content() => new() { Images = Images, Registry = registry, Browse = e => OpenAsync(e), OpenLink = OpenLinkAsync };
+    private CatalogContentView Content() => new() { ReleasesAuthGeneration = releasesAuth, ReleasesReader = releasesReader, Images = Images, Registry = registry, Browse = e => OpenAsync(e), OpenLink = OpenLinkAsync };
     private HyperlinkButton EntityLink(CatalogEntityRef entity) { var button = new HyperlinkButton { Content = CatalogLanguage.Name(entity), Padding = new Thickness(0, 0, 12, 0) }; button.Click += async (_, _) => await OpenAsync(entity); return button; }
     private UIElement SourceLinks(WorkMetadata work, BannerChoice? artwork)
     {
@@ -273,7 +277,8 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
     {
         if (!MarkdownContent.AllowedLink(url)) return;
         if (KunGalNavigation.TryEntity(url, out var entity)) { await OpenAsync(entity); return; }
-        try { await Windows.System.Launcher.LaunchUriAsync(new Uri(url)); } catch { message.Text = UiText.Get("链接未能打开。"); }
+        var version = generation;
+        try { if (!await Windows.System.Launcher.LaunchUriAsync(new Uri(url)) && generation == version) message.Text = UiText.Get("链接未能打开。"); } catch { if (generation == version) message.Text = UiText.Get("链接未能打开。"); }
     }
     private async Task LoadMoreAsync()
     {

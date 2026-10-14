@@ -52,7 +52,11 @@ public sealed record AniListMedia(int Id, int? MalId, AniListMediaKind Kind, str
     public string TypeName => Kind == AniListMediaKind.Anime ? "动画" : Format == "NOVEL" ? "轻小说 / 小说" : "漫画";
 }
 public sealed record AniListPerson(int Id, string Name, string NativeName, string? ImageUrl);
-public sealed record AniListCharacter(AniListPerson Person, string Role, AniListPerson[] VoiceActors);
+public sealed record AniListVoiceRole(AniListPerson Person, string? RoleNotes, string? DubGroup);
+public sealed record AniListCharacter(AniListPerson Person, string Role, AniListPerson[] VoiceActors)
+{
+    public AniListVoiceRole[] VoiceRoles { get; init; } = [];
+}
 public sealed record AniListStaff(AniListPerson Person, string Role);
 public sealed record AniListRelation(AniListMedia Media, string Relation);
 public sealed record AniListDetails(AniListMedia Media, string Description, string[] Studios, string[] Genres,
@@ -168,7 +172,8 @@ public static class AniListValidation
     public static bool Texts(string[]? values, int max, int length) => values is not null && values.Length <= max && values.All(x => Text(x, length, false));
     public static bool Details(AniListDetails? d) => d is not null && Media(d.Media) && Text(d.Description, 32768)
         && Texts(d.Studios, 40, 1000) && Texts(d.Genres, 50, 200) && Texts(d.Tags, 100, 200)
-        && d.Characters is { Length: <= 24 } && d.Characters.All(x => x is not null && Person(x.Person) && Text(x.Role, 100) && x.VoiceActors is { Length: <= 8 } && x.VoiceActors.All(Person))
+        && d.Characters is { Length: <= 24 } && d.Characters.All(x => x is not null && Person(x.Person) && Text(x.Role, 100) && x.VoiceActors is { Length: <= 8 } && x.VoiceActors.All(Person)
+            && x.VoiceRoles is { Length: <= 8 } && x.VoiceRoles.All(r => r is not null && Person(r.Person) && OptionalText(r.RoleNotes, 1000) && OptionalText(r.DubGroup, 500)))
         && d.Staff is { Length: <= 32 } && d.Staff.All(x => x is not null && Person(x.Person) && Text(x.Role, 300))
         && d.Relations is { Length: <= 100 } && d.Relations.All(x => x is not null && Media(x.Media) && Text(x.Relation, 100, false))
         && d.WatchLinks is { Length: <= 24 } && d.WatchLinks.All(AniListPlayback.ValidWatchLink)

@@ -9,18 +9,32 @@ namespace TheOrder.Infrastructure.Online;
 // display facts only; it does not validate/alter a local game's metadata identity.
 public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTimeOffset>? clock = null,
     Func<TimeSpan, CancellationToken, Task>? delay = null, TimeSpan? operationTimeout = null,
-    BangumiAccessContext? access = null) : IBangumiSubjectDetailsProvider
+    BangumiAccessContext? access = null) : IBangumiSubjectDetailsProvider, IBangumiEpisodesProvider
 {
     private readonly BangumiAccessContext authorization = access ?? new();
     public const int MaximumResponseBytes = 2 * 1024 * 1024;
     private readonly SemaphoreSlim queue = new(1);
     private DateTimeOffset nextRequest, rateLimitedUntil;
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
-    public async Task<BangumiSubjectDetails> FetchAsync(string subjectId, BangumiRelationKind expectedKind, CancellationToken cancellation)
+    public Task<BangumiSubjectDetails> FetchAsync(string subjectId, BangumiRelationKind expectedKind, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         if (!BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || !Enum.IsDefined(expectedKind))
             throw new InvalidDataException("Bangumi 作品身份无效。");
+        return ReadCoreAsync("https://api.bgm.tv/v0/subjects/" + subjectId,
+            (root, stamp, authorized) => Map(subjectId, expectedKind, root, stamp, authorized), cancellation);
+    }
+    public Task<BangumiEpisodePage> FetchEpisodesAsync(string subjectId, int offset, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        if (!BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || offset is < 0 or > BangumiEpisodesService.MaximumOffset || offset % BangumiEpisodesService.PageSize != 0)
+            throw new InvalidDataException("Bangumi 章节身份或页码无效。");
+        return ReadCoreAsync("https://api.bgm.tv/v0/episodes?subject_id=" + subjectId + "&limit="
+            + BangumiEpisodesService.PageSize.ToString(CultureInfo.InvariantCulture) + "&offset=" + offset.ToString(CultureInfo.InvariantCulture),
+            (root, stamp, _) => MapEpisodes(subjectId, offset, root, stamp), cancellation);
+    }
+    private async Task<T> ReadCoreAsync<T>(string url, Func<JsonElement, DateTimeOffset, bool, T> map, CancellationToken cancellation)
+    {
         var duration = operationTimeout ?? TimeSpan.FromSeconds(25);
         var lease = authorization.Capture();
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lease.Changed);
@@ -40,7 +54,7 @@ public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTi
                 if (next > Now) await WaitAsync(next - Now, token).ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();
                 if (Now >= deadline) throw Timeout();
-                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.bgm.tv/v0/subjects/" + subjectId);
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.UserAgent.ParseAdd(BangumiAccountProvider.UserAgent);
                 request.Headers.Accept.ParseAdd("application/json");
                 lease.Authorize(request);
@@ -58,7 +72,7 @@ public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTi
                     {
                         _ = new UTF8Encoding(false, true).GetCharCount(bytes);
                         using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 32 });
-                        var result = Map(subjectId, expectedKind, document.RootElement, Now, lease.Authorized);
+                        var result = map(document.RootElement, Now, lease.Authorized);
                         token.ThrowIfCancellationRequested();
                         if (Now >= deadline) throw Timeout();
                         return result;
@@ -149,6 +163,32 @@ public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTi
             ExternalLinks = expectedKind is BangumiRelationKind.Anime or BangumiRelationKind.Book ? AniListBridgeLinks.Map(root, expectedKind) : [] };
         if (!BangumiSubjectDetailsService.Valid(subjectId, expectedKind, result)) throw Invalid();
         return result;
+    }
+    public static BangumiEpisodePage MapEpisodes(string subjectId, int offset, JsonElement root, DateTimeOffset fetchedAtUtc)
+    {
+        if (!BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || offset is < 0 or > BangumiEpisodesService.MaximumOffset
+            || root.ValueKind != JsonValueKind.Object || Integer(root, "offset") != offset
+            || Integer(root, "limit") != BangumiEpisodesService.PageSize || Integer(root, "total") is not (>= 0 and <= BangumiEpisodesService.MaximumTotal)
+            || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array
+            || data.GetArrayLength() > BangumiEpisodesService.PageSize) throw Invalid("Bangumi 章节分页资料无效。");
+        var rows = new List<BangumiEpisode>();
+        foreach (var row in data.EnumerateArray())
+        {
+            if (row.ValueKind != JsonValueKind.Object || Integer(row, "id") is not > 0
+                || Integer(row, "subject_id")?.ToString(CultureInfo.InvariantCulture) != subjectId
+                || Integer(row, "type") is not (>= 0 and <= 6) || !row.TryGetProperty("sort", out var sort)
+                || sort.ValueKind != JsonValueKind.Number || !sort.TryGetDecimal(out var number))
+                throw Invalid("Bangumi 返回了其他作品或无效的章节资料。");
+            var original = Text(row, "name", 2000, required: true);
+            var chinese = Text(row, "name_cn", 2000, required: true);
+            var airdate = Text(row, "airdate", 100, required: true);
+            rows.Add(new(Integer(row, "id")!.Value, subjectId, Integer(row, "type")!.Value, number,
+                chinese.Length > 0 ? chinese : original, original, airdate.Length == 0 ? null : airdate,
+                Text(row, "duration", 200, required: true), Text(row, "desc", 32768, required: true, multiline: true)));
+        }
+        var page = new BangumiEpisodePage(subjectId, offset, Integer(root, "total")!.Value, rows.ToArray(), fetchedAtUtc);
+        if (!BangumiEpisodesService.Valid(subjectId, offset, page)) throw Invalid("Bangumi 章节身份或分页资料不一致。");
+        return page;
     }
     private static int? Integer(JsonElement root, string key) => root.TryGetProperty(key, out var value)
         && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) ? number : null;

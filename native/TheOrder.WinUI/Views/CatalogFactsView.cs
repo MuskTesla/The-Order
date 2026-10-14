@@ -107,8 +107,8 @@ public sealed class CatalogFactsView : StackPanel
         if (!string.IsNullOrWhiteSpace(work.ReleaseDate))
         {
             var release = new TagFlowPanel { HorizontalSpacing = 6, VerticalSpacing = 2 };
-            release.Children.Add(Text(UiText.Get("发行 ·"), opacity: 0.78));
-            var dateText = Text(work.ReleaseDate);
+            release.Children.Add(Text(UiText.Get("最早收录发行 ·"), opacity: 0.78));
+            var dateText = Text(CatalogReleaseFacts.WorkDate(work.ReleaseDate, work.ReleaseDatePrecision));
             dateText.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
             release.Children.Add(dateText);
             AddFact(release);

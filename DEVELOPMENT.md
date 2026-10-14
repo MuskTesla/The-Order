@@ -2581,3 +2581,14 @@ git status
 最终GUI候选 `publish-v4`：用本证据根 `Start-IsolatedTest.ps1 -RunName <新的名称> -PublishName publish-v4`，受限Control的 `bangumi` 动作新增bookExpand/Collapse/Relations/Open/Search/Preview/Confirm/Forget/Reload/Next/Back/Cancel及固定section inspect。Open/Preview/Forget只作用于当前已见ID；回退使用 `-Action bangumi -Value back`，正常退出用 `-Action exit`，不可强杀。所有写入仅合成Test的缓存／映射，图片WGC限制精确PID、EXE、Test manifest和本证据输出。
 
 NDL数据来源许可与加工说明已加入THIRD_PARTY_NOTICES；不搬NDL正文/书影/第三方Item、MangaDex阅读资源或上游采集脚本。当前按需NDL无key，1秒全局间隔，25秒Provider预算（服务串行等待另计并可取消），请求/响应限额与失效缓存不要放宽。AniList许可/缓存边界仍需澄清；NDL持续访问联系方式尚未登记，不宣称许可审批或长期SLA通过。
+## ACGN 专业源深化候选（2026-10-15）
+
+最新工作区 `D:/Projects/The-Order-worktrees/acgn-deepening-20261015`、分支 `codex/acgn-deepening-20261015`，基线bf81180。原Books工作区不重置、原Production不读取。固定SDK、NuGet锁和平台版本不变；新契约BangumiEpisodes/CatalogReleases与Music Work为显示数据，不编码进书架/识别/安装。
+
+构建：`publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-deepening-20261015/<新目录>`（本地候选输出）。不要并行写Native构建目录。此次最终目录publish-v4，运行后不得直接以默认环境打开Production。
+
+`.artifacts/acgn-deepening-20261015/Start-IsolatedTest.ps1 -RunName <新名称> -PublishName publish-v4`仅使用有manifest的Test profile；seed/verify runner只复制合成library组件，不复制配置/凭据/用户库。Control的bangumi动作新增aniEpisodes、musicTrack（已显示第一碟位置）、releaseExpand/Refresh/Inspect、catalogOpen（Test且合法公开目录ID）。所有内部原站导航必须保留出处，禁止用fixture伪造真实关系。退出用Action exit正常关闭，不强杀。
+
+901相关回归TRX为tests/deepening-regression.trx；最终95定点TRX为tests/deepening-final.trx，不能相加成独立测试数量。最终定点filter：BangumiEpisodes、BangumiEpisodeAuthorization、BangumiEpisodeExpiry、MusicBrainzDeepening、CatalogReleases、AniListVoiceRoles；使用既有dotnet test命令和独立结果目录。截图及accepted证明明确区分110研究请求、真实GUI Provider路径与合成故障测试。
+
+Episodes复用SubjectDetails同一transport/auth队列与25秒预算，50条分页，仅授权canonical subject_id+limit50+offset（50倍数≤10000）。会话cache32页/1小时fresh/7天最大stale，500行UI上限，追加新鲜页不能隐去旧页过期提示；OAuth到期通过RequireCurrent阻止迟到结果。NextMoe display releases32页/8MiB/5分钟cache，100条分页/500条UI上限，普通ClearCache包括它；网络失败可保留已显示旧行并提示，明确拒绝/格式损坏必须清除。Music Work从既有album include返回，不逐曲请求；App.xaml模板编译生成WinUI类型信息，不再运行时XamlReader解析自定义控件。

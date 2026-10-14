@@ -109,8 +109,11 @@ internal static class Composition
         services.AddSingleton(p => new BangumiRelationsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IBangumiRelationsProvider>(p => p.GetRequiredService<BangumiRelationsProvider>());
         services.AddSingleton<IRelatedSemanticReader>(p => p.GetRequiredService<BangumiRelationsProvider>());
-        services.AddSingleton<IBangumiSubjectDetailsProvider>(p => new BangumiSubjectDetailsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton(p => new BangumiSubjectDetailsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiSubjectDetailsProvider>(p => p.GetRequiredService<BangumiSubjectDetailsProvider>());
         services.AddSingleton<IBangumiSubjectDetailsReader>(p => new BangumiSubjectDetailsService(p.GetRequiredService<IBangumiSubjectDetailsProvider>(), access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiEpisodesProvider>(p => p.GetRequiredService<BangumiSubjectDetailsProvider>());
+        services.AddSingleton<IBangumiEpisodesReader>(p => new BangumiEpisodesService(p.GetRequiredService<IBangumiEpisodesProvider>(), access: p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IMusicBrainzProvider>(p => new MusicBrainzProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IMusicBrainzCache, IsolatedMusicBrainzCache>();
         services.AddSingleton<IMusicBrainzReader, MusicBrainzService>();
@@ -138,6 +141,7 @@ internal static class Composition
         services.AddSingleton(p => new CatalogTransport(fixtureOnline ? p.GetRequiredService<SyntheticOnline>().Client : p.GetRequiredService<CatalogNetwork>().Client, p.GetRequiredService<ICredentialProvider>(), new Uri("https://api.nextmoe.dev/v2/"), rate: fixtureOnline ? null : p.GetRequiredService<NextMoeRateCoordinator>()));
         services.AddSingleton(p => new NextMoeCatalog(p.GetRequiredService<CatalogTransport>(), clock: fixtureOnline ? () => p.GetRequiredService<SyntheticOnline>().Now : null));
         services.AddSingleton<IOnlineCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
+        services.AddSingleton<ICatalogReleaseReader>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton<IEntityCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton<IContentFilteredCatalog>(p => p.GetRequiredService<NextMoeCatalog>());
         services.AddSingleton<CatalogBrowsePolicy>();

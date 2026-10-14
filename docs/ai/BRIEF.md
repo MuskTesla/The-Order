@@ -1,4 +1,17 @@
 # The Order：当前实现与评审交接
+## ACGN 已有专业源深化候选（2026-10-15，最新入口）
+
+当前未发布源码为 `D:/Projects/The-Order-worktrees/acgn-deepening-20261015` / `codex/acgn-deepening-20261015`，从上一阶段干净 `bf81180aca8b174ad77205c59db4dfab3350f4ab` 建立新worktree；旧书籍候选及此前dirty工作区保留。当前版本仍为1.1.0。没有访问Production或真实凭据，没有安装、合并、推送或公开发布。
+
+三组独立评估Anime、Music、Galgame，主代理统一小型附加契约后实现。研究报告在 `.artifacts/acgn-deepening-20261015/reports/ACGN 专业资料 深化 实证评估.md`；110次直接HTTP包含文档和CAA跳转（101次200、两次503、一次500），不是匹配正确率。代表样本8动画、8游戏及7音乐发行；分别104章节、278游戏发行与288音乐曲目。空字段与未提供能力均保留，不凭同名合并。
+
+已实现：Bangumi逐集目录按需展开，保留subject+episode ID/type/sort/中文标题/日期/时长/原文与简介；内部AniList导航不借用起始Bangumi编号。AniList声优补roleNotes/dubGroup，区分幼年与老年出演。MusicBrainz在Recording之外保存Work身份、Work来源制作关系，曲目单行展示并可展开；发行版本补介质、包装、消歧、文字语言/脚本、地区事件、条码，保留原有唯一证据默认选择与手动切换。NextMoe新增独立只读发行区，保留发行ID/父作品/日期精度/语言/多平台/原站编号；不使用识别ReleaseIdentity代替本地安装。主日期改称最早收录发行，避免把体验版当商业首发；组织职责使用attribution_role。
+
+没有重构书架或Manga/Novel模型、迁移数据库、新增Provider/OAuth或第三方依赖。章节与游戏发行仅会话有界内存缓存，拒绝/身份失效不复活旧数据；原Music/AniList缓存接口及确认指纹保留，新属性可读旧缓存，旧版本可能拒绝新公共缓存但不触及用户library。新版音乐曲目使用App.xaml编译期模板，v2运行时XAML失败已由实际v4窗口复验修复；错误证据保留。
+
+901项相关回归通过，最终改动另95项定点通过（有重叠），均0失败/跳过。v4实际Test窗口验证CLANNAD→动画51/AniList2167→23章节、After Story876/AniList4181→24章节，内部续作导航章节身份清空、返回原作恢复；角色幼年出演文案可见。OST原版3CD56曲自动依据目录/发行信息选择，2018版预览3CD60曲；Recording/Work/作曲者链接文字命中3/3。游戏CLANNAD86发行65条、智代3407发行34条、刷新与回退通过。深/浅主题及520窄窗截图在本证据根 `screenshots-review.html`，只使用指定Test PID的WGC。Test library.json字节未变；真实鼠标/触控板及外部浏览器启动未测。
+
+Gate：GO for isolated internal review；公开发布仍NO-GO，AniList互补用途/缓存许可边界尚待澄清。剩余深度：完整音乐人/Work内部独立页、逐集Staff、完整游戏Edition组织/引擎结构和更多筛选；不宣称所有上游字段均已覆盖。当前v4候选与启动/测试步骤见DEVELOPMENT。
 
 ## Manga / Light Novel 专业出版资料候选（2026-10-15）
 

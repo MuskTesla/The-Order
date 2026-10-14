@@ -30,7 +30,7 @@ internal static class CatalogDisplayDto
     }
     private static CatalogEntityRef Ref(JsonElement row,CatalogEntityKind kind,string? subtitle=null,string? image=null)=>new CatalogEntityRef(kind,Text(row,"id"),Localized(row),subtitle,image) { Names=Names(row) };
     private static ImmutableArray<CatalogEntityRef> Entities(JsonElement root,string block,CatalogEntityKind kind)=>
-        [..Rows(root,block).Take(500).Where(r=>ValidId(Text(r,"id"))).Select(r=>Ref(r,kind)).DistinctBy(r=>r.Id)];
+        [..Rows(root,block).Take(500).Where(r=>ValidId(Text(r,"id"))).Select(r=>block=="companies"?Ref(r,kind) with{Relation=Text(r,"attribution_role")}:Ref(r,kind)).DistinctBy(r=>r.Id)];
     internal static ImmutableArray<CatalogCharacter> Characters(JsonElement work,bool explicitContent)
     {
         var groups=CatalogRosterDto.Groups(work);

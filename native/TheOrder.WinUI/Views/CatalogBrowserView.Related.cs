@@ -34,6 +34,7 @@ public sealed partial class CatalogBrowserView
     }
     public void ConfigureMusic(IMusicBrainzReader music) => mediaDetail?.ConfigureMusic(music);
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) => mediaDetail?.ConfigureAniList(reader, watchPreferences, watchReader);
+    public void ConfigureEpisodes(IBangumiEpisodesReader reader) => mediaDetail?.ConfigureEpisodes(reader);
     public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations) => mediaDetail?.ConfigureBooks(books, relations);
 
     private void ShowRelated(WorkMetadata work, long auth)
@@ -134,6 +135,9 @@ public sealed partial class CatalogBrowserView
     {
         switch (action)
         {
+            case "releaseExpand": if (workContent is not null) await workContent.ReleasesFixtureAsync("expand"); break;
+            case "releaseRefresh": if (workContent is not null) await workContent.ReleasesFixtureAsync("refresh"); break;
+            case "releaseInspect": if (workContent is not null) await workContent.ReleasesFixtureAsync("inspect"); break;
             case "expand": if (relatedWorks is not null) await relatedWorks.ExpandForFixtureAsync(); break;
             case "collapse": relatedWorks?.CollapseForFixture(); break;
             case "refresh": if (relatedWorks is not null) await relatedWorks.RefreshForFixtureAsync(); break;
@@ -144,9 +148,9 @@ public sealed partial class CatalogBrowserView
             case "openCatalog" when id is not null: if (relatedWorks is not null) await relatedWorks.OpenCatalogForFixtureAsync(id); break;
             case "mediaCancel": mediaDetail?.CancelForFixture(); break;
             case "mediaRefresh": if (mediaDetail is not null) await mediaDetail.RefreshForFixtureAsync(); break;
-            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
+            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack":
                 if (mediaActive && mediaDetail is not null) await mediaDetail.MusicFixtureAsync(action, id); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
                 if (mediaActive && mediaDetail is not null) await mediaDetail.AniListFixtureAsync(action, id); break;
             case "sources": relatedWorks?.SourcesForFixture(); break;
             case "rawEvidence": relatedWorks?.RawEvidenceForFixture(); break;

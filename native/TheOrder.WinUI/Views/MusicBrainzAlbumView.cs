@@ -81,8 +81,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
         chooseAgain.Click += (_, _) => model?.BackToEditions();
         showTracks.Click += (_, _) => tracksSection.StartBringIntoView();
-        search.Click += async (_, _) => { if (model is not null) await model.SearchAsync(searchQuery.Text); };
-        searchQuery.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter && model?.CanLoad == true) { e.Handled = true; await model.SearchAsync(searchQuery.Text); } };
+        search.Click += async (_, _) => await SearchAsync();
+        searchQuery.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter && model?.CanLoad == true) { e.Handled = true; await SearchAsync(); } };
         SizeChanged += (_, _) => { var narrow = ActualWidth < 520; cover.Width = cover.Height = narrow ? 104 : 156; title.FontSize = narrow ? 24 : 28; header.ColumnSpacing = narrow ? 14 : 20; };
         Unloaded += (_, _) => { if (!IsLoaded) Deactivate(); };
     }
@@ -110,8 +110,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         type.Text = album is null ? "音乐 · Bangumi" : (album.GroupType switch { "Album" => "专辑", "Single" => "单曲发行", "EP" => "EP", _ => "音乐发行" }) + " · MusicBrainz";
         artist.Text = album?.Release.Artist is { Length: > 0 } performer ? performer == "Various Artists" ? "Various Artists（合辑）" : performer
             : string.Join(" / ", source?.MusicFacts?.Artists ?? []);
-        variant.Text = album is null ? source?.ReleaseDate ?? "" : string.Join(" · ", new[] { album.Release.Date, Country(album.Release.Country),
-            album.Discs.Length > 0 ? album.Discs.Length + " 碟 · " + album.Discs.Sum(x => x.Tracks.Length) + " 首" : "暂无曲目资料" }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        variant.Text = album is null ? source?.ReleaseDate ?? "" : EditionInfo(album.Release with
+        { MediaFormats = album.Discs.Select(x => x.Format).Where(x => x.Length > 0).Distinct().ToArray() });
         label.Text = album is null ? string.Join(" / ", source?.MusicFacts?.CatalogNumbers ?? []) : string.Join(" · ", new[]
         { string.Join(" / ", album.Release.Labels.Select(x => x.Name).Where(x => x.Length > 0).Distinct()),
             string.Join(" / ", album.Release.Labels.Select(x => x.CatalogNumber).Where(x => x is not null).Distinct()) }.Where(x => x.Length > 0));
@@ -157,10 +157,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             var evidence = MusicBrainzMatching.Assess(bridge, candidate);
             var card = new StackPanel { Spacing = 6 };
             var name = Text(18, candidate.Title); name.FontWeight = FontWeights.SemiBold; name.MaxLines = 2; name.TextTrimming = TextTrimming.CharacterEllipsis;
-            card.Children.Add(name); card.Children.Add(Text(14, string.Join(" · ", new[] { candidate.Date, Country(candidate.Country), candidate.DiscCount is { } n ? n + " 碟" : null,
-                candidate.TrackCount is { } t ? t + " 首" : null }.Where(x => !string.IsNullOrWhiteSpace(x)))));
+            card.Children.Add(name); card.Children.Add(Text(14, EditionInfo(candidate)));
             var catalogues = string.Join(" / ", candidate.Labels.Select(x => x.CatalogNumber).Where(x => x is not null).Distinct());
             if (catalogues.Length > 0) card.Children.Add(Text(14, "目录编号 · " + catalogues));
+            if (candidate.Barcode is { } barcode) card.Children.Add(Text(14, "条码 · " + barcode));
             if (candidate.Artist.Length > 0) card.Children.Add(Text(14, candidate.Artist));
             if (candidate.Status.Length > 0) card.Children.Add(Text(13, candidate.Status switch
             { "Official" => "正式发行", "Pseudo-Release" => "曲目别名版本", "Bootleg" => "非官方发行", _ => candidate.Status }));
@@ -189,7 +189,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
                 // The page owns the only scrolling viewport. EffectiveViewport-based realization
                 // keeps long discs bounded without an inner list scrollbar or trapped wheel input.
                 var list = new ItemsRepeater { Layout = new StackLayout(), HorizontalAlignment = HorizontalAlignment.Stretch,
-                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x)).ToArray(), ItemTemplate = (DataTemplate)XamlReader.Load(TrackTemplate) };
+                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x)).ToArray(), ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["MusicTrackTemplate"] };
                 AutomationProperties.SetAutomationId(list, "MusicDiscTracks-" + disc.Position); expander.Content = list;
             }
             expander.Expanding += (_, _) => Populate(); if (expander.IsExpanded) Populate(); discs.Children.Add(expander);
@@ -216,7 +216,26 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             foreach (var reference in facts.ExternalIds) rawBody.Children.Add(Link("来源提供的 MusicBrainz " + reference.Kind, reference.Url, true));
         }
         if (album is not null && model?.Source is { } bridge) rawBody.Children.Add(Text(14, string.Join(" · ", MusicBrainzMatching.Assess(bridge, album.Release).Evidence)));
+        if (album is not null)
+        {
+            if (album.Release.Barcode is { } barcode) rawBody.Children.Add(Text(14, "MusicBrainz 条码 · " + barcode));
+            if (album.Release.TextLanguage is not null || album.Release.TextScript is not null)
+                rawBody.Children.Add(Text(14, "曲目文字 · " + string.Join(" / ", new[] { album.Release.TextLanguage, album.Release.TextScript }.OfType<string>())));
+            foreach (var release in album.Release.ReleaseEvents)
+                if (release.Date is not null || release.Country is not null)
+                    rawBody.Children.Add(Text(14, "发行地区与日期 · " + string.Join(" · ", new[] { Country(release.Country), release.Date }.OfType<string>())));
+        }
         sourceBody.Children.Add(raw); sourceBody.Children.Add(refresh);
+    }
+    private Task SearchAsync()
+    {
+        if (MusicBrainzReference.TryParse(searchQuery.Text.Trim(), out var reference)
+            && reference!.Kind is not (MusicBrainzEntityKind.Release or MusicBrainzEntityKind.ReleaseGroup))
+        {
+            status.Text = "查找专辑请填写发行版或专辑组链接；作品、录音和音乐家链接用于来源核对。";
+            status.Visibility = Visibility.Visible; return Task.CompletedTask;
+        }
+        return model?.SearchAsync(searchQuery.Text) ?? Task.CompletedTask;
     }
     private HyperlinkButton Link(string name, string url, bool isMusic)
     {
@@ -250,6 +269,14 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         });
     }
     private static string? Country(string? value) => value switch { "JP" => "日本", "US" => "美国", "DE" => "德国", "XW" => "全球", _ => value };
+    private static string EditionInfo(MusicBrainzReleaseCandidate release) => string.Join(" · ", new[]
+    {
+        release.Date, Country(release.Country), release.Disambiguation,
+        release.MediaFormats.Length > 0 ? string.Join(" / ", release.MediaFormats.Select(x => x == "Digital Media" ? "数字发行" : x)) : null,
+        release.DiscCount is { } n ? n + (release.MediaFormats.Length > 0 && release.MediaFormats.All(x => x == "Digital Media") ? " 组曲目" : " 碟") : null,
+        release.TrackCount is { } t ? t + " 首" : null,
+        release.Packaging is { } packaging && packaging != "None" ? "包装 · " + packaging : null
+    }.Where(x => !string.IsNullOrWhiteSpace(x)));
     internal static string Credit(MusicBrainzCredit value)
     {
         var role = value.Role switch { "composer" => "作曲", "lyricist" => "作词", "arranger" => "编曲", "producer" => "制作", "engineer" => "工程", "mix" => "混音", "mastering" => "母带", "vocal" => "演唱", "instrument" => "演奏", "conductor" => "指挥", _ => value.Role };
@@ -266,7 +293,17 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     internal void TracksForFixture(int? position)
     {
         var target = discs.Children.OfType<Expander>().FirstOrDefault(x => AutomationProperties.GetAutomationId(x) == "MusicDisc-" + (position ?? 1));
-        if (target is null) return; target.IsExpanded = true; target.StartBringIntoView();
+        if (target is null) return; target.IsExpanded = true;
+        scroll.UpdateLayout(); scroll.ChangeView(null, target.TransformToVisual((UIElement)scroll.Content).TransformPoint(new(0, 0)).Y, null, true);
+    }
+    private MusicTrackRowView? fixtureTrack;
+    internal void TrackForFixture(int position)
+    {
+        TracksForFixture(1); scroll.UpdateLayout();
+        var disc = discs.Children.OfType<Expander>().FirstOrDefault();
+        var element = (disc?.Content as ItemsRepeater)?.TryGetElement(position - 1);
+        if (element is Border { Child: MusicTrackRowView track })
+        { fixtureTrack = track; track.ExpandForFixture(); track.StartBringIntoView(); }
     }
     internal object Evidence => new
     {
@@ -274,8 +311,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         releaseId = model?.Displayed?.Album.Release.Id, releaseGroupId = model?.Displayed?.Album.Release.ReleaseGroupId,
         date = model?.Displayed?.Album.Release.Date, labels = model?.Displayed?.Album.Release.Labels,
         discs = model?.Displayed?.Album.Discs.Select(x => new { x.Position, x.Title, x.Format, tracks = x.Tracks.Length,
-            recordings = x.Tracks.Count(t => t.RecordingId is not null), personnel = x.Tracks.Sum(t => t.Credits.Length) }).ToArray(),
-        fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale,
+            recordings = x.Tracks.Count(t => t.RecordingId is not null), works = x.Tracks.Sum(t => t.Works.Length), personnel = x.Tracks.Sum(t => t.Credits.Length) }).ToArray(),
+        fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, trackDetail = fixtureTrack?.Evidence,
         candidateIds = model?.Match?.Search.Candidates.Select(x => x.Id).ToArray(), canConfirm = model?.CanConfirm,
         cover.SourceStatus, cover.HasImage, coverUrl = model?.Displayed?.Album.CoverUrl, width = ActualWidth, titleWidth = title.ActualWidth,
         scrollOffset = scroll.VerticalOffset, visibleDiscs = discs.Children.OfType<Expander>().Where(x => x.IsExpanded).Select(x => AutomationProperties.GetAutomationId(x)).ToArray(),
@@ -294,23 +331,89 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     public void Deactivate() { active = false; generation++; startPending = false; model?.Deactivate(); cover.SourceKey = null; coverKey = null; requestedCover = null; ring.IsActive = false; }
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; }
     private const string TrackTemplate = """
-    <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:TheOrder.WinUI.Views"><Grid Padding="0,7" ColumnSpacing="10" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="32"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
-      <TextBlock Text="{Binding Number}" VerticalAlignment="Top" Opacity="0.7"/>
-      <views:TagFlowPanel Grid.Column="1" HorizontalSpacing="14" VerticalSpacing="4" MaximumItemWidth="700" CenterInlineItems="False">
-        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-        <TextBlock Text="{Binding Artist}" FontSize="13" Opacity="0.75" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-        <TextBlock Text="{Binding Credits}" FontSize="13" Opacity="0.75" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
-      </views:TagFlowPanel>
-      <TextBlock Grid.Column="2" Text="{Binding Duration}" HorizontalAlignment="Right" Opacity="0.7"/>
-    </Grid></DataTemplate>
+    <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:TheOrder.WinUI.Views">
+      <Border Padding="0,7" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1">
+        <views:MusicTrackRowView Row="{Binding}"/>
+      </Border>
+    </DataTemplate>
     """;
 }
+[Microsoft.UI.Xaml.Data.Bindable]
 public sealed class MusicTrackRow(MusicBrainzTrack track)
 {
+    public MusicBrainzTrack Track => track;
+    public bool IsExpanded { get; set; }
     public string Number => track.Number;
     public string Title => track.Title;
     public string Artist => track.Artist;
     public string Duration => track.LengthMs is { } duration ? TimeSpan.FromMilliseconds(duration).ToString(duration >= 3600000 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture) : "";
     public string Credits => string.Join(" · ", track.Credits.Select(MusicBrainzAlbumView.Credit));
+}
+// The row expands in its parent's viewport. It never introduces another ScrollViewer.
+public sealed class MusicTrackRowView : StackPanel
+{
+    public static readonly DependencyProperty RowProperty = DependencyProperty.Register(nameof(Row), typeof(MusicTrackRow), typeof(MusicTrackRowView),
+        new PropertyMetadata(null, (sender, _) => ((MusicTrackRowView)sender).Render()));
+    public MusicTrackRow? Row { get => GetValue(RowProperty) as MusicTrackRow; set => SetValue(RowProperty, value); }
+    public MusicTrackRowView() { Spacing = 8; HorizontalAlignment = HorizontalAlignment.Stretch; }
+    internal void ExpandForFixture() { if (Row is { } row) { row.IsExpanded = true; Render(); } }
+    internal object Evidence => new { position = Row?.Track.Position, expanded = Row?.IsExpanded, recording = Row?.Track.RecordingId,
+        works = Row?.Track.Works.Select(x => new { x.Id, x.Title }).ToArray(),
+        links = Children.OfType<StackPanel>().SelectMany(x => x.Children.OfType<HyperlinkButton>()).Select(InteractiveCardEvidence.Hit).ToArray() };
+    private void Render()
+    {
+        Children.Clear(); if (Row is not { } row) return;
+        var grid = new Grid { ColumnSpacing = 10 };
+        foreach (var width in new[] { new GridLength(32), new GridLength(1, GridUnitType.Star), new GridLength(52), GridLength.Auto })
+            grid.ColumnDefinitions.Add(new() { Width = width });
+        var number = Text(row.Number, 14); number.Opacity = .7; grid.Children.Add(number);
+        var info = new TagFlowPanel { HorizontalSpacing = 14, VerticalSpacing = 4, MaximumItemWidth = 700, CenterInlineItems = false };
+        info.Children.Add(Text(row.Title, 14));
+        if (row.Artist.Length > 0) { var artist = Text(row.Artist, 13); artist.Opacity = .75; info.Children.Add(artist); }
+        Grid.SetColumn(info, 1); grid.Children.Add(info);
+        var duration = Text(row.Duration, 14); duration.HorizontalAlignment = HorizontalAlignment.Right; duration.Opacity = .7;
+        Grid.SetColumn(duration, 2); grid.Children.Add(duration);
+        var details = new StackPanel { Spacing = 6, Margin = new(42, 0, 0, 0), Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed };
+        var track = row.Track;
+        if (track.RecordingId is { } recording)
+            details.Children.Add(Link("录音原资料 · MusicBrainz", new(MusicBrainzEntityKind.Recording, recording)));
+        // Credits retains the previous cache contract; linked Work credits appear once under their Work.
+        var workCredits = track.Works.SelectMany(x => x.Credits).ToHashSet();
+        foreach (var credit in track.Credits.Where(x => !workCredits.Contains(x))) details.Children.Add(Credit(credit));
+        foreach (var work in track.Works)
+        {
+            details.Children.Add(Link("作品 · " + work.Title, new(MusicBrainzEntityKind.Work, work.Id)));
+            var facts = string.Join(" · ", new[] { work.Type, work.Languages.Length > 0 ? "语言 · " + string.Join(" / ", work.Languages) : null }.OfType<string>());
+            if (facts.Length > 0) details.Children.Add(Text(facts, 13));
+            foreach (var credit in work.Credits) details.Children.Add(Credit(credit));
+        }
+        if (details.Children.Count > 0)
+        {
+            var toggle = new HyperlinkButton { Content = row.IsExpanded ? "收起" : "详情", Padding = new(0), MinHeight = 20,
+                VerticalAlignment = VerticalAlignment.Top };
+            AutomationProperties.SetName(toggle, row.Title + " · 制作与来源");
+            toggle.Click += (_, _) => { row.IsExpanded = !row.IsExpanded; details.Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed; toggle.Content = row.IsExpanded ? "收起" : "详情"; };
+            Grid.SetColumn(toggle, 3); grid.Children.Add(toggle);
+        }
+        Children.Add(grid); Children.Add(details);
+    }
+    private static UIElement Credit(MusicBrainzCredit credit) => credit.ArtistId is { } id
+        ? Link(MusicBrainzAlbumView.Credit(credit), new(MusicBrainzEntityKind.Artist, id)) : Text(MusicBrainzAlbumView.Credit(credit), 13);
+    private static HyperlinkButton Link(string label, MusicBrainzReference reference)
+    {
+        var link = new HyperlinkButton { Content = LinkText(label), Padding = new(0), MinHeight = 20,
+            HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
+        link.Click += async (_, _) =>
+        {
+            try
+            {
+                if (!MusicBrainzReference.TryParse(reference.Url, out _) || !await Windows.System.Launcher.LaunchUriAsync(new Uri(reference.Url)))
+                    throw new InvalidOperationException();
+            }
+            catch { link.Content = LinkText(label + "（未能打开，可重试）"); }
+        };
+        return link;
+    }
+    private static TextBlock Text(string value, double size) => new() { Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+    private static TextBlock LinkText(string value) => new() { Text = value, FontSize = 13, TextWrapping = TextWrapping.Wrap, IsHitTestVisible = false };
 }

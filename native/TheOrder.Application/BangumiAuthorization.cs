@@ -58,11 +58,22 @@ public sealed class BangumiAccessSnapshot
         if (Expired) throw new OperationCanceledException("番组计划授权已过期。");
         var uri = request.RequestUri;
         if (request.Method != HttpMethod.Get || uri is null || uri.Scheme != "https" || !uri.IsDefaultPort
-            || uri.IdnHost != "api.bgm.tv" || uri.UserInfo.Length != 0 || uri.Query.Length != 0 || uri.Fragment.Length != 0
-            || !Regex.IsMatch(uri.AbsolutePath, "^/v0/subjects/[1-9][0-9]{0,9}(?:/(?:subjects|characters|persons))?$", RegexOptions.CultureInvariant)
+            || uri.IdnHost != "api.bgm.tv" || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0
+            || !AllowedRead(uri)
             || request.Headers.Authorization is not null || request.Headers.Contains("Cookie"))
             throw new BangumiAuthorizationException(BangumiAuthorizationFailure.InvalidResponse);
         if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+    private static bool AllowedRead(Uri uri)
+    {
+        if (uri.Query.Length == 0)
+            return Regex.IsMatch(uri.AbsolutePath, "^/v0/subjects/[1-9][0-9]{0,9}(?:/(?:subjects|characters|persons))?$", RegexOptions.CultureInvariant);
+        // Canonical provider-generated paging only. No arbitrary query keys,
+        // duplicate subject ids or token-bearing URLs can carry credentials.
+        if (uri.AbsolutePath != "/v0/episodes" || uri.OriginalString.Contains('%')) return false;
+        var match = Regex.Match(uri.Query, "^\\?subject_id=([1-9][0-9]{0,9})&limit=50&offset=(0|[1-9][0-9]{0,4})$", RegexOptions.CultureInvariant);
+        return match.Success && BangumiRelationIdentityResolver.ValidSubjectId(match.Groups[1].Value)
+            && int.TryParse(match.Groups[2].Value, out var offset) && offset <= 10000 && offset % 50 == 0;
     }
     public override string ToString() => Authorized ? "Bangumi access: authorized" : "Bangumi access: anonymous";
 }

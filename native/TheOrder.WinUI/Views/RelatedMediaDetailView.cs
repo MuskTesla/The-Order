@@ -156,6 +156,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         await model.OpenAsync(item, cancellation);
     }
 
+    public void ConfigureEpisodes(IBangumiEpisodesReader reader) => aniListView?.ConfigureEpisodes(reader);
     public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations)
         => aniListView?.ConfigureBooks(books, relations);
 
@@ -264,9 +265,11 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
             "musicPreview" when id is not null => musicView.PreviewForFixture(id),
             "musicConfirm" => musicView.ConfirmForFixture(),
             "musicEditions" => musicView.EditionsForFixture(),
+            "musicTrack" => ShowMusicTrack(id),
             "musicTracks" => ShowMusicTracks(id), _ => Task.CompletedTask
         };
     }
+    private Task ShowMusicTrack(string? id) { if (int.TryParse(id, out var position) && position is > 0 and <= 1000) musicView?.TrackForFixture(position); return Task.CompletedTask; }
     private Task ShowMusicTracks(string? id) { musicView?.TracksForFixture(int.TryParse(id, out var n) ? n : null); return Task.CompletedTask; }
     internal object Evidence => aniListActive ? (object)new { active, state = "AniListMedia", aniList = aniListView?.Evidence } : musicActive ? (object)new
     {

@@ -8,7 +8,7 @@ namespace TheOrder.WinUI.Views;
 // Read-only evidence, invoked solely by the existing isolated visual fixture.
 internal static class InteractiveCardEvidence
 {
-    internal static object Hit(Button button)
+    internal static object Hit(Microsoft.UI.Xaml.Controls.Primitives.ButtonBase button)
     {
         var content = button.Content as UIElement;
         var root = button.XamlRoot?.Content;

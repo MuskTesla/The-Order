@@ -13,6 +13,39 @@ public sealed class CatalogContentView : StackPanel,IImageHost
     public Func<string,Task>? OpenLink {get;set;}
     public UIElement? Sources { get; set; }
     public bool ShowRelatedWorks { get; set; } = true;
+    private readonly CatalogReleasesView releases = new();
+    private ICatalogReleaseReader? releasesReader;
+    private string? releasesWorkId;
+    public Func<long>? ReleasesAuthGeneration { get; set; }
+    public ICatalogReleaseReader? ReleasesReader
+    {
+        get => releasesReader;
+        set { if (ReferenceEquals(releasesReader, value)) return; releasesReader = value;
+            if (value is null) releases.Deactivate(); else { releases.Configure(value, ReleasesAuthGeneration); releases.SetSource(releasesWorkId); } }
+    }
+    public void ConfigureReleases(ICatalogReleaseReader? reader, Func<long>? authGeneration = null)
+    {
+        ReleasesAuthGeneration = authGeneration; releasesReader = reader;
+        if (reader is null) releases.Deactivate(); else { releases.Configure(reader, authGeneration); releases.SetSource(releasesWorkId); }
+    }
+    public void DeactivateReleases() { releasesWorkId = null; releases.Deactivate(); }
+    internal object ReleaseEvidence => releases.Evidence;
+    internal async Task<object> ReleasesFixtureAsync(string action)
+    {
+        switch (action)
+        {
+            case "expand":
+                var idBefore = releasesWorkId; await releases.ExpandAsync();
+                if (releasesWorkId == idBefore && idBefore is not null && IsLoaded) releases.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0, AnimationDesired = false }); break;
+            case "collapse": releases.Collapse(); break;
+            case "next": await releases.NextAsync(); break;
+            case "refresh": await releases.RefreshAsync(); break;
+            case "cancel": releases.Cancel(); break;
+            case "inspect": break;
+            default: throw new ArgumentException("Unknown releases fixture action.", nameof(action));
+        }
+        return ReleaseEvidence;
+    }
     private readonly List<(string Kind,CoverPresenter View)> artwork=[];
     internal object ImageEvidence=>artwork.Select(a=>new{a.Kind,a.View.SourceStatus,a.View.HasImage,width=a.View.ActualWidth,height=a.View.ActualHeight}).ToArray();
     // Prime the exact display buckets before binding cards. Originals were fetched by import;
@@ -28,7 +61,7 @@ public sealed class CatalogContentView : StackPanel,IImageHost
             await Images.LoadAsync(key,ThumbnailSizing.Edge(width,height,scale),token);
         }
     }
-    public CatalogContentView(){Spacing=22;}
+    public CatalogContentView(){Spacing=22;Unloaded+=(_,_)=>{if(!IsLoaded)releases.Deactivate();};}
     private static TextBlock Text(string text,double size=15)=>new(){Text=text,FontSize=size,TextWrapping=TextWrapping.Wrap,IsTextSelectionEnabled=true};
     private static TextBlock Caption(string text,double size=14)=>new(){Text=text,FontSize=size,TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,HorizontalAlignment=HorizontalAlignment.Stretch};
     private static StackPanel Section(string title)=>new(){Spacing=10,Children={new TextBlock{Text=title,FontSize=22,FontWeight=Microsoft.UI.Text.FontWeights.SemiBold}}};
@@ -37,6 +70,7 @@ public sealed class CatalogContentView : StackPanel,IImageHost
     private MarkdownView Markdown(string text)=>new(){Text=text,Images=Images,Registry=Registry,OpenLink=OpenLink};
     public void SetWork(WorkMetadata? work,string? personalName=null,bool collapseFacts=false)
     {
+        releasesWorkId = work?.Id; releases.OpenLink = OpenLink; releases.SetSource(releasesWorkId);
         var fallback = work is null ? null : CatalogLanguage.Fallback(work);
         if (work is not null) work = CatalogLanguage.Project(work);
         Children.Clear();artwork.Clear();if(work is null){Children.Add(Text(UiText.Get("尚未关联作品。可在更多操作中重新识别。")));return;}
@@ -44,8 +78,8 @@ public sealed class CatalogContentView : StackPanel,IImageHost
         if (!collapseFacts)
         {
         var facts=Section(UiText.Get("作品信息"));var names=new[]{work.Title,work.OriginalTitle}.Where(n=>!string.IsNullOrWhiteSpace(n)&&n!=personalName).Distinct().ToArray();if(names.Length>0)facts.Children.Add(Text(string.Join(" / ",names)));
-        if(p is {Companies.IsEmpty:false}) {var row=new TagFlowPanel{HorizontalSpacing=6,VerticalSpacing=4};row.Children.Add(Text(UiText.Get("制作 ·")));foreach(var company in p.Companies)row.Children.Add(Link(company));facts.Children.Add(row);}else if(!work.Developers.IsEmpty)facts.Children.Add(Text(UiText.Get("制作 · ")+string.Join(" / ",work.Developers)));
-        if(!string.IsNullOrWhiteSpace(work.ReleaseDate))facts.Children.Add(Text(UiText.Get("发行 · ")+work.ReleaseDate));
+        if(p is {Companies.IsEmpty:false}) {foreach(var group in p.Companies.GroupBy(c=>CatalogReleaseFacts.CompanyCaption(c.Relation))) {var row=new TagFlowPanel{HorizontalSpacing=6,VerticalSpacing=4};row.Children.Add(Text(UiText.Get(group.Key+" ·")));foreach(var company in group)row.Children.Add(Link(company));facts.Children.Add(row);}}else if(!work.Developers.IsEmpty)facts.Children.Add(Text(UiText.Get("制作 · ")+string.Join(" / ",work.Developers)));
+        if(!string.IsNullOrWhiteSpace(work.ReleaseDate))facts.Children.Add(Text(UiText.Get("最早收录发行 · ")+CatalogReleaseFacts.WorkDate(work.ReleaseDate,work.ReleaseDatePrecision)));
         if(!work.Ratings.IsEmpty)facts.Children.Add(Text(UiText.Get("本版本评分 · ")+string.Join(" / ",work.Ratings.Select(r=>$"{SiteName(r.Source)} {r.Score:0.#}/{r.Scale:0.#}"+(r.Votes is { } votes?UiText.Format($"（{votes:0} 人）"):"")))));
         if(p is not null){foreach(var (name,items) in new[]{(UiText.Get("引擎"),p.Engines),(UiText.Get("系列"),p.Series)})if(!items.IsEmpty){var row=new TagFlowPanel{HorizontalSpacing=6,VerticalSpacing=4};row.Children.Add(Text(name+" ·"));foreach(var entity in items)row.Children.Add(Link(entity));facts.Children.Add(row);}}
         // The hero already contains these facts. Preserve the series link, which is not in the hero.
@@ -60,6 +94,15 @@ public sealed class CatalogContentView : StackPanel,IImageHost
             foreach (var entity in p.Series) series.Children.Add(Link(entity));
             Children.Add(series);
         }
+        if (collapseFacts && p is { Companies.IsEmpty: false })
+            foreach (var group in p.Companies.Where(company => company.Relation != "developer").GroupBy(company => CatalogReleaseFacts.CompanyCaption(company.Relation)))
+            {
+                var organizations = new TagFlowPanel { HorizontalSpacing = 6, VerticalSpacing = 4 };
+                organizations.Children.Add(Text(UiText.Get(group.Key + " ·"), 14));
+                foreach (var company in group) organizations.Children.Add(Link(company));
+                Children.Add(organizations);
+            }
+        if (releasesReader is not null) Children.Add(releases);
         var intro=Section(UiText.Get("简介"));intro.Children.Add(Markdown(string.IsNullOrWhiteSpace(work.Description)?UiText.Get("暂无本版本简介。"):work.Description));Children.Add(intro);
         if (fallback is not null) Children.Add(Text(fallback, 12));
         if (!work.Tags.IsEmpty)
