@@ -33,6 +33,7 @@ public sealed partial class CatalogBrowserView
         if (!Children.Contains(mediaHost)) { SetRowSpan(mediaHost, 3); Children.Add(mediaHost); }
     }
     public void ConfigureMusic(IMusicBrainzReader music) => mediaDetail?.ConfigureMusic(music);
+    public void ConfigureAniList(IAniListReader reader) => mediaDetail?.ConfigureAniList(reader);
 
     private void ShowRelated(WorkMetadata work, long auth)
     {
@@ -144,6 +145,8 @@ public sealed partial class CatalogBrowserView
             case "mediaRefresh": if (mediaDetail is not null) await mediaDetail.RefreshForFixtureAsync(); break;
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
                 if (mediaActive && mediaDetail is not null) await mediaDetail.MusicFixtureAsync(action, id); break;
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore":
+                if (mediaActive && mediaDetail is not null) await mediaDetail.AniListFixtureAsync(action, id); break;
             case "sources": relatedWorks?.SourcesForFixture(); break;
             case "rawEvidence": relatedWorks?.RawEvidenceForFixture(); break;
             case "show": relatedWorks?.StartBringIntoView(); break;

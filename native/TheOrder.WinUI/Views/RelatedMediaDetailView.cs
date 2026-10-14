@@ -45,6 +45,8 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
     private IImagePipeline? images;
     private BangumiRelationItem? musicItem;
     private bool musicActive;
+    private AniListDetailView? aniListView;
+    private bool aniListActive;
     // Display-only refinement from the originating relation projection. The
     // original provider label remains independently visible in provenance.
     public string? RelationLabel { get; set; }
@@ -122,11 +124,27 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         musicView.Configure(subjectReader, music, images, registry, openLink); Children.Add(musicView);
     }
 
+    public void ConfigureAniList(IAniListReader reader)
+    {
+        if (disposed || subjectReader is null || images is null || openLink is null) return;
+        aniListView?.Dispose(); if (aniListView is not null) Children.Remove(aniListView);
+        aniListView = new() { Visibility = Visibility.Collapsed };
+        aniListView.Configure(subjectReader, reader, images, registry, openLink); Children.Add(aniListView);
+    }
+
     public async Task OpenAsync(BangumiRelationItem item, string originTitle, CancellationToken cancellation = default)
     {
         if (disposed || model is null) return;
         generation++; active = true; this.originTitle = originTitle;
         musicView?.Deactivate(); musicItem = null; musicActive = false;
+        aniListView?.Deactivate(); aniListActive = false;
+        if (aniListView is not null) aniListView.Visibility = Visibility.Collapsed;
+        if (musicView is not null) musicView.Visibility = Visibility.Collapsed;
+        if (item.Kind is BangumiRelationKind.Anime or BangumiRelationKind.Book && aniListView is not null)
+        {
+            model.Deactivate(); aniListActive = true; scroll.Visibility = Visibility.Collapsed; aniListView.Visibility = Visibility.Visible;
+            await aniListView.OpenAsync(item, originTitle, RelationLabel, RelationEvidence, cancellation); return;
+        }
         if (item.Kind == BangumiRelationKind.Music && musicView is not null)
         {
             model.Deactivate(); musicActive = true; musicItem = item; scroll.Visibility = Visibility.Collapsed; musicView.Visibility = Visibility.Visible;
@@ -207,7 +225,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         Text = name + " · " + value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true
     });
 
-    private Task RefreshAsync() => active && !disposed ? musicActive ? musicView?.RefreshAsync() ?? Task.CompletedTask
+    private Task RefreshAsync() => active && !disposed ? aniListActive ? aniListView?.RefreshAsync() ?? Task.CompletedTask : musicActive ? musicView?.RefreshAsync() ?? Task.CompletedTask
         : model?.RefreshAsync() ?? Task.CompletedTask : Task.CompletedTask;
     private async Task OpenSourceAsync()
     {
@@ -228,10 +246,13 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
     {
         active = false; generation++; model?.Deactivate();
         musicView?.Deactivate();
+        aniListView?.Deactivate();
         picture.SourceKey = null; shownCover = null; progress.IsActive = false;
     }
     internal Task RefreshForFixtureAsync() => RefreshAsync();
-    internal void CancelForFixture() { if (musicActive) musicView?.Cancel(); else model?.Cancel(); }
+    internal void CancelForFixture() { if (aniListActive) aniListView?.Cancel(); else if (musicActive) musicView?.Cancel(); else model?.Cancel(); }
+    internal bool GoBackMedia() => aniListActive && aniListView?.GoBack() == true;
+    internal Task AniListFixtureAsync(string action, string? id) => aniListActive ? aniListView?.FixtureAsync(action, id) ?? Task.CompletedTask : Task.CompletedTask;
     internal Task MusicFixtureAsync(string action, string? id)
     {
         if (!musicActive || musicView is null) return Task.CompletedTask;
@@ -244,7 +265,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         };
     }
     private Task ShowMusicTracks(string? id) { musicView?.TracksForFixture(int.TryParse(id, out var n) ? n : null); return Task.CompletedTask; }
-    internal object Evidence => musicActive ? (object)new
+    internal object Evidence => aniListActive ? (object)new { active, state = "AniListMedia", aniList = aniListView?.Evidence } : musicActive ? (object)new
     {
         active, state = "MusicAlbum", subjectId = musicItem?.Id, kind = "Music", title = musicItem?.Title,
         rawRelation = musicItem?.Relation, RelationLabel, RelationEvidence, originTitle, sourceUrl = musicItem?.Url, music = musicView?.Evidence
@@ -266,5 +287,6 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         if (model is not null) { model.PropertyChanged -= OnState; model.Dispose(); }
         openLink = null; registry = null; picture.Pipeline = null;
         musicView?.Dispose(); subjectReader = null; images = null;
+        aniListView?.Dispose();
     }
 }

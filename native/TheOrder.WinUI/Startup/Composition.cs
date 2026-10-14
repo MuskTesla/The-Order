@@ -114,6 +114,9 @@ internal static class Composition
         services.AddSingleton<IMusicBrainzProvider>(p => new MusicBrainzProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IMusicBrainzCache, IsolatedMusicBrainzCache>();
         services.AddSingleton<IMusicBrainzReader, MusicBrainzService>();
+        services.AddSingleton<IAniListProvider>(p => new AniListProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
+        services.AddSingleton<IAniListCache, IsolatedAniListCache>();
+        services.AddSingleton<IAniListReader, AniListService>();
         services.AddSingleton<IBangumiRelationsCache, IsolatedBangumiRelationsCache>();
         services.AddSingleton(p => new BangumiRelationsService(p.GetRequiredService<IBangumiRelationsProvider>(), p.GetRequiredService<IBangumiRelationsCache>(), access: p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IBangumiRelationsReader>(p => p.GetRequiredService<BangumiRelationsService>());

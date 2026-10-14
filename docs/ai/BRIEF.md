@@ -1,5 +1,22 @@
 # The Order：当前实现与评审交接
 
+## AniList 动画专业资料候选（2026-10-14）
+
+本轮基于当前未发布 Native 工作树的 `18fe8fe` 加既有 OAuth 未提交修改，在同一隔离工作区创建 `codex/anilist-20261014`。原 OAuth、Worker、设置、文档和安装说明的未提交工作保留。只提交本轮 AniList 增量，不把继承的 OAuth 改动归入本轮提交。正式程序和 Production Profile 没有访问或替换；不推送、合并或发布。最终可运行候选为 `.artifacts/anilist-20261014/publish-anilist-v4/`，须通过该证据根的 `Start-IsolatedTest.ps1 -PublishName publish-anilist-v4 -RunName <新的名字>` 启动，不能裸双击默认进入正式资料。
+
+新增独立官方 GraphQL Provider，匿名查询动画、漫画及 `NOVEL`，不需要新服务器、OAuth 或 API Key。复用原公共无凭据 HTTP 池、图片管线、Profile 身份校验和原子文件写入。静态全局队列按当前官方降级限额30次/分钟以2.1秒间隔串行发起，响应额度降低时进一步减速，429的 Retry-After／Reset作用于全部视图及重试；单次总超时25秒，至多一次短限流重试，支持取消与明确错误。只在点击媒体或分页时请求，不在 Galgame 页批量请求或递归抓取。
+
+Bangumi 保留发现和原始关系；仅提取原站明确的规范 AniList／MyAnimeList 链接，以 AniList 官方 `idMal` 解析后核对真实身份和发行证据。没有可靠链接时，原文／展示标题、媒体类型和发行信息只生成候选，完全同名也不自动确认。用户预览后明确确认，结果写入 `native-anilist-v1` 的 Profile 绑定小缓存，带来源指纹、类型和确认说明；不修改 `library.json` 或其他 Provider。元数据24小时、检索6小时新鲜，临时故障可降级至14天内旧资料；64项内存、128份／64MiB磁盘上限，确认记录受保留策略保护。身份错误、删除或格式错误不会从旧缓存复活。
+
+书架详情和发现目录的媒体视图均复用同一个 AniList 详情组件：封面、原文完整简介及可展开的 Bangumi 简介、日期／状态／集数／制作公司、类型标签、角色与日语声优卡片、Staff、前后作及其他关联、来源链接。只有外层页面滚动，区块默认折叠并有快捷入口；窄窗卡片宽度约束、角色图片和深浅主题已实际检查。内部关系按可靠 AniList ID 继续探索，返回恢复原媒体及滚动位置，最后返回原游戏，不提交个人编辑。每次按需载入24角色／32 Staff，最多10页、20层浏览，避免无限增长。
+
+最终短回归 `related-final.trx`：468通过／0失败／0跳过，其中49项 AniList 新回归；包括 NextMoe OAuth、Bangumi／OAuth、MusicBrainz、关联投影及原返回／安装导航。错误匹配、伪造链接、缺少外部编号、多语言、无结果、404／403／503、取消／超时／429、乱序响应、缓存过期、跨Profile缓存拒绝及预览分页不自动确认有模拟证据。真实匿名 API：Bangumi51→AniList2167 CLANNAD→明确SEQUEL4181 After Story，制作公司／角色／声优／Staff和持久确认、缓存命中验证通过；强制刷新结果在 `live-api-proof-current.json`。真实漫画32598经应用内关系打开；小说39115由同一 Provider 的实际匿名格式探针验证，只作为 AniList 支持验证，不声称完成该小说的 Bangumi 跨站确认。
+
+最终 WinUI 实拍在同一证据根：`accepted-characters-light.png`、`accepted-staff-light.png`、`accepted-afterstory-light.png`、`accepted-afterstory-narrow-dark.png`、`accepted-relations-narrow-dark.png`、`accepted-manga-light.png`。由原受限 Test 控制入口和精确 PID／EXE／Test Profile 校验的 Windows Graphics Capture 完成，没有 Computer Use 或真实游戏启动；使用合成本地 CLANNAD 书架条目及真实公开元数据，不作为私人正式书架验收。`ui-return-proof.json`记录返回前后687像素一致；重启保留确认与缓存，角色第二页31项／Staff50项可见，最后返回 `visual-clannad`。所有测试窗口正常退出，`test-library-proof.json`确认Test书架payload未改。初次控件类型／可空编译错误、旧尺寸／滚动截图及控制文件竞态保留，修复后使用新候选，不覆盖历史产物。
+
+**Gate：本轮动画主链路工程、真实API和已覆盖 WinUI 验收 PASS，适合进入内部合并评审，不代表正式发布验收。** 边界：未自动翻译 AniList 英文／日文资料；声优聚焦日语；CLANNAD 的 Bangumi22集／2007-10-04与 AniList23集／2007-10-05口径差异均保留，不能自动覆盖原值。完全离线重启时若起始 Bangumi 完整资料也不在现有缓存，只保留关联卡片基本信息并等待重新读取，不保证跨站匹配冷启动。未进行私人书架、真实输入鼠标、Windows10实机或长驻资源测试。官方条款禁止竞争性非互补追番／漫画服务；本轮限定为 Galgame 中心的互补只读浏览，是按条款的范围判断，不是 AniList 许可确认；未来改变产品范围或越过商业阈值需要另行检查。
+
+
 ## Argon High 主页面视觉扩展与 GPT 独立验收（2026-10-14，隔离候选）
 
 用户追加授权无人值守地优化其他页面，允许正式程序作为截图参照，Gemini 终端改为后台。本轮继续使用下面详情页实验的 worktree／分支，扩展基线为 `113bfbf4ebeb5f565f3bbe932e4af96499739042`。产品提交为 **`52f5f39f267239515799e992567f84b708507d85`**：13 份 Presentation 文件、414 行增加／183 行删除；测试夹具和这两份原维护文档另行记录。此前的 7 份详情页产品文件哈希完全一致，原 `claude-recognition-rnd` 的 827 份源码、HEAD、分支与 index 再次核验未变。继承快照 `22806dc` 仍不能作为本轮设计成果整包合并。

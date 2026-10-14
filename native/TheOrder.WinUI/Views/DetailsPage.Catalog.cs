@@ -99,7 +99,7 @@ public sealed partial class DetailsPage
     }
     internal async Task<bool> GoBackCatalogAsync()
     {
-        if (RelatedMediaHost.Visibility == Visibility.Visible) { CloseRelatedMedia(true); return true; }
+        if (RelatedMediaHost.Visibility == Visibility.Visible) { if (relatedMedia?.GoBackMedia() != true) CloseRelatedMedia(true); return true; }
         if (CatalogHost.Visibility != Visibility.Visible || browser is null) return false;
         if (!await browser.GoBackAsync()) CloseCatalogBrowser();
         return true;
@@ -186,6 +186,7 @@ public sealed partial class DetailsPage
         SynchronizeBangumi();
     }
     public void ConfigureMusic(IMusicBrainzReader music) { relatedMedia?.ConfigureMusic(music); browser?.ConfigureMusic(music); }
+    public void ConfigureAniList(IAniListReader reader) { relatedMedia?.ConfigureAniList(reader); browser?.ConfigureAniList(reader); }
     private async Task OpenRelatedMediaAsync(RelatedWorkCard card)
     {
         if (relatedMedia is null || card.Bangumi is not { } item || !IsLoaded || ViewModel.IsDetailsLoading) return;
@@ -258,6 +259,8 @@ public sealed partial class DetailsPage
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore":
+                if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "sources": BangumiRelated.SourcesForFixture(); break;
             case "rawEvidence": BangumiRelated.RawEvidenceForFixture(); break;
             case "show": BangumiRelated.StartBringIntoView(); break;

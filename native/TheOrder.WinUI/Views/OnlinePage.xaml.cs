@@ -48,6 +48,7 @@ public sealed partial class OnlinePage : Page, IImageHost
     public void FocusSearch() { _ = ReturnToSearchAsync(); OnlineQueryBox.Focus(FocusState.Keyboard); }
     public void Cancel() => browser.Cancel();
     internal void ConfigureMusic(IMusicBrainzReader music) => browser.ConfigureMusic(music);
+    internal void ConfigureAniList(IAniListReader reader) => browser.ConfigureAniList(reader);
     internal void ConfigureRelatedWorks(IBangumiRelationsReader reader, IBangumiSubjectDetailsReader subjects,
         IRelatedSemanticReader semantics, IRelatedGameIdentityReader? identities, Func<string>? accessScope = null) => browser.ConfigureRelatedWorks(reader, subjects, semantics, identities, accessScope);
     internal void InvalidateBangumiAccess() => browser.InvalidateBangumiAccess();

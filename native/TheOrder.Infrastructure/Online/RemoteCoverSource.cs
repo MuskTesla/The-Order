@@ -40,7 +40,8 @@ public sealed class RemoteCoverSource(HttpClient http, IRemoteArtworkCache? disk
         try
         {
             var transport = originalArtwork is not null && (VndbArtworkSource.OriginalImageUri(uri) || SteamArtworkSource.OriginalImageUri(uri)
-                || BangumiRelationsService.ValidCoverUrl(uri.AbsoluteUri) || MusicBrainzValidation.CoverUri(uri.AbsoluteUri)) ? originalArtwork : http;
+                || BangumiRelationsService.ValidCoverUrl(uri.AbsoluteUri) || MusicBrainzValidation.CoverUri(uri.AbsoluteUri)
+                || AniListValidation.Image(uri.AbsoluteUri)) ? originalArtwork : http;
             using var response = await ReadResponseAsync(transport, uri, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType is not ("image/jpeg" or "image/png" or "image/webp")) return null;
             var bytes = await CatalogTransport.ReadBoundedAsync(response.Content, MaximumBytes, timeout.Token).ConfigureAwait(false);

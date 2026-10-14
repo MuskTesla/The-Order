@@ -1,5 +1,14 @@
 # 开发与维护
 
+## AniList 当前隔离开发入口（2026-10-14）
+
+唯一当前基线仍是 `D:/Projects/The-Order-worktrees/argon-details-20261014` 的完整未发布工作树，本轮分支 `codex/anilist-20261014`，保留原未提交 OAuth／Worker 工作。正式程序不变。最终候选 `.artifacts/anilist-20261014/publish-anilist-v4`；使用该根 `Start-IsolatedTest.ps1 -PublishName publish-anilist-v4 -RunName <新的名字>` 启动独立 Test，`Control.ps1 -Control <本次控制目录> -Action exit` 正常退出。该辅助入口只在忽略的产物目录中，固定 Test 及新控制输出，不是产品第二套导航或授权系统。
+
+实现位置：Application 的 `AniList.cs`／`AniListService.cs`；Infrastructure 的官方 `AniListProvider`、全局限流协调和明确外链提取；Windows 的 `IsolatedAniListCache` 复用 Profile pins 与原子持久化；Presentation 的 `AniListDetailsViewModel` 保护取消／迟到响应和内部历史；WinUI 的 `AniListDetailView` 接入原书架／目录媒体主机。媒体和确认数据隔离于游戏书架；图片仅规范的 `s4.anilist.co/file/anilistcdn/` 使用原公共池，没有放宽任意图片地址的 DNS 检查。不要把新 Provider 当作追番列表、云端书架或全站镜像入口。
+
+相关短回归用固定 SDK10.0.401运行 `test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:Platform=x64 -p:UseSharedCompilation=true --filter "FullyQualifiedName~AniList|FullyQualifiedName~Bangumi|FullyQualifiedName~MusicBrainz|FullyQualifiedName~RelatedWorks|FullyQualifiedName~RelatedGameIdentity|FullyQualifiedName~KunGalRelated|FullyQualifiedName~ShellNavigation|FullyQualifiedName~InstallationNavigation|FullyQualifiedName~NextMoeOAuth"`。最终468／0／0、WinUI publish通过；真实API、漫画／小说格式探针和窗口截图独立于模拟测试记录，不以测试模拟代替实际连接。证据根 `.artifacts/anilist-20261014/`，功能、授权边界、条款判断、缓存时效及未覆盖项见原BRIEF顶部。
+
+
 ## Argon 主页面扩展候选（2026-10-14）
 
 继续使用 `D:/Projects/The-Order-worktrees/argon-details-20261014`／`codex/argon-details-20261014`，扩展基线 `113bfbf`，产品提交 `52f5f39f267239515799e992567f84b708507d85`。最终 UI 产物为 **`.artifacts/argon-pages-20261014/gpt-publish-accepted/`**；它是独立候选，没有部署到正式目录。原当前开发工作区、继承修改及上一轮详情页均已核验保留，综合 Gate 为 CONDITIONAL PASS，完整判断、模型评价与未验范围在原 `docs/ai/BRIEF.md` 顶部。

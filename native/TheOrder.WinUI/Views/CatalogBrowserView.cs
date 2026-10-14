@@ -103,7 +103,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
 
     public async Task<bool> GoBackAsync()
     {
-        if (mediaActive) { CloseMedia(); return true; }
+        if (mediaActive) { if (mediaDetail?.GoBackMedia() != true) CloseMedia(); return true; }
         if (!history.TryPop(out var previous)) return false;
         incoming = previous.Incoming;
         await LoadAsync(previous.Entity, null, restore: previous);

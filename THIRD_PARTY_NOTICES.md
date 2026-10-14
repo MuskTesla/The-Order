@@ -14,6 +14,12 @@ The native application's optional, on-demand music view reads the official [Musi
 
 Edition-specific album artwork is fetched from [Cover Art Archive](https://coverartarchive.org/) and its Internet Archive delivery hosts. Artwork retains the original rights holders' rights and is not relicensed as application source. The application package does not bundle album artwork, recordings, or the live validation responses/screenshots.
 
+## Public AniList metadata and artwork
+
+The optional native cross-media view uses the official [AniList GraphQL API](https://docs.anilist.co/guide/introduction) anonymously for on-demand, read-only exploration originating from Galgame relationships. It does not implement an independent anime/manga tracker, mirror the database, or write user lists. API usage remains subject to [AniList's Terms of Use](https://docs.anilist.co/guide/terms-of-use), including the restriction on competing non-complementary services and the commercial licensing threshold. This complementary scope is the project's interpretation, not an approval from AniList; changes in scope or commercial use require a fresh terms review.
+
+Descriptions, character/staff information, relationships and images are attributed to AniList separately from Bangumi's bridge data. Artwork and third-party descriptions retain their original owners' rights and are not relicensed as The Order source. No live metadata responses, anime/manga artwork, API credentials or validation screenshots are bundled with the application. The client retains only bounded, profile-local caches and explicit identity confirmations, not a database dump.
+
 ## Existing Electron distribution
 
 The Order (previously Kun Galgame Manager / 鲸屿) is an independent personal project. It is not an official product of Kun, NextMoe, PotatoVN, or the referenced game.
