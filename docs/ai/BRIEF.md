@@ -1,5 +1,26 @@
 # The Order：当前实现与评审交接
 
+## Manga / Light Novel 专业出版资料候选（2026-10-15）
+
+本轮从 `D:/Projects/The-Order-worktrees/argon-details-20261014` 的 `codex/anilist-20261014`、`cddd6d5` 加全部未提交源码继续。在 `D:/Projects/The-Order-worktrees/acgn-books-20261015` / `codex/acgn-books-20261015` 隔离复制并逐文件核验871份源码；1份`.gemini`配置未复制。继承快照 `1a89b8497a432ca5c9860cc5df5fdfa2a27b65a0` 仅记录已有成果，不能把它当成本轮新功能整包集成。原872份文件、HEAD及分支经最终哈希核对未变，原dirty保留。没有访问Production、复制凭据、调用OAuth服务、安装、合并或推送。本轮保持版本1.1.0。
+
+四组分别完成MangaDex、MangaUpdates、AniList/Bangumi及NDL真实匿名评估，主代理统一模型后才划分Provider、存储和Presentation实现。完整报告与字段矩阵在 `.artifacts/acgn-books-20261015/reports/Manga Light Novel 专业资料 实证评估.md`，独立原响应／UTC／hash在 `research_notes/`。173次直接HTTP200包括文档，不是173次正确匹配。12漫画＋8小说：NDL人工确认至少一个出版记录20/20、普通ISBN19/20；标题指定版本20/20仍歧义。AniList12有效/6歧义/1错误外传/1真实空，Bangumi14有效/6歧义；MD/MU选定具体改编的分母和判定不能混成统一准确率。
+
+**数据源分工**：保留AniList作为已确认对应条目的多语言说明、人员与作品关系主源；Bangumi负责中文事实、跨媒体发现及真实系列／单行本连接；新NDL作为两种书籍的出版书目源。MangaUpdates只列后续可选系列补充，许可／身份方案落实前不加入运行时；MangaDex不将汉化上传／feed数量当正式章节，不接入正文。没有Reader、追更、镜像、新账户或服务器。AniList不保证每条MANGA/NOVEL都是系列，本轮不为其推断出版层级。
+
+已实现共享折叠式“书籍与出版资料”：Bangumi作者／原作、作画／插画、出版社、刊物、文库和原始册数版本文字；系列→原站单行本／其他Book关系→单卷；NDL按ISBN或原标题检索，分页上限81起始位／100候选，独立出版记录预览与确认／解除。显示原日期精度、版次（有值才显示）、语言、普通ISBN、套装ISBN、文库、责任说明和原站。角色职责保留原值，不猜插画家或拆分共同“著”；文库不当作品系列。只有外层ScrollViewer，点击文本由原生Button命中，返回恢复原关系区，窄窗已实拍。
+
+BookIdentity按Provider＋原ID＋明确层级隔离；ISBN不是作品身份，NDL9/12位编号不补零。同名、同ISBN不同NDL ID不合并。只有原“单行本”边建立Volume层级；NDL集合记录不可确认。跨站检索只产生候选，用户确认还读取独立OAI书目；7日内已核实OAI缓存可用，新确认不接受过期降级。用户映射独立于远程缓存，来源指纹变化需重新核对；旧Book AniList指纹因加入层级防护需重新确认，原文件保留，Anime指纹不变。Book日期可能是连载／单卷／再版，原动画首播自动匹配规则不再应用到Book。
+
+NDL只消费自建、C7、明确CC BY4.0且来源一致的Book元数据；严格区别普通ISBN、SetISBN、ErrorISBN，XML禁DTD／外部实体／深层与2MiB超限；不使用第三方Item、书影或正文。复用公共无凭据HTTP池，静态全局1秒间隔、429全局冷却、25秒Provider总预算／至多一次短重试，取消贯穿。公开缓存7日新鲜、30日故障降级、内存64项、磁盘128份／32MiB；拒绝响应持久失效，未知或跨Profile文件不覆盖。用户确认存于独立 `native-book-publications-v1`，不随 `native-book-bibliography-v1` 清理，不改library或其他Provider。
+
+最终候选 `.artifacts/acgn-books-20261015/publish-v4/`；使用同证据根 `Start-IsolatedTest.ps1 -RunName <新短名称> -PublishName publish-v4` 启动合成Test，禁止裸双击默认Production。实际WinUI验证来自公开CLANNAD关系：游戏13→漫画149014→第一卷149015→NDL000008152373，完成预览、确认、重启读回、解除／再确认、返回八卷区和原游戏、设置切换／折叠。图片 `series-dark.png`、`publication-dark.png`、`publication-narrow-light.png`、`return-series-light.png` 为最终候选指定窗口WGC，不是设计稿／桌面输入。文字处按钮命中true；fixture控制与物理鼠标输入分别记录，未声称真人点击全流程。Test库payload最终字节未变，GUI正常退出。
+
+相关模拟回归724通过/0失败/0跳过（50秒），TRX `tests/books-final.trx`；后续展示文案及迟到滚动守卫的最终定点回归44通过/0失败/0跳过（108毫秒），TRX `tests/books-ui-final.trx`。真实产品Provider匿名闭环另见 `real-provider-validation.json`，含两条CLANNAD出版链和AniList39115 NOVEL人员＋NDL候选；小说48分类与出版社“画集・ファンブック”冲突保留，不能拿AniList漫画36997替代。小说深层共用组件，但本批完整真人窗口路径重点是漫画，小说完整UI路径未验收。外站当前长期可用性、全部版次／译本／卷／正式逐章目录不保证。
+
+独立代码评审 `core-review.md` 与 `ui-code-review.md` 曾发现7项问题：2项core P2，1项UI P1＋4项UI P2；全部整改并静态回查CLOSED。早期包装token身份测试误断言、隔离seeder未释放library writer、截图偏移等失败产物保留，不作通过证据。未运行长资源测试／无关全仓审计。
+
+**Gate：本轮漫画出版闭环及已覆盖工程/UI范围GO，可内部评审和下一阶段增量；全面ACGN深度和公开发布NO-GO。** 未取得完整正规章／译版资料；AniList对当前互补用途与小型缓存没有明确个案许可确认，不能以“不建tracker”抹掉其他条款；NDL持续访问联系是合作请求，本轮未登记，公开长期扩展前应落实用途联系和许可澄清。没有新增MD/MU在线能力。本机正式版与Production保持不动，发布／安装仍需用户确认。
 ## PV 原生滚轮一致性修复（2026-10-14）
 
 继续同一未提交基线，证据 `.artifacts/pv-native-scroll-20261014/`，最终候选 `publish-v3/`。修复上一轮PV固定48 DIP并禁用动画的滚动实现：在WebView2加入界面及初始化core之前注册垂直滚轮拦截，先跳过浏览器自身的滚轮处理，再在父容器恢复同一个事件的冒泡，由已有ScrollViewer处理原始增量和原生惯性。不另设动画、步长、计时器或输入遮罩；横向滚轮和播放器点击不拦截。关闭时移除两处事件订阅。外层观察已处理滚轮，仅阻止迟到的页面位置恢复覆盖用户输入。

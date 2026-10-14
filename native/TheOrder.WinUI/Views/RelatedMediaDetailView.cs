@@ -156,6 +156,9 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         await model.OpenAsync(item, cancellation);
     }
 
+    public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations)
+        => aniListView?.ConfigureBooks(books, relations);
+
     private void OnState(object? sender, PropertyChangedEventArgs args)
     {
         if (!disposed && active) { generation++; Synchronize(); }

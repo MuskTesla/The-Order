@@ -23,8 +23,10 @@ public sealed record AniListReference(int Id, AniListMediaKind Kind, bool MyAnim
 public sealed record AniListSource(string BangumiId, AniListMediaKind Kind, string Title, string OriginalTitle,
     string? Date, string? Platform, int? Episodes, string[] ExternalLinks)
 {
-    public string Fingerprint => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
-        { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks })));
+    public BookEntityLevel? BookLevel { get; init; }
+    public string Fingerprint => Convert.ToHexString(SHA256.HashData(Kind == AniListMediaKind.Anime
+        ? JsonSerializer.SerializeToUtf8Bytes(new { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks })
+        : JsonSerializer.SerializeToUtf8Bytes(new { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks, BookLevel })));
     public string? ExpectedFormat => Kind == AniListMediaKind.Anime ? Platform?.ToUpperInvariant() switch
         { "TV" => "TV", "剧场版" or "MOVIE" => "MOVIE", "OVA" => "OVA", "WEB" or "ONA" => "ONA", _ => null }
         : Platform?.Contains("小说", StringComparison.Ordinal) == true ? "NOVEL" : Platform?.Contains("漫画", StringComparison.Ordinal) == true ? "MANGA" : null;
@@ -38,7 +40,8 @@ public sealed record AniListSource(string BangumiId, AniListMediaKind Kind, stri
         if (value.Kind is not (BangumiRelationKind.Anime or BangumiRelationKind.Book) || !BangumiSubjectDetailsService.Valid(value.Id, value.Kind, value))
             throw new InvalidDataException("这类作品不使用 AniList 资料。");
         return new(value.Id, value.Kind == BangumiRelationKind.Anime ? AniListMediaKind.Anime : AniListMediaKind.Manga,
-            value.Title, value.OriginalTitle, value.ReleaseDate, value.Platform, value.EpisodeCount, value.ExternalLinks);
+            value.Title, value.OriginalTitle, value.ReleaseDate, value.Platform, value.EpisodeCount, value.ExternalLinks)
+            { BookLevel = value.Kind == BangumiRelationKind.Book ? value.BookFacts?.Level ?? BookEntityLevel.Unknown : null };
     }
 }
 public sealed record AniListMedia(int Id, int? MalId, AniListMediaKind Kind, string Title, string NativeTitle,
@@ -101,6 +104,9 @@ public static class AniListMatching
     }
     public static bool StrongEvidence(AniListSource source, AniListMedia media)
     {
+        // A Book date can refer to serialization, a collected volume, reprint or
+        // edition. The anime premiere heuristic is not a book identity rule.
+        if (source.Kind != AniListMediaKind.Anime) return false;
         if (!source.IsValid || !AniListValidation.Media(media) || Assess(source, media).Conflict
             || source.ExpectedFormat is not { } format || format != media.Format
             || source.Date is not { Length: 10 } date || media.StartDate is not { Length: 10 } start
@@ -119,6 +125,8 @@ public static class AniListMatching
     {
         var evidence = new List<string>(); bool conflict = source.Kind != media.Kind;
         evidence.Add(conflict ? "媒体类型不同" : "媒体类型一致");
+        if (source.Kind == AniListMediaKind.Manga && source.BookLevel is BookEntityLevel.Volume or BookEntityLevel.Publication && media.Volumes is > 1)
+        { conflict = true; evidence.Add("单卷 / 出版记录不能关联到多卷条目"); }
         var titles = new[] { media.Title, media.NativeTitle, media.EnglishTitle }.Concat(media.Synonyms).Where(x => x.Length > 0).Select(Normalize).ToArray();
         evidence.Add(new[] { source.Title, source.OriginalTitle }.Where(x => x.Length > 0).Select(Normalize).Any(titles.Contains) ? "标题有对应项" : "请核对不同语言的标题");
         if (source.ExpectedFormat is { } expected)

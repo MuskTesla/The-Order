@@ -25,6 +25,7 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     public bool IsBridge => history.Count == 0;
     public int HistoryDepth => history.Count;
     public bool IsBusy => request is not null;
+    public bool HasUnconfirmedPreview => Displayed is not null && SelectionReason.StartsWith("条目预览", StringComparison.Ordinal);
     public bool CanLoad => active && !disposed && !IsBusy;
     public bool CanConfirm => CanLoad && IsBridge && State == AniListDetailState.Preview && Source is not null && Displayed is not null && !AniListMatching.Assess(Source, Displayed.Details.Media).Conflict;
     public bool CanMore => CanLoad && State is AniListDetailState.Ready or AniListDetailState.Preview && Displayed is not null && PeoplePages.LastOrDefault()?.Details is { PeoplePage: < 10 } d && (d.MoreCharacters || d.MoreStaff);
@@ -40,6 +41,9 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
             if (item.Kind is not (BangumiRelationKind.Anime or BangumiRelationKind.Book)) throw new InvalidDataException("作品媒体类型不适用。");
             var bridge = await subjects.LoadAsync(item.Id, item.Kind, false, token); Require(token);
             Bridge = bridge; Source = AniListSource.From(bridge.Details); Notify();
+            if (item.Kind == BangumiRelationKind.Book && bridge.Details.BookFacts is { IsSeries: false, Isbns.Length: > 0 }
+                && bridge.Details.ExternalLinks.Length == 0)
+            { State = AniListDetailState.Ready; Message = "当前为单本出版资料，可查看出版信息与关联系列。"; return; }
             await MatchCoreAsync(null, false, token);
         }, cancellation);
     }

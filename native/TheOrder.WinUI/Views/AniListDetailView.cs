@@ -27,6 +27,10 @@ public sealed class AniListDetailView : Grid, IDisposable
     private readonly StackPanel body = new() { Spacing = 22 };
     private readonly AnimeAvailabilityView availability = new();
     private readonly WatchLinksView watchLinks = new();
+    private readonly BookPublicationView publications = new();
+    private IBangumiSubjectDetailsReader? bookSubjects;
+    private IBookBibliographyReader? bookReader;
+    private IBangumiBookRelationsReader? bookRelations;
     private AniListDetailsViewModel? model; private IImagePipeline? images; private IRemoteCoverRegistry? registry;
     private Func<string, Task>? openBangumi; private string origin = "", label = "", evidence = "";
     private bool active, disposed; private long coverVersion, restored, scrollInputVersion; private string? requestedCover;
@@ -51,7 +55,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         characters.Content = characterCards; staff.Content = staffBody; genres.Content = tags; related.Content = relatedCards; sources.Content = sourceBody;
         bridgeSummary.Content = bridgeText;
         body.Children.Add(heading); body.Children.Add(relation); body.Children.Add(status); body.Children.Add(actions); body.Children.Add(watchLinks); body.Children.Add(availability); body.Children.Add(candidateSection);
-        body.Children.Add(summarySection); body.Children.Add(bridgeSummary); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
+        body.Children.Add(summarySection); body.Children.Add(bridgeSummary); body.Children.Add(publications); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
         scroll = new() { Content = body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch }; Children.Add(scroll);
         // Observe even natively handled wheel input so a delayed navigation restore
         // cannot overwrite a user's scroll. Do not implement a second scroll path.
@@ -72,12 +76,21 @@ public sealed class AniListDetailView : Grid, IDisposable
         images = pipeline; registry = coverRegistry; openBangumi = bangumi; cover.Pipeline = images;
         watchLinks.Configure(watchPreferences);
         watchData = watchReader;
+        bookSubjects = subjects;
+        if (bookReader is not null && bookRelations is not null) publications.Configure(subjects, bookReader, bookRelations);
         model = new(subjects, reader); model.PropertyChanged += StateChanged;
+    }
+    public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations)
+    {
+        bookReader = books; bookRelations = relations;
+        if (bookSubjects is not null) publications.Configure(bookSubjects, books, relations);
+        if (active && !disposed) Render();
     }
     public Task OpenAsync(BangumiRelationItem item, string originTitle, string? relationLabel, string? relationEvidence, CancellationToken cancellation)
     {
         active = true; origin = originTitle; label = relationLabel ?? item.Relation; evidence = relationEvidence ?? ""; shownPages = null; shownCandidates = null;
         availability.Stop();
+        publications.Deactivate();
         watchLinks.Show(null, []);
         requestedCover = null; cover.SourceKey = null; searchText.Text = ""; restored = 0;
         foreach (var section in new[] { characters, staff, genres, related, sources }) section.IsExpanded = false;
@@ -89,7 +102,10 @@ public sealed class AniListDetailView : Grid, IDisposable
         var details = model?.Displayed?.Details; var media = model?.Media; var bridge = model?.IsBridge == true ? model?.Bridge?.Details : null;
         if (model?.IsBusy == true) availability.Stop();
         var isAnime = media is not null ? media.Kind == AniListMediaKind.Anime : model?.Item?.Kind == BangumiRelationKind.Anime;
-        var preview = model?.State == AniListDetailState.Preview;
+        var preview = model?.HasUnconfirmedPreview == true;
+        // An internal AniList relation has no established Bangumi identity. A
+        // candidate preview also cannot reuse the starting bridge's book ID.
+        publications.SetSource(bridge, details, model?.IsBridge == true && !preview);
         var watchIdentity = isAnime ? new AnimeWatchIdentity(media?.Id, model?.IsBridge == true && !preview ? model.Item?.Id : null) : null;
         var query = watchIdentity is null || preview || model?.IsBusy == true ? null : new WatchDataQuery(watchIdentity, media?.Format ?? bridge?.Platform, media?.StartDate ?? bridge?.ReleaseDate);
         if (watchQuery != query) { CancelWatchRead(); watchQuery = query; watchResult = null; if (query is not null && watchData is not null) { watchStop = new(); _ = ReadWatchAsync(query, ++watchVersion, watchStop.Token); } }
@@ -238,11 +254,12 @@ public sealed class AniListDetailView : Grid, IDisposable
     private void AddFact(string value) { if (value.Length > 0) facts.Children.Add(Text(13, value)); }
     private Task SearchAsync() => model?.SearchAsync(string.IsNullOrWhiteSpace(searchText.Text) ? null : searchText.Text.Trim()) ?? Task.CompletedTask;
     internal Task RefreshAsync() => model?.RefreshAsync() ?? Task.CompletedTask;
-    internal void Cancel() => model?.Cancel();
-    internal bool GoBack() => model?.GoBack() == true;
+    internal void Cancel() { publications.Cancel(); model?.Cancel(); }
+    internal bool GoBack() => publications.GoBack() || model?.GoBack() == true;
     internal async Task FixtureAsync(string action, string? id)
     {
         if (model is null) return;
+        if (action.StartsWith("book", StringComparison.Ordinal)) { await publications.FixtureAsync(action, id); return; }
         switch (action)
         {
             case "aniPreview" when int.TryParse(id, out var value): await model.PreviewAsync(value); break;
@@ -266,9 +283,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
     }
     internal object Evidence => new { state = model?.State.ToString(), subjectId = model?.Item?.Id, mediaId = model?.Media?.Id, title = title.Text, kind = model?.Media?.Kind.ToString(), historyDepth = model?.HistoryDepth, canConfirm = model?.CanConfirm, fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, restoredOffset = model?.RestoreOffset,
-        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = summary.Text, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
-    public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
-    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; }
+        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = summary.Text, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
+    public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); publications.Deactivate(); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
+    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); publications.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; bookSubjects = null; bookReader = null; bookRelations = null; }
     private static string PersonName(AniListPerson p) => p.NativeName.Length > 0 ? p.NativeName : p.Name;
     private static Visibility Visible(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
     private static TextBlock Text(double size, string text = "") => new() { FontSize = size, Text = text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };

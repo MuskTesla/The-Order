@@ -34,6 +34,7 @@ public sealed partial class CatalogBrowserView
     }
     public void ConfigureMusic(IMusicBrainzReader music) => mediaDetail?.ConfigureMusic(music);
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) => mediaDetail?.ConfigureAniList(reader, watchPreferences, watchReader);
+    public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations) => mediaDetail?.ConfigureBooks(books, relations);
 
     private void ShowRelated(WorkMetadata work, long auth)
     {

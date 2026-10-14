@@ -8,6 +8,7 @@ public sealed record BangumiSubjectDetails(string Id, BangumiRelationKind Kind, 
 {
     public string Url => "https://bgm.tv/subject/" + Id;
     public BangumiMusicFacts? MusicFacts { get; init; }
+    public BangumiBookFacts? BookFacts { get; init; }
     public string[] ExternalLinks { get; init; } = [];
 }
 
@@ -47,6 +48,7 @@ public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider 
         && (value.EpisodeCount is null || value.EpisodeCount is > 0 and <= 1000000)
         && (value.Score is null && value.RatingCount is null || value.Score is >= 0 and <= 10 && value.RatingCount is > 0)
         && (value.MusicFacts is null || expectedKind == BangumiRelationKind.Music && value.MusicFacts.IsValid)
+        && (value.BookFacts is null || expectedKind == BangumiRelationKind.Book && value.BookFacts.IsValid)
         && value.ExternalLinks is { Length: <= 16 } && value.ExternalLinks.All(x => AniListReference.TryParse(x, out var reference)
             && (expectedKind == BangumiRelationKind.Anime && reference!.Kind == AniListMediaKind.Anime
                 || expectedKind == BangumiRelationKind.Book && reference!.Kind == AniListMediaKind.Manga))

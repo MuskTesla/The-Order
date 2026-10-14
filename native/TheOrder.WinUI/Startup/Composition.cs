@@ -117,6 +117,13 @@ internal static class Composition
         services.AddSingleton<IAniListProvider>(p => new AniListProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IAniListCache, IsolatedAniListCache>();
         services.AddSingleton<IAniListReader, AniListService>();
+        services.AddSingleton<IsolatedBookBibliographyStore>();
+        services.AddSingleton<IBookBibliographyCache>(p => p.GetRequiredService<IsolatedBookBibliographyStore>());
+        services.AddSingleton<IBookPublicationBindings>(p => p.GetRequiredService<IsolatedBookBibliographyStore>());
+        services.AddSingleton<IBookBibliographyProvider>(p => new NdlBibliographyProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
+        services.AddSingleton<IBookBibliographyReader, BookBibliographyService>();
+        services.AddSingleton<IBangumiBookRelationsProvider>(p => p.GetRequiredService<BangumiRelationsProvider>());
+        services.AddSingleton<IBangumiBookRelationsReader>(p => new BangumiBookRelationsService(p.GetRequiredService<IBangumiBookRelationsProvider>(), p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IWatchLinkPreferencesStore, WatchLinkPreferencesStore>();
         services.AddSingleton<IBangumiWatchDataProvider>(p => new BangumiWatchDataProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IBangumiWatchSnapshotStore, IsolatedWatchDataSnapshotStore>();

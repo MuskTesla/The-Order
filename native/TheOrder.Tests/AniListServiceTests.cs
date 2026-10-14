@@ -164,4 +164,13 @@ public sealed class AniListDetailsViewModelTests
         var provider=new AniListFakeProvider();var cache=new AniListMemoryCache();using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(provider,cache));
         await vm.OpenAsync(Item());await vm.PreviewAsync(2167);await vm.MoreAsync();Assert.Equal(AniListDetailState.Preview,vm.State);Assert.True(vm.CanConfirm);Assert.DoesNotContain(cache.Values,x=>x.Key.StartsWith("binding:"));
     }
+    [Fact] public async Task PreviewIdentityRemainsUnconfirmedDuringLoadingAndCancellation()
+    {
+        var provider=new AniListFakeProvider();using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(provider));
+        await vm.OpenAsync(Item());await vm.PreviewAsync(2167);Assert.True(vm.HasUnconfirmedPreview);
+        var late=new TaskCompletionSource<AniListDetails>(TaskCreationOptions.RunContinuationsAsynchronously);provider.Fetch=(_,_,_)=>late.Task;
+        var pending=vm.RefreshAsync();Assert.Equal(AniListDetailState.Loading,vm.State);Assert.True(vm.HasUnconfirmedPreview);
+        vm.Cancel();late.SetResult(AniListTestData.Details());await pending;Assert.True(vm.HasUnconfirmedPreview);
+        await vm.ConfirmAsync();Assert.False(vm.HasUnconfirmedPreview);
+    }
 }

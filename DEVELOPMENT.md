@@ -2567,3 +2567,17 @@ git status
 ```
 
 每次提交前检查暂存内容；不要提交正式应用数据，也不要把发布目录作为新的源码目录。
+
+## ACGN 书籍出版资料候选（2026-10-15）
+
+隔离工作区：`D:/Projects/The-Order-worktrees/acgn-books-20261015`，`codex/acgn-books-20261015`。来源为Argon当前未发布dirty的逐文件快照，不是旧Electron主目录或正式安装输出。继承快照与本轮增量分开；未经确认不得把候选安装到日用入口，也不得访问Production开发测试。
+
+模型在Application `BookBibliography.cs` / `BookBibliographyService.cs` / `BangumiBookRelationsService.cs`；NDL SRU/OAI与来源保护在Infrastructure `NdlBibliographyProvider.cs`，Bangumi新增BookFacts并复用原关系transport；Windows `IsolatedBookBibliographyStore.cs`将可清缓存和用户确认映射分目录；Presentation `BookDetailsViewModel.cs`及WinUI `BookPublicationView.cs`复用AniList媒体host。不要按标题、ISBN、文库品牌或MANGA/NOVEL格式推测同一系列／版本；旧Book确认指纹增加层级后须重新核对，保留旧文件。没有书库schema迁移、OAuth改动或新第三方依赖。
+
+固定SDK仍为 `D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/native-phase1/tools/dotnet/dotnet.exe`。新checkout先 `restore native/TheOrder.WinUI/TheOrder.WinUI.csproj --locked-mode -p:Platform=x64`，测试项目同样locked restore。`publish ... -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-books-20261015/<新候选>` 为本地构建，不是正式发布。不要并行构建同一Native输出目录。
+
+定点回归：`test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:Platform=x64 -p:UseSharedCompilation=true --filter "FullyQualifiedName~Book|FullyQualifiedName~Ndl|FullyQualifiedName~AniList|FullyQualifiedName~Bangumi|FullyQualifiedName~MusicBrainz|FullyQualifiedName~Related|FullyQualifiedName~InstallationNavigation|FullyQualifiedName~NextMoeOAuth"`。模拟TRX、真实匿名API、指定Test窗口截图分别记录在本证据根；真实research脚本仅为一次有界调查，不能作为客户端批量抓取。
+
+最终GUI候选 `publish-v4`：用本证据根 `Start-IsolatedTest.ps1 -RunName <新的名称> -PublishName publish-v4`，受限Control的 `bangumi` 动作新增bookExpand/Collapse/Relations/Open/Search/Preview/Confirm/Forget/Reload/Next/Back/Cancel及固定section inspect。Open/Preview/Forget只作用于当前已见ID；回退使用 `-Action bangumi -Value back`，正常退出用 `-Action exit`，不可强杀。所有写入仅合成Test的缓存／映射，图片WGC限制精确PID、EXE、Test manifest和本证据输出。
+
+NDL数据来源许可与加工说明已加入THIRD_PARTY_NOTICES；不搬NDL正文/书影/第三方Item、MangaDex阅读资源或上游采集脚本。当前按需NDL无key，1秒全局间隔，25秒Provider预算（服务串行等待另计并可取消），请求/响应限额与失效缓存不要放宽。AniList许可/缓存边界仍需澄清；NDL持续访问联系方式尚未登记，不宣称许可审批或长期SLA通过。

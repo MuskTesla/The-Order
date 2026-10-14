@@ -49,6 +49,7 @@ public sealed partial class OnlinePage : Page, IImageHost
     public void Cancel() => browser.Cancel();
     internal void ConfigureMusic(IMusicBrainzReader music) => browser.ConfigureMusic(music);
     internal void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) => browser.ConfigureAniList(reader, watchPreferences, watchReader);
+    internal void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations) => browser.ConfigureBooks(books, relations);
     internal void ConfigureRelatedWorks(IBangumiRelationsReader reader, IBangumiSubjectDetailsReader subjects,
         IRelatedSemanticReader semantics, IRelatedGameIdentityReader? identities, Func<string>? accessScope = null) => browser.ConfigureRelatedWorks(reader, subjects, semantics, identities, accessScope);
     internal void InvalidateBangumiAccess() => browser.InvalidateBangumiAccess();

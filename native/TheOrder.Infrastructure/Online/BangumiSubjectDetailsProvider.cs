@@ -145,6 +145,7 @@ public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTi
         var result = new BangumiSubjectDetails(subjectId, expectedKind, chinese.Length > 0 ? chinese : original, original, cover,
             summary, date.Length == 0 ? null : date, platform.Length == 0 ? null : platform, eps, score, votes, fetchedAtUtc)
         { MusicFacts = expectedKind == BangumiRelationKind.Music ? BangumiMusicFactsMapping.Map(root) : null,
+            BookFacts = expectedKind == BangumiRelationKind.Book ? BangumiBookFactsMapping.Map(root) : null,
             ExternalLinks = expectedKind is BangumiRelationKind.Anime or BangumiRelationKind.Book ? AniListBridgeLinks.Map(root, expectedKind) : [] };
         if (!BangumiSubjectDetailsService.Valid(subjectId, expectedKind, result)) throw Invalid();
         return result;

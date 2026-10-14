@@ -11,7 +11,7 @@ namespace TheOrder.Infrastructure.Online;
 // network pool disables cookies/redirects; credentials are applied per exact request.
 public sealed partial class BangumiRelationsProvider(HttpClient client, Func<DateTimeOffset>? clock = null,
     Func<TimeSpan, CancellationToken, Task>? delay = null, TimeSpan? operationTimeout = null,
-    BangumiAccessContext? access = null) : IBangumiRelationsProvider, IRelatedSemanticReader
+    BangumiAccessContext? access = null) : IBangumiRelationsProvider, IRelatedSemanticReader, IBangumiBookRelationsProvider
 {
     private readonly BangumiAccessContext authorization = access ?? new();
     public const int MaximumResponseBytes = 2 * 1024 * 1024, MaximumRows = 1000;
@@ -25,7 +25,11 @@ public sealed partial class BangumiRelationsProvider(HttpClient client, Func<Dat
         public BangumiAccessSnapshot Access { get; } = access;
         public int Retries;
     }
-    public async Task<BangumiRelationsSnapshot> FetchAsync(string subjectId, CancellationToken cancellation)
+    public Task<BangumiRelationsSnapshot> FetchAsync(string subjectId, CancellationToken cancellation)
+        => FetchCoreAsync(subjectId, BangumiRelationKind.Game, cancellation);
+    public Task<BangumiRelationsSnapshot> FetchBookAsync(string subjectId, CancellationToken cancellation)
+        => FetchCoreAsync(subjectId, BangumiRelationKind.Book, cancellation);
+    private async Task<BangumiRelationsSnapshot> FetchCoreAsync(string subjectId, BangumiRelationKind kind, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
         if (!BangumiRelationIdentityResolver.ValidSubjectId(subjectId)) throw new InvalidDataException("Bangumi 编号无效。");
@@ -40,7 +44,8 @@ public sealed partial class BangumiRelationsProvider(HttpClient client, Func<Dat
             if (client.DefaultRequestHeaders.Authorization is not null || client.DefaultRequestHeaders.Contains("Cookie"))
                 throw Invalid("匿名资料网络配置无效，未发送请求。");
             using var source = await GetAsync(subjectId, false, budget).ConfigureAwait(false);
-            ValidateSource(subjectId, source.RootElement, lease.Authorized);
+            if (kind == BangumiRelationKind.Game) ValidateSource(subjectId, source.RootElement, lease.Authorized);
+            else _ = BangumiSubjectDetailsProvider.Map(subjectId, kind, source.RootElement, Now, lease.Authorized);
             budget.Token.ThrowIfCancellationRequested();
             using var relations = await GetAsync(subjectId, true, budget).ConfigureAwait(false);
             var result = MapRelations(subjectId, relations.RootElement, Now);

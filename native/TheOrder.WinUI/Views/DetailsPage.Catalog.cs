@@ -187,6 +187,7 @@ public sealed partial class DetailsPage
     }
     public void ConfigureMusic(IMusicBrainzReader music) { relatedMedia?.ConfigureMusic(music); browser?.ConfigureMusic(music); }
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) { relatedMedia?.ConfigureAniList(reader, watchPreferences, watchReader); browser?.ConfigureAniList(reader, watchPreferences, watchReader); }
+    public void ConfigureBooks(IBookBibliographyReader books, IBangumiBookRelationsReader relations) { relatedMedia?.ConfigureBooks(books, relations); browser?.ConfigureBooks(books, relations); }
     private async Task OpenRelatedMediaAsync(RelatedWorkCard card)
     {
         if (relatedMedia is null || card.Bangumi is not { } item || !IsLoaded || ViewModel.IsDetailsLoading) return;
@@ -268,6 +269,8 @@ public sealed partial class DetailsPage
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
             case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+                if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
+            case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "sources": BangumiRelated.SourcesForFixture(); break;
             case "rawEvidence": BangumiRelated.RawEvidenceForFixture(); break;
