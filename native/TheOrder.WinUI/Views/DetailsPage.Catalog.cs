@@ -186,7 +186,7 @@ public sealed partial class DetailsPage
         SynchronizeBangumi();
     }
     public void ConfigureMusic(IMusicBrainzReader music) { relatedMedia?.ConfigureMusic(music); browser?.ConfigureMusic(music); }
-    public void ConfigureAniList(IAniListReader reader) { relatedMedia?.ConfigureAniList(reader); browser?.ConfigureAniList(reader); }
+    public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) { relatedMedia?.ConfigureAniList(reader, watchPreferences, watchReader); browser?.ConfigureAniList(reader, watchPreferences, watchReader); }
     private async Task OpenRelatedMediaAsync(RelatedWorkCard card)
     {
         if (relatedMedia is null || card.Bangumi is not { } item || !IsLoaded || ViewModel.IsDetailsLoading) return;
@@ -246,6 +246,14 @@ public sealed partial class DetailsPage
         { await browser.RelatedFixtureAsync(action, kind, subjectId); return; }
         switch (action)
         {
+            case "aniOpen" when subjectId is not null:
+                if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test
+                    || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null) throw new InvalidDataException("Isolated public subject fixture required.");
+                relatedMedia.Deactivate(); BangumiRelated.SuspendNavigation(); HeroStage.ReleaseBeforeLeave();
+                DetailsRoot.Visibility = Visibility.Collapsed; RelatedMediaHost.Visibility = Visibility.Visible;
+                relatedMedia.RelationLabel = "隔离只读验证"; relatedMedia.RelationEvidence = "Test fixture directly opens a public Bangumi identity; no synthetic relation is asserted as real.";
+                await relatedMedia.OpenAsync(new(subjectId, BangumiRelationKind.Anime, "动画", "", "隔离验证", null), "隔离只读验证");
+                break;
             case "expand": SynchronizeBangumi(); await BangumiRelated.ExpandForFixtureAsync(); break;
             case "collapse": BangumiRelated.CollapseForFixture(); break;
             case "refresh": SynchronizeBangumi(); await BangumiRelated.RefreshForFixtureAsync(); break;
@@ -259,7 +267,7 @@ public sealed partial class DetailsPage
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "sources": BangumiRelated.SourcesForFixture(); break;
             case "rawEvidence": BangumiRelated.RawEvidenceForFixture(); break;

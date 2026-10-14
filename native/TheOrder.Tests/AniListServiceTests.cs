@@ -22,7 +22,7 @@ internal sealed class AniListFakeProvider : IAniListProvider
 }
 public sealed class AniListServiceTests
 {
-    [Fact] public async Task ExactTitleTypeAndDateRemainUnconfirmedCandidates()
+    [Fact] public async Task EpisodeAndDateDifferencesRemainUnconfirmedDespiteMatchingTitleAndType()
     {
         var provider=new AniListFakeProvider();var service=new AniListService(provider);var match=await service.MatchAsync(AniListTestData.Source(),null,false,default);
         Assert.Single(match.Candidates);Assert.Null(match.Binding);Assert.Equal(1,provider.Searches);Assert.Equal(0,provider.Fetches);
@@ -134,7 +134,19 @@ public sealed class AniListDetailsViewModelTests
     {
         var sequel=AniListTestData.Media()with{Id=4181,Title="After Story",StartDate="2008-10-03"};var provider=new AniListFakeProvider{Fetch=(id,_,_)=>Task.FromResult(AniListTestData.Details(id)with{Relations=id==2167?[new(sequel,"SEQUEL")]:[]})};
         using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(provider));await vm.OpenAsync(Item());await vm.PreviewAsync(2167);await vm.ConfirmAsync();var root=vm.Displayed;
-        await vm.ExploreAsync(root!.Details.Relations[0],487);Assert.Equal(1,vm.HistoryDepth);Assert.Equal(4181,vm.Media!.Id);Assert.True(vm.GoBack());Assert.Same(root,vm.Displayed);Assert.Equal(487,vm.RestoreOffset);Assert.Equal("51",vm.Bridge!.Details.Id);Assert.False(vm.GoBack());
+        var firstVersion=vm.RestoreVersion;
+        await vm.ExploreAsync(root!.Details.Relations[0],487);
+        Assert.Equal(1,vm.HistoryDepth);Assert.Equal(4181,vm.Media!.Id);
+        Assert.Equal(0,vm.RestoreOffset);Assert.True(vm.RestoreVersion>firstVersion);
+        Assert.True(vm.GoBack());Assert.Same(root,vm.Displayed);Assert.Equal(487,vm.RestoreOffset);
+        Assert.Equal("51",vm.Bridge!.Details.Id);Assert.False(vm.GoBack());
+        var returnVersion=vm.RestoreVersion;
+        await vm.ExploreAsync(root.Details.Relations[0],487);
+        Assert.Equal(0,vm.RestoreOffset);Assert.True(vm.RestoreVersion>returnVersion);
+        Assert.True(vm.GoBack());Assert.Equal(487,vm.RestoreOffset);
+        var reopenedVersion=vm.RestoreVersion;
+        await vm.OpenAsync(Item());
+        Assert.Equal(0,vm.RestoreOffset);Assert.True(vm.RestoreVersion>reopenedVersion);
     }
     [Fact] public async Task NetworkFailureLeavesBangumiSummaryAndAllowsRetry()
     {

@@ -124,12 +124,12 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         musicView.Configure(subjectReader, music, images, registry, openLink); Children.Add(musicView);
     }
 
-    public void ConfigureAniList(IAniListReader reader)
+    public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null)
     {
         if (disposed || subjectReader is null || images is null || openLink is null) return;
         aniListView?.Dispose(); if (aniListView is not null) Children.Remove(aniListView);
         aniListView = new() { Visibility = Visibility.Collapsed };
-        aniListView.Configure(subjectReader, reader, images, registry, openLink); Children.Add(aniListView);
+        aniListView.Configure(subjectReader, reader, images, registry, openLink, watchPreferences, watchReader); Children.Add(aniListView);
     }
 
     public async Task OpenAsync(BangumiRelationItem item, string originTitle, CancellationToken cancellation = default)

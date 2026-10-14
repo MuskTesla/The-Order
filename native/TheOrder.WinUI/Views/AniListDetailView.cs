@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using TheOrder.Application;
 using TheOrder.Presentation;
 
@@ -24,10 +25,14 @@ public sealed class AniListDetailView : Grid, IDisposable
     private readonly TextBlock bridgeText = Text(15);
     private readonly ScrollViewer scroll;
     private readonly StackPanel body = new() { Spacing = 22 };
+    private readonly AnimeAvailabilityView availability = new();
+    private readonly WatchLinksView watchLinks = new();
     private AniListDetailsViewModel? model; private IImagePipeline? images; private IRemoteCoverRegistry? registry;
     private Func<string, Task>? openBangumi; private string origin = "", label = "", evidence = "";
     private bool active, disposed; private long coverVersion, restored, scrollInputVersion; private string? requestedCover;
     private AniListResult[]? shownPages; private AniListMedia[]? shownCandidates;
+    private IBangumiWatchLinksReader? watchData; private WatchDataQuery? watchQuery; private WatchDataResult? watchResult;
+    private CancellationTokenSource? watchStop; private long watchVersion;
     public AniListDetailView()
     {
         AutomationProperties.SetAutomationId(this, "AniListDetail"); AutomationProperties.SetAutomationId(title, "AniListDetailTitle");
@@ -45,28 +50,35 @@ public sealed class AniListDetailView : Grid, IDisposable
         summarySection.Children.Add(Text(20, "简介")); summarySection.Children.Add(summary);
         characters.Content = characterCards; staff.Content = staffBody; genres.Content = tags; related.Content = relatedCards; sources.Content = sourceBody;
         bridgeSummary.Content = bridgeText;
-        body.Children.Add(heading); body.Children.Add(relation); body.Children.Add(status); body.Children.Add(actions); body.Children.Add(candidateSection);
+        body.Children.Add(heading); body.Children.Add(relation); body.Children.Add(status); body.Children.Add(actions); body.Children.Add(watchLinks); body.Children.Add(availability); body.Children.Add(candidateSection);
         body.Children.Add(summarySection); body.Children.Add(bridgeSummary); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
         scroll = new() { Content = body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch }; Children.Add(scroll);
-        scroll.PointerWheelChanged += (_, _) => scrollInputVersion++; scroll.PointerPressed += (_, _) => scrollInputVersion++; scroll.KeyDown += (_, _) => scrollInputVersion++;
+        // Observe even natively handled wheel input so a delayed navigation restore
+        // cannot overwrite a user's scroll. Do not implement a second scroll path.
+        scroll.AddHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler((_, _) => scrollInputVersion++), true);
+        scroll.PointerPressed += (_, _) => scrollInputVersion++; scroll.KeyDown += (_, _) => scrollInputVersion++;
         cancel.Click += (_, _) => model?.Cancel(); refresh.Click += async (_, _) => await RefreshAsync();
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
-        choose.Click += (_, _) => model?.ChooseAgain(); more.Click += async (_, _) => { if (model is not null) await model.MoreAsync(); };
+        choose.Click += async (_, _) => { if (model is not null) { await model.ChooseAgainAsync(); candidateSection.StartBringIntoView(); } }; more.Click += async (_, _) => { if (model is not null) await model.MoreAsync(); };
         toCharacters.Click += (_, _) => ShowSection(characters); toStaff.Click += (_, _) => ShowSection(staff); toRelations.Click += (_, _) => ShowSection(related);
         foreach (var panel in new[] { candidates, characterCards, relatedCards }) panel.SizeChanged += (_, _) => ClampCards(panel);
         search.Click += async (_, _) => await SearchAsync(); searchText.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter) { e.Handled = true; await SearchAsync(); } };
         SizeChanged += (_, _) => { var narrow = ActualWidth < 520; cover.Width = narrow ? 96 : 136; cover.Height = narrow ? 136 : 190; title.FontSize = narrow ? 23 : 28; heading.ColumnSpacing = narrow ? 12 : 20; };
         Unloaded += (_, _) => { if (!IsLoaded) Deactivate(); };
     }
-    public void Configure(IBangumiSubjectDetailsReader subjects, IAniListReader reader, IImagePipeline pipeline, IRemoteCoverRegistry? coverRegistry, Func<string, Task> bangumi)
+    public void Configure(IBangumiSubjectDetailsReader subjects, IAniListReader reader, IImagePipeline pipeline, IRemoteCoverRegistry? coverRegistry, Func<string, Task> bangumi, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null)
     {
         Deactivate(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); }
         images = pipeline; registry = coverRegistry; openBangumi = bangumi; cover.Pipeline = images;
+        watchLinks.Configure(watchPreferences);
+        watchData = watchReader;
         model = new(subjects, reader); model.PropertyChanged += StateChanged;
     }
     public Task OpenAsync(BangumiRelationItem item, string originTitle, string? relationLabel, string? relationEvidence, CancellationToken cancellation)
     {
         active = true; origin = originTitle; label = relationLabel ?? item.Relation; evidence = relationEvidence ?? ""; shownPages = null; shownCandidates = null;
+        availability.Stop();
+        watchLinks.Show(null, []);
         requestedCover = null; cover.SourceKey = null; searchText.Text = ""; restored = 0;
         foreach (var section in new[] { characters, staff, genres, related, sources }) section.IsExpanded = false;
         scroll.ChangeView(null, 0, null); return model?.OpenAsync(item, cancellation) ?? Task.CompletedTask;
@@ -75,6 +87,14 @@ public sealed class AniListDetailView : Grid, IDisposable
     private void Render()
     {
         var details = model?.Displayed?.Details; var media = model?.Media; var bridge = model?.IsBridge == true ? model?.Bridge?.Details : null;
+        if (model?.IsBusy == true) availability.Stop();
+        var isAnime = media is not null ? media.Kind == AniListMediaKind.Anime : model?.Item?.Kind == BangumiRelationKind.Anime;
+        var preview = model?.State == AniListDetailState.Preview;
+        var watchIdentity = isAnime ? new AnimeWatchIdentity(media?.Id, model?.IsBridge == true && !preview ? model.Item?.Id : null) : null;
+        var query = watchIdentity is null || preview || model?.IsBusy == true ? null : new WatchDataQuery(watchIdentity, media?.Format ?? bridge?.Platform, media?.StartDate ?? bridge?.ReleaseDate);
+        if (watchQuery != query) { CancelWatchRead(); watchQuery = query; watchResult = null; if (query is not null && watchData is not null) { watchStop = new(); _ = ReadWatchAsync(query, ++watchVersion, watchStop.Token); } }
+        var linkData = watchIdentity is null ? [] : AniListWatchLinksAdapter.From(watchIdentity, details).Concat(watchResult?.Links ?? []).ToArray();
+        watchLinks.Show(watchIdentity, linkData, watchResult); availability.Show(media?.Id, isAnime, details?.Trailer, model?.CanLoad == true);
         type.Text = media is null ? (model?.Item?.Kind == BangumiRelationKind.Anime ? "动画" : "书籍") + " · Bangumi" : media.TypeName + " · AniList";
         title.Text = media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
         alternate.Text = media is null ? bridge?.OriginalTitle ?? "" : string.Join(" / ", new[] { model?.IsBridge == true ? bridge?.Title : null, media.NativeTitle }.Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
@@ -105,7 +125,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         foreach (var button in relatedCards.Children.OfType<Button>()) button.IsEnabled = model?.CanLoad == true && model?.State == AniListDetailState.Ready;
         more.Visibility = Visible(model?.PeoplePages.LastOrDefault()?.Details is { } page && (page.MoreCharacters || page.MoreStaff)); more.IsEnabled = model?.CanMore == true;
         RenderSources(media);
-        if (model is not null && restored != model.RestoreVersion)
+        if (model is not null && !model.IsBusy && restored != model.RestoreVersion)
         {
             restored = model.RestoreVersion; var target = model.RestoreOffset;
             var expectedId = model.Media?.Id; var restoreVersion = model.RestoreVersion; var inputVersion = scrollInputVersion;
@@ -120,6 +140,23 @@ public sealed class AniListDetailView : Grid, IDisposable
             });
         }
     }
+    private async Task ReadWatchAsync(WatchDataQuery query, long version, CancellationToken cancellation)
+    {
+        try
+        {
+            var result = await watchData!.ReadAsync(query, cancellation);
+            if (!AcceptWatch(version, query, cancellation)) return; watchResult = result; Render();
+            if (await watchData.UpdateIfDueAsync(cancellation))
+            {
+                result = await watchData.ReadAsync(query, cancellation);
+                if (AcceptWatch(version, query, cancellation)) { watchResult = result; Render(); }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch { if (AcceptWatch(version, query, cancellation)) { watchResult = new([], WatchDataMatch.NotRecorded, "放送数据暂不可读取，已保留其他来源的链接。", ""); Render(); } }
+    }
+    private bool AcceptWatch(long version, WatchDataQuery query, CancellationToken cancellation) => active && !disposed && !cancellation.IsCancellationRequested && version == watchVersion && watchQuery == query;
+    private void CancelWatchRead() { watchVersion++; watchStop?.Cancel(); watchStop?.Dispose(); watchStop = null; watchQuery = null; }
     private void RenderCandidates()
     {
         candidates.Children.Clear();
@@ -190,7 +227,11 @@ public sealed class AniListDetailView : Grid, IDisposable
     }
     private CoverPresenter Picture(string? url, double width, double height) => new() { Width = width, Height = height, PreserveEntireImage = true, ImageCornerRadius = 5, Pipeline = images, SourceKey = registry?.Register(url, "anilist-person-v1"), VerticalAlignment = VerticalAlignment.Top };
     private static Grid Row(FrameworkElement image, FrameworkElement labels) { var row = new Grid { ColumnSpacing = 12 }; row.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); row.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); row.Children.Add(image); SetColumn(labels, 1); row.Children.Add(labels); return row; }
-    private static Button Card(UIElement child, double width) => new() { Content = child, Width = width, MaxWidth = width, Tag = width, CornerRadius = new(8), Padding = new(12), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top };
+    private static Button Card(UIElement child, double width)
+    {
+        child.IsHitTestVisible = false;
+        return new() { Content = child, Width = width, MaxWidth = width, Tag = width, CornerRadius = new(8), Padding = new(12), HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Top };
+    }
     private static Border Frame(UIElement child, double width) => new() { Child = child, Width = width, MaxWidth = width, Tag = width, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new(12) };
     private static void ClampCards(TagFlowPanel panel) { if (panel.ActualWidth <= 0) return; foreach (var child in panel.Children.OfType<FrameworkElement>()) if (child.Tag is double width) child.MaxWidth = Math.Min(width, panel.ActualWidth); }
     private void ShowSection(Expander section) { section.IsExpanded = true; DispatcherQueue.TryEnqueue(() => { if (active && !disposed && section.IsLoaded) { scroll.UpdateLayout(); var y = section.TransformToVisual(body).TransformPoint(new(0, 0)).Y; scroll.ChangeView(null, y, null, true); } }); }
@@ -209,14 +250,25 @@ public sealed class AniListDetailView : Grid, IDisposable
             case "aniCharacters": ShowSection(characters); break;
             case "aniStaff": ShowSection(staff); break;
             case "aniRelations": ShowSection(related); break;
+            case "aniPV": availability.ExpandForFixture(); availability.StartBringIntoView(); break;
+            case "aniPVLoad": await availability.StartAsync(); availability.StartBringIntoView(); break;
+            case "aniPVStart": _ = availability.StartAsync(); break;
+            case "aniPVCollapse": availability.CollapseForFixture(); break;
+            case "aniPVPlay": await availability.PlayForFixtureAsync(); break;
+            case "aniPVProbe": await availability.ProbeForFixtureAsync(); break;
+            case "aniPVStop": availability.Stop(); break;
+            case "aniChoose": await model.ChooseAgainAsync(); candidateSection.StartBringIntoView(); break;
+            case "watchSources": watchLinks.SourcesForFixture(); break;
+            case "watchShow": watchLinks.ShowForFixture(); break;
+            case "watchCollapse": watchLinks.CollapseForFixture(); break;
             case "aniExplore" when int.TryParse(id, out var value) && model.Displayed?.Details.Relations.FirstOrDefault(x => x.Media.Id == value) is { } item: await model.ExploreAsync(item, scroll.VerticalOffset); break;
             case "aniMore": await model.MoreAsync(); break;
         }
     }
     internal object Evidence => new { state = model?.State.ToString(), subjectId = model?.Item?.Id, mediaId = model?.Media?.Id, title = title.Text, kind = model?.Media?.Kind.ToString(), historyDepth = model?.HistoryDepth, canConfirm = model?.CanConfirm, fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, restoredOffset = model?.RestoreOffset,
-        candidates = model?.Candidates.Select(x => x.Id).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = summary.Text, status = status.Text, scrollOffset = scroll.VerticalOffset, cover.HasImage, cover.SourceStatus, width = ActualWidth };
-    public void Deactivate() { active = false; coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
-    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; }
+        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = summary.Text, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
+    public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
+    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; }
     private static string PersonName(AniListPerson p) => p.NativeName.Length > 0 ? p.NativeName : p.Name;
     private static Visibility Visible(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
     private static TextBlock Text(double size, string text = "") => new() { FontSize = size, Text = text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };

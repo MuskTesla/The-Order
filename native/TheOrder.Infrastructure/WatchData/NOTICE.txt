@@ -1,0 +1,21 @@
+Bangumi broadcast-site datasets (CC BY 4.0)
+
+Source: bangumi-data contributors
+https://github.com/bangumi-data/bangumi-data
+Snapshot: 0.3.231 / bae940f6116ae4b93c73a711827056faaf23957a
+
+Supplement: wan0ge/bangumi-data contributors, derived from bangumi-data
+https://github.com/wan0ge/bangumi-data
+Snapshot: Git JSON (package.json declares 0.3.23100) / 0f590969d92f1303490aecafcd37be686c6784e0
+
+Both repositories state that their data is available under Creative Commons
+Attribution 4.0 International: https://creativecommons.org/licenses/by/4.0/
+The data keeps that license, separate from The Order's application license.
+
+The Order bundles the complete published dist/data.json files in lossless gzip
+form, with SHA-256 and immutable Git revisions in snapshot-manifest.json.
+Runtime projection uses exact Bangumi/AniList IDs and only allowed onair sites.
+No title-based binding, scraped pages, upstream collection scripts, cover images
+or video files are bundled. Fork season_id fields only supplement compatible
+main-dataset rows. Linking a platform is not a guarantee of current rights,
+availability, region access, or endorsement by the data contributors.

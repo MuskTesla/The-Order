@@ -2,5 +2,6 @@
   <ItemGroup><ProjectReference Include="../TheOrder.Application/TheOrder.Application.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Legacy/LegacyUnicodeData.json" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Recognition/RecognitionUnicode.json" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="WatchData/*.json;WatchData/*.json.gz" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="TheOrder.Tests" /></ItemGroup>
 </Project>

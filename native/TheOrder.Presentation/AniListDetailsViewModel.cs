@@ -34,6 +34,7 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     {
         Stop(); active = true; history.Clear(); Item = item; Bridge = null; Source = null; Candidates = []; Media = null; Displayed = null; PeoplePages = [];
         IncomingOrigin = IncomingRelation = null; SelectionReason = ""; State = AniListDetailState.Idle;
+        RestoreOffset = 0; RestoreVersion++;
         return RunAsync(async token =>
         {
             if (item.Kind is not (BangumiRelationKind.Anime or BangumiRelationKind.Book)) throw new InvalidDataException("作品媒体类型不适用。");
@@ -72,10 +73,18 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         await reader.ConfirmAsync(Source!, Displayed!.Details, token); Require(token);
         State = AniListDetailState.Ready; SelectionReason = "用户核对确认 · Bangumi → AniList"; Message = Displayed.Warning ?? "";
     });
-    public void ChooseAgain()
+    public Task ChooseAgainAsync()
     {
-        if (!CanLoad || !IsBridge) return;
-        Displayed = null; Media = null; PeoplePages = []; State = AniListDetailState.Choosing; SelectionReason = ""; Message = "选择其他条目，原关联在确认之前保持。"; Notify();
+        if (!CanLoad || !IsBridge || Source is null) return Task.CompletedTask;
+        return RunAsync(async token =>
+        {
+            Displayed = null; Media = null; PeoplePages = []; Candidates = []; SelectionReason = ""; Notify();
+            // Bypass the saved binding, while retaining native-title fallback.
+            // Keep that binding until a different preview is actually confirmed.
+            var match = await reader.FindCandidatesAsync(Source, false, token); Require(token);
+            Candidates = match.Candidates; State = AniListDetailState.Choosing;
+            Message = match.Notice ?? (Candidates.Length > 0 ? "请选择其他条目，确认之前保留原关联。" : "暂未找到其他候选，可输入原文标题或 AniList 链接查找。");
+        });
     }
     public Task ExploreAsync(AniListRelation relation, double scrollOffset = 0)
     {
@@ -84,6 +93,7 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         history.Push(new(Media, Displayed, PeoplePages, State, SelectionReason, IncomingOrigin, IncomingRelation, scrollOffset));
         IncomingOrigin = Displayed.Details.Media.Title; IncomingRelation = relation.Relation;
         Media = relation.Media; Displayed = null; PeoplePages = []; SelectionReason = "AniList 原站作品关系";
+        RestoreOffset = 0; RestoreVersion++;
         return RunAsync(async token =>
         {
             var result = await reader.LoadAsync(relation.Media.Id, relation.Media.Kind, false, 1, token); Require(token);

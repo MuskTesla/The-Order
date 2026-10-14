@@ -1,0 +1,18 @@
+[
+  {
+    "Version": "0.3.231",
+    "File": "primary.json.gz",
+    "Repository": "bangumi-data/bangumi-data",
+    "Revision": "bae940f6116ae4b93c73a711827056faaf23957a",
+    "UpdatedAtUtc": "2026-10-12T04:39:14Z",
+    "Sha256": "DA3EC080C41A2015D658572A70D140556A51FA66E3DDE3E18894DCEE1974111B"
+  },
+  {
+    "Version": "Git 快照",
+    "File": "supplement.json.gz",
+    "Repository": "wan0ge/bangumi-data",
+    "Revision": "0f590969d92f1303490aecafcd37be686c6784e0",
+    "UpdatedAtUtc": "2026-10-12T05:24:34Z",
+    "Sha256": "ED67604888AB5EF32F4FFEE80D6AB2570EC3F3F4FBA90AA55291D18E6C576236"
+  }
+]

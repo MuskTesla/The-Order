@@ -68,10 +68,10 @@
      <TextBlock Text="{x:Bind Bangumi.Status, Mode=OneWay}" Style="{StaticResource BodyTextStyle}" TextWrapping="Wrap" AutomationProperties.AutomationId="BangumiAuthorizationStatus" />
      <TextBlock Text="授权后可读取番组计划允许访问的受限条目及其关联。" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
      <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8">
-      <Button Content="快捷登录番组计划" Click="OnBangumiQuickLogin" IsEnabled="{x:Bind Bangumi.CanQuickLogin, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="BangumiQuickLogin" />
+      <Button Content="{x:Bind Bangumi.ConnectionAction, Mode=OneWay}" Click="OnBangumiQuickLogin" IsEnabled="{x:Bind Bangumi.CanQuickLogin, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="BangumiQuickLogin" />
       <Button Content="手动令牌授权…" Click="OnBangumiAuthorize" IsEnabled="{x:Bind Bangumi.CanOperate, Mode=OneWay}" AutomationProperties.AutomationId="BangumiAuthorize" />
       <Button Content="验证授权" Click="OnBangumiTest" IsEnabled="{x:Bind Bangumi.CanTest, Mode=OneWay}" Visibility="{x:Bind Visible(Bangumi.HasAuthorization), Mode=OneWay}" AutomationProperties.AutomationId="BangumiTestAuthorization" />
-      <Button Content="移除本机授权" Click="OnBangumiRemove" IsEnabled="{x:Bind Bangumi.CanOperate, Mode=OneWay}" Visibility="{x:Bind Visible(Bangumi.HasAuthorization), Mode=OneWay}" AutomationProperties.AutomationId="BangumiRemoveAuthorization" />
+      <Button Content="断开连接" Click="OnBangumiRemove" IsEnabled="{x:Bind Bangumi.CanOperate, Mode=OneWay}" Visibility="{x:Bind Visible(Bangumi.HasAuthorization), Mode=OneWay}" AutomationProperties.AutomationId="BangumiRemoveAuthorization" />
       <Button Content="取消" Click="OnBangumiCancel" Visibility="{x:Bind Visible(Bangumi.Busy), Mode=OneWay}" AutomationProperties.AutomationId="BangumiCancelAuthorization" />
      </views:TagFlowPanel>
      <TextBlock Text="{x:Bind Bangumi.QuickLoginNotice, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind VisibleText(Bangumi.QuickLoginNotice), Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" AutomationProperties.AutomationId="BangumiQuickLoginNotice" />

@@ -20,6 +20,8 @@ The optional native cross-media view uses the official [AniList GraphQL API](htt
 
 Descriptions, character/staff information, relationships and images are attributed to AniList separately from Bangumi's bridge data. Artwork and third-party descriptions retain their original owners' rights and are not relicensed as The Order source. No live metadata responses, anime/manga artwork, API credentials or validation screenshots are bundled with the application. The client retains only bounded, profile-local caches and explicit identity confirmations, not a database dump.
 
+Anime viewing links use AniList's enabled `STREAMING` links, with availability and licensing determined by the linked platform and region. Public trailers use the original YouTube embedded player inside the Windows WebView2 control, with the installed application's identity supplied as the referrer. Video, audio, thumbnails and player branding remain the original platform's or rights holders' property; they are not downloaded, rebundled, edited or relicensed by The Order. Playback is subject to [YouTube's embedded-player requirements](https://developers.google.com/youtube/terms/required-minimum-functionality) and the original site's access rules. The separately installed Microsoft Edge WebView2 Runtime is not bundled with the application. Dailymotion trailers retain original-site links; its required registered Player ID has not been provisioned.
+
 ## Existing Electron distribution
 
 The Order (previously Kun Galgame Manager / 鲸屿) is an independent personal project. It is not an official product of Kun, NextMoe, PotatoVN, or the referenced game.
@@ -50,6 +52,10 @@ The application does not redistribute game binaries, README contents, or artwork
 ## Markdig 1.4.0
 
 Native Markdown parsing uses Markdig by Alexandre Mutel and contributors, under BSD-2-Clause. The unmodified license is included as `LICENSE-Markdig.txt` in native candidates. Package source revision: `56e9c238584a44a169f174c881855c049768634c`; upstream: https://github.com/xoofx/markdig. No KunGal or PotatoVN application code was copied for this UI/catalog refinement.
+
+## Bangumi broadcast-site mapping data
+
+The native app bundles the complete public JSON snapshots from [bangumi-data](https://github.com/bangumi-data/bangumi-data) (0.3.231, commit bae940f6116ae4b93c73a711827056faaf23957a) and the [wan0ge supplement](https://github.com/wan0ge/bangumi-data) (Git JSON, commit 0f590969d92f1303490aecafcd37be686c6784e0; its package declares 0.3.23100), under their stated [CC BY 4.0 data license](https://creativecommons.org/licenses/by/4.0/). Attribution belongs to the respective contributors. `NOTICE-Bangumi-Watch-Data.txt` accompanies native candidates; the lossless gzip assets retain content hashes and revision metadata. The Order creates a local exact-ID index, excludes news/resource sites, validates platform domains, and conservatively supplements explicit season IDs. No collection scripts, npm runtime, platform credentials or video files are bundled. Listing does not guarantee current playback rights or region access.
 
 ## PP-OCRv3 artwork text detector
 

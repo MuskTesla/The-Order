@@ -6,9 +6,9 @@ namespace TheOrder.Infrastructure.Online;
 
 public static class BangumiOAuthDefaults
 {
-    // Set only after the project's own HTTPS authorization service is deployed.
+    // Fixed first-party Worker; real authorization stays closed until the deployment gate is approved.
     // No borrowed application identity, embedded App Secret, or fictional endpoint.
-    public const string ServiceUrl = "";
+    public const string ServiceUrl = "https://the-order-bangumi-auth.zyx2251721565.workers.dev/";
     public static Uri? Service => Uri.TryCreate(ServiceUrl, UriKind.Absolute, out var uri) && BangumiOAuthProtocol.ValidService(uri) ? uri : null;
 }
 
@@ -100,10 +100,11 @@ public sealed class BangumiOAuthProvider(HttpClient client, IBangumiOAuthBrowser
             timeout.Token.ThrowIfCancellationRequested();
             var code = (int)response.StatusCode;
             if (pending && code is 202 or 204) return null;
-            if (code is 401 or 403) throw Error(path == BangumiOAuthProtocol.Refresh ? BangumiAuthorizationFailure.Unauthorized : BangumiAuthorizationFailure.Denied);
+            if (code == 401) throw Error(BangumiAuthorizationFailure.Unauthorized);
+            if (code == 403) throw Error(path == BangumiOAuthProtocol.Refresh ? BangumiAuthorizationFailure.Unauthorized : BangumiAuthorizationFailure.Denied);
             if (code == 410) throw Error(BangumiAuthorizationFailure.Timeout);
             if (code == 429) throw Error(BangumiAuthorizationFailure.RateLimited);
-            if (code >= 500) throw Error(BangumiAuthorizationFailure.Server);
+            if (code >= 500) throw Error(BangumiAuthorizationFailure.ServiceUnavailable);
             if (code != 200 || response.Content.Headers.ContentLength > 65536
                 || response.Content.Headers.ContentType?.MediaType != "application/json") throw Error();
             using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);

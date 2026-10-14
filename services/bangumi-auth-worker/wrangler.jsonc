@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "the-order-bangumi-auth",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "keep_vars": true,
+  "send_metrics": false,
+  "observability": { "enabled": false },
+  "vars": {
+    "BANGUMI_AUTH_ENABLED": "false"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "AUTH", "class_name": "BangumiAuthCoordinator" }]
+  },
+  "migrations": [{ "tag": "bangumi-auth-sqlite-v1", "new_sqlite_classes": ["BangumiAuthCoordinator"] }]
+}

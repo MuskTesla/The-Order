@@ -1,5 +1,33 @@
 # 开发与维护
 
+## PV 原生滚轮修复候选（2026-10-14）
+
+最新候选 `.artifacts/pv-native-scroll-20261014/publish-v3/`，同一 `codex/anilist-20261014`、HEAD `cddd6d5`加保留的dirty。短相关回归 `tests/related-final.trx` 583／0／0、9秒；原生OS输入比较记录在该证据根的 `ui-acceptance.json`。PV初始化前先拦截垂直滚轮，父host再恢复同一事件，原ScrollViewer处理原生惯性；不再以固定像素ChangeView模拟滚动。不能把初始化后直接重置Handled的早期候选当成最终修复，它已在实际输入对比中被否决。
+
+验证必须显式Test启动：该证据根的 `Start-IsolatedTest.ps1 -RunName <新的名字> -PublishName publish-v3`。原生输入验证辅助器只在忽略的产物根内，限制准确Test PID／EXE／manifest／前台／命中，保护其他窗口并保留早期失败；它不是正式程序接口，也不能用于Production。已完成播放、折叠、导航释放、返回及Test书架不变验证，尚未人工实体鼠标验收。沿用用户本机替换授权，通过已验证旧程序的原托盘退出项正常退出后，本轮已安装到 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，1.1.0不升版。659份payload与3份入口独立重复核验，安装及GUI入口校验退出0，安装期间正式资料元数据未变，未读取其内容。旧程序备份 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261014-234341-watch-links/Program`；安装回执在本证据根 `prepared-install/installation-receipt.json`、`independent-installed-verification.json`。正式Profile未作为测试输入，也未在更新后重新启动。
+
+## AniList 交互修复候选（2026-10-14）
+
+本轮仍在 `D:/Projects/The-Order-worktrees/argon-details-20261014`，HEAD `cddd6d5`加原有dirty。当前新增六项修复的候选 `.artifacts/anilist-ux-fixes-20261014/publish-v7/`，最终短回归 `tests/related-final.trx` 552／0／0。明确Test启动：该证据根 `Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v7`；fixture-ready仅表示入口就绪，须等会话恢复完成后导航。用户明确回复“已退出，完成替换”后，本轮已安装至正式入口，未访问Production内容；前一次watch-links安装属于已完成历史。
+
+Application的AniListMatching／Service负责强证据自动关联及“只读取候选”；Presentation的ChooseAgainAsync保留旧绑定直到确认。UI卡片内容 `IsHitTestVisible=false`，让外层按钮接收点击；PV `Expanding`自动加载、失败重试、原平台圆角入口、居中宽度、透明背景＋iframe CSS圆角，并以WebView2已处理的PointerWheelChanged驱动原外层滚动器。延续异步代际和注销／释放，不更改存储格式、OAuth、游戏启动或正式资料。
+
+真实API、实际WinUI和模拟分别记载；实体鼠标未测，测试回调与原生坐标命中探针不等于人工点击验收。证据 `live-experience-proof.json`、`ui-confirm-reselect.json`、`ui-steins-reselect.json`、`watch-button-hit-proof.json`、`pv-wheel-proof.json`、`pv-final-evidence.json`与窗口PNG；全部Test实例正常关闭，库字节保持。维护规则和具体边界以原BRIEF本轮段落为准。
+
+当前安装是该六项修复候选：`C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本1.1.0，安装与GUI入口校验均退出0；659份payload和3份入口独立重复核验通过，Production文件元数据未变，未正常启动正式Profile。证据在 `.artifacts/anilist-ux-fixes-20261014/prepared-install/installation-receipt.json` 与 `independent-installed-verification.json`；旧程序回退副本 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261014-222357-watch-links/Program`。未提交、推送或公开发布。
+
+## 当前 Watch Links／PV 候选（2026-10-14）
+
+维护入口 `D:/Projects/The-Order-worktrees/argon-details-20261014`、`codex/anilist-20261014`、HEAD `cddd6d5`加保留的dirty。最新验收候选 `.artifacts/anilist-watch-pv-20261014/publish-watch-ready/`；短相关回归534／0／0、8秒，TRX `.artifacts/bangumi-watch-data-20261014/tests/related-ready.trx`。真实API、30部固定样本、更新、UI／PV与安装证据在该证据根；不要默认以Production测试，复用受限Test启动和控制入口。用户最后允许本机替换，结果须以实际安装回执确认，不授权GitHub推送／发布或真实游戏。
+
+`native/TheOrder.Infrastructure/WatchData/`保留完整主库和补充Git JSON的无损gzip、SHA-256及修订manifest，NOTICE随publish复制。主库npm0.3.231与Git哈希一致；补充Git与npm0.3.23100不同，按Git标注。不要修改测试样本数据、按标题自动绑定、将md转ss或复制采集脚本。`BangumiWatchDataIndex`按身份／类型／季度查询，`BangumiWatchDataService`每七天按需更新，固定公共GitHub版本与不可变修订JSON，复用无凭据HTTP池；失败／取消保留旧快照。`native-bangumi-watch-data-v1.json`是Profile绑定独立公开缓存，不能覆盖未知版本或改书架／授权格式。
+
+整个观看区默认折叠，恢复其他放送平台卡片，固定Bilibili优先；旧排序偏好文件保留，按用户要求不再读写／显示控件。没有明确season_id时不制造入口、不加搜索；作品页不伪装为播放器，保留原始来源证据并在提示中说明。PV独立WebView2按需创建，InPrivate／固定origin与referrer／无自动播放，导航和折叠释放，不下载完整视频。无需新账号、服务器、平台密钥或Node安装。
+
+最终窗口验证保留9个平台卡片、下标只有地区；宽浅色／窄深色均实际截图。`WatchLinksView`组合标准Expander，不继承Expander：早期collapsed候选触发WinUI样式TargetType异常，异常和未安装的失败包保留。新动画／重开条目递增滚动恢复代际并置零，返回仍恢复来源页位置；加强现有导航回归，最终实际CLANNAD→After Story从页首打开→返回355.5→原游戏通过。完整UI门禁见 `ui-acceptance.json`，安装前须通过该门禁。
+
+本机已按明确授权替换：`C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，1.1.0不升版。证据 `.artifacts/bangumi-watch-data-20261014/local-install-ready/`：659份payload加3份入口哈希一致，安装／GUI校验退出0，Production仅核对文件元数据且完全未变，未读取内容或启动Production。旧程序回退副本 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261014-202603-watch-links/Program`。维护源码与实际安装候选保持对应，未经新授权不得再次替换或公开发布。下文早期候选“正式程序不变／未安装”是本次安装之前的历史边界。
+
 ## AniList 当前隔离开发入口（2026-10-14）
 
 唯一当前基线仍是 `D:/Projects/The-Order-worktrees/argon-details-20261014` 的完整未发布工作树，本轮分支 `codex/anilist-20261014`，保留原未提交 OAuth／Worker 工作。正式程序不变。最终候选 `.artifacts/anilist-20261014/publish-anilist-v4`；使用该根 `Start-IsolatedTest.ps1 -PublishName publish-anilist-v4 -RunName <新的名字>` 启动独立 Test，`Control.ps1 -Control <本次控制目录> -Action exit` 正常退出。该辅助入口只在忽略的产物目录中，固定 Test 及新控制输出，不是产品第二套导航或授权系统。
@@ -8,6 +36,37 @@
 
 相关短回归用固定 SDK10.0.401运行 `test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:Platform=x64 -p:UseSharedCompilation=true --filter "FullyQualifiedName~AniList|FullyQualifiedName~Bangumi|FullyQualifiedName~MusicBrainz|FullyQualifiedName~RelatedWorks|FullyQualifiedName~RelatedGameIdentity|FullyQualifiedName~KunGalRelated|FullyQualifiedName~ShellNavigation|FullyQualifiedName~InstallationNavigation|FullyQualifiedName~NextMoeOAuth"`。最终468／0／0、WinUI publish通过；真实API、漫画／小说格式探针和窗口截图独立于模拟测试记录，不以测试模拟代替实际连接。证据根 `.artifacts/anilist-20261014/`，功能、授权边界、条款判断、缓存时效及未覆盖项见原BRIEF顶部。
 
+## Bangumi Workers 当前开发与部署门禁（2026-10-14）
+
+用户明确批准本机替换后，最终 `publish-recovery-message-fixed` 已安装到原正式目录，版本1.1.0保持。复用 `package-native-release.ps1`／`package-native-installer.ps1`，不重复产品构建或长测试；658份payload核验、GUI入口校验及普通正式窗口启动通过。证据 `.artifacts/bangumi-worker-live-20261014/local-install/`，回退副本在仓库外 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261014-135146`。安装期间1957份正式资料及数量不变；普通启动后书架／备份／manifest不变，正常运行会自行更新运行资料。没有Computer Use、启动游戏、密钥解密或Test凭据迁移；如原正式Profile未连接OAuth，需要在设置首次连接。下面未安装及禁止正式资料的描述保留为安装授权之前的开发验证边界；此次授权不允许后续自动发布或跨Profile复制令牌。
+
+后续“进行下一阶段”及官方授权已完成：现有Worker当前enabled/ready=true，版本 `04018f23-595e-4a49-8754-88a896f117e5`，运行时变量通过 `wrangler deploy --keep-vars --var BANGUMI_AUTH_ENABLED:true` 开启，源配置仍保留首次安全默认false。后续部署如需继续开启，应在已授权范围内显式带true，不能误把源默认false当成当前远程状态。Worker密钥不读取／修改，未切换计费方案。当前真人授权只在 `.artifacts/bangumi-worker-live-20261014/test-profile`，不是正式Profile；该目录不得打包、提交或复制到Production。
+
+真人联调用 `.artifacts/bangumi-worker-live-20261014/runner-source*` 的小型本地诊断入口，直接引用已构建产品程序集，要求 `THE_ORDER_BANGUMI_LIVE_ALLOWED=1`、固定Test路径和限定操作；请求只允许原Worker及api.bgm.tv，不打印令牌／请求体／授权URL。不作为第二套登录系统或产品入口。初次login使用原Windows浏览器并由用户同意；后续verify、subject、refresh、cancel、disconnect-restore、failure-recovery不需要额外浏览器操作。恢复断开测试仅作用于同一个锁定Test Profile。v4引用最终 `publish-recovery-message-fixed`；前版及失败／整改前提示记录保持。离线与503通过本地Handler模拟，恢复阶段使用真实上游刷新，不关闭生产Worker。
+
+最终344项相关客户端测试通过；新增过期OAuth遇到临时失败仍自动续期、手动无效令牌仍要求授权等文案回归。真人刷新通过，没有修改期限或等待七天自然到期。实际WinUI重启／深浅主题／窄窗检查及Test库哈希在本轮回执中，最终候选 `publish-recovery-message-fixed` 未安装。不要为复验直接双击裸EXE；需显式Test参数并等待正常启动恢复后导航。数据保护和未验范围见原BRIEF顶部；下面部署关闭及真人待确认描述为早期阶段记录。
+
+继续Argon当前未发布源码，保留既有dirty；本轮源码未提交、未推送或安装。TypeScript服务位于 `services/bangumi-auth-worker/`，旧ASP.NET Broker仅保留为参考／旧测试。ClientSecret始终由既有Cloudflare Secret提供，客户端只有固定第一方HTTPS根地址。执行本地验证前不需要Cloudflare登录，不读取Secret或Production Profile；首次生产代码部署和真人授权分别以用户本轮确认作为门禁。用户已经确认旧Secret撤销并更新，值没有被代理读取。
+
+从服务目录按锁安装 `npm ci --ignore-scripts`，运行 `npm run typecheck`、`npm run check:deployment`、`npm test`。`npm run build` 是Wrangler **dry-run**，输出到本轮证据根，不上传或创建远程资源。独立Worker锁住Wrangler4.150.0／Miniflare4.20260730.0，兼容日期固定2026-08-01，避免本机workerd不支持当前日日期；不升级根项目依赖。本地测试通过异步outboundService拦截每一个出站请求，没有真实网络回退；mock与fixture入口不在生产bundle中。
+
+C#相关短回归：固定.NET10.0.401 `test native/TheOrder.Tests/TheOrder.Tests.csproj -c Release --no-restore -p:Platform=x64 -p:UseSharedCompilation=true --filter "FullyQualifiedName~Bangumi|FullyQualifiedName~MusicBrainz|FullyQualifiedName~NextMoeOAuth"`，输出TRX到 `.artifacts/bangumi-worker-20261014/tests`。独立端到端在Worker目录设置 `THE_ORDER_TEST_DOTNET` 为现有SDKexe，运行 `node test/run-client-bridge.mjs`；它只监听随机127.0.0.1端口，临时设置 `THE_ORDER_WORKER_FIXTURE_URL` 给C# test进程，运行 `WorkerBrokerIntegrationTests` 后关闭。该Fact在未启动显式本地fixture的普通测试中标记跳过，不能把默认跳过算作闭环通过；本轮专门执行结果1／0／0。测试创建并正常关闭Test Profile，DPAPI只接触合成令牌，不改变真实资料。
+
+唯一生产目标名称 `the-order-bangumi-auth`，无 `--env production` 后缀、无第二Worker。Wrangler `keep_vars=true`保留控制台Client ID，Secret不在vars、源码或包装中，也不执行secret写入／删除。新增绑定为 `AUTH`／`BangumiAuthCoordinator`，migration `bangumi-auth-sqlite-v1` 使用SQLite，免费计划支持、无需购买或创建D1/KV。正式首次部署前还需确认该Worker没有同名冲突绑定、账号为Workers Free，及Wrangler身份可访问原Worker。
+
+用户已明确批准首次部署、保持授权关闭。当前已部署版本 `026ea642-433e-4474-bdbe-d029ea8be5c4`，远程原Worker和AUTH绑定成功；公网health为200、configuration_ready=true、enabled=false、ready=false，关闭门禁返回503。没有更改计费方案、读取Secret或触碰正式Profile。部署CLI使用用户完成的Cloudflare官方授权，仅申请account/user读取及Worker脚本写入权限；Windows保险库辅助包 `@napi-rs/keyring@1.3.0` 是CLI环境组件，不属于产品依赖。部署记录在 `.artifacts/bangumi-worker-20261014/cloudflare-deployment-receipt.json`。后续开启授权或真人联调需要另行许可；本机正式版没有替换。
+
+部署前可运行 `scripts/deploy-approved.ps1 -ValidateOnly` 核对已验收源码哈希与配置，不连接Cloudflare或执行部署。首次授权的代码部署可使用 `scripts/deploy-approved.ps1 -UserApprovedProductionDeployment -UserConfirmedSecretRotation`；两个参数只记录已从用户取得的许可，不能代替许可。Wrangler若提示未登录，由用户执行 `npx wrangler login` 并在浏览器同意。部署固定保持 `BANGUMI_AUTH_ENABLED=false`，`/health`应返回 `enabled=false`及 `configuration_ready=true`，这样可检查控制台配置是否被保留而不读取值。不允许为排错导出Secret。
+
+真人联调获许可后，才将控制台普通变量 `BANGUMI_AUTH_ENABLED`设为字符串 `true`；该步骤不是更改ClientID/Secret。`/health.ready`应为true，再启动独立Test候选，点击连接并由用户完成Bangumi官方浏览器授权；检查重启、续期与确切受限subject ID，不默认打开正式资料。以后再次执行当前Wrangler配置会把此开关恢复false，需要重新按部署门禁启用；暂停时设false，匿名客户端元数据不受影响。不要直接把本轮候选安装到正式版或公开发布。
+
+最终证据及边界见原 `docs/ai/BRIEF.md`顶部。一次性消费与密钥轮换不能消除所有崩溃窗口：已发送但丢失的领取结果、已轮换但未落盘的刷新结果需要重新授权。保留旧本地文件并明示错误，不重试授权码或从云端恢复私人书架。本轮实拍只有未连接设置状态，真人登录状态尚未通过。
+
+## Argon 候选本机替换完成（2026-10-14）
+
+用户“可以替换”授权后，原已验收 `gpt-publish-accepted` 经既有 `package-native-release.ps1`／`package-native-installer.ps1` 包装，安装到原正式目录，版本和安装身份不变。证据根 `.artifacts/argon-pages-20261014/local-install/`；Setup退出0、658份payload匹配、GUI校验通过，安装前后1969份Production文件及数量一致。仓库外回退副本：`C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261014-102127`，包括旧程序与完整正式资料，私有清单不进入源码。
+
+原快捷方式启动普通窗口成功，指定窗口实拍显示36项书架；启动后的核心资料哈希检查见 `post-start-data-summary.json`。没有Computer Use、真实游戏启动或长测试。包装遗漏的中文说明从原权威源码补回，首个失败输出保留，安装器使用新 `installer-v2/`。没有业务代码重建／更改、版本提升、分支合并、GitHub推送或公开发布；下文未部署表述是接受前实验记录，本节为后续部署状态。完整证据及原Gate限制见 `docs/ai/BRIEF.md` 顶部。
 
 ## Argon 主页面扩展候选（2026-10-14）
 

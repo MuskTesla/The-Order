@@ -6,15 +6,16 @@ using System.Text.Json.Serialization;
 
 namespace TheOrder.Application;
 
-public enum BangumiAuthorizationFailure { InvalidToken, Unauthorized, Offline, Timeout, RateLimited, Server, InvalidResponse, Storage, NotConfigured, Denied }
+public enum BangumiAuthorizationFailure { InvalidToken, Unauthorized, Offline, Timeout, RateLimited, Server, InvalidResponse, Storage, NotConfigured, Denied, ServiceUnavailable }
 public sealed class BangumiAuthorizationException(BangumiAuthorizationFailure failure) : Exception(failure switch
 {
     BangumiAuthorizationFailure.InvalidToken => "请输入有效的番组计划访问令牌。",
-    BangumiAuthorizationFailure.Unauthorized => "番组计划授权无效或已过期，请重新获取令牌。",
+    BangumiAuthorizationFailure.Unauthorized => "番组计划授权无效或已过期，请重新连接或更新手动令牌。",
     BangumiAuthorizationFailure.Offline => "无法连接番组计划，请检查网络后重试。",
     BangumiAuthorizationFailure.Timeout => "番组计划验证超时，请重试。",
     BangumiAuthorizationFailure.RateLimited => "番组计划请求过于频繁，请稍后重试。",
     BangumiAuthorizationFailure.Server => "番组计划暂时不可用，请稍后重试。",
+    BangumiAuthorizationFailure.ServiceUnavailable => "Bangumi 授权服务暂时不可用，请稍后重试；匿名浏览仍可使用。",
     BangumiAuthorizationFailure.Storage => "本机授权无法读取或保存，原资料已保留。",
     BangumiAuthorizationFailure.NotConfigured => "快捷登录尚未开通，请先使用手动令牌授权。",
     BangumiAuthorizationFailure.Denied => "未同意番组计划授权，原登录状态已保留。",
@@ -124,10 +125,12 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
     public BangumiAccount? Account { get; private set; }
     private readonly TimeProvider time = clock ?? TimeProvider.System;
     private BangumiCredential? saved;
+    public bool ReauthorizationRequired { get; private set; }
     public bool QuickLoginAvailable => oauth?.Configured == true;
     public bool UsesQuickLogin => saved?.IsOAuth == true;
-    public bool NeedsRefresh => saved is { IsOAuth: true, Expires: { } expires } && expires <= time.GetUtcNow().AddMinutes(5);
-    public bool RequiresLogin => saved is { IsOAuth: true, Expires: { } expires } && expires <= time.GetUtcNow();
+    public bool NeedsRefresh => !ReauthorizationRequired && saved is { IsOAuth: true, Expires: { } expires }
+        && (expires <= time.GetUtcNow().AddMinutes(5) || access.Rejected);
+    public bool RequiresLogin => ReauthorizationRequired || saved is { IsOAuth: true, Expires: { } expires } && expires <= time.GetUtcNow();
     public static string NormalizeToken(string input)
     {
         var value = input?.Trim();
@@ -148,7 +151,16 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
             if (scope != access.Capture().Scope) Account = null;
             if (RequiresLogin) access.Reject(access.Capture());
             if (NeedsRefresh) await RefreshCoreAsync(cancellation).ConfigureAwait(false);
+            else if (saved is { IsOAuth: true } credential && !ReauthorizationRequired)
+            {
+                var account = await credential.WithSecrets((token, _) => accounts.ValidateAsync(token, cancellation)).ConfigureAwait(false);
+                cancellation.ThrowIfCancellationRequested();
+                if (account.Id != credential.AccountId) { ReauthorizationRequired = true; access.Reject(access.Capture()); throw new BangumiAuthorizationException(BangumiAuthorizationFailure.InvalidResponse); }
+                Account = account;
+            }
         }
+        catch (BangumiAuthorizationException error) when (error.Failure == BangumiAuthorizationFailure.Unauthorized)
+        { ReauthorizationRequired = true; access.Reject(access.Capture()); throw; }
         finally { serial.Release(); }
     }
     public async Task<BangumiAccount> SaveAsync(string input, CancellationToken cancellation)
@@ -162,7 +174,7 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
             var credential = BangumiCredential.Manual(token);
             await store.SaveCredentialAsync(credential, cancellation).ConfigureAwait(false);
             // A completed atomic replacement must also become the in-memory value.
-            saved = credential; HasSavedToken = true; Account = account; access.Replace(token); return account;
+            saved = credential; HasSavedToken = true; Account = account; ReauthorizationRequired = false; access.Replace(token); return account;
         }
         finally { serial.Release(); }
     }
@@ -176,16 +188,18 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
                 ?? throw new BangumiAuthorizationException(BangumiAuthorizationFailure.InvalidToken);
             var token = credential.WithSecrets((value, _) => value);
             var account = await accounts.ValidateAsync(NormalizeToken(token), cancellation).ConfigureAwait(false);
-            cancellation.ThrowIfCancellationRequested(); saved = credential; Account = account; HasSavedToken = true; access.Replace(token, credential.Expires, time); return account;
+            if (credential.IsOAuth && account.Id != credential.AccountId)
+            { ReauthorizationRequired = true; access.Reject(access.Capture()); throw new BangumiAuthorizationException(BangumiAuthorizationFailure.InvalidResponse); }
+            cancellation.ThrowIfCancellationRequested(); saved = credential; Account = account; HasSavedToken = true; ReauthorizationRequired = false; access.Replace(token, credential.Expires, time); return account;
         }
         catch (BangumiAuthorizationException error) when (error.Failure == BangumiAuthorizationFailure.Unauthorized)
-        { access.Reject(access.Capture()); throw; }
+        { ReauthorizationRequired = true; access.Reject(access.Capture()); throw; }
         finally { serial.Release(); }
     }
     public async Task ClearAsync(CancellationToken cancellation)
     {
         await serial.WaitAsync(cancellation).ConfigureAwait(false);
-        try { await store.ClearAsync(cancellation).ConfigureAwait(false); saved = null; HasSavedToken = false; Account = null; access.Replace(null); }
+        try { await store.ClearAsync(cancellation).ConfigureAwait(false); saved = null; HasSavedToken = false; Account = null; ReauthorizationRequired = false; access.Replace(null); }
         finally { serial.Release(); }
     }
     public async Task SignInAsync(CancellationToken cancellation)
@@ -213,6 +227,7 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
         }
         catch (BangumiAuthorizationException error)
         {
+            if (error.Failure == BangumiAuthorizationFailure.Unauthorized) ReauthorizationRequired = true;
             if (RequiresLogin || error.Failure == BangumiAuthorizationFailure.Unauthorized) access.Reject(access.Capture());
             throw;
         }
@@ -227,6 +242,6 @@ public sealed class BangumiAuthorization(IBangumiCredentialStore store, IBangumi
         if (account.Id != value.AccountId) throw new BangumiAuthorizationException(BangumiAuthorizationFailure.InvalidResponse);
         cancellation.ThrowIfCancellationRequested();
         await store.SaveCredentialAsync(value, cancellation).ConfigureAwait(false);
-        saved = value; Account = account; HasSavedToken = true; access.Replace(value.WithSecrets((token, _) => token), value.Expires, time);
+        saved = value; Account = account; HasSavedToken = true; ReauthorizationRequired = false; access.Replace(value.WithSecrets((token, _) => token), value.Expires, time);
     }
 }

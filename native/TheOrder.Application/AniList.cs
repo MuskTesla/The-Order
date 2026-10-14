@@ -54,7 +54,13 @@ public sealed record AniListStaff(AniListPerson Person, string Role);
 public sealed record AniListRelation(AniListMedia Media, string Relation);
 public sealed record AniListDetails(AniListMedia Media, string Description, string[] Studios, string[] Genres,
     string[] Tags, AniListCharacter[] Characters, AniListStaff[] Staff, AniListRelation[] Relations,
-    int PeoplePage, bool MoreCharacters, bool MoreStaff, DateTimeOffset FetchedAtUtc);
+    int PeoplePage, bool MoreCharacters, bool MoreStaff, DateTimeOffset FetchedAtUtc)
+{
+    // Optional additions keep existing profile caches readable.
+    public AniListWatchLink[] WatchLinks { get; init; } = [];
+    public AniListTrailer? Trailer { get; init; }
+    public bool HasPlaybackMetadata { get; init; }
+}
 public sealed record AniListBinding(string SourceFingerprint, int MediaId, AniListMediaKind Kind, string Evidence);
 public sealed record AniListCacheValue(string Key, DateTimeOffset CachedAtUtc, AniListMedia[]? Search = null,
     AniListDetails? Details = null, AniListBinding? Binding = null, bool Rejected = false);
@@ -77,6 +83,7 @@ public interface IAniListCache
 public interface IAniListReader
 {
     Task<AniListMatch> MatchAsync(AniListSource source, string? query, bool refresh, CancellationToken cancellation);
+    Task<AniListMatch> FindCandidatesAsync(AniListSource source, bool refresh, CancellationToken cancellation);
     Task<AniListResult> LoadAsync(int id, AniListMediaKind kind, bool refresh, int peoplePage, CancellationToken cancellation);
     Task ConfirmAsync(AniListSource source, AniListDetails details, CancellationToken cancellation);
 }
@@ -84,6 +91,30 @@ public sealed record AniListAssessment(bool Conflict, string[] Evidence);
 public static class AniListMatching
 {
     private static string Normalize(string value) => string.Concat(value.Normalize(NormalizationForm.FormKC).Where(char.IsLetterOrDigit)).ToUpperInvariant();
+    // A title alone is never identity evidence. Automatic association requires
+    // one compatible identity with exact multilingual title, format and full
+    // premiere date (allowing the small timezone difference between providers).
+    public static AniListMedia? AutomaticCandidate(AniListSource source, IEnumerable<AniListMedia> candidates)
+    {
+        var winners = candidates.Where(x => StrongEvidence(source, x)).DistinctBy(x => x.Id).Take(2).ToArray();
+        return winners.Length == 1 ? winners[0] : null;
+    }
+    public static bool StrongEvidence(AniListSource source, AniListMedia media)
+    {
+        if (!source.IsValid || !AniListValidation.Media(media) || Assess(source, media).Conflict
+            || source.ExpectedFormat is not { } format || format != media.Format
+            || source.Date is not { Length: 10 } date || media.StartDate is not { Length: 10 } start
+            || !DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+            || !DateOnly.TryParseExact(start, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var other)
+            || Math.Abs(day.DayNumber - other.DayNumber) > 3) return false;
+        // TV counts can differ by one extra episode. This relaxation requires
+        // the exact same premiere day; broader count/date conflicts abstain.
+        if (source.Episodes is { } eps && media.Episodes is { } count && eps != count
+            && !(format == "TV" && day == other && Math.Abs(eps - count) == 1)) return false;
+        var titles = new[] { media.Title, media.NativeTitle, media.EnglishTitle }.Concat(media.Synonyms)
+            .Where(x => !string.IsNullOrWhiteSpace(x)).Select(Normalize).ToHashSet(StringComparer.Ordinal);
+        return new[] { source.Title, source.OriginalTitle }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(Normalize).Any(titles.Contains);
+    }
     public static AniListAssessment Assess(AniListSource source, AniListMedia media)
     {
         var evidence = new List<string>(); bool conflict = source.Kind != media.Kind;
@@ -132,6 +163,8 @@ public static class AniListValidation
         && d.Characters is { Length: <= 24 } && d.Characters.All(x => x is not null && Person(x.Person) && Text(x.Role, 100) && x.VoiceActors is { Length: <= 8 } && x.VoiceActors.All(Person))
         && d.Staff is { Length: <= 32 } && d.Staff.All(x => x is not null && Person(x.Person) && Text(x.Role, 300))
         && d.Relations is { Length: <= 100 } && d.Relations.All(x => x is not null && Media(x.Media) && Text(x.Relation, 100, false))
+        && d.WatchLinks is { Length: <= 24 } && d.WatchLinks.All(AniListPlayback.ValidWatchLink)
+        && (d.Trailer is null || AniListPlayback.ValidTrailer(d.Trailer))
         && d.PeoplePage is > 0 and <= 10 && d.FetchedAtUtc != default;
     public static bool Cache(AniListCacheValue? v) => v is not null && Text(v.Key, 100, false) && v.CachedAtUtc != default
         && (v.Rejected ? v.Search is null && v.Details is null && v.Binding is null

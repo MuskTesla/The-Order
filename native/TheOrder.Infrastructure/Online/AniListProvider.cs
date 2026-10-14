@@ -15,7 +15,7 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
     public const string UserAgent = "TheOrder/1.1.0 (https://github.com/Ph-Rank/The-Order)";
     private const string Fields = "id idMal type title { romaji english native } synonyms format status coverImage { large } startDate { year month day } endDate { year month day } episodes chapters volumes";
     private const string People = "characters(page:$page,perPage:24,sort:[ROLE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } voiceActors(language:JAPANESE) { id name { full native } image { large } } } } staff(page:$page,perPage:32,sort:[RELEVANCE,ID]) { pageInfo { hasNextPage } edges { role node { id name { full native } image { large } } } }";
-    public static string DetailQuery => "query($id:Int!,$type:MediaType!,$page:Int!){ Media(id:$id,type:$type){" + Fields + " description(asHtml:false) genres tags { name isGeneralSpoiler isMediaSpoiler } studios(isMain:true){ nodes { name } } " + People + " relations { edges { relationType node { " + Fields + " } } } }}";
+    public static string DetailQuery => "query($id:Int!,$type:MediaType!,$page:Int!){ Media(id:$id,type:$type){" + Fields + " description(asHtml:false) genres tags { name isGeneralSpoiler isMediaSpoiler } studios(isMain:true){ nodes { name } } externalLinks { id url site type language notes isDisabled } trailer { id site } " + People + " relations { edges { relationType node { " + Fields + " } } } }}";
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public async Task<AniListMedia[]> SearchAsync(AniListSource source, string? query, CancellationToken cancellation)
     {
@@ -115,10 +115,22 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
             Rows(characters, "edges").Take(24).Select(x => new AniListCharacter(Person(Node(x, "node")), Str(x, "role"), Rows(x, "voiceActors").Take(8).Select(Person).ToArray())).ToArray(),
             Rows(staff, "edges").Take(32).Select(x => new AniListStaff(Person(Node(x, "node")), Str(x, "role"))).ToArray(),
             Rows(Node(row, "relations"), "edges").Take(100).Where(x => Str(Node(x, "node"), "type") is "ANIME" or "MANGA").Select(x => new AniListRelation(MapMedia(Node(x, "node")), Str(x, "relationType"))).ToArray(),
-            page, Flag(Node(characters, "pageInfo"), "hasNextPage"), Flag(Node(staff, "pageInfo"), "hasNextPage"), fetched);
+            page, Flag(Node(characters, "pageInfo"), "hasNextPage"), Flag(Node(staff, "pageInfo"), "hasNextPage"), fetched)
+        {
+            WatchLinks = Rows(row, "externalLinks").Where(x => Str(x, "type") == "STREAMING" && !Flag(x, "isDisabled"))
+                .Select(x => new AniListWatchLink(Number(x, "id") ?? 0, Str(x, "site"), Str(x, "url"), Optional(x, "language"), Optional(x, "notes")))
+                .Where(AniListPlayback.ValidWatchLink).DistinctBy(x => x.Url).Take(24).ToArray(),
+            Trailer = MapTrailer(Node(row, "trailer")), HasPlaybackMetadata = true
+        };
         if (!AniListValidation.Details(result)) throw Invalid(); return result;
     }
     private static AniListPerson Person(JsonElement row) => new(Number(row, "id") ?? 0, Str(Node(row, "name"), "full"), Str(Node(row, "name"), "native"), Image(Node(row, "image"), "large"));
+    private static string? Optional(JsonElement row, string key) => Str(row, key) is { Length: > 0 } value ? value : null;
+    private static AniListTrailer? MapTrailer(JsonElement row)
+    {
+        var trailer = new AniListTrailer(Str(row, "site").ToLowerInvariant(), Str(row, "id"));
+        return AniListPlayback.ValidTrailer(trailer) ? trailer : null;
+    }
     private static string Plain(string html) => Regex.Replace(WebUtility.HtmlDecode(Regex.Replace(Regex.Replace(html, @"<br\s*/?>|</p>", "\n", RegexOptions.IgnoreCase), "<[^>]*>", "")).Replace("\r\n", "\n"), @"\n[\t ]*\n(?:[\t ]*\n)+", "\n\n").Trim();
     private static string? Image(JsonElement row, string key) => Str(row, key) is { Length: > 0 } value && AniListValidation.Image(value) ? value : null;
     private static string? Date(JsonElement node)
