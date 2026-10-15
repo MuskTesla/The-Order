@@ -22,7 +22,24 @@ public sealed class InstallationDraft : ObservableState
     public bool Administrator { get; set; }
     public bool HighDpi { get; set; }
     public bool UseSteam { get; set; }
-    public bool MuteInBackground { get; set; }
+    private int localeMode, magpieMode, muteMode;
+    public int LocaleMode { get => localeMode; set { localeMode = value; NotifyAuxiliaries(); } }
+    public int MagpieMode { get => magpieMode; set { magpieMode = value; NotifyAuxiliaries(); } }
+    public int MuteMode { get => muteMode; set { muteMode = value; NotifyAuxiliaries(); } }
+    public bool MuteInBackground { get => muteMode == (int)LaunchOverride.Enabled; set => MuteMode = (int)(value ? LaunchOverride.Enabled : LaunchOverride.Disabled); }
+    public bool UsesGlobal => localeMode == 0 && magpieMode == 0 && muteMode == 0;
+    public string HelpersSummary => UsesGlobal ? "使用全局启动设置" : "已为此游戏文件夹自定义辅助工具";
+    public string LegacyToolsNotice => string.Join("\n", new[] {
+        LocaleEmulator.Length == 0 ? null : "保留旧版 Locale Emulator 路径：" + LocaleEmulator,
+        ScalingTool.Length == 0 ? null : "保留旧版 Magpie 路径：" + ScalingTool
+    }.Where(x => x is not null));
+    public void ResetAuxiliaries()
+    {
+        LocaleEmulator = ScalingTool = ""; localeMode = magpieMode = muteMode = 0;
+        NotifyAuxiliaries(); Changed(nameof(LegacyToolsNotice));
+    }
+    private void NotifyAuxiliaries()
+    { foreach (var name in new[] { nameof(LocaleMode), nameof(MagpieMode), nameof(MuteMode), nameof(UsesGlobal), nameof(HelpersSummary) }) Changed(name); }
     public string Id { get; }
     public string Folder { get => folder; set { folder = value; Changed(); } }
     public string Executable { get => executable; set { executable = value; Changed(); } }
@@ -38,12 +55,15 @@ public sealed class InstallationDraft : ObservableState
         var compatibility = row?.Installation.Compatibility;
         LocaleEmulator = compatibility?.LocaleEmulator ?? ""; ScalingTool = compatibility?.ScalingTool ?? "";
         Administrator = compatibility?.Administrator ?? false; HighDpi = compatibility?.HighDpi ?? false; UseSteam = compatibility?.UseSteam ?? false;
-        MuteInBackground = compatibility?.MuteInBackground ?? false;
+        var auxiliaries = row is null ? new LaunchAuxiliaries() : compatibility?.Auxiliaries ?? LaunchPolicy.LegacyOverrides(compatibility);
+        localeMode = (int)auxiliaries.LocaleEmulator; magpieMode = (int)auxiliaries.Magpie; muteMode = (int)auxiliaries.BackgroundMute;
         foreach (var arg in row?.Installation.Arguments ?? []) Arguments.Add(new(arg));
     }
     public InstallationInput Input => new(Id, Folder, Executable.Length == 0 ? null : Executable, WorkingDirectory.Length == 0 ? null : WorkingDirectory, [.. Arguments.Select(a => a.Text)], Preferred)
-    { SaveFolder = Empty(SaveFolder), SteamAppId = SteamAppId, Compatibility = Administrator || HighDpi || UseSteam || MuteInBackground || LocaleEmulator.Length > 0 || ScalingTool.Length > 0
-        ? new(Administrator, HighDpi, Empty(LocaleEmulator), Empty(ScalingTool), UseSteam, MuteInBackground) : null };
+    { SaveFolder = Empty(SaveFolder), SteamAppId = SteamAppId, Compatibility = new(Administrator, HighDpi,
+        localeMode == (int)LaunchOverride.Enabled ? Empty(LocaleEmulator) : null,
+        magpieMode == (int)LaunchOverride.Enabled ? Empty(ScalingTool) : null, UseSteam, MuteInBackground)
+        { Auxiliaries = new((LaunchOverride)localeMode, (LaunchOverride)magpieMode, (LaunchOverride)muteMode) } };
     private static string? Empty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 public sealed class FilesViewModel(IOfflineFilesClient client, WorkspaceViewModel workspace) : ObservableState, IAsyncDisposable

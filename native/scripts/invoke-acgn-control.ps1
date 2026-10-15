@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ControlDirectory,
     [Parameter(Mandatory)][string]$ProfileDirectory,
-    [Parameter(Mandatory)][ValidateSet('inspect','focus','invoke','expand','collapse')][string]$Mode,
+    [Parameter(Mandatory)][ValidateSet('inspect','focus','invoke','expand','collapse','toggle','select0','select1','select2')][string]$Mode,
     [Parameter(Mandatory)][ValidateLength(1,200)][string]$Id
 )
 $ErrorActionPreference='Stop'

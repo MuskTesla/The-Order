@@ -18,10 +18,14 @@ public sealed partial class MainWindow
     // not view-model commands; no launch, auth, files or external URL invocation.
     private async Task RunAcgnControlFixtureAsync(JsonElement request)
     {
-        if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || ViewModel.Page != WorkspacePage.Details || fixtureDirectory is null)
-            throw new InvalidOperationException("Isolated Test details required.");
+        if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || visualFixtureTimer is null || fixtureDirectory is null)
+            throw new InvalidOperationException("Isolated Test window required.");
         var id = request.GetProperty("id").GetString() ?? "";
         var mode = request.GetProperty("value").GetString() ?? "";
+        bool launchSettings = id is "GlobalLocaleEnabled" or "GlobalMagpieEnabled" or "GlobalMuteEnabled" or "SaveGlobalLaunch" or "CancelGlobalLaunch" or "GlobalLocaleToolSection" or "GlobalMagpieToolSection";
+        bool gameSettings = id is "GameLaunchOverrides" or "GameLocaleMode" or "GameMagpieMode" or "GameMuteMode" or "ResetGameLaunchOverrides" or "SaveInstallation" or "CancelInstallation";
+        if (ViewModel.Page != (launchSettings ? WorkspacePage.Settings : gameSettings ? WorkspacePage.Installations : WorkspacePage.Details))
+            throw new InvalidOperationException("Control does not belong to the active Test page.");
         var allowed = id is "GoBack" or "GameRelatedJump" or "AniListConfirm" or "AniListRetry" or "AniListCharacters" or "AniListStaff" or "AniListRelations"
             or "AniListJumpEpisodes" or "AniListJumpCharacters" or "AniListJumpStaff" or "AniListJumpRelations" or "AniListJumpPV" or "AniListJumpWatch"
             or "ContentLanguageOriginals" or "BangumiEpisodesExpander" or "WatchLinks" or "AnimePV"
@@ -31,7 +35,9 @@ public sealed partial class MainWindow
         allowed |= new[] { "BangumiRelatedSubject", "NextMoeRelatedWork", "AniListCandidate-", "AniListRelation-", "MusicEdition-", "MusicDisc-",
             "MusicTrackDetails-", "MusicTrackRecording-", "MusicTrackWork-", "BookOpen-", "BookPreview-", "BookSaved-", "BangumiEpisodeDescription-", "WatchPlatform-", "MusicArtist-" }
             .Any(prefix => id.StartsWith(prefix, StringComparison.Ordinal));
-        if (!allowed || id.Length > 200 || mode is not ("inspect" or "focus" or "invoke" or "expand" or "collapse")) throw new InvalidDataException("Unsupported metadata control.");
+        allowed |= launchSettings || gameSettings;
+        if (!allowed || id.Length > 200 || mode is not ("inspect" or "focus" or "invoke" or "expand" or "collapse" or "toggle" or "select0" or "select1" or "select2")) throw new InvalidDataException("Unsupported bounded control.");
+        if ((mode == "toggle" || mode.StartsWith("select", StringComparison.Ordinal)) && !(launchSettings || gameSettings)) throw new InvalidDataException("Only launch settings accept Test value changes.");
         var pending = new Stack<DependencyObject>(); pending.Push(Root); var matches = new List<FrameworkElement>(); int count = 0;
         while (pending.TryPop(out var node))
         {
@@ -73,10 +79,23 @@ public sealed partial class MainWindow
             if (peer.GetPattern(PatternInterface.ExpandCollapse) is not IExpandCollapseProvider expand) throw new InvalidOperationException("Native ExpandCollapse pattern required.");
             if (mode == "expand") expand.Expand(); else expand.Collapse();
         }
+        else if (mode == "toggle")
+        {
+            if (peer.GetPattern(PatternInterface.Toggle) is not IToggleProvider toggle) throw new InvalidOperationException("Native Toggle pattern required.");
+            toggle.Toggle();
+        }
+        else if (mode.StartsWith("select", StringComparison.Ordinal))
+        {
+            if (target is not ComboBox choice || choice.Items.Count != 3) throw new InvalidOperationException("Three-state native launch choice required.");
+            // A bounded control selection, distinguished from physical keyboard input.
+            choice.SelectedIndex = mode[^1] - '0';
+        }
         await Task.Delay(150);
         await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "acgn-control-evidence.json"), JsonSerializer.Serialize(new
         { before, focused = target is Control focusable ? focusable.FocusState.ToString() : null, details = detailsPage.BangumiEvidence, page = ViewModel.Page.ToString(),
-            interaction = "Real WinUI automation peer; no desktop input", productionProfileAccess = false }));
-        if (!detailsPage.HasExclusiveContentBody) throw new InvalidOperationException("Details bodies overlap after native control interaction.");
+            globalLaunch = new { launchDefaults.Saved, launchDefaults.HasChanges, launchDefaults.Message },
+            gameLaunch = files.Draft is { } draft ? new { draft.LocaleMode, draft.MagpieMode, draft.MuteMode, draft.HelpersSummary } : null,
+            interaction = mode.StartsWith("select", StringComparison.Ordinal) ? "Bounded native ComboBox selection; no desktop input" : "Real WinUI automation peer; no desktop input", productionProfileAccess = false }));
+        if (ViewModel.Page == WorkspacePage.Details && !detailsPage.HasExclusiveContentBody) throw new InvalidOperationException("Details bodies overlap after native control interaction.");
     }
 }

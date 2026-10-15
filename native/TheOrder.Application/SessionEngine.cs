@@ -51,11 +51,11 @@ public sealed class SessionEngine : IAsyncDisposable
 
     public SessionEngine(TransactionalLibrary library, IFilesystemIdentity filesystem, IGameProcessPlatform platform,
         ILaunchPositionStore positions, ISessionClock clock, ISessionRecoveryTokens tokens,
-        ISessionPowerEvents? power = null, bool autoPoll = true, LaunchTrackingOptions? launchOptions = null)
+        ISessionPowerEvents? power = null, bool autoPoll = true, LaunchTrackingOptions? launchOptions = null, LaunchPolicy? launchPolicy = null)
     {
         this.library = library; this.filesystem = filesystem; this.platform = platform; this.clock = clock; this.tokens = tokens; this.power = power;
         engineLease = library.AcquireSessionEngine();
-        launch = new(new SessionLaunchLibrary(library), filesystem, platform, positions, launchOptions);
+        launch = new(new SessionLaunchLibrary(library), filesystem, platform, positions, launchOptions, launchPolicy);
         worker = Task.Run(ConsumeAsync);
         launch.Changed += StatusChanged; launch.ProcessChanged += ProcessChanged;
         if (power is not null) power.SuspendedChanged += PowerChanged;

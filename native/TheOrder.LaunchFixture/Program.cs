@@ -10,6 +10,16 @@ internal static class Program
         // Test-only broker adapters mirror LE's joined arguments and Steam's structured
         // forwarding. Targets are restricted to this project's marked synthetic fixture.
         var imageName = Path.GetFileName(Environment.ProcessPath);
+        if (imageName?.Equals("Magpie.exe", StringComparison.OrdinalIgnoreCase) == true && args.Length == 0)
+        {
+            var helperReports = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "observations"));
+            if (!File.Exists(Path.Combine(helperReports, ".the-order-launch-fixture"))) return;
+            var helperName = "magpie-" + Environment.ProcessId;
+            File.WriteAllText(Path.Combine(helperReports, helperName + ".json"), JsonSerializer.Serialize(new { pid = Environment.ProcessId, mode = "scaling-helper" }));
+            var helperDeadline = Stopwatch.StartNew();
+            while (!File.Exists(Path.Combine(helperReports, helperName + ".stop")) && helperDeadline.Elapsed < TimeSpan.FromSeconds(90)) Thread.Sleep(50);
+            return;
+        }
         if (imageName?.Equals("LEProc.exe", StringComparison.OrdinalIgnoreCase) == true && args.Length >= 4)
         {
             var reports = args[1].Trim('"'); var target = Path.Combine(AppContext.BaseDirectory, "simple_game.exe");

@@ -39,6 +39,8 @@ public sealed partial class MainWindow : Window
     private readonly CatalogBrowsePolicy browsingPolicy;
     private readonly LanguageSettings languageSettings;
     private readonly ContentLanguageSettings contentLanguageSettings;
+    private readonly GlobalLaunchSettings launchDefaults;
+    private readonly LaunchPolicy launchPolicy;
     private bool navigating, synchronizing;
     private Task? initialization;
     private DispatcherTimer? diagnosticsTimer;
@@ -49,9 +51,9 @@ public sealed partial class MainWindow : Window
     private readonly BangumiSettingsViewModel bangumiSettings;
     private readonly LibraryBackupViewModel backups;
     private readonly DispatcherTimer backupTimer = new() { Interval = TimeSpan.FromMinutes(5) };
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, ContentLanguageSettings contentLanguages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, IMusicBrainzEntityReader musicEntities, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, ContentLanguageSettings contentLanguages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, IMusicBrainzEntityReader musicEntities, GlobalLaunchSettings launchDefaults, LaunchPolicy launchPolicy, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
-        Sessions = sessions;
+        Sessions = sessions; this.launchDefaults = launchDefaults; this.launchPolicy = launchPolicy;
         this.nextMoeSettings = nextMoeSettings; this.bangumiSettings = bangumiSettings;
         this.backups = backups;
         this.sources = sources; this.sourceWatcher = sourceWatcher; this.extras = extras; this.metadataSources = metadataSources; this.resources = resources;
@@ -121,7 +123,7 @@ public sealed partial class MainWindow : Window
                 await Navigate(next is null ? WorkspacePage.Library : WorkspacePage.Details, next);
         };
         recognition.PropertyChanged += OnRecognitionState;
-        settingsPage = new(workspace, online, recognition, browsingSettings, languages, contentLanguages, updates, nextMoeSettings, backups, bangumiSettings) { ChangeMaterialMode = SetMaterialModeAsync,
+        settingsPage = new(workspace, online, recognition, browsingSettings, languages, contentLanguages, updates, nextMoeSettings, backups, bangumiSettings, launchDefaults) { ChooseLaunchHelper = () => PickFile(".exe"), ChangeMaterialMode = SetMaterialModeAsync,
             ChooseBackupDestination = PickBackupDestination, ChooseBackupFile = () => PickFile(".json"),
             PrepareBackupAction = ResolveUnsavedAsync, RestoreLibrary = preview => RestoreLibraryAsync(preview, library),
             InstallUpdate = package => App.Instance?.RequestUpgradeAsync(package) ?? Task.FromResult(false) };
@@ -185,6 +187,7 @@ public sealed partial class MainWindow : Window
             await startup.PrepareAsync(async () =>
             {
                 initializePages?.Invoke(); initializePages = null;
+                await launchDefaults.InitializeAsync();
                 await Sessions.InitializeAsync(); await ViewModel.InitializeAsync();
                 if (!Sessions.Ready || !ViewModel.IsLoaded || ViewModel.Notice.Outcome == ClientOutcome.LoadFailure)
                     throw new IOException("Startup library unavailable");
@@ -220,7 +223,8 @@ public sealed partial class MainWindow : Window
     {
         Navigation.IsEnabled = startupReady && Sessions.Ready && !Sessions.Closing && !commandsBlocked;
         var value = SessionPresentation.From(Sessions.Session, Sessions.Library, Sessions.CanMutate && !commandsBlocked);
-        LifecycleNotice.IsOpen = lifecycleMessage is not null; LifecycleNotice.Message = lifecycleMessage ?? "";
+        var notice = lifecycleMessage ?? backgroundAudio.Failure;
+        LifecycleNotice.IsOpen = notice is not null; LifecycleNotice.Message = notice ?? "";
         SessionTitle.Text = value.Title; SessionState.Text = Sessions.Error ?? (Sessions.Ready ? value.State : UiText.Get("正在恢复上次会话…"));
         SessionDuration.Text = value.Duration; SessionFlyoutDuration.Text = value.Duration; SessionHistory.Text = value.History;
         SessionChipTitle.Text = Sessions.Session?.Session is null ? (Sessions.Error is not null ? UiText.Get("会话异常") : UiText.Get("正在恢复会话")) : value.Title;
@@ -330,7 +334,18 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme, Title = UiText.Get("保留尚未保存的修改？"), Content = UiText.Get("离开前可以保存修改，或放弃草稿。"), PrimaryButtonText = UiText.Get("保存并继续"), SecondaryButtonText = UiText.Get("放弃草稿"), CloseButtonText = UiText.Get("继续编辑"), DefaultButton = ContentDialogButton.Close };
         return await dialog.ShowAsync() switch { ContentDialogResult.Primary => UnsavedChoice.Save, ContentDialogResult.Secondary => UnsavedChoice.Discard, _ => UnsavedChoice.Stay };
     }
-    public async Task<bool> ResolveUnsavedAsync() => !navigating && await ResolveInstallationDraft() && await ViewModel.ResolveUnsavedAsync(ChooseUnsaved);
+    public async Task<bool> ResolveUnsavedAsync() => !navigating && await ResolveLaunchDefaults() && await ResolveInstallationDraft() && await ViewModel.ResolveUnsavedAsync(ChooseUnsaved);
+    private async Task<bool> ResolveLaunchDefaults()
+    {
+        if (!launchDefaults.HasChanges) return true;
+        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.ActualTheme,
+            Title = "保留全局启动设置的修改？", Content = "辅助工具的默认行为尚未保存。",
+            PrimaryButtonText = "保存并继续", SecondaryButtonText = "放弃修改", CloseButtonText = "继续编辑", DefaultButton = ContentDialogButton.Close };
+        var choice = await dialog.ShowAsync();
+        if (choice == ContentDialogResult.Secondary) { launchDefaults.Cancel(); return true; }
+        if (choice == ContentDialogResult.Primary) { await launchDefaults.SaveAsync(); return !launchDefaults.HasChanges; }
+        return false;
+    }
     private async Task<bool> ResolveInstallationDraft()
     {
         await files.WaitForMutationAsync();
@@ -398,6 +413,7 @@ public sealed partial class MainWindow : Window
         await browsingSettings.DisposeAsync();
         await languageSettings.DisposeAsync();
         await contentLanguageSettings.DisposeAsync();
+        await launchDefaults.DisposeAsync();
         await recognition.DisposeAsync();
         await presentations.DisposeAsync();
         await online.DisposeAsync();
@@ -468,6 +484,7 @@ public sealed partial class MainWindow : Window
             onlineState = online.SearchState.ToString(), onlineCount = online.Items.Count, onlineDetails = online.DetailState.ToString(), onlineWorkId = online.Details?.Id, onlineHasCover = online.DetailCoverKey is not null, onlineConnection = online.ConnectionState.ToString(),
             onlineAuthGeneration = online.AuthGeneration, onlineCredentialPresent = online.HasCredential, syntheticDetailRequests = onlineFixture?.DetailRequests,
             catalogBrowsing = new { showNsfw = browsingSettings.ShowNsfw, generation = browsingPolicy.Capture().Generation, canChange = browsingSettings.CanChange, message = browsingSettings.Message },
+            globalLaunch = new { saved = launchDefaults.Saved, canChange = launchDefaults.CanChange, hasChanges = launchDefaults.HasChanges, message = launchDefaults.Message },
             contentLanguage = new { preferred = ContentLanguage.Preferred, fallback = ContentLanguage.Current.Fallback, canChange = contentLanguageSettings.CanChange },
             language = new { effective = UiText.Language, selected = languageSettings.Selected, system = languageSettings.SystemLanguage, canChange = languageSettings.CanChange, restartRequired = UiText.Resolve(languageSettings.Selected, languageSettings.SystemLanguage) != UiText.Language },
             onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim()))),

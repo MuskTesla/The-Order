@@ -5,7 +5,15 @@ using System.Text.RegularExpressions;
 namespace TheOrder.Domain;
 
 public sealed record ManualPlaytime(string Id, string Date, long Seconds, string Note, string CreatedAt, bool Undone = false);
-public sealed record LaunchCompatibility(bool Administrator = false, bool HighDpi = false, string? LocaleEmulator = null, string? ScalingTool = null, bool UseSteam = false, bool MuteInBackground = false);
+public enum LaunchOverride { Inherit, Enabled, Disabled }
+public sealed record LaunchAuxiliaries(LaunchOverride LocaleEmulator = LaunchOverride.Inherit,
+    LaunchOverride Magpie = LaunchOverride.Inherit, LaunchOverride BackgroundMute = LaunchOverride.Inherit);
+public sealed record LaunchCompatibility(bool Administrator = false, bool HighDpi = false, string? LocaleEmulator = null, string? ScalingTool = null, bool UseSteam = false, bool MuteInBackground = false)
+{
+    // Null is a legacy configuration, whose exact behavior is preserved. Only new
+    // installations and an explicit reset adopt the current global defaults.
+    public LaunchAuxiliaries? Auxiliaries { get; init; }
+}
 public sealed record MetadataSourceLayer(string Source, string SourceId, WorkMetadata Work, ImmutableArray<string> Fields, bool FillOnly);
 public sealed record MetadataMix(WorkMetadata? Base, ImmutableArray<MetadataSourceLayer> Layers);
 
@@ -30,6 +38,8 @@ public static class LibraryExtras
             if (i.SteamAppId is not null && !Regex.IsMatch(i.SteamAppId, "^[1-9][0-9]{0,9}$")) throw new InvalidDataException("Steam 编号无效。");
             if (i.Compatibility is { } c)
             {
+                if (c.Auxiliaries is { } a && (!Enum.IsDefined(a.LocaleEmulator) || !Enum.IsDefined(a.Magpie) || !Enum.IsDefined(a.BackgroundMute)))
+                    throw new InvalidDataException("游戏启动覆盖选项无效。");
                 Path(c.LocaleEmulator); Path(c.ScalingTool);
                 if (c.LocaleEmulator is not null && !System.IO.Path.GetFileName(c.LocaleEmulator).Equals("LEProc.exe", StringComparison.OrdinalIgnoreCase)
                     || c.ScalingTool is not null && !System.IO.Path.GetFileName(c.ScalingTool).Equals("Magpie.exe", StringComparison.OrdinalIgnoreCase)

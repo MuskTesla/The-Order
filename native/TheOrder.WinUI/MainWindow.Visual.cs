@@ -298,6 +298,7 @@ public sealed partial class MainWindow
                     break;
                 case "probe": break;
                 case "acgnControl": await RunAcgnControlFixtureAsync(root); break;
+                case "audioGuardSmoke": await RunAudioGuardFixtureAsync(root); break;
                 case "bangumi":
                     if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || ViewModel.Page != WorkspacePage.Details)
                         throw new InvalidOperationException("Related works fixture requires isolated Test details.");

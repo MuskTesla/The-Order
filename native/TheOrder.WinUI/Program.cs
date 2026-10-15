@@ -20,6 +20,9 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // A bounded auxiliary mode must never register an app instance, open a
+        // user Profile, initialize WinUI or redirect a normal activation.
+        if (WindowsAudioGuard.IsInvocation(args)) return WindowsAudioGuard.Run(args);
         _ = StartupClock.Elapsed; // Force the marker before profile I/O even on beforefieldinit runtimes.
         if (!OperatingSystem.IsWindows() || !WindowsCompatibility.IsSupported(Environment.OSVersion.Version))
         {

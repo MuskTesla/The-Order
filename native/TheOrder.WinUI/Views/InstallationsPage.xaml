@@ -70,23 +70,14 @@
          <StackPanel x:Name="SaveChoices" Spacing="8" Visibility="Collapsed" />
         </StackPanel>
        </Expander>
-       <Expander x:Name="LaunchHelpersSection" Header="启动辅助 · LE / Magpie（可选）" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+       <Expander x:Name="LaunchHelpersSection" Header="{x:Bind ViewModel.Draft.HelpersSummary, Mode=OneWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.AutomationId="GameLaunchOverrides">
         <StackPanel Spacing="12">
-         <TextBlock x:Name="LaunchHelpersHeading" Text="为此游戏使用已安装的辅助工具" TextWrapping="Wrap" AutomationProperties.AutomationId="LaunchHelpers" />
-         <Grid x:Name="LocaleEmulatorInputGrid" ColumnSpacing="8">
-          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-          <TextBox Header="Locale Emulator（日文转区）" PlaceholderText="选择已安装的 LEProc.exe" Text="{x:Bind ViewModel.Draft.LocaleEmulator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="LocaleEmulatorPath" />
-          <Button x:Name="LocaleEmulatorBrowseButton" Grid.Column="1" VerticalAlignment="Bottom" Content="选择 LEProc.exe…" Click="OnLocaleTool" />
-         </Grid>
-         <Grid x:Name="MagpieInputGrid" ColumnSpacing="8">
-          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-          <TextBox Header="Magpie（窗口缩放）" PlaceholderText="选择已安装的 Magpie.exe" Text="{x:Bind ViewModel.Draft.ScalingTool, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.AutomationId="MagpiePath" />
-          <Button x:Name="MagpieBrowseButton" Grid.Column="1" VerticalAlignment="Bottom" Content="选择 Magpie.exe…" Click="OnScalingTool" />
-         </Grid>
-         <TextBlock Text="保存后，启动游戏时会调用所选工具；清空路径可停用。Magpie 的缩放方式在 Magpie 中设置。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
-         <CheckBox IsChecked="{x:Bind ViewModel.Draft.MuteInBackground, Mode=TwoWay}" HorizontalContentAlignment="Stretch" AutomationProperties.Name="切出游戏时静音，切回时恢复"><TextBlock Text="切出游戏时静音，切回时恢复" TextWrapping="Wrap" /></CheckBox>
+         <TextBlock x:Name="LaunchHelpersHeading" Text="仅在这个游戏文件夹需要不同的行为时更改；工具路径统一在全局设置中选择。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+         <ComboBox Header="Locale Emulator · 日文转区" SelectedIndex="{x:Bind ViewModel.Draft.LocaleMode, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="GameLocaleMode"><ComboBoxItem Content="跟随全局" /><ComboBoxItem Content="仅此游戏开启" /><ComboBoxItem Content="仅此游戏关闭" /></ComboBox>
+         <ComboBox Header="Magpie · 窗口缩放" SelectedIndex="{x:Bind ViewModel.Draft.MagpieMode, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="GameMagpieMode"><ComboBoxItem Content="跟随全局" /><ComboBoxItem Content="仅此游戏开启" /><ComboBoxItem Content="仅此游戏关闭" /></ComboBox>
+         <ComboBox Header="后台静音" SelectedIndex="{x:Bind ViewModel.Draft.MuteMode, Mode=TwoWay}" HorizontalAlignment="Stretch" AutomationProperties.AutomationId="GameMuteMode"><ComboBoxItem Content="跟随全局" /><ComboBoxItem Content="仅此游戏开启" /><ComboBoxItem Content="仅此游戏关闭" /></ComboBox>
+         <Button Content="全部恢复为跟随全局" Click="OnResetLaunchOverrides" HorizontalAlignment="Left" AutomationProperties.AutomationId="ResetGameLaunchOverrides" />
+         <TextBlock Text="{x:Bind ViewModel.Draft.LegacyToolsNotice, Mode=OneWay}" Visibility="{x:Bind ShowText(ViewModel.Draft.LegacyToolsNotice), Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
         </StackPanel>
        </Expander>
        <Expander x:Name="AdvancedLaunchSection" Header="高级启动设置" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
@@ -106,7 +97,7 @@
          <Button Click="OnArgument" Content="添加一项参数" />
         </StackPanel>
        </Expander>
-       <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000"><Button x:Name="SaveInstallationButton" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation" Content="保存设置" /><Button Click="OnCancel" Content="放弃修改" /></views:TagFlowPanel>
+       <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8" MaximumItemWidth="10000"><Button x:Name="SaveInstallationButton" Click="OnSave" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveInstallation" Content="保存设置" /><Button Click="OnCancel" Content="放弃修改" AutomationProperties.AutomationId="CancelInstallation" /></views:TagFlowPanel>
       </StackPanel>
      </Border>
     </ContentControl>

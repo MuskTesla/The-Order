@@ -15,7 +15,7 @@ public sealed record GameLaunchIdentity(Guid Epoch, Guid Incarnation, string Gam
 public sealed record LaunchEntry(GameLaunchIdentity Identity, ImmutableArray<Installation> Installations, string? Preferred);
 public sealed record LaunchSnapshot(Guid OperationId, long Generation, GameLaunchIdentity Game, Installation Installation,
     string? Preferred, PathObservation Folder, PathObservation Executable, PathObservation WorkingDirectory, bool ExplicitWorkingDirectory)
-{ public PathObservation? LocaleTool { get; init; } public PathObservation? ScalingTool { get; init; } }
+{ public PathObservation? LocaleTool { get; init; } public PathObservation? ScalingTool { get; init; } public long? PolicyRevision { get; init; } }
 public sealed record LaunchPosition(string GameId, string InstallationId, string Folder, string Executable, string WorkingDirectory,
     PathObservation FolderObservation, PathObservation ExecutableObservation, PathObservation WorkingObservation)
 { public LaunchCompatibility? Compatibility { get; init; } public string? SteamAppId { get; init; } public PathObservation? LocaleTool { get; init; } public PathObservation? ScalingTool { get; init; } }

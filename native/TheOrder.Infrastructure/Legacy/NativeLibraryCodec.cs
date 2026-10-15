@@ -26,9 +26,10 @@ public sealed class NativeLibraryCodec : ILibraryCodec
             if (game.TryGetProperty("nativeExtras", out var x))
             {
                 if (x.ValueKind != JsonValueKind.Object || !x.TryGetProperty("version", out var v) || !v.TryGetInt32(out var version)) throw new InvalidDataException("缺少扩展资料版本。");
-                if (version != 1 || x.EnumerateObject().Any(p => p.Name is not ("version" or "manualPlaytime" or "guidePaths" or "metadataMix" or "installations"))) throw new UnsupportedExtrasSchemaException();
+                if (version is not (1 or 2) || x.EnumerateObject().Any(p => p.Name is not ("version" or "manualPlaytime" or "guidePaths" or "metadataMix" or "installations"))) throw new UnsupportedExtrasSchemaException();
                 var extra = x.Deserialize<NativeExtras>(NativeSessionCodec.Options) ?? throw new InvalidDataException("空扩展资料。");
                 if (extra.ManualPlaytime.IsDefault || extra.Installations.IsDefault || extra.Installations.Any(i => i is null) || extra.Installations.Select(i => i.Id).Distinct().Count() != extra.Installations.Length) throw new InvalidDataException("扩展安装记录无效。");
+                if (version == 1 && extra.Installations.Any(i => i.Compatibility?.Auxiliaries is not null)) throw new InvalidDataException("启动覆盖需要扩展资料 v2。");
                 extras.Add(LegacyJson.String(game.GetProperty("id")).Trim(LegacyLibraryCodec.Whitespace), extra);
             }
         var sessions = new Dictionary<(string, string), NativeSession>();
@@ -81,7 +82,7 @@ public sealed class NativeLibraryCodec : ILibraryCodec
         {
             var projected = LegacyLibraryCodec.Project(e);
             LibraryExtras.Validate(e);
-            if (HasExtras(e)) projected["nativeExtras"] = new NativeExtras(1, e.ManualPlaytime, e.GuidePaths, NormalizeMix(e.MetadataMix),
+            if (HasExtras(e)) projected["nativeExtras"] = new NativeExtras(e.Installations.Any(i => i.Compatibility?.Auxiliaries is not null) ? 2 : 1, e.ManualPlaytime, e.GuidePaths, NormalizeMix(e.MetadataMix),
                 [.. e.Installations.Where(i => i.SaveFolder is not null || i.SteamAppId is not null || i.Compatibility is not null).Select(i => new InstallationExtras(i.Id, i.SaveFolder, i.SteamAppId, i.Compatibility))]);
             projected["sessions"] = e.Sessions.Select(s =>
             {

@@ -66,7 +66,7 @@ public sealed class OfflineFilesClient(OfflineLibraryClient client, IFilesystemI
                 var executables = c.Executables.Select(p => { var probe = identity.Inspect(p, false); if (!probe.IsValid) { preflight.Revalidate(c.Folder, reviewedCandidate: true); throw new InvalidDataException(probe.Message); } return probe.Observation!; }).ToImmutableArray();
                 // Recognition excludes installers and does not enumerate every nested launcher.
                 // Let the first launch action inspect all exe/cmd files before making a choice.
-                return new LocalImportItem(c.Name, Prepare(new InstallationInput(Guid.NewGuid().ToString(), c.Folder.StoredPath, null, null, [], true) { SteamAppId = c.SteamAppId }, cancellation, c.Folder), executables);
+                return new LocalImportItem(c.Name, Prepare(new InstallationInput(Guid.NewGuid().ToString(), c.Folder.StoredPath, null, null, [], true) { SteamAppId = c.SteamAppId, Compatibility = new() { Auxiliaries = new() } }, cancellation, c.Folder), executables);
             }).ToImmutableArray(), cancellation).ConfigureAwait(false);
             var result = await library.ImportLocalAsync(prepared, preflight, cancellation).ConfigureAwait(false);
             var presented = OfflineLibraryClient.Present(result);

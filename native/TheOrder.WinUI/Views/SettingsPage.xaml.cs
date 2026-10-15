@@ -15,6 +15,8 @@ public sealed partial class SettingsPage : Page
     public CatalogBrowseSettings Browsing { get; }
     public LanguageSettings Languages { get; }
     public ContentLanguageSettings ContentLanguages { get; }
+    public GlobalLaunchSettings LaunchDefaults { get; }
+    public Func<Task<string?>>? ChooseLaunchHelper { get; set; }
     public AppUpdateViewModel Updates { get; }
     public NextMoeSettingsViewModel NextMoe { get; }
     public LibraryBackupViewModel Backups { get; }
@@ -42,9 +44,9 @@ public sealed partial class SettingsPage : Page
         if (synchronizing || MaterialChoice.SelectedIndex < 0) return;
         if (ChangeMaterialMode is { } change) await change((MaterialMode)MaterialChoice.SelectedIndex);
     }
-    public SettingsPage(WorkspaceViewModel viewModel, OnlineViewModel online, RecognitionViewModel recognition, CatalogBrowseSettings browsing, LanguageSettings languages, ContentLanguageSettings contentLanguages, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoe, LibraryBackupViewModel backups, BangumiSettingsViewModel bangumi)
+    public SettingsPage(WorkspaceViewModel viewModel, OnlineViewModel online, RecognitionViewModel recognition, CatalogBrowseSettings browsing, LanguageSettings languages, ContentLanguageSettings contentLanguages, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoe, LibraryBackupViewModel backups, BangumiSettingsViewModel bangumi, GlobalLaunchSettings launchDefaults)
     {
-        ViewModel = viewModel; Online = online; Recognition = recognition; Browsing = browsing; Languages = languages; ContentLanguages = contentLanguages; Updates = updates; NextMoe = nextMoe; Backups = backups; Bangumi = bangumi; InitializeComponent();
+        ViewModel = viewModel; Online = online; Recognition = recognition; Browsing = browsing; Languages = languages; ContentLanguages = contentLanguages; Updates = updates; NextMoe = nextMoe; Backups = backups; Bangumi = bangumi; LaunchDefaults = launchDefaults; InitializeComponent();
         Loaded += (_, _) => Bangumi.RefreshState();
         Unloaded += (_, _) => { Bangumi.Cancel(); BangumiToken.Password = ""; BangumiEditor.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed; };
         Loaded += (_, _) => { Backups.PropertyChanged += OnBackupState; SynchronizeBackups(); };

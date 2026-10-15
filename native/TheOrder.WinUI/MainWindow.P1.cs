@@ -115,6 +115,7 @@ public sealed partial class MainWindow
     private Task? p1Disposal;
     private void RefreshBackgroundAudio()
     {
+        if (audioSmokeFixture) return; // Only the marked Test audio proof owns this interval.
         if (p1Stopping || !audioOperation.IsCompleted || DateTimeOffset.UtcNow - lastAudioCheck < TimeSpan.FromSeconds(1)) return;
         lastAudioCheck = DateTimeOffset.UtcNow;
         var session = Sessions.Session;
@@ -123,7 +124,7 @@ public sealed partial class MainWindow
             ?.Installations.FirstOrDefault(i => i.Id == native.InstallationId);
         bool enabled = native?.Lifecycle == SessionLifecycle.Open
             && session?.Tracking is SessionTracking.LaunchScope or SessionTracking.CurrentProcessOnly
-            && installation?.Compatibility?.MuteInBackground == true;
+            && installation is not null && launchPolicy.BackgroundMute(installation);
         audioOperation = backgroundAudio.UpdateAsync(session?.Current, enabled);
     }
     private Task StopP1Async() => p1Disposal ??= StopCoreP1Async();

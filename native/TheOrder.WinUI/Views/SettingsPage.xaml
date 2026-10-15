@@ -21,6 +21,38 @@
     </StackPanel>
    </Border>
    <Border Style="{StaticResource SurfaceStyle}" Padding="20">
+    <StackPanel x:Name="LaunchDefaultsSection" Spacing="16" AutomationProperties.AutomationId="GlobalLaunchSettings">
+     <TextBlock Text="游戏启动与辅助工具" Style="{StaticResource SectionTitleStyle}" />
+     <TextBlock Text="为跟随全局设置的游戏选择默认行为；工具路径只需在这里设置一次。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+     <StackPanel Spacing="8">
+      <ToggleSwitch IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Header="Locale Emulator · 日文转区" IsOn="{x:Bind LaunchDefaults.LocaleEmulatorEnabled, Mode=TwoWay}" OnContent="默认开启" OffContent="默认关闭" AutomationProperties.AutomationId="GlobalLocaleEnabled" />
+      <Expander x:Name="GlobalLocaleToolSection" Header="Locale Emulator 工具位置" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.AutomationId="GlobalLocaleToolSection"><StackPanel Spacing="8">
+      <TextBox IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Header="LEProc.exe 路径" PlaceholderText="选择已安装的 Locale Emulator" Text="{x:Bind LaunchDefaults.LocaleEmulatorPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="32768" AutomationProperties.AutomationId="GlobalLocalePath" />
+      <Button IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Content="选择 LEProc.exe…" Click="OnChooseGlobalLocale" HorizontalAlignment="Left" />
+      </StackPanel></Expander>
+     </StackPanel>
+     <Border Height="1" Background="{ThemeResource DividerBrush}" />
+     <StackPanel Spacing="8">
+      <ToggleSwitch IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Header="Magpie · 窗口缩放" IsOn="{x:Bind LaunchDefaults.MagpieEnabled, Mode=TwoWay}" OnContent="默认开启" OffContent="默认关闭" AutomationProperties.AutomationId="GlobalMagpieEnabled" />
+      <Expander x:Name="GlobalMagpieToolSection" Header="Magpie 工具位置" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" AutomationProperties.AutomationId="GlobalMagpieToolSection"><StackPanel Spacing="8">
+      <TextBox IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Header="Magpie.exe 路径" PlaceholderText="选择已安装的 Magpie" Text="{x:Bind LaunchDefaults.MagpiePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MaxLength="32768" AutomationProperties.AutomationId="GlobalMagpiePath" />
+      <Button IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Content="选择 Magpie.exe…" Click="OnChooseGlobalMagpie" HorizontalAlignment="Left" />
+      </StackPanel></Expander>
+      <TextBlock Text="启动游戏时打开 Magpie；缩放模式和快捷键在 Magpie 中设置。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+     </StackPanel>
+     <Border Height="1" Background="{ThemeResource DividerBrush}" />
+     <StackPanel Spacing="8">
+      <ToggleSwitch IsEnabled="{x:Bind LaunchDefaults.CanChange, Mode=OneWay}" Header="后台静音" IsOn="{x:Bind LaunchDefaults.BackgroundMuteEnabled, Mode=TwoWay}" OnContent="默认开启" OffContent="默认关闭" AutomationProperties.AutomationId="GlobalMuteEnabled" />
+      <TextBlock Text="仅静音正在跟踪的游戏，切回游戏或结束后恢复；保留原有静音状态。" Style="{StaticResource SecondaryTextStyle}" TextWrapping="Wrap" />
+     </StackPanel>
+     <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8">
+      <Button Content="保存启动设置" Click="OnSaveLaunchDefaults" IsEnabled="{x:Bind LaunchDefaults.CanSave, Mode=OneWay}" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="SaveGlobalLaunch" />
+      <Button Content="放弃修改" Click="OnCancelLaunchDefaults" IsEnabled="{x:Bind LaunchDefaults.CanSave, Mode=OneWay}" AutomationProperties.AutomationId="CancelGlobalLaunch" />
+     </views:TagFlowPanel>
+     <TextBlock Text="{x:Bind LaunchDefaults.Message, Mode=OneWay}" Style="{StaticResource MetadataTextStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" AutomationProperties.AutomationId="GlobalLaunchState" />
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource SurfaceStyle}" Padding="20">
     <StackPanel x:Name="NextMoeSection" Spacing="12">
      <TextBlock Style="{StaticResource SectionTitleStyle}" l:Localize.Text="在线目录 · NextMoe" />
      <ComboBox x:Name="NextMoeAccessChoice" Header="访问方式" MaxWidth="400" Width="400" HorizontalAlignment="Left" SelectionChanged="OnNextMoeAccess" IsEnabled="{x:Bind NextMoe.CanOperate, Mode=OneWay}" AutomationProperties.AutomationId="NextMoeAccessMode"><ComboBoxItem Content="匿名访问（默认）" /><ComboBoxItem Content="NextMoe 账号" /><ComboBoxItem Content="自定义 API Key" /></ComboBox>

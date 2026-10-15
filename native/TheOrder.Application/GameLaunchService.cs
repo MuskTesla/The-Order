@@ -18,12 +18,13 @@ public sealed record LaunchTrackingOptions
 
 // Single active launch admission, with no writable library/playtime dependency.
 public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentity filesystem, IGameProcessPlatform platform,
-    ILaunchPositionStore positions, LaunchTrackingOptions? trackingOptions = null) : IAsyncDisposable
+    ILaunchPositionStore positions, LaunchTrackingOptions? trackingOptions = null, LaunchPolicy? policy = null) : IAsyncDisposable
 {
     private readonly object gate = new();
     private readonly SemaphoreSlim positionGate = new(1, 1);
     private readonly CancellationTokenSource lifetime = new();
     private readonly LaunchTrackingOptions options = trackingOptions ?? new();
+    private readonly LaunchPolicy effectivePolicy = policy ?? new();
     private Task? startTask, monitorTask;
     private bool starting, reserved, closing;
     private IProcessLifetimeScope? lifetimeScope;
@@ -54,6 +55,8 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
             var entry = await library.CaptureLaunchAsync(gameId, cancellation).ConfigureAwait(false);
             var installation = LaunchSelection.Select(entry, explicitInstallation);
             if (installation is null) return new(LaunchOutcome.InstallationMissing, null, UiText.Get("请选择首选或明确的本地安装。"));
+            long? policyRevision = null;
+            { var resolved = effectivePolicy.Resolve(installation); installation = resolved.Installation; policyRevision = resolved.Revision; }
             if (installation.Executable is null) return new(LaunchOutcome.ExecutableMissing, null, UiText.Get("点击启动，从本安装目录选择 exe 或 cmd；选择后会记住启动位置。"));
             var snapshot = await Task.Run(() =>
             {
@@ -82,7 +85,7 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                     return tool;
                 }
                 return new LaunchSnapshot(Guid.NewGuid(), Interlocked.Increment(ref generation), entry.Identity, installation, entry.Preferred,
-                    folder, executable, working, installation.WorkingDirectory is not null) { LocaleTool = Tool(options?.LocaleEmulator, "LEProc.exe"), ScalingTool = Tool(options?.ScalingTool, "Magpie.exe") };
+                    folder, executable, working, installation.WorkingDirectory is not null) { LocaleTool = Tool(options?.LocaleEmulator, "LEProc.exe"), ScalingTool = Tool(options?.ScalingTool, "Magpie.exe"), PolicyRevision = policyRevision };
             }, cancellation).ConfigureAwait(false);
             await positionGate.WaitAsync(cancellation).ConfigureAwait(false);
             try
@@ -124,6 +127,7 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
             var preflight = new InstallationPreflightService(filesystem);
             await library.WithLaunchAdmissionAsync(reviewed.Game, reviewed.Installation.Id, () =>
             {
+                if (reviewed.PolicyRevision is { } revision) effectivePolicy.Admit(revision, () => true);
                 preflight.Revalidate(reviewed.Folder); preflight.Revalidate(reviewed.Executable); preflight.Revalidate(reviewed.WorkingDirectory);
                 if (reviewed.LocaleTool is not null) preflight.Revalidate(reviewed.LocaleTool);
                 if (reviewed.ScalingTool is not null) preflight.Revalidate(reviewed.ScalingTool); return true;
@@ -176,7 +180,10 @@ public sealed class GameLaunchService(ILaunchLibrary library, IFilesystemIdentit
                 lock (gate) { externalReservation = existing; reserved = true; }
                 Publish(already); return already;
             }
-            process = await library.WithLaunchAdmissionAsync(snapshot.Game, snapshot.Installation.Id, () => { clock.Restart(); return platform.Start(snapshot, stop.Token); }, stop.Token).ConfigureAwait(false);
+            process = await library.WithLaunchAdmissionAsync(snapshot.Game, snapshot.Installation.Id, () => {
+                IObservedProcess Create() { clock.Restart(); return platform.Start(snapshot, stop.Token); }
+                return snapshot.PolicyRevision is { } revision ? effectivePolicy.Admit(revision, Create) : Create();
+            }, stop.Token).ConfigureAwait(false);
             // From here onward every failure describes successful creation with limited observation.
             lock (gate) reserved = true;
             lifetimeScope = process.RetainLifetimeScope();

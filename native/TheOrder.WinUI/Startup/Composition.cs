@@ -46,6 +46,9 @@ internal static class Composition
         services.AddSingleton<LibraryBackupService>();
         services.AddSingleton<LibraryBackupViewModel>();
         services.AddSingleton<IFilesystemIdentity, WindowsFilesystemIdentity>();
+        services.AddSingleton<LaunchPolicy>();
+        services.AddSingleton<IGlobalLaunchDefaultsStore, GlobalLaunchDefaultsStore>();
+        services.AddSingleton<GlobalLaunchSettings>();
         services.AddSingleton<ILaunchLibrary, OfflineLaunchLibrary>();
         services.AddSingleton<ILaunchPositionStore, IsolatedLaunchPositionStore>();
         services.AddSingleton<IGameProcessPlatform, WindowsGameProcesses>();
@@ -57,7 +60,7 @@ internal static class Composition
             if (!client.Capability.Loaded) throw new IOException(client.Capability.Message);
             if (!client.Capability.CanEdit) return null;
             return client.CreateSessionEngine(p.GetRequiredService<IFilesystemIdentity>(), p.GetRequiredService<IGameProcessPlatform>(),
-                p.GetRequiredService<ILaunchPositionStore>(), new WindowsSessionClock(), new WindowsSessionRecoveryTokens(nativeConfiguration), p.GetRequiredService<WindowsSessionPowerEvents>());
+                p.GetRequiredService<ILaunchPositionStore>(), new WindowsSessionClock(), new WindowsSessionRecoveryTokens(nativeConfiguration), p.GetRequiredService<WindowsSessionPowerEvents>(), p.GetRequiredService<LaunchPolicy>());
         }, () => p.GetRequiredService<OfflineLibraryClient>().CurrentSnapshot));
         services.AddSingleton(p => new LaunchViewModel(p.GetRequiredService<ILaunchLibrary>(), p.GetRequiredService<AppSessionHost>()));
         services.AddSingleton<IScanFilesystem, WindowsScanFilesystem>();

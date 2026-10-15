@@ -41,8 +41,6 @@ public sealed partial class InstallationsPage : Page
             (FolderInputGrid, FolderBrowseButton),
             (ExecutableInputGrid, ExecutableBrowseButton),
             (SaveFolderInputGrid, SaveFolderBrowseButton),
-            (LocaleEmulatorInputGrid, LocaleEmulatorBrowseButton),
-            (MagpieInputGrid, MagpieBrowseButton),
             (WorkingDirectoryInputGrid, WorkingDirectoryBrowseButton)
         ];
         foreach (var (grid, button) in pairs)
@@ -123,11 +121,11 @@ public sealed partial class InstallationsPage : Page
         for (int i = 0; i < 20 && !IsLoaded; i++) await Task.Delay(25);
         if (!IsLoaded || ViewModel.Draft is null) return;
         RefreshActions();
-        LaunchHelpersSection.IsExpanded = true;
-        for (int i = 0; i < 20 && LaunchHelpersHeading.ActualHeight == 0; i++) await Task.Delay(25);
+        LaunchHelpersSection.IsExpanded = !ViewModel.Draft.UsesGlobal;
+        for (int i = 0; i < 20 && LaunchHelpersSection.ActualHeight == 0; i++) await Task.Delay(25);
         if (!IsLoaded || ViewModel.Draft is null) return;
         InstallationList.SelectedItem = ViewModel.Installations?.Rows.FirstOrDefault(r => r.Installation.Id == ViewModel.Draft.Id);
-        LaunchHelpersHeading.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0, AnimationDesired = false });
+        LaunchHelpersSection.StartBringIntoView(new BringIntoViewOptions { VerticalAlignmentRatio = 0, AnimationDesired = false });
     }
     private InstallationRow? Selected => InstallationList.SelectedItem as InstallationRow;
     private void ShowEditor()
@@ -139,6 +137,7 @@ public sealed partial class InstallationsPage : Page
     private async void OnExecutable(object sender, RoutedEventArgs e) => await Pick(ChooseExecutable, (draft, value) => draft.Executable = value);
     private async void OnWorking(object sender, RoutedEventArgs e) => await Pick(ChooseFolder, (draft, value) => draft.WorkingDirectory = value);
     private async void OnSaveFolder(object sender, RoutedEventArgs e) => await Pick(ChooseFolder, (draft, value) => draft.SaveFolder = value);
+    private void OnResetLaunchOverrides(object sender, RoutedEventArgs e) => ViewModel.Draft?.ResetAuxiliaries();
     private async void OnLocaleTool(object sender, RoutedEventArgs e) => await Pick(ChooseHelper, (draft, value) => draft.LocaleEmulator = value);
     private async void OnScalingTool(object sender, RoutedEventArgs e) => await Pick(ChooseHelper, (draft, value) => draft.ScalingTool = value);
     private async void OnOpenGameFolder(object sender, RoutedEventArgs e)

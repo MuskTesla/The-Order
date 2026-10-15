@@ -52,8 +52,8 @@ public sealed class OfflineLibraryClient(ITransactionalLibraryFactory factory, I
         catch (Exception e) when (Expected(e)) { return Failure(e); }
     }
     public SessionEngine CreateSessionEngine(IFilesystemIdentity filesystem, IGameProcessPlatform platform, ILaunchPositionStore positions,
-        ISessionClock clock, ISessionRecoveryTokens tokens, ISessionPowerEvents? power = null)
-        => new(Required(), filesystem, platform, positions, clock, tokens, power);
+        ISessionClock clock, ISessionRecoveryTokens tokens, ISessionPowerEvents? power = null, LaunchPolicy? launchPolicy = null)
+        => new(Required(), filesystem, platform, positions, clock, tokens, power, launchPolicy: launchPolicy);
     public Task<RecognitionEntrySnapshot> CaptureRecognitionAsync(string id, CancellationToken cancellation) => Required().CaptureRecognitionAsync(id, cancellation);
     public Task<bool> IsRecognitionCurrentAsync(RecognitionEntrySnapshot snapshot, CancellationToken cancellation) => Required().IsRecognitionCurrentAsync(snapshot, cancellation);
     public Task<ImmutableArray<string>> RecognitionTargetsAsync(ImmutableArray<string> selected, RecognitionMode mode, CancellationToken cancellation)

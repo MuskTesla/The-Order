@@ -38,11 +38,13 @@ public sealed class P1BackgroundAudioTests
         controller.Update(action == "stop" ? null : action == "change" ? Game with { Pid = 2 } : Game, action != "disable");
         Assert.False(platform.A.Muted);
     }
-    [Fact] public void ReusedPidIsNeverControlledOrRestored()
+    [Fact] public void ReusedPidIsNeverLookedUpForRestoreButRetainedOldSessionIsRestored()
     {
         var platform = new Fake(); using var controller = new BackgroundAudioController(platform); controller.Update(Game, true);
         platform.Current = Game with { CreationFileTime = 99 }; controller.Update(Game, true);
-        Assert.Equal(1, platform.A.Writes); controller.Update(platform.Current, false); Assert.Equal(1, platform.A.Writes);
+        Assert.Equal(2, platform.A.Writes); Assert.False(platform.A.Muted);
+        platform.Visible.Clear(); platform.Visible.Add(platform.B);
+        controller.Update(platform.Current, false); Assert.Equal(0, platform.B.Writes);
     }
     [Fact] public void NewAudioSessionIsMutedAndRemovedSessionIsReleased()
     {
@@ -68,6 +70,7 @@ public sealed class P1BackgroundAudioTests
         {
             private bool disposed;
             public string Id => state.Id; public long ExternalChanges => state.Changes; public bool Muted => state.Muted;
+            public bool IsOriginalSession => true;
             public void SetMuted(bool value) { if (disposed) throw new ObjectDisposedException(nameof(Lease)); state.Muted = value; state.Writes++; }
             public void Dispose() { if (disposed) return; disposed = true; owner.Disposed++; }
         }

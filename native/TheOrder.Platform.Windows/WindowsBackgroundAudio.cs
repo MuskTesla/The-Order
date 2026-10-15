@@ -7,26 +7,69 @@ namespace TheOrder.Platform.Windows;
 public sealed class WindowsBackgroundAudio : IAsyncDisposable
 {
     private readonly SemaphoreSlim gate = new(1);
-    private readonly BackgroundAudioController controller = new(new WindowsGameAudioPlatform());
+    private AudioGuardClient? client;
     private bool stopped;
     private Task? disposal;
+    private string? failure;
+    private DateTimeOffset retryAfter;
+    public string? Failure => Volatile.Read(ref failure);
+    public bool Active => client is { Connected: true };
     public async Task UpdateAsync(ProcessIdentity? process, bool enabled)
     {
         await gate.WaitAsync().ConfigureAwait(false);
-        try { if (!stopped) await Task.Run(() => { try { controller.Update(process, enabled); } catch { } }).ConfigureAwait(false); }
+        try
+        {
+            if (stopped) return;
+            if (!enabled || process is null)
+            {
+                if (client is not null)
+                {
+                    var previous = client; client = null;
+                    var restored = await previous.StopAsync().ConfigureAwait(false);
+                    if (!restored) failure = "后台静音未能确认恢复，请检查游戏的系统音量。";
+                    else failure = null;
+                }
+                return;
+            }
+            if (client is null && DateTimeOffset.UtcNow < retryAfter) return;
+            try
+            {
+                client ??= await AudioGuardClient.StartAsync().ConfigureAwait(false);
+                var result = await client.UpdateAsync(process).ConfigureAwait(false);
+                failure = WindowsAudioGuard.DescribeFailure(result.Failure);
+            }
+            catch
+            {
+                if (client is not null) await client.StopAsync().ConfigureAwait(false);
+                client = null; retryAfter = DateTimeOffset.UtcNow.AddSeconds(10);
+                failure = "后台静音暂不可用，未确认辅助进程正常工作；可检查游戏音量后重试。";
+            }
+        }
         finally { gate.Release(); }
     }
     public ValueTask DisposeAsync() => new(disposal ??= Stop());
     private async Task Stop()
     {
         await gate.WaitAsync().ConfigureAwait(false);
-        try { stopped = true; await Task.Run(controller.Dispose).ConfigureAwait(false); }
+        try
+        {
+            stopped = true;
+            if (client is not null)
+            {
+                var previous = client; client = null;
+                if (!await previous.StopAsync().ConfigureAwait(false)) failure = "后台静音未能确认恢复，请检查游戏的系统音量。";
+            }
+        }
         finally { gate.Release(); }
     }
 }
 
 public sealed class WindowsGameAudioPlatform : IGameAudioPlatform
 {
+    private readonly Func<ProcessIdentity, AudioChannelEnumeration>? enumerate;
+    public WindowsGameAudioPlatform() { }
+    internal WindowsGameAudioPlatform(Func<ProcessIdentity, AudioChannelEnumeration> enumerate) { this.enumerate = enumerate; }
+    public AudioEnumerationStatus EnumerationStatus { get; private set; }
     public bool IsCurrent(ProcessIdentity identity)
     {
         try
@@ -45,12 +88,28 @@ public sealed class WindowsGameAudioPlatform : IGameAudioPlatform
     }
     public IReadOnlyList<IGameAudioChannel> Channels(ProcessIdentity identity)
     {
-        var result = new List<IGameAudioChannel>(); if (!IsCurrent(identity)) return result;
+        EnumerationStatus = AudioEnumerationStatus.Complete;
+        if (!IsCurrent(identity)) return [];
+        try
+        {
+            var batch = enumerate?.Invoke(identity) ?? EnumerateWindows(identity);
+            EnumerationStatus = batch.Status;
+            if (IsCurrent(identity)) return batch.Channels;
+            foreach (var channel in batch.Channels) channel.Dispose();
+            return [];
+        }
+        catch { EnumerationStatus = AudioEnumerationStatus.Failed; throw; }
+    }
+    internal sealed record AudioChannelEnumeration(IReadOnlyList<IGameAudioChannel> Channels, AudioEnumerationStatus Status);
+    private static AudioChannelEnumeration EnumerateWindows(ProcessIdentity identity)
+    {
+        var result = new List<IGameAudioChannel>(); bool incomplete = false; int inspected = 0;
         var enumerator = (IDeviceEnumerator)Activator.CreateInstance(Type.GetTypeFromCLSID(new("bcde0395-e52f-467c-8e3d-c4579291692e"))!)!;
         IDevices? devices = null;
         try
         {
             enumerator.EnumAudioEndpoints(0, 1, out devices); devices.GetCount(out var count);
+            incomplete = count > 16;
             for (uint d = 0; d < Math.Min(count, 16); d++)
             {
                 IDevice? device = null; object? manager = null; ISessions? sessions = null;
@@ -58,25 +117,34 @@ public sealed class WindowsGameAudioPlatform : IGameAudioPlatform
                 {
                     devices.Item(d, out device); var iid = typeof(ISessionManager).GUID;
                     device.Activate(ref iid, 1, IntPtr.Zero, out manager); ((ISessionManager)manager).GetSessionEnumerator(out sessions); sessions.GetCount(out var amount);
+                    if (amount > 512) incomplete = true;
                     for (int s = 0; s < Math.Min(amount, 512); s++)
                     {
                         object? control = null; bool retained = false;
                         try
                         {
                             sessions.GetSession(s, out control); var session = (ISessionControl)control;
-                            if (session.GetProcessId(out var pid) != 0 || pid != identity.Pid || session.IsSystemSoundsSession() == 0) continue;
-                            session.GetSessionInstanceIdentifier(out var id); if (string.IsNullOrEmpty(id) || id.Length > 32768) continue;
+                            int processResult = session.GetProcessId(out var pid);
+                            // NO_SINGLE_PROCESS is a successful but deliberately
+                            // excluded cross-process session, not a device failure.
+                            if (processResult < 0) { incomplete = true; continue; }
+                            inspected++;
+                            if (processResult != 0 || pid != identity.Pid) continue;
+                            int system = session.IsSystemSoundsSession();
+                            if (system != 0 && system != 1) { incomplete = true; continue; }
+                            if (system != 1) continue;
+                            session.GetSessionInstanceIdentifier(out var id);
+                            if (string.IsNullOrEmpty(id) || id.Length > 32768) { incomplete = true; continue; }
                             result.Add(new Channel(control, session, (ISimpleVolume)control, id)); retained = true;
                         }
-                        catch (COMException) { }
+                        catch (COMException) { incomplete = true; }
                         finally { if (!retained && control is not null) Marshal.ReleaseComObject(control); }
                     }
                 }
-                catch (COMException) { }
+                catch (COMException) { incomplete = true; }
                 finally { Release(sessions); Release(manager); Release(device); }
             }
-            if (!IsCurrent(identity)) { foreach (var channel in result) channel.Dispose(); result.Clear(); }
-            return result;
+            return new(result, incomplete ? inspected > 0 ? AudioEnumerationStatus.Partial : AudioEnumerationStatus.Failed : AudioEnumerationStatus.Complete);
         }
         catch { foreach (var channel in result) channel.Dispose(); throw; }
         finally { Release(devices); Release(enumerator); }
@@ -87,8 +155,17 @@ public sealed class WindowsGameAudioPlatform : IGameAudioPlatform
         private readonly object handle; private readonly ISessionControl session; private readonly ISimpleVolume volume;
         private readonly Guid context = Guid.NewGuid(); private readonly Events events; private bool disposed;
         public Channel(object handle, ISessionControl session, ISimpleVolume volume, string id)
-        { this.handle = handle; this.session = session; this.volume = volume; Id = id; events = new(context); session.RegisterAudioSessionNotification(events); }
+        {
+            this.handle = handle; this.session = session; this.volume = volume; Id = id; events = new(context);
+            session.RegisterAudioSessionNotification(events);
+            try { volume.GetMute(out var muted); events.SeedMute(muted); }
+            catch { try { session.UnregisterAudioSessionNotification(events); } catch { } throw; }
+        }
         public string Id { get; }
+        public bool IsOriginalSession
+        {
+            get { session.GetSessionInstanceIdentifier(out var current); return string.Equals(Id, current, StringComparison.Ordinal); }
+        }
         public long ExternalChanges => Interlocked.Read(ref events.Changes);
         public bool Muted { get { volume.GetMute(out var value); return value; } }
         public void SetMuted(bool value) { var marker = context; volume.SetMute(value, ref marker); }
@@ -98,9 +175,18 @@ public sealed class WindowsGameAudioPlatform : IGameAudioPlatform
     public sealed class Events(Guid owner) : IAudioEvents
     {
         public long Changes;
+        private int lastMute = -1;
+        public void SeedMute(bool muted) => Interlocked.CompareExchange(ref lastMute, muted ? 1 : 0, -1);
         public int OnDisplayNameChanged(string value, ref Guid context) => 0;
         public int OnIconPathChanged(string value, ref Guid context) => 0;
-        public int OnSimpleVolumeChanged(float volume, bool muted, ref Guid context) { if (context != owner) Interlocked.Increment(ref Changes); return 0; }
+        public int OnSimpleVolumeChanged(float volume, bool muted, ref Guid context)
+        {
+            int next = muted ? 1 : 0; int previous = Interlocked.Exchange(ref lastMute, next);
+            // A volume slider adjustment does not transfer ownership of our mute.
+            // An external mute transition does, including unmute then mute again.
+            if (context != owner && (previous < 0 || previous != next)) Interlocked.Increment(ref Changes);
+            return 0;
+        }
         public int OnChannelVolumeChanged(uint count, IntPtr values, uint changed, ref Guid context) => 0;
         public int OnGroupingParamChanged(ref Guid group, ref Guid context) => 0;
         public int OnStateChanged(int state) => 0;
