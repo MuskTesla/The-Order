@@ -142,7 +142,19 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     });
     public Task PreviewAsync(string id, bool refresh = false)
     {
+        if (!CanLoad) return Task.CompletedTask;
         if (!Candidates.Any(x => x.Id == id) && !Bindings.Any(x => x.PublicationId == id)) return Task.CompletedTask;
+        // Browsing a candidate does not need a second network round trip. The
+        // service still independently loads and verifies its ID/ISBN on Confirm.
+        if (!refresh && Search is { } search && Candidates.FirstOrDefault(x => x.Id == id) is { } candidate)
+        {
+            Preview = new(candidate, search.FromCache, search.IsStale, search.Warning) { FromSearch = true };
+            State = BookDetailsState.Ready;
+            Message = candidate.IsAggregate ? "这是集合记录，仅供参考，不能确认绑定。"
+                : "已显示 NDL 检索资料；保存关联时会独立核验这条记录的编号、版本与 ISBN。";
+            Message += CacheNotice(search.FromCache, search.IsStale, search.Warning); Notify();
+            return Task.CompletedTask;
+        }
         return RunAsync("读取独立出版记录…", async (token, accept) =>
         {
             var result = await books.LoadAsync(id, refresh, token);
@@ -156,7 +168,7 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     {
         if (!CanConfirm) return Task.CompletedTask;
         var source = Source!; var publication = Preview!.Publication;
-        return RunAsync("保存已核对的出版记录…", async (token, accept) =>
+        return RunAsync("核验并保存出版关联…", async (token, accept) =>
         {
             await books.ConfirmAsync(source, publication, token);
             if (!accept()) return;

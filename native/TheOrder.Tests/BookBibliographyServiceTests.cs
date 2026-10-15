@@ -44,6 +44,23 @@ public sealed class BookBibliographyServiceTests
         await Assert.ThrowsAsync<InvalidDataException>(() => service.ConfirmAsync(Source() with { Isbns = ["9784044292010"] }, Publication(), default));
         await Assert.ThrowsAsync<InvalidDataException>(() => service.ConfirmAsync(Source(), Publication() with { IsAggregate = true }, default));
     }
+    [Theory] [InlineData(BookFailure.Timeout)] [InlineData(BookFailure.Unavailable)]
+    public async Task SearchFactsCannotReplaceAnIndependentRecordWhenSaving(BookFailure failure)
+    {
+        var store = new Store(); var provider = new Provider(); var service = new BookBibliographyService(provider, store, store, () => Stamp);
+        var search = await service.SearchAsync(new("CLANNAD"), false, default); provider.Failure = failure;
+        await Assert.ThrowsAsync<BookProviderException>(() => service.ConfirmAsync(Source(), search.Page.Publications[0], default));
+        Assert.Equal(1, provider.Fetches); Assert.Empty(await service.BindingsAsync(Source(), default));
+        Assert.True((await service.SearchAsync(new("CLANNAD"), false, default)).FromCache);
+    }
+    [Fact] public async Task ChangedIndependentRecordCannotSilentlyReplaceTheCandidate()
+    {
+        var store = new Store(); var provider = new Provider { Fetch = _ => Task.FromResult(Publication() with { Title = "另一版次" }) };
+        var service = new BookBibliographyService(provider, store, store, () => Stamp);
+        var search = await service.SearchAsync(new("CLANNAD"), false, default);
+        await Assert.ThrowsAsync<InvalidDataException>(() => service.ConfirmAsync(Source(), search.Page.Publications[0], default));
+        Assert.Empty(await service.BindingsAsync(Source(), default)); Assert.Equal(1, provider.Fetches);
+    }
     [Fact] public async Task UnknownEditionAndSameIsbnRecordsDoNotMergeByIsbn()
     {
         var provider = new Provider(); var store = new Store(); var source = Source() with { Identity = new("Bangumi", "149014", BookEntityLevel.Series), Isbns = [] };

@@ -132,7 +132,7 @@ public sealed class BookDetailsViewModelTests
         var f = new Fixture(); using var vm = f.Model(); var bg = Subject("10", false, [Isbn]);
         vm.SetSource(bg, null, true); await vm.ExpandAsync(); await vm.SearchAsync();
         f.Books.LoadHandler = (id, _, _) => Task.FromResult(new BookPublicationResult(f.Books.Publications.Single(x => x.Id == id), true, true, "离线，显示旧缓存"));
-        await vm.PreviewAsync("123456789");
+        await vm.PreviewAsync("123456789", refresh: true);
         Assert.NotNull(vm.Preview); Assert.True(vm.Preview.IsStale); Assert.Equal("123456789", vm.Preview.Publication.Id);
         Assert.False(vm.CanConfirm); Assert.Contains("刷新", vm.ConfirmationBlock); Assert.Same(bg, vm.Bangumi); Assert.Single(vm.Candidates);
         await vm.ConfirmAsync(); Assert.Equal(0, f.Books.Confirms); Assert.Empty(vm.Bindings);
@@ -144,6 +144,26 @@ public sealed class BookDetailsViewModelTests
         await vm.PreviewAsync("123456789", refresh: true);
         Assert.True(vm.CanConfirm); Assert.Empty(vm.ConfirmationBlock);
         await vm.ConfirmAsync(); Assert.Equal(1, f.Books.Confirms); Assert.True(vm.PreviewIsBound);
+    }
+    [Fact]
+    public async Task CandidatePreviewUsesSearchFactsWithoutAnotherRequestButExplicitRefreshLoadsRecord()
+    {
+        var f = new Fixture(); using var vm = f.Model();
+        vm.SetSource(Subject("10", false, [Isbn]), null, true); await vm.ExpandAsync(); await vm.SearchAsync();
+        await vm.PreviewAsync("123456789");
+        Assert.Equal(0, f.Books.Loads); Assert.True(vm.Preview!.FromSearch); Assert.Same(vm.Candidates[0], vm.Preview.Publication);
+        Assert.True(vm.CanConfirm); Assert.Contains("独立核验", vm.Message);
+        await vm.PreviewAsync("123456789", refresh: true);
+        Assert.Equal(1, f.Books.Loads); Assert.False(vm.Preview!.FromSearch); Assert.True(vm.CanConfirm);
+    }
+    [Fact]
+    public async Task StaleSearchPreviewIsImmediateButCannotBeConfirmed()
+    {
+        var f = new Fixture(); f.Books.SearchHandler = (_, _) => Task.FromResult(SearchResult(f.Books.Publications) with { FromCache = true, IsStale = true, Warning = "离线缓存" });
+        using var vm = f.Model(); vm.SetSource(Subject("10"), null, true); await vm.ExpandAsync(); await vm.SearchAsync();
+        await vm.PreviewAsync("123456789"); await vm.ConfirmAsync();
+        Assert.Equal(0, f.Books.Loads); Assert.Equal(0, f.Books.Confirms); Assert.True(vm.Preview!.FromSearch); Assert.True(vm.Preview.IsStale);
+        Assert.False(vm.CanConfirm); Assert.Contains("刷新", vm.ConfirmationBlock);
     }
     [Fact]
     public async Task OnlySeenRelationsCandidatesAndSavedIdsCanBeOpenedOrChanged()

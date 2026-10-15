@@ -68,11 +68,16 @@ public sealed record BookSearchQuery(string Title, string? Isbn = null, string? 
 {
     public string Key => "search:" + Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { Title, Isbn, Creator, Start })));
     public bool IsValid => AniListValidation.Text(Title, 200, Isbn is not null) && AniListValidation.OptionalText(Creator, 200)
-        && (Isbn is null || BookIsbn.Normalize(Isbn) == Isbn) && Start is >= 1 and <= 81;
+        && (Isbn is null || BookIsbn.Normalize(Isbn) == Isbn) && Start is >= 1 and <= 91;
 }
 public sealed record BookSearchPage(BookPublication[] Publications, int Total, int? NextStart, DateTimeOffset FetchedAtUtc);
 public sealed record BookSearchResult(BookSearchPage Page, bool FromCache, bool IsStale, string? Warning);
-public sealed record BookPublicationResult(BookPublication Publication, bool FromCache, bool IsStale, string? Warning);
+public sealed record BookPublicationResult(BookPublication Publication, bool FromCache, bool IsStale, string? Warning)
+{
+    // SRU supplies full bibliographic facts, but only an independent record read
+    // can authorize a new user mapping. This flag is presentation-only, never persisted.
+    public bool FromSearch { get; init; }
+}
 public sealed record BookPublicationBinding(BookIdentity SourceIdentity, string SourceFingerprint,
     string PublicationId, DateTimeOffset ConfirmedAtUtc, string Evidence);
 public sealed record BookCacheValue(string Key, DateTimeOffset CachedAtUtc, BookSearchPage? Search = null, BookPublication? Publication = null, bool Rejected = false);
@@ -128,7 +133,7 @@ public static class BookValidation
         && AniListValidation.OptionalText(p.PublicationDate, 200) && AniListValidation.OptionalText(p.Edition, 200) && p.FetchedAtUtc != default;
     public static bool Page(BookSearchPage? p) => p is not null && p.Publications is { Length: <= 20 } && p.Publications.All(Publication)
         && p.Publications.Select(x => x.Id).Distinct().Count() == p.Publications.Length && p.Total >= p.Publications.Length && p.Total <= 10000000
-        && (p.NextStart is null or >= 1 and <= 81) && p.FetchedAtUtc != default;
+        && (p.NextStart is null or >= 1 and <= 91) && p.FetchedAtUtc != default;
     public static bool Cache(BookCacheValue? v) => v is not null && AniListValidation.Text(v.Key, 100, false) && v.CachedAtUtc != default
         && (v.Rejected ? v.Search is null && v.Publication is null
             : v.Search is not null && v.Publication is null && Page(v.Search) || v.Search is null && Publication(v.Publication));

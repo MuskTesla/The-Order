@@ -117,11 +117,14 @@ public sealed class NdlBibliographyProviderTests
         foreach (var xml in new[] { Diagnostic("illegal query syntax"), Diagnostic("An error occurred"), "<searchRetrieveResponse xmlns=\"http://www.loc.gov/zing/srw/\"/>", Search([], 5), Search([Rdf()], 0), Search([Rdf()], 21, "0") })
             Assert.Equal(BookFailure.InvalidResponse, Assert.Throws<BookProviderException>(() => Parse(xml)).Failure);
     }
-    [Fact] public void PaginationUsesRawRecordsEvenAfterDedupAndStopsAtEightyOne()
+    [Fact] public void PaginationUsesRawRecordsAndSmallerPagesRetainTheHundredRecordLimit()
     {
         Assert.Equal(3, Parse(Search([Rdf(), Rdf()], 30)).NextStart);
         var rows = Enumerable.Range(1, 20).Select(i => Rdf(id: i.ToString("D12"))).ToArray();
         Assert.Equal(21, Parse(Search(rows, 200)).NextStart); Assert.Null(Parse(Search(rows, 200), start: 81).NextStart);
+        Assert.Equal(91, Parse(Search(rows[..10], 200), start: 81).NextStart);
+        Assert.Null(Parse(Search(rows[..10], 200), start: 91).NextStart);
+        Assert.Equal(BookFailure.InvalidResponse, Assert.Throws<BookProviderException>(() => Parse(Search(rows, 200), start: 91)).Failure);
         Assert.Equal(BookFailure.InvalidResponse, Assert.Throws<BookProviderException>(() => Parse(Search(rows.Concat([Rdf()]).ToArray(), 200))).Failure);
         Assert.Equal(BookFailure.InvalidResponse, Assert.Throws<BookProviderException>(() => Parse(Search([Rdf()], 20, "999"))).Failure);
     }
@@ -149,7 +152,7 @@ public sealed class NdlBibliographyProviderTests
         {
             Assert.Equal(HttpMethod.Get, request.Method); Assert.Equal("ndlsearch.ndl.go.jp", request.RequestUri!.Host); Assert.Equal("https", request.RequestUri.Scheme); Assert.Equal("/api/sru", request.RequestUri.AbsolutePath);
             Assert.Null(request.Headers.Authorization); Assert.False(request.Headers.Contains("Cookie")); Assert.Null(request.Content);
-            var q = Uri.UnescapeDataString(request.RequestUri.Query); Assert.Contains("maximumRecords=20", q); Assert.Contains("startRecord=81", q); Assert.Contains("onlyBib=true", q);
+            var q = Uri.UnescapeDataString(request.RequestUri.Query); Assert.Contains("maximumRecords=10", q); Assert.Contains("startRecord=81", q); Assert.Contains("onlyBib=true", q);
             var cql = Uri.UnescapeDataString(request.RequestUri.Query.Split('&').Single(x => x.StartsWith("query=", StringComparison.Ordinal))[6..]);
             Assert.Equal("dpid = \"iss-ndl-opac-national\" AND mediatype = \"books\" AND title = \"CLANNAD\\\" AND dpid = \\\"jpro\"", cql);
             return Task.FromResult(Reply(Search([Rdf()], 81)));
@@ -166,7 +169,7 @@ public sealed class NdlBibliographyProviderTests
     [Fact] public async Task InvalidRequestAndCancelledRequestNeverSend()
     {
         using var handler = new Handler((_, _) => throw new InvalidOperationException("must not send")); using var http = new HttpClient(handler); var provider = Provider(http);
-        await Assert.ThrowsAsync<InvalidDataException>(() => provider.FetchAsync("0000/secret", default)); await Assert.ThrowsAsync<InvalidDataException>(() => provider.SearchAsync(new("title", Start: 82), default));
+        await Assert.ThrowsAsync<InvalidDataException>(() => provider.FetchAsync("0000/secret", default)); await Assert.ThrowsAsync<InvalidDataException>(() => provider.SearchAsync(new("title", Start: 92), default));
         await Assert.ThrowsAsync<InvalidDataException>(() => provider.SearchAsync(new("title", "4044292019"), default));
         using var cancel = new CancellationTokenSource(); cancel.Cancel(); await Assert.ThrowsAnyAsync<OperationCanceledException>(() => provider.SearchAsync(new("合成作品"), cancel.Token)); Assert.Equal(0, handler.Calls);
     }
@@ -183,13 +186,52 @@ public sealed class NdlBibliographyProviderTests
         await Task.WhenAll(a.SearchAsync(new("合成作品"), default), b.FetchAsync(Id, default));
         Assert.Equal(3, handler.Calls); Assert.True(starts[1] - starts[0] >= TimeSpan.FromSeconds(2).Ticks); Assert.All(starts.Zip(starts.Skip(1)), pair => Assert.True(pair.Second - pair.First >= TimeSpan.FromSeconds(1).Ticks));
     }
-    [Fact] public async Task LongRetryAfterIsNotRetriedButStillBlocksOtherInstances()
+    [Fact] public async Task LongRetryAfterFailsFastAcrossInstancesWithoutSendingDuringCooldown()
     {
         var clock = new Clock(); var rate = clock.Rate(); int calls = 0; var starts = new List<long>();
         using var handler = new Handler((_, _) => { starts.Add(clock.GetTimestamp()); var r = Reply(Search(), ++calls == 1 ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK); if (calls == 1) r.Headers.RetryAfter = new(clock.GetUtcNow().AddSeconds(10)); return Task.FromResult(r); });
         using var http = new HttpClient(handler); var a = new NdlBibliographyProvider(http, rate, clock: clock.GetUtcNow); var b = new NdlBibliographyProvider(http, rate, clock: clock.GetUtcNow);
         Assert.Equal(BookFailure.RateLimited, (await Assert.ThrowsAsync<BookProviderException>(() => a.SearchAsync(new("合成作品"), default))).Failure); Assert.Equal(1, calls);
+        Assert.Equal(BookFailure.RateLimited, (await Assert.ThrowsAsync<BookProviderException>(() => b.SearchAsync(new("合成作品"), default))).Failure);
+        Assert.Equal(1, calls); Assert.Empty(clock.Waits);
+        await clock.Delay(TimeSpan.FromSeconds(10), default);
         await b.SearchAsync(new("合成作品"), default); Assert.Equal(2, calls); Assert.True(starts[1] - starts[0] >= TimeSpan.FromSeconds(10).Ticks);
+    }
+    [Fact] public async Task AStalledFirstAttemptCanRecoverWithoutResettingTheOperationDeadline()
+    {
+        int sent = 0, cancelled = 0; var clock = new Clock();
+        using var handler = new Handler(async (_, cancellation) =>
+        {
+            if (++sent > 1) return Reply(Search());
+            try { await Task.Delay(Timeout.InfiniteTimeSpan, cancellation); throw new InvalidOperationException(); }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { cancelled++; throw; }
+        }); using var http = new HttpClient(handler);
+        var provider = new NdlBibliographyProvider(http, clock.Rate(), TimeSpan.FromSeconds(1), clock.GetUtcNow, TimeSpan.FromMilliseconds(40));
+        Assert.Single((await provider.SearchAsync(new("合成作品"), default)).Publications);
+        Assert.Equal(2, sent); Assert.Equal(1, cancelled); Assert.Contains(clock.Waits, x => x >= TimeSpan.FromSeconds(1));
+    }
+    [Fact] public async Task ConnectionFailureRetriesOnceAndPersistentStallsRemainBounded()
+    {
+        int sent = 0; var clock = new Clock();
+        using var handler = new Handler((_, _) => ++sent == 1 ? throw new HttpRequestException("synthetic-private-details") : Task.FromResult(Reply(Oai())));
+        using var http = new HttpClient(handler); Assert.Equal(Id, (await Provider(http, clock).FetchAsync(Id, default)).Id); Assert.Equal(2, sent);
+        using var stall = new Handler(async (_, cancellation) => { await Task.Delay(Timeout.InfiniteTimeSpan, cancellation); throw new InvalidOperationException(); });
+        using var stalledHttp = new HttpClient(stall);
+        var provider = new NdlBibliographyProvider(stalledHttp, clock.Rate(), TimeSpan.FromSeconds(1), clock.GetUtcNow, TimeSpan.FromMilliseconds(40));
+        Assert.Equal(BookFailure.Timeout, (await Assert.ThrowsAsync<BookProviderException>(() => provider.FetchAsync(Id, default))).Failure);
+        Assert.Equal(2, stall.Calls);
+    }
+    [Fact] public async Task BusyQueueFailsPromptlyAndDoesNotReleaseTheActiveLease()
+    {
+        var clock = new Clock(); var rate = new NdlRequestCoordinator(clock, clock.Delay, TimeSpan.FromMilliseconds(40));
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var handler = new Handler((_, _) => { entered.TrySetResult(); return release.Task; }); using var http = new HttpClient(handler);
+        var provider = new NdlBibliographyProvider(http, rate, clock: clock.GetUtcNow);
+        var first = provider.SearchAsync(new("合成作品"), default); await entered.Task;
+        Assert.Equal(BookFailure.RateLimited, (await Assert.ThrowsAsync<BookProviderException>(() => provider.FetchAsync(Id, default))).Failure);
+        Assert.Equal(1, handler.Calls); Assert.False(first.IsCompleted);
+        release.SetResult(Reply(Search())); Assert.Single((await first).Publications);
     }
     [Fact] public async Task TransientServerRetryIsLimitedToOneAndSharesSpacing()
     {

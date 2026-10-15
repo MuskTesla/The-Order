@@ -15,7 +15,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
     private readonly TagFlowPanel relationCards = Flow(), candidateCards = Flow(), actions = Flow();
     private readonly TextBlock heading = Text(20), identity = Text(13), incoming = Text(13), message = Text(14), relationNotice = Text(13), searchNotice = Text(13), confirmation = Text(13);
     private readonly TextBox queryTitle = new() { PlaceholderText = "原标题（可修改）", MaxLength = 200, HorizontalAlignment = HorizontalAlignment.Stretch }, queryIsbn = new() { PlaceholderText = "ISBN（有编号时优先精确检索；清空可按标题查找）", MaxLength = 40, HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly Button back = Button("返回上一本"), cancel = Button("取消读取"), reloadSaved = Button("重读已保存记录"), refreshRelations = Button("重读关系"), search = Button("查找出版候选"), next = Button("下一页候选"), confirm = Button("已核对，确认这条出版记录"), refreshPreview = Button("刷新此出版记录");
+    private readonly Button back = Button("返回上一本"), cancel = Button("取消读取"), reloadSaved = Button("重读已保存记录"), refreshRelations = Button("重读关系"), search = Button("查找出版候选"), next = Button("下一页候选"), confirm = Button("核验并保存关联"), refreshPreview = Button("刷新此出版记录");
     private BookDetailsViewModel? model;
     private string? shownSource;
     private BangumiRelationsLoadResult? shownRelations;
@@ -164,6 +164,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
     {
         previewBody.Children.Clear(); if (model?.Preview is not { } result) return;
         var p = result.Publication; previewBody.Children.Add(Text(20, "出版记录预览 · NDL")); previewBody.Children.Add(Text(18, p.Title));
+        if (result.FromSearch) previewBody.Children.Add(Text(13, "来自 NDL 检索结果 · 保存关联时独立核验"));
         Fact(previewBody, "编号", p.Id); Fact(previewBody, "记录层级", p.IsAggregate ? "集合 / 汇总记录" : "独立出版物"); Fact(previewBody, "卷次原文", p.Volume);
         Fact(previewBody, "ISBN", p.Isbns); Fact(previewBody, "套装 ISBN", p.SetIsbns); Fact(previewBody, "出版日期原文", p.PublicationDate); Fact(previewBody, "版次", p.Edition);
         Fact(previewBody, "语言", p.Languages); Fact(previewBody, "出版社", p.Publishers); Fact(previewBody, "文库 / 丛书", p.BibliographicSeries); Fact(previewBody, "责任说明原文", p.CreatorStatements);
@@ -259,7 +260,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         historyDepth = model?.HistoryDepth, status = model?.Message, incoming = model?.Incoming, canConfirm = model?.CanConfirm, confirmationBlock = model?.ConfirmationBlock,
         relationExpanded = relations.IsExpanded, relations = model?.Relations?.Snapshot.Items.Where(x => x.Kind == BangumiRelationKind.Book).Select(x => new { x.Id, x.Relation }).ToArray(),
         candidates = model?.Candidates.Select(x => new { x.Id, x.Title, x.Isbns, x.IsAggregate }).ToArray(), nextStart = model?.Search?.Page.NextStart,
-        preview = model?.Preview?.Publication, saved = model?.Bindings.Select(x => x.PublicationId).ToArray(), bindingsLoaded = model?.BindingsLoaded,
+        preview = model?.Preview?.Publication, previewFromSearch = model?.Preview?.FromSearch, saved = model?.Bindings.Select(x => x.PublicationId).ToArray(), bindingsLoaded = model?.BindingsLoaded,
         candidateHitTargets = candidateCards.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), width = ActualWidth };
     private static string LevelName(BookEntityLevel value) => value switch { BookEntityLevel.Series => "系列", BookEntityLevel.Volume => "单卷", BookEntityLevel.Publication => "出版物", BookEntityLevel.Aggregate => "集合", _ => "层级未注明" };
     private static string Cache(bool cached, bool stale, string? warning) => (stale ? " · 暂时显示上次资料" : "") + (string.IsNullOrWhiteSpace(warning) ? "" : " · " + warning);

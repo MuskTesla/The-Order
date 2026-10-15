@@ -16,10 +16,12 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
 {
     public const string Origin = "https://ndlsearch.ndl.go.jp";
     public const int MaximumResponseBytes = 2 * 1024 * 1024;
+    public const int SearchPageSize = 10;
     public const string UserAgent = "TheOrder/1.1.0 (https://github.com/Ph-Rank/The-Order)";
     private readonly HttpClient client;
     internal NdlRequestCoordinator Coordinator { get; }
     private readonly TimeSpan duration;
+    private readonly TimeSpan attemptDuration;
     private readonly Func<DateTimeOffset> clock;
     private static readonly XNamespace Sru = "http://www.loc.gov/zing/srw/", Diagnostic = "http://www.loc.gov/zing/srw/diagnostic/",
         Oai = "http://www.openarchives.org/OAI/2.0/", Rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -28,8 +30,8 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
     private static readonly Regex DateRange = new(@"\b\d{4}(?:年)?(?:[./]\d{1,2}){0,2}\s*(?:[-–—〜～]|to)\s*(?:\d{4}|$)", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
     public NdlBibliographyProvider(HttpClient client) : this(client, NdlRequestCoordinator.Shared) { }
     internal NdlBibliographyProvider(HttpClient client, NdlRequestCoordinator coordinator,
-        TimeSpan? operationTimeout = null, Func<DateTimeOffset>? clock = null)
-    { this.client = client; Coordinator = coordinator; duration = operationTimeout ?? TimeSpan.FromSeconds(25); this.clock = clock ?? (() => DateTimeOffset.UtcNow); }
+        TimeSpan? operationTimeout = null, Func<DateTimeOffset>? clock = null, TimeSpan? attemptTimeout = null)
+    { this.client = client; Coordinator = coordinator; duration = operationTimeout ?? TimeSpan.FromSeconds(25); this.clock = clock ?? (() => DateTimeOffset.UtcNow); attemptDuration = attemptTimeout ?? TimeSpan.FromSeconds(12); }
 
     public Task<BookSearchPage> SearchAsync(BookSearchQuery query, CancellationToken cancellation)
     {
@@ -39,7 +41,7 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
             ? "isbn = " + Quote(isbn) : "title = " + Quote(query.Title));
         if (query.Isbn is null && query.Creator is { Length: > 0 } creator) cql += " AND creator = " + Quote(creator);
         var uri = UriFor("sru", new() { ["operation"] = "searchRetrieve", ["version"] = "1.2", ["recordSchema"] = "dcndl_v3",
-            ["recordPacking"] = "xml", ["onlyBib"] = "true", ["maximumRecords"] = "20", ["startRecord"] = query.Start.ToString(CultureInfo.InvariantCulture), ["query"] = cql });
+            ["recordPacking"] = "xml", ["onlyBib"] = "true", ["maximumRecords"] = SearchPageSize.ToString(CultureInfo.InvariantCulture), ["startRecord"] = query.Start.ToString(CultureInfo.InvariantCulture), ["query"] = cql });
         return Operation(async token => ParseSearch(await GetXml(uri, token).ConfigureAwait(false), query, clock()), cancellation);
     }
     public Task<BookPublication> FetchAsync(string id, CancellationToken cancellation)
@@ -75,25 +77,36 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
             GuardHeaders(); token.ThrowIfCancellationRequested();
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.UserAgent.ParseAdd(UserAgent); request.Headers.Accept.ParseAdd("application/xml"); request.Headers.Accept.ParseAdd("text/xml");
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-            if (response.RequestMessage?.RequestUri is { } actual && actual != uri || (int)response.StatusCode is >= 300 and < 400) throw Invalid();
-            int status = (int)response.StatusCode;
-            if (status == 429)
+            // One stalled connection must not consume the entire operation. A
+            // second attempt shares the original 25s deadline and serial queue.
+            using var attemptDeadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+            attemptDeadline.CancelAfter(attemptDuration);
+            try
             {
-                var wait = RetryAfter(response, clock()) ?? TimeSpan.FromMinutes(1); Coordinator.Cooldown(wait);
-                if (attempt == 0 && wait <= TimeSpan.FromSeconds(2)) continue;
-                throw new BookProviderException(BookFailure.RateLimited, "NDL 正在限流，请稍后重试。");
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, attemptDeadline.Token).ConfigureAwait(false);
+                if (response.RequestMessage?.RequestUri is { } actual && actual != uri || (int)response.StatusCode is >= 300 and < 400) throw Invalid();
+                int status = (int)response.StatusCode;
+                if (status == 429)
+                {
+                    var wait = RetryAfter(response, clock()) ?? TimeSpan.FromMinutes(1); Coordinator.Cooldown(wait);
+                    if (attempt == 0 && wait <= TimeSpan.FromSeconds(2)) continue;
+                    throw new BookProviderException(BookFailure.RateLimited, "NDL 正在限流，请稍后重试。");
+                }
+                if (status is 502 or 503 or 504 && attempt == 0)
+                {
+                    var wait = RetryAfter(response, clock()) ?? TimeSpan.FromMilliseconds(500); Coordinator.Cooldown(wait);
+                    if (wait <= TimeSpan.FromSeconds(2)) continue;
+                }
+                if (status != 200) throw new BookProviderException(status switch { 404 => BookFailure.Unavailable, 408 => BookFailure.Timeout, >= 500 => BookFailure.Server, _ => BookFailure.InvalidResponse }, "NDL 未能提供出版资料，已保留原有资料。");
+                var type = response.Content.Headers.ContentType?.MediaType;
+                if (type is null || !(type.Equals("text/xml", StringComparison.OrdinalIgnoreCase) || type.Equals("application/xml", StringComparison.OrdinalIgnoreCase) || type.EndsWith("+xml", StringComparison.OrdinalIgnoreCase))) throw Invalid();
+                var bytes = await CatalogTransport.ReadBoundedAsync(response.Content, MaximumResponseBytes, attemptDeadline.Token).ConfigureAwait(false);
+                attemptDeadline.Token.ThrowIfCancellationRequested(); return ReadXml(bytes, token);
             }
-            if (status is 502 or 503 or 504 && attempt == 0)
-            {
-                var wait = RetryAfter(response, clock()) ?? TimeSpan.FromMilliseconds(500); Coordinator.Cooldown(wait);
-                if (wait <= TimeSpan.FromSeconds(2)) continue;
-            }
-            if (status != 200) throw new BookProviderException(status switch { 404 => BookFailure.Unavailable, 408 => BookFailure.Timeout, >= 500 => BookFailure.Server, _ => BookFailure.InvalidResponse }, "NDL 未能提供出版资料，已保留原有资料。");
-            var type = response.Content.Headers.ContentType?.MediaType;
-            if (type is null || !(type.Equals("text/xml", StringComparison.OrdinalIgnoreCase) || type.Equals("application/xml", StringComparison.OrdinalIgnoreCase) || type.EndsWith("+xml", StringComparison.OrdinalIgnoreCase))) throw Invalid();
-            var bytes = await CatalogTransport.ReadBoundedAsync(response.Content, MaximumResponseBytes, token).ConfigureAwait(false);
-            token.ThrowIfCancellationRequested(); return ReadXml(bytes, token);
+            catch (OperationCanceledException) when (!token.IsCancellationRequested && attempt == 0)
+            { Coordinator.Cooldown(TimeSpan.FromSeconds(1)); }
+            catch (HttpRequestException) when (attempt == 0)
+            { token.ThrowIfCancellationRequested(); Coordinator.Cooldown(TimeSpan.FromSeconds(1)); }
         }
     }
     private static TimeSpan? RetryAfter(HttpResponseMessage response, DateTimeOffset now)
@@ -144,7 +157,9 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
             { if (JsonSerializer.Serialize(previous) != JsonSerializer.Serialize(publication)) throw Invalid(); }
             else found.Add(publication.Id, publication);
         }
-        int expected = query.Start + rows.Length; int? next = expected <= 81 && expected <= total && rows.Length > 0 ? expected : null;
+        int expected = query.Start + rows.Length;
+        if (expected > 101) throw Invalid();
+        int? next = expected <= 91 && expected <= total && rows.Length > 0 ? expected : null;
         if (root.Element(Sru + "nextRecordPosition") is { } position)
         {
             if (!int.TryParse(position.Value, NumberStyles.None, CultureInfo.InvariantCulture, out int serverNext) || serverNext < 0
@@ -221,7 +236,8 @@ public sealed class NdlBibliographyProvider : IBookBibliographyProvider
 
 // Production instances and both endpoints share one monotonic serial queue.
 // An internal isolated clock is available only for deterministic offline tests.
-internal sealed class NdlRequestCoordinator(TimeProvider? clock = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
+internal sealed class NdlRequestCoordinator(TimeProvider? clock = null, Func<TimeSpan, CancellationToken, Task>? delay = null,
+    TimeSpan? maximumQueueWait = null)
 {
     internal static NdlRequestCoordinator Shared { get; } = new();
     private readonly SemaphoreSlim queue = new(1);
@@ -229,13 +245,17 @@ internal sealed class NdlRequestCoordinator(TimeProvider? clock = null, Func<Tim
     private bool started; private long lastStart; private long cooldownStart; private TimeSpan cooldown;
     internal async Task<IDisposable> EnterAsync(CancellationToken cancellation)
     {
-        await queue.WaitAsync(cancellation).ConfigureAwait(false);
+        if (!await queue.WaitAsync(maximumQueueWait ?? TimeSpan.FromSeconds(2), cancellation).ConfigureAwait(false))
+            throw new BookProviderException(BookFailure.RateLimited, "NDL 上一请求尚未结束，请稍后重试；已保留现有资料。");
         try
         {
             while (true)
             {
                 var wait = started ? TimeSpan.FromSeconds(1) - Clock.GetElapsedTime(lastStart) : TimeSpan.Zero;
-                var blocked = cooldown - Clock.GetElapsedTime(cooldownStart); if (blocked > wait) wait = blocked;
+                var blocked = cooldown - Clock.GetElapsedTime(cooldownStart);
+                if (blocked > TimeSpan.FromSeconds(2))
+                    throw new BookProviderException(BookFailure.RateLimited, "NDL 正在限流，请稍后重试；已保留现有资料。");
+                if (blocked > wait) wait = blocked;
                 if (wait <= TimeSpan.Zero) break; await (delay ?? Task.Delay)(wait > TimeSpan.FromMinutes(1) ? TimeSpan.FromMinutes(1) : wait, cancellation).ConfigureAwait(false);
             }
             cancellation.ThrowIfCancellationRequested(); started = true; lastStart = Clock.GetTimestamp(); return new Lease(queue);

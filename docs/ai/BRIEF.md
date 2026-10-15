@@ -1,4 +1,18 @@
 # The Order：当前实现与评审交接
+## NDL 读取可靠性修复（2026-10-15，最新入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，从干净 `690d9c9e95a8d2d67a2f6642d78f228ff9bc81d2` 独立继续，上一轮源码与正式安装保留。版本仍1.1.0。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装状态以本节后续回执为准。
+
+已复现真实NDL标题检索22秒无响应，ISBN及OAI独立记录也存在波动。修复每页10条并保留100候选总边界（末页起始91，旧20条缓存仍可读）；一次12秒请求卡住或连接失败最多重试一次，始终共用原25秒总预算、全局串行与1秒间隔。长Retry-After期间立即说明限流；已有请求占用串行入口超过2秒时明确返回繁忙，不再一直等待后误报普通超时。取消不重试，格式/身份/权限错误不重试。
+
+候选预览直接使用已校验的SRU书目，不再追加OAI请求；显示其检索来源。保存关联仍由原服务独立核验准确NDL编号、标题、ISBN与集合状态；新确认拒绝过期缓存，失败不写映射。已有7日新鲜、30日瞬态故障降级及用户映射隔离保持，无资料迁移。其他Provider、OAuth及启动流程未改。
+
+证据根 `.artifacts/ndl-reliability-20261015`：Book/NDL相关回归163/0/0（43秒），新增保存保护定点20/0/0（57毫秒，含17项重叠），共166个不同用例；锁定依赖、WinUI publish-v1通过。真实产品Provider：ISBN首轮12秒取消后第二轮200，总15.6秒成功；CLANNAD标题检索200/10条/总53条，独立OAI记录200；重复查询缓存0ms且零新增HTTP。以上为本机即时观测，不是对NDL长期响应时间的保证。
+
+实际Test窗口完成CLANNAD→Bangumi漫画149014→单卷149015→NDL000008152373检索、预览、独立核验保存和返回。预览夹具往返582ms、FromSearch=true；深色常规窗口及浅色640窄窗见 `preview-dark.png` / `preview-narrow-light.png`，正常退出后Test library payload字节未变。不读取Production内容或凭据；真实鼠标、长时稳定性及上游完全离线不可恢复的情形不作通过保证。
+
+上游说明与限制：https://ndlsearch.ndl.go.jp/help/api 、https://ndlsearch.ndl.go.jp/help/api/specifications 。仍仅消费明确许可的NDL自建书目元数据，未增加采集、镜像或新服务。
+
 ## ACGN 深层导航与发行探索（2026-10-15，最新入口）
 
 当前工作区 `D:/Projects/The-Order-worktrees/acgn-depth-navigation-20261015`，分支 `codex/acgn-depth-navigation-20261015`，从干净 `a1d360a` 独立继续，保留上一轮worktree。版本仍1.1.0。用户本轮明确授权完成后安装到本机正式目录；不授权GitHub推送、主分支合并或公开发布。当前已完成候选构建，安装结果以本证据根回执为准，下文早期“未安装”为历史状态。

@@ -1,5 +1,17 @@
 # 开发与维护
 
+## NDL 可靠性修复（2026-10-15，当前）
+
+维护入口 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，干净基线690d9c9。产物 `.artifacts/ndl-reliability-20261015/publish-v1`，版本1.1.0；锁定还原、固定SDK10.0.401、x64和NativeProductionCandidate=true。该工作区保留前阶段源码，未升级依赖。
+
+短回归使用固定dotnet执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:UseSharedCompilation=true --filter "FullyQualifiedName~Book|FullyQualifiedName~Ndl"`；163项通过。新增独立确认保护后只重复BookBibliographyServiceTests，20项通过，3项新增、17项重叠。证据为同根 `tests/ndl-focused.trx` 和 `tests/confirmation-safety.trx`。无全仓或长资源测试。
+
+`NdlBibliographyProvider`共用25秒总预算，一次尝试12秒、至多两次；HTTP 429/502/503/504的原有限重试保留。连接失败或尝试超时可重试，用户取消和总截止不重试。请求串行、至少1秒间隔；长限流冷却及入口占用明确快速降级。每页10项、最后起始91保留100候选浏览；解析旧20项缓存不变。
+
+真实API探针 `probes/` 与产品链路 `live-provider-proof.json` 分别记录，不能把模拟通过当真实恢复。后者实际观察ISBN首次卡住被取消、重试200，标题及独立OAI成功，缓存复用零请求。`runner/BooksProof.csproj`只允许本证据根Test profile，seed仅复制既有合成library组件，不复制设置、凭据或Production。临时helper的NU1603仅属于验证工程，产品锁定构建无依赖变更。
+
+UI入口 `Start-IsolatedTest.ps1 -RunName <新的短名称> -PublishName publish-v1`，控制和截图都限准确Test PID/EXE/profile。不要裸运行候选默认Production。候选预览用SRU已得资料；`ConfirmAsync`仍独立读取OAI（允许有效的已核实记录缓存），失败不保存。测试完通过Control.ps1的exit正常退出，并用runner verify核对合成library payload。新FromSearch仅为展示标记，不进入持久格式。
+
 ## ACGN 深层导航与本机更新（2026-10-15，当前）
 
 维护入口 `D:/Projects/The-Order-worktrees/acgn-depth-navigation-20261015` / `codex/acgn-depth-navigation-20261015`，基线a1d360a。最终候选 `.artifacts/acgn-depth-navigation-20261015/publish-v4`。锁文件和固定SDK10.0.401构建，使用既有x64、NativeProductionCandidate=true、UseSharedCompilation=true；不并行写Native构建输出。上轮worktree保留不变。未更改版本或依赖。
