@@ -3,6 +3,8 @@
 
 当前工作区 `D:/Projects/The-Order-worktrees/acgn-depth-navigation-20261015`，分支 `codex/acgn-depth-navigation-20261015`，从干净 `a1d360a` 独立继续，保留上一轮worktree。版本仍1.1.0。用户本轮明确授权完成后安装到本机正式目录；不授权GitHub推送、主分支合并或公开发布。当前已完成候选构建，安装结果以本证据根回执为准，下文早期“未安装”为历史状态。
 
+本轮已按授权完成本机替换：`C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，实现提交 `f37997e1307d76797a666402b7e8862ec4dea5b0`，来自publish-v4。安装及GUI入口校验退出0；659份payload、files.json及3份入口哈希一致。Production与旧Electron资料仅核对2464份文件元数据，完全未变，未读取内容、凭据或启动Production。回退程序在 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-102252-acgn-depth/Program`（667份程序文件，不含Profile）。实际回执 `.artifacts/acgn-depth-navigation-20261015/prepared-install/installation-receipt.json`；独立重复核验另存同根。旧源码工作区896份tracked文件哈希零变化。无需迁移真实书架或OAuth令牌。
+
 音乐增加独立Recording / Work / Artist内部只读详情，精确typed MBID导航，包含可靠事实、别名、原始方向和属性的专业关系、来源；Album→Work→Artist/Recording→返回不重新匹配专辑，保存曲目展开和滚动位置。历史最多16层、每页最多256关系；新会话缓存32项/4MiB、24小时新鲜/14日瞬态故障降级，共享原MusicBrainz限流/超时。永久错误清旧，深快照隔离调用方修改，不逐曲递归请求。
 
 动画增加已加载章节的类型筛选、同类小数排序、单集原站入口和折叠原文说明。Bangumi官方仅有desc文本，AniList StaffEdge属于作品级，均无可验证的逐集Staff人物关系；保留原文制作名单，不猜人物ID。游戏发行增加类型/语言/平台交集筛选及单条折叠事实；使用NextMoe列表已有的发行级engine，不增加原源请求、不把作品组织借给发行。

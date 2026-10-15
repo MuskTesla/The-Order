@@ -12,6 +12,8 @@ MusicEntity reader复用原Provider实例、匿名HTTP、全局限流与35秒操
 
 用户已授权完成后替换本机正式程序。只能复用package-native-release.ps1、package-native-installer.ps1生成新包；安装前确保正式/测试进程均正常退出，备份原Program到仓库外本机回退目录，仅比较Production文件元数据、不读取内容。安装回执必须显示payload与GUI入口逐份哈希一致、Profile元数据未变；不推送、主分支合并或公开发布。原始正式资料和凭据不可随Test复制。安装结果应更新BRIEF并指向实际回执，准备完成不等于已安装。
 
+本轮结果：feature提交f37997e、publish-v4已安装到原 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`。Install-Local.ps1仅为忽略证据目录内的一次受限本机更新助手，固定目标和安装包SHA，拒绝运行中程序/链接目标。先备份并逐哈希核验667旧程序文件，执行现成Setup静默升级；659payload+files.json+3入口验证一致，TheOrder.exe --validate-only退出0且不打开Profile；2464正式资料文件元数据前后相同。证据在prepared-install/installation-receipt.json、profile-metadata-before/after.json，回退根见BRIEF。Setup SHA256 AFD16EE8044F26453767D94787E41DE9D45A7FE26D7161F17CA3F9401A058A5B。没有强杀、卸载、Profile恢复/迁移、GitHub推送或公开发布。
+
 ## PV 原生滚轮修复候选（2026-10-14）
 
 最新候选 `.artifacts/pv-native-scroll-20261014/publish-v3/`，同一 `codex/anilist-20261014`、HEAD `cddd6d5`加保留的dirty。短相关回归 `tests/related-final.trx` 583／0／0、9秒；原生OS输入比较记录在该证据根的 `ui-acceptance.json`。PV初始化前先拦截垂直滚轮，父host再恢复同一事件，原ScrollViewer处理原生惯性；不再以固定像素ChangeView模拟滚动。不能把初始化后直接重置Handled的早期候选当成最终修复，它已在实际输入对比中被否决。
