@@ -359,14 +359,13 @@ public sealed class AniListDetailView : Grid, IDisposable
     private static Border Frame(UIElement child, double width) => new() { Child = child, Width = width, MaxWidth = width, Tag = width, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new(12) };
     private static void ClampCards(TagFlowPanel panel) { if (panel.ActualWidth <= 0) return; foreach (var child in panel.Children.OfType<FrameworkElement>()) if (child.Tag is double width) child.MaxWidth = Math.Min(width, panel.ActualWidth); }
     private void ShowSection(Expander section) { section.IsExpanded = true; DispatcherQueue.TryEnqueue(() => { if (active && !disposed && section.IsLoaded) { scroll.UpdateLayout(); var y = section.TransformToVisual(body).TransformPoint(new(0, 0)).Y; scroll.ChangeView(null, y, null, true); } }); }
-    private async Task ShowEpisodesAsync()
+    private Task ShowEpisodesAsync()
     {
-        var expected = episodeSource; var expectedModel = model; var restore = model?.RestoreVersion; var input = scrollInputVersion;
         var loading = episodeList.ExpandAsync();
         scroll.UpdateLayout(); scroll.ChangeView(null, episodeList.TransformToVisual(body).TransformPoint(new(0, 0)).Y, null, true);
-        await loading;
-        if (active && !disposed && expected is not null && episodeSource == expected && ReferenceEquals(model, expectedModel) && model?.RestoreVersion == restore && scrollInputVersion == input)
-        { scroll.UpdateLayout(); scroll.ChangeView(null, episodeList.TransformToVisual(body).TransformPoint(new(0, 0)).Y, null, true); }
+        // The directory grows below this header. Completion must not scroll back
+        // over a subsequent section jump, especially with keyboard/UIA input.
+        return loading;
     }
     private void AddFact(string value) { if (value.Length > 0) facts.Children.Add(Text(13, value)); }
     private Task SearchAsync() => model?.SearchAsync(string.IsNullOrWhiteSpace(searchText.Text) ? null : searchText.Text.Trim()) ?? Task.CompletedTask;
