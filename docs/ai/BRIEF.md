@@ -1,4 +1,14 @@
 # The Order：当前实现与评审交接
+## AniList 书籍手动确认修复（2026-10-15，最新入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，从干净16607fe独立继续，保留NDL可靠性及全部既有成果。版本仍1.1.0，未升级依赖或迁移资料。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装结果以本轮后续回执为准。
+
+根因是AniListMatching.Assess把动画的发行年份硬冲突规则用于全部书籍，导致已经预览的正确漫画仍无法手动确认。真实匿名API核对：Bangumi43194为漫画系列（2卷），date=2010-05-26；AniList45821为MANGA（2卷14话），startDate=2009-08-26。现对书籍保留两站日期并提示出版/连载口径可能不同，单纯年份差异不再禁用用户确认。动画原年份约束、媒体/格式/明确外站编号冲突和单卷不能绑定多卷的边界保留；书籍仍不按同名或日期自动绑定，明确外部ID逻辑不变。
+
+证据根 `.artifacts/anilist-book-confirm-20261015`：146项相关回归通过、0失败/跳过，执行约1秒，新增10项覆盖MANGA/NOVEL日期差异、明确编号、层级冲突、手动确认与重新打开；锁定依赖的WinUI publish-v1通过。首次测试编译的xUnit2031写法问题已修正，不作为通过证据。2份公开API原响应及哈希在public-source-evidence.json指定文件，未使用Production缓存或凭据。
+
+实际WinUI Test通过：在合成详情容器用受限夹具直接打开真实Book43194（不将其虚构为CLANNAD的真实关系），搜索→45821预览→确认按钮IsEnabled=true→确认→正常退出→重启恢复Ready；再次选择其他条目、预览和确认也通过。深色实际截图 `yosuga-confirm-enabled-final-dark.png`，浅色640窄窗重启截图 `yosuga-confirmed-restarted-light.png`。早期封面尚加载截图保留，最终图片使用已加载封面。Test库payload字节未变。夹具扩展只允许Test内Anime/Book公开ID，不能用于Production控制；未做物理鼠标或长时测试。
+
 ## NDL 读取可靠性修复（2026-10-15，最新入口）
 
 当前源码 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，从干净 `690d9c9e95a8d2d67a2f6642d78f228ff9bc81d2` 独立继续，上一轮源码与正式安装保留。版本仍1.1.0。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装状态以本节后续回执为准。

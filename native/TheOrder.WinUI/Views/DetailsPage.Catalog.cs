@@ -269,11 +269,12 @@ public sealed partial class DetailsPage
                 break;
             case "aniOpen" when subjectId is not null:
                 if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test
-                    || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null) throw new InvalidDataException("Isolated public subject fixture required.");
+                    || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null
+                    || kind is not (null or BangumiRelationKind.Anime or BangumiRelationKind.Book)) throw new InvalidDataException("Isolated public subject fixture required.");
                 relatedMedia.Deactivate(); BangumiRelated.SuspendNavigation(); HeroStage.ReleaseBeforeLeave();
                 DetailsRoot.Visibility = Visibility.Collapsed; RelatedMediaHost.Visibility = Visibility.Visible;
                 relatedMedia.RelationLabel = "隔离只读验证"; relatedMedia.RelationEvidence = "Test fixture directly opens a public Bangumi identity; no synthetic relation is asserted as real.";
-                await relatedMedia.OpenAsync(new(subjectId, BangumiRelationKind.Anime, "动画", "", "隔离验证", null), "隔离只读验证");
+                await relatedMedia.OpenAsync(new(subjectId, kind ?? BangumiRelationKind.Anime, kind == BangumiRelationKind.Book ? "书籍" : "动画", "", "隔离验证", null), "隔离只读验证");
                 break;
             case "expand": SynchronizeBangumi(); await BangumiRelated.ExpandForFixtureAsync(); break;
             case "collapse": BangumiRelated.CollapseForFixture(); break;

@@ -1,5 +1,15 @@
 # 开发与维护
 
+## AniList 书籍确认修复（2026-10-15，当前）
+
+入口 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，基线16607fe；版本1.1.0、原锁文件与SDK10.0.401保持。候选 `.artifacts/anilist-book-confirm-20261015/publish-v1`，生产资料未作为测试输入。
+
+主要修改AniListMatching.Assess：Anime年份仍是硬冲突；Book日期作为原始证据和口径提示，不单独阻止手动确认。StrongEvidence对Book继续返回false；明确ID、Format、Kind以及Volume/Publication→多卷防护保留。不改变Fingerprint、用户映射格式或缓存版本。
+
+固定dotnet执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:UseSharedCompilation=true --filter "FullyQualifiedName~AniList|FullyQualifiedName~BookDetailsViewModelTests|FullyQualifiedName~BookBibliographyServiceTests"`，最终146/0/0、约1秒；TRX在本证据根tests/confirmation-regression-final.trx。没有全仓或长时测试。
+
+实际UI使用本证据根Start-IsolatedTest.ps1和Control.ps1；fixture-ready只表示控制入口就绪，导航前还须等待probe的runtime.lifecycle.ready=true。首次过早导航失败保留，随后及重启均已等待正常恢复。Test专用aniOpen可传Kind Book与准确SubjectId43194，不构造真实跨媒体边；aniPreview45821、aniConfirm走原产品操作。证据增加confirmButtonEnabled以验证原生按钮状态。截图工具限准确Test PID/EXE/profile，正常exit后runner verify核对合成库未变。
+
 ## NDL 可靠性修复（2026-10-15，当前）
 
 维护入口 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，干净基线690d9c9。产物 `.artifacts/ndl-reliability-20261015/publish-v1`，版本1.1.0；锁定还原、固定SDK10.0.401、x64和NativeProductionCandidate=true。该工作区保留前阶段源码，未升级依赖。

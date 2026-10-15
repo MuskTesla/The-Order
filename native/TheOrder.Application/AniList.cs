@@ -140,7 +140,14 @@ public static class AniListMatching
         }
         if (source.Date is { Length: >= 4 } date && media.StartDate is { Length: >= 4 } start)
         {
-            var same = date[..4] == start[..4]; conflict |= !same; evidence.Add(same ? "发行年份一致" : $"发行年份不同：{date} / {start}");
+            var same = date[..4] == start[..4];
+            if (source.Kind == AniListMediaKind.Anime)
+            { conflict |= !same; evidence.Add(same ? "发行年份一致" : $"发行年份不同：{date} / {start}"); }
+            // Book dates can describe serialization or a collected publication.
+            // Keep both values as a warning, rather than rejecting a deliberate
+            // user choice. Book automatic matching remains disabled above.
+            else evidence.Add(same ? "记录年份一致（仅供参考）"
+                : $"日期不同：Bangumi {date} / AniList {start}（出版与连载口径可能不同，请核对）");
         }
         if (source.Episodes is { } eps && source.Kind == AniListMediaKind.Anime && media.Episodes is { } actual)
             evidence.Add(eps == actual ? "集数一致" : $"集数口径不同：Bangumi {eps} / AniList {actual}");
