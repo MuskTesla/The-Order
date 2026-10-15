@@ -39,17 +39,25 @@ internal static class CatalogRosterDto
         var groups = new List<List<Row>>();
         foreach (var row in rows)
         {
-            var identities = row.Voices.Select(VoiceIdentity).OfType<string>().ToHashSet(StringComparer.Ordinal);
-            var matches = groups.Where(g => g.Any(other => Text(row.Value, "id") == Text(other.Value, "id") || row.Names.Overlaps(other.Names) && other.Voices.Select(VoiceIdentity).OfType<string>().Any(identities.Contains))).ToArray();
+            // A shared name and actor can describe two distinct characters.
+            // Group exact character identities before considering incomplete
+            // supplemental display rows; never build transitive identity unions.
+            var matches = groups.Where(g => g.Any(other => Text(row.Value, "id") == Text(other.Value, "id"))).ToArray();
             if (matches.Length == 0) groups.Add([row]);
             else { var group = matches[0]; group.Add(row); foreach (var other in matches.Skip(1)) { group.AddRange(other); groups.Remove(other); } }
         }
         // Incomplete supplemental rows can use a unique, independently illustrated
         // roster record with both character and actor spelling corroboration. Two
         // complete records, ambiguous matches or name-only actors are never collapsed.
+        var anchors = groups.ToDictionary(g => g, g => g.ToArray());
         foreach (var group in groups.Where(g => g.All(r => r.Supplement)).ToArray())
         {
-            var matches = groups.Where(g => g != group && g.Any(r => r.IllustratedRoster && group.Any(s => s.Names.Overlaps(r.Names) && s.Voices.Any(v => r.Voices.Any(w => VoiceNamesMatch(v, w)))))).ToArray();
+            // Freeze exact-ID evidence before absorbing supplemental rows. An
+            // absorbed row must not become proof for a later, different ID.
+            var exact = groups.Where(g => g != group && anchors[g].Any(r => r.IllustratedRoster)
+                && anchors[g].Any(r => group.Any(s => s.Names.Overlaps(r.Names)
+                    && s.Voices.Any(v => VoiceIdentity(v) is { } id && anchors[g].SelectMany(x => x.Voices).Any(w => VoiceIdentity(w) == id))))).ToArray();
+            var matches = exact.Length > 0 ? exact : groups.Where(g => g != group && anchors[g].Any(r => r.IllustratedRoster && group.Any(s => s.Names.Overlaps(r.Names) && s.Voices.Any(v => r.Voices.Any(w => VoiceNamesMatch(v, w)))))).ToArray();
             if (matches.Length == 1) { matches[0].AddRange(group); groups.Remove(group); }
         }
         return groups.Select(g => g.Select(r => r.Value).ToArray()).ToArray();

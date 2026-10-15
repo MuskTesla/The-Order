@@ -1,5 +1,15 @@
 # 开发与维护
 
+## ACGN 架构红队验证入口（2026-10-15，当前）
+
+源码 `D:/Projects/The-Order-worktrees/acgn-redteam-20261015`，分支 `codex/acgn-redteam-20261015`；继承快照 `50efc66` 完整保留前轮 12 项 dirty。仅本轮改动独立提交，证据 `.artifacts/acgn-redteam-20261015`。禁止 Production、日用安装、推送及发布；下面历史安装命令不构成本轮授权。
+
+固定 SDK10.0.401 从 `D:/Projects/The-Order-worktrees/claude-recognition-rnd/.artifacts/native-phase1/tools/dotnet/dotnet.exe` 运行，锁定 restore；构建命令为 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-redteam-20261015/publish-v1`，日志 `build-v1.log`。没有启动候选或生成安装包。不要裸运行默认 Production 入口。
+
+最终定点 `dotnet test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -p:UseSharedCompilation=true --filter "FullyQualifiedName~AcgnRedTeam|FullyQualifiedName~AniList|FullyQualifiedName~MusicBrainz|FullyQualifiedName~MusicAlbum|FullyQualifiedName~Book|FullyQualifiedName~CatalogRefinement|FullyQualifiedName~OnlineTransport"` 为 491/0/0，含 71 项独立红队用例。`tests-baseline/` 的失败不得删除或替代；`tests-final/focused-frozen.trx` 是最终源码结果。全套 `--no-build` 首轮 3624/24/1，23 项依赖缺失随后按 `dependency-recheck-filter.txt` 重跑 23/0/0；分次结果不等于一次全套通过。SDK 与 Electron44.5.1 仅通过本工作区忽略目录 junction 复用既有工具，见 `test-dependencies.json`，没有 npm 安装或依赖变化。剩余图片夹具失败及 Worker 联调跳过如实保留。
+
+原子取消/乱序用例使用临时合成 Test Profile 与真实原子 writer；不会访问用户正式资料。公开 API 探针与模拟测试分开：`public-api-c/manifest-index.json` 列出请求及哈希，NDL v3 超时文件已在 manifest 标为无效，不能用作成功证据。当前增量字段兼容读取旧资料，旧自动关联必须重验；没有实际旧 EXE 降级运行验证，也没有进行用户映射迁移。
+
 ## 详情可读性优化（2026-10-15，当前开发；隔离验收完成）
 
 维护入口为 `D:/Projects/The-Order-worktrees/detail-readability-20261015` / `codex/detail-readability-20261015`，干净基线 `531cf8c`，版本保持 1.1.0。旧工作树和本机正式安装保留；本轮未提交、未安装、未推送或合并。下方同日期旧入口和旧安装状态保留作历史证据，不能据此切回旧候选继续开发或自动替换程序。

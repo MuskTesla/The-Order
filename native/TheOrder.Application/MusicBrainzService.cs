@@ -11,6 +11,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     private readonly Dictionary<string, MusicBrainzCacheValue> memory = [];
     private readonly Dictionary<string, long> latest = [];
     private long sequence;
+    private long cacheMutation;
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public async Task<MusicBrainzMatchResult> MatchAsync(MusicAlbumSource source, bool refresh, CancellationToken cancellation)
     {
@@ -43,13 +44,20 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     }
     public async Task ConfirmAsync(MusicAlbumSource source, MusicBrainzAlbum album, CancellationToken cancellation)
     {
-        if (!source.IsValid || !MusicBrainzValidation.Album(album)) throw new InvalidDataException("音乐资料身份无效。");
-        cancellation.ThrowIfCancellationRequested();
-        var binding = new MusicBrainzCacheValue("binding:" + source.Fingerprint, Now,
-            Binding: new(source.Fingerprint, album.Release.Id));
-        // Persistence is awaited before reporting confirmation. Cancellation before atomic replacement leaves no choice.
-        if (disk is not null) await disk.WriteAsync(binding, cancellation).ConfigureAwait(false);
-        lock (gate) Remember(binding);
+        if (!source.IsValid || !MusicBrainzValidation.Album(album) || MusicBrainzMatching.Assess(source, album.Release).HasIdentityConflict)
+            throw new InvalidDataException("音乐发行版或专辑组的明确编号存在冲突，未保存此关联。");
+        await commits.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            cancellation.ThrowIfCancellationRequested();
+            var binding = new MusicBrainzCacheValue("binding:" + source.Fingerprint, Now,
+                Binding: new(source.Fingerprint, album.Release.Id));
+            // Once the atomic replacement succeeds its value must also become
+            // the session's choice, including cancellation after replacement.
+            if (disk is not null) await disk.WriteAsync(binding, cancellation).ConfigureAwait(false);
+            lock (gate) { Remember(binding); cacheMutation++; }
+        }
+        finally { commits.Release(); }
     }
     private async Task<(MusicBrainzCacheValue Value, bool Cached, bool Stale, string? Warning)> LoadAsync(string key, bool refresh,
         TimeSpan fresh, Func<CancellationToken, Task<MusicBrainzCacheValue>> fetch, CancellationToken cancellation)
@@ -69,11 +77,15 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
                 bool owns; lock (gate) owns = latest.GetValueOrDefault(key) == version;
                 if (owns)
                 {
+                    var persisted = false;
                     if (disk is not null)
-                        try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); }
+                        try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); persisted = true; }
                         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-                    cancellation.ThrowIfCancellationRequested();
-                    lock (gate) { if (latest.GetValueOrDefault(key) == version) Remember(value); }
+                    if (!persisted) cancellation.ThrowIfCancellationRequested();
+                    lock (gate)
+                    {
+                        if (persisted || latest.GetValueOrDefault(key) == version) { Remember(value); cacheMutation++; }
+                    }
                 }
             }
             finally { commits.Release(); }
@@ -98,7 +110,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
                     if (disk is not null)
                         try { await disk.WriteAsync(rejected, cancellation).ConfigureAwait(false); }
                         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-                    lock (gate) { if (latest.GetValueOrDefault(key) == version) Remember(rejected); }
+                    lock (gate) { Remember(rejected); cacheMutation++; }
                 }
             }
             finally { commits.Release(); }
@@ -108,15 +120,29 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     }
     private async Task<MusicBrainzCacheValue?> ReadAsync(string key, CancellationToken cancellation)
     {
-        cancellation.ThrowIfCancellationRequested(); MusicBrainzCacheValue? value;
-        lock (gate) memory.TryGetValue(key, out value);
-        if (value is null && disk is not null)
+        bool Valid(MusicBrainzCacheValue? value) => value is not null && value.Key == key && MusicBrainzValidation.Cache(value) && !value.Rejected
+            && value.CachedAtUtc <= Now.AddMinutes(5) && (value.Binding is not null || Now - value.CachedAtUtc <= MaximumStaleAge);
+        while (true)
+        {
+            cancellation.ThrowIfCancellationRequested(); long observedMutation;
+            lock (gate)
+            {
+                if (memory.TryGetValue(key, out var current))
+                { if (!Valid(current)) return null; Remember(current); return current; }
+                observedMutation = cacheMutation;
+            }
+            if (disk is null) return null;
+            MusicBrainzCacheValue? value = null;
             try { value = await disk.ReadAsync(key, cancellation).ConfigureAwait(false); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-        cancellation.ThrowIfCancellationRequested();
-        if (value?.Key != key || !MusicBrainzValidation.Cache(value) || value!.Rejected || value.CachedAtUtc > Now.AddMinutes(5)
-            || value.Binding is null && Now - value.CachedAtUtc > MaximumStaleAge) return null;
-        lock (gate) Remember(value); return value;
+            cancellation.ThrowIfCancellationRequested();
+            lock (gate)
+            {
+                if (cacheMutation != observedMutation) continue;
+                if (!Valid(value)) return null;
+                Remember(value!); return value;
+            }
+        }
     }
     private void Remember(MusicBrainzCacheValue value)
     {

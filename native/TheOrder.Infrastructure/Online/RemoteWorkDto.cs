@@ -44,7 +44,12 @@ public sealed partial record RemoteWorkDto(JsonElement Value)
     public WorkMetadata Map(bool includeExplicit, DateTimeOffset now)
     {
         var work = Value; var id = Text(work, "id");
-        if (Text(work, "object") != "work" || !ValidId(id)) throw new OnlineException(OnlineFailure.InvalidResponse);
+        // WorkMetadata is the local Galgame model, not a generic ACGN work.
+        // Older catalog snapshots omitted medium; preserve that compatibility,
+        // but never erase an explicit non-game (or malformed) discriminator.
+        if (Text(work, "object") != "work" || !ValidId(id)
+            || Field(work, "medium").ValueKind != JsonValueKind.Undefined && Text(work, "medium") != "galgame")
+            throw new OnlineException(OnlineFailure.InvalidResponse);
         var title = Localized(work); if (title.Length == 0) title = "作品 " + id;
         var original = Text(work, "display_name"); if (original.Length == 0) original = title;
         var titles = Rows(work, "titles").ToArray();

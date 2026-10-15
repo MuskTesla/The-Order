@@ -10,6 +10,7 @@ public sealed record BangumiSubjectDetails(string Id, BangumiRelationKind Kind, 
     public BangumiMusicFacts? MusicFacts { get; init; }
     public BangumiBookFacts? BookFacts { get; init; }
     public string[] ExternalLinks { get; init; } = [];
+    public bool HasAmbiguousExternalIdentity { get; init; }
 }
 
 public sealed record BangumiSubjectDetailsResult(BangumiSubjectDetails Details, bool FromCache, bool IsStale, string? Warning);

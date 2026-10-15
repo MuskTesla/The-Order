@@ -18,20 +18,35 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
     public static string DetailQuery => "query($id:Int!,$type:MediaType!,$page:Int!){ Media(id:$id,type:$type){" + Fields + " description(asHtml:false) genres tags { name isGeneralSpoiler isMediaSpoiler } studios(isMain:true){ nodes { name } } externalLinks { id url site type language notes isDisabled } trailer { id site } " + People + " relations { edges { relationType node { " + Fields + " } } } }}";
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public async Task<AniListMedia[]> SearchAsync(AniListSource source, string? query, CancellationToken cancellation)
+        => (await SearchCandidatesAsync(source, query, cancellation).ConfigureAwait(false)).Items;
+    public async Task<AniListSearchCandidates> SearchCandidatesAsync(AniListSource source, string? query, CancellationToken cancellation)
     {
         if (!source.IsValid || query is not null && !AniListValidation.Text(query, 2000, false)) throw new InvalidDataException("检索条件无效。");
-        if (AniListReference.TryParse(query, out var reference)) return [await ResolveAsync(reference!, cancellation).ConfigureAwait(false)];
+        if (AniListReference.TryParse(query, out var reference)) return new([await ResolveAsync(reference!, cancellation).ConfigureAwait(false)], true);
         var titles = query is not null ? new[] { query } : new[] { source.OriginalTitle, source.Title }.Where(x => x.Length > 0).Distinct().Take(2).ToArray();
-        var found = new Dictionary<int, AniListMedia>();
+        var found = new Dictionary<int, AniListMedia>(); bool complete = true;
         foreach (var title in titles)
         {
-            using var json = await QueryAsync("query($search:String!,$type:MediaType!){ Page(page:1,perPage:10){ media(search:$search,type:$type){" + Fields + "} }}",
-                new { search = title, type = Type(source.Kind) }, cancellation).ConfigureAwait(false);
+            JsonDocument json;
+            try
+            {
+                json = await QueryAsync("query($search:String!,$type:MediaType!){ Page(page:1,perPage:10){ pageInfo { hasNextPage } media(search:$search,type:$type){" + Fields + "} }}",
+                    new { search = title, type = Type(source.Kind) }, cancellation).ConfigureAwait(false);
+            }
+            catch (AniListException e) when (found.Count > 0 && e.Failure is AniListFailure.Offline or AniListFailure.Timeout or AniListFailure.RateLimited or AniListFailure.Server)
+            { cancellation.ThrowIfCancellationRequested(); complete = false; break; }
+            using (json)
+            {
             if (!json.RootElement.TryGetProperty("data", out var data) || !data.TryGetProperty("Page", out var page) || !page.TryGetProperty("media", out var rows) || rows.ValueKind != JsonValueKind.Array) throw Invalid();
+            complete &= page.TryGetProperty("pageInfo", out var info) && info.ValueKind == JsonValueKind.Object
+                && info.TryGetProperty("hasNextPage", out var next) && next.ValueKind == JsonValueKind.False
+                && rows.GetArrayLength() <= 10;
             foreach (var row in rows.EnumerateArray().Take(10)) { var media = MapMedia(row); if (media.Kind != source.Kind) throw Invalid(); found.TryAdd(media.Id, media); }
-            if (found.Count > 0) break;
+            // Both native and display-title queries contribute evidence. A
+            // truncated page stays useful for manual choice, never uniqueness.
+            }
         }
-        return found.Values.Take(20).ToArray();
+        return new(found.Values.Take(20).ToArray(), complete && found.Count <= 20);
     }
     public async Task<AniListMedia> ResolveAsync(AniListReference reference, CancellationToken cancellation)
     {

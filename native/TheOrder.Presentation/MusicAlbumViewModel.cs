@@ -19,7 +19,8 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
     public string SelectionReason { get; private set; } = "";
     public bool IsBusy => State is MusicAlbumState.LoadingSource or MusicAlbumState.Matching or MusicAlbumState.LoadingAlbum;
     public bool CanLoad => active && !disposed && !IsBusy && Item is not null;
-    public bool CanConfirm => CanLoad && State == MusicAlbumState.Preview && Source is not null && Preview is not null;
+    public bool CanConfirm => CanLoad && State == MusicAlbumState.Preview && Source is not null && Preview is not null
+        && !MusicBrainzMatching.Assess(Source, Preview.Album.Release).HasIdentityConflict;
     public bool CanCancel => active && !disposed && IsBusy;
     public MusicBrainzAlbumResult? Displayed => Preview ?? Album;
     public Task OpenAsync(BangumiRelationItem item, CancellationToken cancellation = default)
@@ -97,11 +98,19 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
                 if (!accepts()) return;
                 Validate(id, album);
                 // Search documents are not a substitute for the final release identity and facts.
-                if (match.ConfirmedReleaseId is not null || MusicBrainzMatching.Assess(Source, album.Album.Release).Strong)
+                var assessment = MusicBrainzMatching.Assess(Source, album.Album.Release);
+                if (!assessment.HasIdentityConflict && (match.ConfirmedReleaseId is not null || assessment.Strong))
                 {
                     Album = album; State = MusicAlbumState.Ready;
                     SelectionReason = match.ConfirmedReleaseId is not null ? "使用已确认的发行版" : "目录编号与发行信息匹配";
-                    Message = Warnings(details.Warning, match.Warning, album.Warning, album.Album.CoverWarning); return;
+                    Message = Warnings(assessment.HasConflict ? "所选发行版的日期、目录编号或其他发行信息与来源不同，请核对版本。" : null,
+                        details.Warning, match.Warning, album.Warning, album.Album.CoverWarning); return;
+                }
+                if (assessment.HasIdentityConflict)
+                {
+                    Album = null; State = MusicAlbumState.Choosing;
+                    Message = "发行版与当前来源的明确证据存在冲突，请重新查找并核对；原有关联记录已保留。";
+                    return;
                 }
             }
             State = MusicAlbumState.Choosing;
@@ -120,8 +129,14 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
             if (!accepts()) return; Validate(id, value);
             Preview = value; State = MusicAlbumState.Preview;
             Message = "这是发行版预览。确认后将记住此选择。";
-            if (Source is not null && MusicBrainzMatching.Assess(Source, value.Album.Release).HasConflict)
-                Message += " 发行信息与 Bangumi 不完全一致，请仔细核对。";
+            if (Source is not null)
+            {
+                var assessment = MusicBrainzMatching.Assess(Source, value.Album.Release);
+                if (assessment.HasIdentityConflict)
+                    Message = "此发行版与来源的明确发行版或专辑组编号存在冲突，不能确认。请核对来源或选择其他发行版。";
+                else if (assessment.HasConflict)
+                    Message = "此发行版的日期、目录编号或其他发行信息与来源不同。请核对版本和曲目后确认。";
+            }
             Message = Warnings(Message, value.Warning, value.Album.CoverWarning);
         }, cancellation);
     }
@@ -135,7 +150,8 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
             await music.ConfirmAsync(source, preview.Album, token);
             if (!accepts()) return;
             Album = preview; Preview = null; State = MusicAlbumState.Ready; SelectionReason = "你确认的发行版";
-            Message = Warnings(preview.Warning, preview.Album.CoverWarning);
+            Message = Warnings(MusicBrainzMatching.Assess(source, preview.Album.Release).HasConflict
+                ? "所选发行版的日期、目录编号或其他发行信息与来源不同，请核对版本。" : null, preview.Warning, preview.Album.CoverWarning);
         }, cancellation);
     }
     public void BackToEditions()

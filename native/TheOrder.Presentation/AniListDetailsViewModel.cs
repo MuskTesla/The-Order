@@ -6,10 +6,11 @@ public enum AniListDetailState { Idle, Loading, Choosing, Preview, Ready, Cancel
 public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subjects, IAniListReader reader) : ObservableState, IDisposable
 {
     private sealed record Entry(AniListMedia? Media, AniListResult? Result, AniListResult[] Pages,
-        AniListDetailState State, string Reason, string? Origin, string? Relation, double Offset);
+        AniListDetailState State, string Reason, string? Origin, string? Relation, double Offset, bool TrustedBridge, bool UnconfirmedPreview);
     private readonly Stack<Entry> history = new();
     private CancellationTokenSource? request; private long generation; private bool active, disposed;
     private AniListDetailState resumeState;
+    private bool trustedBridge, unconfirmedPreview;
     public BangumiRelationItem? Item { get; private set; }
     public BangumiSubjectDetailsResult? Bridge { get; private set; }
     public AniListSource? Source { get; private set; }
@@ -25,7 +26,8 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     public bool IsBridge => history.Count == 0;
     public int HistoryDepth => history.Count;
     public bool IsBusy => request is not null;
-    public bool HasUnconfirmedPreview => Displayed is not null && SelectionReason.StartsWith("条目预览", StringComparison.Ordinal);
+    public bool HasUnconfirmedPreview => unconfirmedPreview;
+    public bool HasTrustedBridge => active && !disposed && IsBridge && trustedBridge && !unconfirmedPreview;
     public bool CanLoad => active && !disposed && !IsBusy;
     public bool CanConfirm => CanLoad && IsBridge && State == AniListDetailState.Preview && Source is not null && Displayed is not null && !AniListMatching.Assess(Source, Displayed.Details.Media).Conflict;
     public bool CanMore => CanLoad && State is AniListDetailState.Ready or AniListDetailState.Preview && Displayed is not null && PeoplePages.LastOrDefault()?.Details is { PeoplePage: < 10 } d && (d.MoreCharacters || d.MoreStaff);
@@ -34,6 +36,7 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     public Task OpenAsync(BangumiRelationItem item, CancellationToken cancellation = default)
     {
         Stop(); active = true; history.Clear(); Item = item; Bridge = null; Source = null; Candidates = []; Media = null; Displayed = null; PeoplePages = [];
+        trustedBridge = unconfirmedPreview = false;
         IncomingOrigin = IncomingRelation = null; SelectionReason = ""; State = AniListDetailState.Idle;
         RestoreOffset = 0; RestoreVersion++;
         return RunAsync(async token =>
@@ -48,7 +51,11 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         }, cancellation);
     }
     public Task SearchAsync(string? query = null) => !CanLoad || Source is null || !IsBridge ? Task.CompletedTask
-        : RunAsync(async token => { Displayed = null; Media = null; PeoplePages = []; await MatchCoreAsync(query, true, token); });
+        : RunAsync(async token =>
+        {
+            Displayed = null; Media = null; PeoplePages = []; trustedBridge = unconfirmedPreview = false; SelectionReason = "";
+            await MatchCoreAsync(query, true, token);
+        });
     private async Task MatchCoreAsync(string? query, bool refresh, CancellationToken token)
     {
         var match = await reader.MatchAsync(Source!, query, refresh, token); Require(token); Candidates = match.Candidates;
@@ -56,7 +63,8 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         {
             var details = await reader.LoadAsync(binding.MediaId, binding.Kind, false, 1, token); Require(token);
             if (AniListMatching.Assess(Source!, details.Details.Media).Conflict) throw new InvalidDataException("已保存的关联与当前作品证据不一致，请重新选择。");
-            Display(details); State = AniListDetailState.Ready; SelectionReason = binding.Evidence; Message = details.Warning ?? "";
+            Display(details); trustedBridge = true; unconfirmedPreview = false;
+            State = AniListDetailState.Ready; SelectionReason = binding.Evidence; Message = details.Warning ?? "";
         }
         else
         {
@@ -69,12 +77,14 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         : RunAsync(async token =>
         {
             var result = await reader.LoadAsync(candidate.Id, candidate.Kind, false, 1, token); Require(token);
-            Display(result); State = AniListDetailState.Preview; SelectionReason = "条目预览 · 尚未确认";
+            Display(result); trustedBridge = false; unconfirmedPreview = true;
+            State = AniListDetailState.Preview; SelectionReason = "条目预览 · 尚未确认";
             Message = string.Join(" · ", AniListMatching.Assess(Source!, result.Details.Media).Evidence);
         });
     public Task ConfirmAsync() => !CanConfirm ? Task.CompletedTask : RunAsync(async token =>
     {
         await reader.ConfirmAsync(Source!, Displayed!.Details, token); Require(token);
+        trustedBridge = true; unconfirmedPreview = false;
         State = AniListDetailState.Ready; SelectionReason = "用户核对确认 · Bangumi → AniList"; Message = Displayed.Warning ?? "";
     });
     public Task ChooseAgainAsync()
@@ -82,7 +92,8 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         if (!CanLoad || !IsBridge || Source is null) return Task.CompletedTask;
         return RunAsync(async token =>
         {
-            Displayed = null; Media = null; PeoplePages = []; Candidates = []; SelectionReason = ""; Notify();
+            Displayed = null; Media = null; PeoplePages = []; Candidates = []; SelectionReason = "";
+            trustedBridge = unconfirmedPreview = false; Notify();
             // Bypass the saved binding, while retaining native-title fallback.
             // Keep that binding until a different preview is actually confirmed.
             var match = await reader.FindCandidatesAsync(Source, false, token); Require(token);
@@ -94,9 +105,10 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     {
         if (!CanLoad || State != AniListDetailState.Ready || Displayed is null || history.Count >= 20
             || !Displayed.Details.Relations.Contains(relation)) return Task.CompletedTask;
-        history.Push(new(Media, Displayed, PeoplePages, State, SelectionReason, IncomingOrigin, IncomingRelation, scrollOffset));
+        history.Push(new(Media, Displayed, PeoplePages, State, SelectionReason, IncomingOrigin, IncomingRelation, scrollOffset, trustedBridge, unconfirmedPreview));
         IncomingOrigin = Displayed.Details.Media.Title; IncomingRelation = relation.Relation;
         Media = relation.Media; Displayed = null; PeoplePages = []; SelectionReason = "AniList 原站作品关系";
+        trustedBridge = unconfirmedPreview = false;
         RestoreOffset = 0; RestoreVersion++;
         return RunAsync(async token =>
         {
@@ -108,6 +120,7 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     {
         if (!active || disposed || !history.TryPop(out var entry)) return false;
         Stop(); Media = entry.Media; Displayed = entry.Result; PeoplePages = entry.Pages; State = entry.State; SelectionReason = entry.Reason;
+        trustedBridge = entry.TrustedBridge; unconfirmedPreview = entry.UnconfirmedPreview;
         IncomingOrigin = entry.Origin; IncomingRelation = entry.Relation; Message = Displayed?.Warning ?? "";
         RestoreOffset = entry.Offset; RestoreVersion++; Notify(); return true;
     }
@@ -120,7 +133,14 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         ? Item is { } item ? OpenAsync(item) : Task.CompletedTask : RunAsync(async token =>
         {
             var result = await reader.LoadAsync(media.Id, media.Kind, true, 1, token); Require(token); Display(result);
-            State = SelectionReason.StartsWith("条目预览", StringComparison.Ordinal) ? AniListDetailState.Preview : AniListDetailState.Ready; Message = result.Warning ?? "";
+            if (IsBridge && Source is { } source && AniListMatching.Assess(source, result.Details.Media).Conflict)
+            {
+                trustedBridge = false; unconfirmedPreview = true;
+                State = AniListDetailState.Preview; SelectionReason = "条目预览 · 更新后来源证据不一致";
+                Message = "更新后的作品类型、发行信息或编号与原关联不一致，请重新选择并核对。";
+                return;
+            }
+            State = unconfirmedPreview ? AniListDetailState.Preview : AniListDetailState.Ready; Message = result.Warning ?? "";
         });
     private void Display(AniListResult result) { Displayed = result; Media = result.Details.Media; PeoplePages = [result]; }
     private async Task RunAsync(Func<CancellationToken, Task> action, CancellationToken cancellation = default)
@@ -135,7 +155,10 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
         {
             if (!Owns() || pending.IsCancellationRequested) return;
             if (e is AniListException { Failure: AniListFailure.Unavailable or AniListFailure.InvalidResponse or AniListFailure.ResponseTooLarge })
-            { Displayed = null; PeoplePages = []; }
+            {
+                Displayed = null; Media = null; PeoplePages = []; trustedBridge = false;
+                SelectionReason = unconfirmedPreview ? "条目预览 · 资料暂不可用" : "";
+            }
             State = Displayed is not null ? oldState : AniListDetailState.Failed;
             Message = e is AniListException or InvalidDataException or IOException ? e.Message : "AniList 资料暂时无法读取，Bangumi 资料仍可浏览。";
         }

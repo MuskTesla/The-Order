@@ -17,6 +17,9 @@ internal sealed class AniListFakeProvider : IAniListProvider
     public int Searches,Fetches,Resolves; public Func<int,int,CancellationToken,Task<AniListDetails>>? Fetch;
     public AniListMedia[] Results=[AniListTestData.Media()];
     public Task<AniListMedia[]> SearchAsync(AniListSource source,string? query,CancellationToken cancellation){Searches++;return Task.FromResult(Results);}
+    // This fixture is an explicitly complete synthetic candidate universe.
+    public async Task<AniListSearchCandidates> SearchCandidatesAsync(AniListSource source,string? query,CancellationToken cancellation)
+        => new(await SearchAsync(source,query,cancellation),true);
     public Task<AniListMedia> ResolveAsync(AniListReference reference,CancellationToken cancellation){Resolves++;return Task.FromResult(Results[0]);}
     public Task<AniListDetails> FetchAsync(int id,AniListMediaKind kind,int page,CancellationToken cancellation){Fetches++;return Fetch?.Invoke(id,page,cancellation)??Task.FromResult(AniListTestData.Details(id,page));}
 }

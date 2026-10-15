@@ -156,11 +156,12 @@ public sealed class BangumiSubjectDetailsProvider(HttpClient client, Func<DateTi
             && Integer(rating, "total") is > 0 and var count && rating.TryGetProperty("score", out var scoreValue)
             && scoreValue.ValueKind == JsonValueKind.Number && scoreValue.TryGetDouble(out var number) && double.IsFinite(number) && number is >= 0 and <= 10)
         { score = number; votes = count; }
+        var identityLinks = AniListBridgeLinks.MapEvidence(root, expectedKind);
         var result = new BangumiSubjectDetails(subjectId, expectedKind, chinese.Length > 0 ? chinese : original, original, cover,
             summary, date.Length == 0 ? null : date, platform.Length == 0 ? null : platform, eps, score, votes, fetchedAtUtc)
         { MusicFacts = expectedKind == BangumiRelationKind.Music ? BangumiMusicFactsMapping.Map(root) : null,
             BookFacts = expectedKind == BangumiRelationKind.Book ? BangumiBookFactsMapping.Map(root) : null,
-            ExternalLinks = expectedKind is BangumiRelationKind.Anime or BangumiRelationKind.Book ? AniListBridgeLinks.Map(root, expectedKind) : [] };
+            ExternalLinks = identityLinks.Links, HasAmbiguousExternalIdentity = identityLinks.Ambiguous };
         if (!BangumiSubjectDetailsService.Valid(subjectId, expectedKind, result)) throw Invalid();
         return result;
     }

@@ -125,7 +125,7 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     }
     public Task NextAsync()
     {
-        if (Query is not { } query || Search?.Page.NextStart is not { } next || next <= query.Start || next > 81) return Task.CompletedTask;
+        if (Query is not { } query || Search?.Page.NextStart is not { } next || next <= query.Start || !(query with { Start = next }).IsValid) return Task.CompletedTask;
         return SearchPageAsync(query with { Start = next }, true, false);
     }
     private Task SearchPageAsync(BookSearchQuery query, bool append, bool refresh) => RunAsync("检索 NDL 出版候选…", async (token, accept) =>

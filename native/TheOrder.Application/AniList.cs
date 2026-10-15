@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TheOrder.Application;
 
@@ -24,7 +25,10 @@ public sealed record AniListSource(string BangumiId, AniListMediaKind Kind, stri
     string? Date, string? Platform, int? Episodes, string[] ExternalLinks)
 {
     public BookEntityLevel? BookLevel { get; init; }
-    public string Fingerprint => Convert.ToHexString(SHA256.HashData(Kind == AniListMediaKind.Anime
+    public bool HasAmbiguousExternalIdentity { get; init; }
+    public string Fingerprint => Convert.ToHexString(SHA256.HashData(HasAmbiguousExternalIdentity
+        ? JsonSerializer.SerializeToUtf8Bytes(new { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks, BookLevel, HasAmbiguousExternalIdentity })
+        : Kind == AniListMediaKind.Anime
         ? JsonSerializer.SerializeToUtf8Bytes(new { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks })
         : JsonSerializer.SerializeToUtf8Bytes(new { BangumiId, Kind, Title, OriginalTitle, Date, Platform, Episodes, ExternalLinks, BookLevel })));
     public string? ExpectedFormat => Kind == AniListMediaKind.Anime ? Platform?.ToUpperInvariant() switch
@@ -41,7 +45,8 @@ public sealed record AniListSource(string BangumiId, AniListMediaKind Kind, stri
             throw new InvalidDataException("这类作品不使用 AniList 资料。");
         return new(value.Id, value.Kind == BangumiRelationKind.Anime ? AniListMediaKind.Anime : AniListMediaKind.Manga,
             value.Title, value.OriginalTitle, value.ReleaseDate, value.Platform, value.EpisodeCount, value.ExternalLinks)
-            { BookLevel = value.Kind == BangumiRelationKind.Book ? value.BookFacts?.Level ?? BookEntityLevel.Unknown : null };
+            { BookLevel = value.Kind == BangumiRelationKind.Book ? value.BookFacts?.Level ?? BookEntityLevel.Unknown : null,
+                HasAmbiguousExternalIdentity = value.HasAmbiguousExternalIdentity };
     }
 }
 public sealed record AniListMedia(int Id, int? MalId, AniListMediaKind Kind, string Title, string NativeTitle,
@@ -68,9 +73,20 @@ public sealed record AniListDetails(AniListMedia Media, string Description, stri
     public AniListTrailer? Trailer { get; init; }
     public bool HasPlaybackMetadata { get; init; }
 }
-public sealed record AniListBinding(string SourceFingerprint, int MediaId, AniListMediaKind Kind, string Evidence);
+public sealed record AniListBinding(string SourceFingerprint, int MediaId, AniListMediaKind Kind, string Evidence)
+{
+    // Legacy user confirmations remain valid. Old automatic choices must be
+    // re-evaluated because their candidate search did not record completeness.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int AutomaticPolicyVersion { get; init; }
+}
 public sealed record AniListCacheValue(string Key, DateTimeOffset CachedAtUtc, AniListMedia[]? Search = null,
-    AniListDetails? Details = null, AniListBinding? Binding = null, bool Rejected = false);
+    AniListDetails? Details = null, AniListBinding? Binding = null, bool Rejected = false)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SearchComplete { get; init; }
+}
+public sealed record AniListSearchCandidates(AniListMedia[] Items, bool Complete);
 public sealed record AniListMatch(AniListMedia[] Candidates, AniListBinding? Binding, string? Notice = null);
 public sealed record AniListResult(AniListDetails Details, bool FromCache, bool IsStale, string? Warning);
 public enum AniListFailure { Offline, Timeout, RateLimited, Server, Unavailable, InvalidResponse, ResponseTooLarge }
@@ -79,6 +95,11 @@ public sealed class AniListException(AniListFailure failure, string message) : E
 public interface IAniListProvider
 {
     Task<AniListMedia[]> SearchAsync(AniListSource source, string? query, CancellationToken cancellation);
+    // Existing adapters remain usable, but a bounded array is not proof that
+    // all candidates were examined. Only an adapter with pagination evidence
+    // may opt into automatic association.
+    async Task<AniListSearchCandidates> SearchCandidatesAsync(AniListSource source, string? query, CancellationToken cancellation)
+        => new(await SearchAsync(source, query, cancellation).ConfigureAwait(false), false);
     Task<AniListMedia> ResolveAsync(AniListReference reference, CancellationToken cancellation);
     Task<AniListDetails> FetchAsync(int id, AniListMediaKind kind, int peoplePage, CancellationToken cancellation);
 }
@@ -129,6 +150,8 @@ public static class AniListMatching
     {
         var evidence = new List<string>(); bool conflict = source.Kind != media.Kind;
         evidence.Add(conflict ? "媒体类型不同" : "媒体类型一致");
+        if (source.HasAmbiguousExternalIdentity)
+        { conflict = true; evidence.Add("来源外部编号不完整或有歧义，请先核对来源记录"); }
         if (source.Kind == AniListMediaKind.Manga && source.BookLevel is BookEntityLevel.Volume or BookEntityLevel.Publication && media.Volumes is > 1)
         { conflict = true; evidence.Add("单卷 / 出版记录不能关联到多卷条目"); }
         var titles = new[] { media.Title, media.NativeTitle, media.EnglishTitle }.Concat(media.Synonyms).Where(x => x.Length > 0).Select(Normalize).ToArray();
@@ -191,7 +214,8 @@ public static class AniListValidation
             : (v.Search is not null ? 1 : 0) + (v.Details is not null ? 1 : 0) + (v.Binding is not null ? 1 : 0) == 1)
         && (v.Search is null || v.Search.Length <= 20 && v.Search.All(Media)) && (v.Details is null || Details(v.Details))
         && (v.Binding is null || v.Binding.SourceFingerprint is { Length: 64 } && v.Binding.SourceFingerprint.All(Uri.IsHexDigit)
-            && v.Binding.MediaId > 0 && Enum.IsDefined(v.Binding.Kind) && Text(v.Binding.Evidence, 1000, false))
+            && v.Binding.MediaId > 0 && Enum.IsDefined(v.Binding.Kind) && Text(v.Binding.Evidence, 1000, false)
+            && v.Binding.AutomaticPolicyVersion is >= 0 and <= 1)
         && (v.Binding is null || v.Key == "binding:" + v.Binding.SourceFingerprint)
         && (v.Details is null || v.Key == $"media:{(int)v.Details.Media.Kind}:{v.Details.Media.Id}:{v.Details.PeoplePage}");
 }

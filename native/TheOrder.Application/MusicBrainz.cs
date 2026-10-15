@@ -85,7 +85,10 @@ public sealed record MusicBrainzAlbum(MusicBrainzReleaseCandidate Release, strin
 {
     public string Url => new MusicBrainzReference(MusicBrainzEntityKind.Release, Release.Id).Url;
 }
-public sealed record MusicBrainzCandidateAssessment(MusicBrainzReleaseCandidate Candidate, string[] Evidence, bool HasConflict, bool Strong);
+public sealed record MusicBrainzCandidateAssessment(MusicBrainzReleaseCandidate Candidate, string[] Evidence, bool HasConflict, bool Strong)
+{
+    public bool HasIdentityConflict { get; init; }
+}
 public sealed record MusicBrainzMatchResult(MusicBrainzSearchResult Search, string? AutomaticReleaseId,
     string? ConfirmedReleaseId, bool FromCache, bool IsStale, string? Warning);
 public sealed record MusicBrainzAlbumResult(MusicBrainzAlbum Album, bool FromCache, bool IsStale, string? Warning);
@@ -130,7 +133,7 @@ public static class MusicBrainzMatching
     }).Distinct(StringComparer.OrdinalIgnoreCase).Take(32).ToArray();
     public static MusicBrainzCandidateAssessment Assess(MusicAlbumSource source, MusicBrainzReleaseCandidate candidate)
     {
-        var evidence = new List<string>(); bool conflict = false;
+        var evidence = new List<string>(); bool conflict = false, identityConflict = false;
         var title = Normalize(source.Title) == Normalize(candidate.Title);
         evidence.Add(title ? "标题一致" : "标题不同，请核对");
         var expected = Catalogues(source.Facts.CatalogNumbers).Select(Normalize).ToArray();
@@ -146,16 +149,19 @@ public static class MusicBrainzMatching
         var explicitRelease = source.Facts.ExternalIds.Any(x => x.Kind == MusicBrainzEntityKind.Release && x.Id == candidate.Id);
         var releaseIds = source.Facts.ExternalIds.Where(x => x.Kind == MusicBrainzEntityKind.Release).Select(x => x.Id).Distinct().ToArray();
         var groupIds = source.Facts.ExternalIds.Where(x => x.Kind == MusicBrainzEntityKind.ReleaseGroup).Select(x => x.Id).Distinct().ToArray();
+        if (releaseIds.Length > 1 || groupIds.Length > 1)
+        { conflict = identityConflict = true; evidence.Add("来源存在多个不同的发行版或专辑组编号"); }
         if (releaseIds.Length > 0 && !explicitRelease || groupIds.Length > 0 && !groupIds.Contains(candidate.ReleaseGroupId))
-        { conflict = true; evidence.Add("外部编号未对应"); }
+        { conflict = identityConflict = true; evidence.Add("外部编号未对应"); }
+        var relatedEntity = source.Facts.ExternalIds.Any(x => x.Kind is MusicBrainzEntityKind.Recording or MusicBrainzEntityKind.Work or MusicBrainzEntityKind.Artist);
+        if (relatedEntity) evidence.Add("录音、作品或音乐人编号不能证明专辑发行版身份，请核对具体发行版");
         if (explicitRelease) evidence.Insert(0, "来源提供了此发行版编号");
-        return new(candidate, evidence.ToArray(), conflict, !conflict && title
-            && (explicitRelease || candidate.Status == "Official" && date && (catalogue || barcode)));
+        return new(candidate, evidence.ToArray(), conflict, !conflict && !relatedEntity && title
+            && (explicitRelease || candidate.Status == "Official" && date && (catalogue || barcode))) { HasIdentityConflict = identityConflict };
     }
     public static string? Automatic(MusicAlbumSource source, MusicBrainzSearchResult result)
     {
-        if (result.Truncated || source.Facts.ExternalIds.Any(x => x.Kind is MusicBrainzEntityKind.Work or MusicBrainzEntityKind.Artist)
-            || source.Facts.ExternalIds.Where(x => x.Kind == MusicBrainzEntityKind.Release).Select(x => x.Id).Distinct().Count() > 1) return null;
+        if (result.Truncated) return null;
         var strong = result.Candidates.Select(x => Assess(source, x)).Where(x => x.Strong).ToArray();
         return strong.Length == 1 ? strong[0].Candidate.Id : null;
     }

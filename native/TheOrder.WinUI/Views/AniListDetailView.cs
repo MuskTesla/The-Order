@@ -113,18 +113,21 @@ public sealed class AniListDetailView : Grid, IDisposable
         if (model?.IsBusy == true) availability.Stop();
         var isAnime = media is not null ? media.Kind == AniListMediaKind.Anime : model?.Item?.Kind == BangumiRelationKind.Anime;
         var preview = model?.HasUnconfirmedPreview == true;
-        var episodeId = !preview && model?.IsBridge == true && bridge?.Kind == BangumiRelationKind.Anime ? bridge.Id : null;
+        // A Bangumi-only page may use its own identity. Combining it with an
+        // AniList identity requires the view model's explicit verified bridge.
+        var useBangumiSource = model?.IsBridge == true && !preview && (media is null || model?.HasTrustedBridge == true);
+        var episodeId = useBangumiSource && bridge?.Kind == BangumiRelationKind.Anime ? bridge.Id : null;
         if (episodeSource != episodeId) { episodeSource = episodeId; episodeList.SetSource(episodeId); }
         // An internal AniList relation has no established Bangumi identity. A
         // candidate preview also cannot reuse the starting bridge's book ID.
-        publications.SetSource(bridge, details, model?.IsBridge == true && !preview);
-        var watchIdentity = isAnime ? new AnimeWatchIdentity(media?.Id, model?.IsBridge == true && !preview ? model.Item?.Id : null) : null;
+        publications.SetSource(bridge, details, useBangumiSource);
+        var watchIdentity = isAnime ? new AnimeWatchIdentity(media?.Id, useBangumiSource ? model?.Item?.Id : null) : null;
         var query = watchIdentity is null || preview || model?.IsBusy == true ? null : new WatchDataQuery(watchIdentity, media?.Format ?? bridge?.Platform, media?.StartDate ?? bridge?.ReleaseDate);
         if (watchQuery != query) { CancelWatchRead(); watchQuery = query; watchResult = null; if (query is not null && watchData is not null) { watchStop = new(); _ = ReadWatchAsync(query, ++watchVersion, watchStop.Token); } }
         var linkData = watchIdentity is null ? [] : AniListWatchLinksAdapter.From(watchIdentity, details).Concat(watchResult?.Links ?? []).ToArray();
         watchLinks.Show(watchIdentity, linkData, watchResult); availability.Show(media?.Id, isAnime, details?.Trailer, model?.CanLoad == true);
         type.Text = media is null ? (model?.Item?.Kind == BangumiRelationKind.Anime ? "动画" : "书籍") + " · Bangumi" : media.TypeName + " · AniList";
-        title.Text = !preview && bridge?.Title is { Length: > 0 } bridgeTitle ? bridgeTitle : media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
+        title.Text = useBangumiSource && bridge?.Title is { Length: > 0 } bridgeTitle ? bridgeTitle : media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
         alternate.Text = media is null ? bridge?.OriginalTitle ?? "" : string.Join(" / ", new[] { media.Title, media.NativeTitle }.Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
         alternate.Visibility = Visible(alternate.Text.Length > 0); selection.Text = model?.State == AniListDetailState.Preview ? "预览 · 尚未确认对应作品" : model?.SelectionReason.StartsWith("用户核对", StringComparison.Ordinal) == true ? "已确认对应作品" : model?.SelectionReason ?? ""; selection.Visibility = Visible(selection.Text.Length > 0);
         facts.Children.Clear();

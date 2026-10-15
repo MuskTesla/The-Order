@@ -97,7 +97,7 @@ public sealed class BookBibliographyService(IBookBibliographyProvider provider, 
             var loaded = await LoadAsync(publication.Id, false, cancellation).ConfigureAwait(false);
             if (loaded.IsStale) throw new IOException("出版资料暂时无法更新，保留已有关联；请更新后再确认新的关联。");
             var verified = loaded.Publication;
-            if (verified.Title != publication.Title || !verified.Isbns.SequenceEqual(publication.Isbns) || verified.IsAggregate)
+            if (!SameReviewedPublication(publication, verified))
                 throw new InvalidDataException("书目已变化，请重新核对后确认。");
             var existing = await choices.ReadAsync(source.Identity, cancellation).ConfigureAwait(false);
             if (existing.Length > 64 || existing.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != source.Identity)) throw new IOException("出版关联不可更新，原文件保留。");
@@ -107,6 +107,17 @@ public sealed class BookBibliographyService(IBookBibliographyProvider provider, 
             cancellation.ThrowIfCancellationRequested(); await choices.WriteAsync(source.Identity, updated, cancellation).ConfigureAwait(false);
         }
         finally { writes.Release(); }
+    }
+    private static bool SameReviewedPublication(BookPublication reviewed, BookPublication current)
+    {
+        static bool SameSet(string[] left, string[] right) => left.ToHashSet(StringComparer.Ordinal).SetEquals(right);
+        // Edition-level facts authorize the choice. Freshness, contributor wording
+        // and bibliographic-series annotations can change without changing that choice.
+        return reviewed.Id == current.Id && reviewed.Title == current.Title && reviewed.BaseTitle == current.BaseTitle
+            && reviewed.Volume == current.Volume && reviewed.Edition == current.Edition
+            && reviewed.PublicationDate == current.PublicationDate && !current.IsAggregate
+            && SameSet(reviewed.Isbns, current.Isbns) && SameSet(reviewed.SetIsbns, current.SetIsbns)
+            && SameSet(reviewed.Publishers, current.Publishers) && SameSet(reviewed.Languages, current.Languages);
     }
     public async Task RemoveAsync(BookSource source, string publicationId, CancellationToken cancellation)
     {

@@ -10,6 +10,7 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
     private readonly object gate = new(); private readonly SemaphoreSlim commits = new(1);
     private readonly Dictionary<string, AniListCacheValue> memory = new();
     private readonly Dictionary<string, long> latest = new(); private long sequence;
+    private long cacheMutation;
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public Task<AniListMatch> MatchAsync(AniListSource source, string? query, bool refresh, CancellationToken cancellation)
         => MatchCoreAsync(source, query, refresh, true, cancellation);
@@ -18,9 +19,9 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
     private async Task<AniListMatch> MatchCoreAsync(AniListSource source, string? query, bool refresh, bool allowBinding, CancellationToken cancellation)
     {
         if (!source.IsValid) throw new InvalidDataException("Bangumi 作品身份无效。");
-        if (allowBinding && query is null && await ReadAsync("binding:" + source.Fingerprint, cancellation).ConfigureAwait(false) is { Binding: { } binding }
-            && binding.SourceFingerprint == source.Fingerprint && binding.Kind == source.Kind) return new([], binding);
-        if (allowBinding && query is null && source.ExternalLinks.Length > 0)
+        if (allowBinding && query is null && !source.HasAmbiguousExternalIdentity && await ReadAsync("binding:" + source.Fingerprint, cancellation).ConfigureAwait(false) is { Binding: { } binding }
+            && binding.SourceFingerprint == source.Fingerprint && binding.Kind == source.Kind && CanReuseBinding(binding)) return new([], binding);
+        if (allowBinding && query is null && !source.HasAmbiguousExternalIdentity && source.ExternalLinks.Length > 0)
         {
             var references = source.ExternalLinks.Select(x => { AniListReference.TryParse(x, out var r); return r!; }).Distinct().ToArray();
             var values = new List<AniListMedia>();
@@ -31,9 +32,13 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
         }
         var queryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(query ?? "")))[..16];
         var key = "search:" + source.Fingerprint + ":" + queryHash;
-        var result = await LoadCacheAsync(key, refresh, SearchFreshFor, async token => new(key, Now,
-            Search: await provider.SearchAsync(source, query, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
-        if (allowBinding && query is null && !result.Stale && AniListMatching.AutomaticCandidate(source, result.Value.Search!) is { } winner)
+        var result = await LoadCacheAsync(key, refresh, SearchFreshFor, async token =>
+        {
+            var candidates = await provider.SearchCandidatesAsync(source, query, token).ConfigureAwait(false);
+            return new AniListCacheValue(key, Now, Search: candidates.Items) { SearchComplete = candidates.Complete };
+        }, cancellation).ConfigureAwait(false);
+        if (allowBinding && query is null && !result.Stale && result.Value.SearchComplete
+            && AniListMatching.AutomaticCandidate(source, result.Value.Search!) is { } winner)
         {
             try
             {
@@ -42,7 +47,7 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
                 {
                     var proof = new AniListBinding(source.Fingerprint, winner.Id, source.Kind,
                         "自动关联 · 唯一候选的标题、发行形式及首播日期一致"
-                        + (source.Episodes is { } eps && details.Details.Media.Episodes is { } count && eps != count ? "（集数口径相差1集）" : ""));
+                        + (source.Episodes is { } eps && details.Details.Media.Episodes is { } count && eps != count ? "（集数口径相差1集）" : "")) { AutomaticPolicyVersion = 1 };
                     proof = await SaveBindingAsync(proof, cancellation, onlyIfUnbound: true).ConfigureAwait(false);
                     return new(result.Value.Search!, proof, result.Warning);
                 }
@@ -50,8 +55,12 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
             catch (Exception e) when (e is AniListException or IOException or UnauthorizedAccessException)
             { return new(result.Value.Search!, null, "暂时无法核实或保存自动关联，请核对候选；Bangumi 资料仍可浏览。"); }
         }
-        return new(result.Value.Search!, null, result.Warning);
+        return new(result.Value.Search!, null, source.HasAmbiguousExternalIdentity
+            ? "来源外部编号不完整或有歧义，未自动关联；请先核对来源记录。"
+            : result.Warning ?? (!result.Value.SearchComplete && result.Value.Search!.Length > 0 ? "候选检索可能不完整，请核对后选择。" : null));
     }
+    private static bool CanReuseBinding(AniListBinding binding)
+        => !binding.Evidence.StartsWith("自动关联", StringComparison.Ordinal) || binding.AutomaticPolicyVersion == 1;
     public async Task<AniListResult> LoadAsync(int id, AniListMediaKind kind, bool refresh, int peoplePage, CancellationToken cancellation)
     {
         if (id <= 0 || !Enum.IsDefined(kind) || peoplePage is < 1 or > 10) throw new InvalidDataException("AniList 作品身份无效。");
@@ -75,10 +84,13 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
         try
         {
             cancellation.ThrowIfCancellationRequested();
-            if (onlyIfUnbound && await ReadAsync("binding:" + binding.SourceFingerprint, cancellation).ConfigureAwait(false) is { Binding: { } existing }) return existing;
+            if (onlyIfUnbound && await ReadAsync("binding:" + binding.SourceFingerprint, cancellation).ConfigureAwait(false) is { Binding: { } existing }
+                && CanReuseBinding(existing)) return existing;
             var value = new AniListCacheValue("binding:" + binding.SourceFingerprint, Now, Binding: binding);
             if (disk is not null) await disk.WriteAsync(value, cancellation).ConfigureAwait(false);
-            cancellation.ThrowIfCancellationRequested(); lock (gate) Remember(value);
+            // A completed atomic replacement is the committed state, even if
+            // cancellation arrived after the namespace switch.
+            lock (gate) { Remember(value); cacheMutation++; }
             return binding;
         }
         finally { commits.Release(); }
@@ -114,21 +126,44 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
         {
             bool owns; lock (gate) owns = latest.GetValueOrDefault(key) == version;
             if (!owns) return;
-            if (disk is not null) try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); }
+            var persisted = false;
+            if (disk is not null) try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); persisted = true; }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-            cancellation.ThrowIfCancellationRequested(); lock (gate) { if (latest.GetValueOrDefault(key) == version) Remember(value); }
+            if (!persisted) cancellation.ThrowIfCancellationRequested();
+            lock (gate)
+            {
+                if (persisted || latest.GetValueOrDefault(key) == version) { Remember(value); cacheMutation++; }
+            }
         }
         finally { commits.Release(); }
     }
     private async Task<AniListCacheValue?> ReadAsync(string key, CancellationToken cancellation)
     {
-        cancellation.ThrowIfCancellationRequested(); AniListCacheValue? value; lock (gate) memory.TryGetValue(key, out value);
-        if (value is null && disk is not null) try { value = await disk.ReadAsync(key, cancellation).ConfigureAwait(false); }
+        bool Valid(AniListCacheValue? value) => value is not null && value.Key == key && AniListValidation.Cache(value) && !value.Rejected
+            && value.CachedAtUtc <= Now.AddMinutes(5) && (value.Binding is not null || Now - value.CachedAtUtc <= MaximumStaleAge);
+        while (true)
+        {
+            cancellation.ThrowIfCancellationRequested(); long observedMutation;
+            lock (gate)
+            {
+                if (memory.TryGetValue(key, out var current))
+                { if (!Valid(current)) return null; Remember(current); return current; }
+                observedMutation = cacheMutation;
+            }
+            if (disk is null) return null;
+            AniListCacheValue? value = null;
+            try { value = await disk.ReadAsync(key, cancellation).ConfigureAwait(false); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-        cancellation.ThrowIfCancellationRequested();
-        if (value?.Key != key || !AniListValidation.Cache(value) || value!.Rejected || value.CachedAtUtc > Now.AddMinutes(5)
-            || value.Binding is null && Now - value.CachedAtUtc > MaximumStaleAge) return null;
-        lock (gate) Remember(value); return value;
+            cancellation.ThrowIfCancellationRequested();
+            lock (gate)
+            {
+                // A single bounded epoch also covers a newer value that was
+                // committed and then evicted while this disk read was pending.
+                if (cacheMutation != observedMutation) continue;
+                if (!Valid(value)) return null;
+                Remember(value!); return value;
+            }
+        }
     }
     private void Remember(AniListCacheValue value)
     { memory.Remove(value.Key); memory[value.Key] = value; while (memory.Count > 64) memory.Remove(memory.Keys.First()); }
