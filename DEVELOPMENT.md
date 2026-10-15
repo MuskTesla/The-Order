@@ -2,13 +2,15 @@
 
 ## ACGN 全媒体质量候选（2026-10-15）
 
-当前隔离维护入口 `D:/Projects/The-Order-worktrees/acgn-quality-20261015`，分支 `codex/acgn-quality-20261015`，继承检查点 `5bb654d`。保护原音乐工作区全部 10 项 dirty；本轮没有本机替换、Production 操作、真实资料迁移或发布授权。证据 `.artifacts/acgn-quality-20261015`。不要裸启动候选；`Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v3` 只使用本证据根的标记 Test profile，种子来自已校验 SHA256 的既有合成 library payload，没有复制凭据或真实库。
+当前隔离维护入口 `D:/Projects/The-Order-worktrees/acgn-quality-20261015`，分支 `codex/acgn-quality-20261015`，继承检查点 `5bb654d`。保护原音乐工作区全部 10 项 dirty；开发阶段没有本机替换、Production 操作、真实资料迁移或发布授权；用户随后明确授权替换，已完成本机安装，未授权公开发布。证据 `.artifacts/acgn-quality-20261015`。不要裸启动候选；`Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v3` 只使用本证据根的标记 Test profile，种子来自已校验 SHA256 的既有合成 library payload，没有复制凭据或真实库。
 
 固定 SDK 10.0.401，锁定 restore；WinUI 使用 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-quality-20261015/publish-v3`。全套通过 `services/bangumi-auth-worker/test/run-client-bridge.mjs --all-client-tests`，显式设置 `THE_ORDER_TEST_DOTNET` 为固定 SDK 和 `THE_ORDER_TEST_RESULTS_DIR` 为本证据根 `tests-full`。该入口启用本地合成上游，3755/0/0 并不代表真实 OAuth 授权或正式私库验收。
 
 当前控制入口保留 Test profile 双重限制；新增 `catalogEntityOpen` 仅接受准确 `Character:<id>`、`CreditName:<id>`、`Person:<id>`、`Company:<id>`，用于验证真实公开实体来源，不能用于 Production。截图助手只允许准确 Test PID、EXE、Profile 与新 PNG 输出路径，通过 WGC 捕获窗口，不控制桌面。退出通过 Control `exit`，等待进程正常结束，再运行隔离 `ui-runner` 的 verify 核对合成 library payload 字节；不强杀或恢复真实资料。
 
-最终 Native 源码提交 `998465c`（实现 `fc74f10`）；测试全套后仅增加 Test 嵌套书籍控制转发，已用 v3 实际窗口验证。完整字段与分母见 `field-coverage.md` / `corpus-summary.json`，UI链路、重启恢复、截图和限制见 `report.md` / `ui-acceptance.json`。PV probe 为就绪未播放，不能称真实视频播放通过。原始工作区10项哈希须继续保持；本轮没有正式安装或发布授权。
+最终 Native 源码提交 `998465c`（实现 `fc74f10`）；测试全套后仅增加 Test 嵌套书籍控制转发，已用 v3 实际窗口验证。完整字段与分母见 `field-coverage.md` / `corpus-summary.json`，UI链路、重启恢复、截图和限制见 `report.md` / `ui-acceptance.json`。PV probe 为就绪未播放，不能称真实视频播放通过。原始工作区10项哈希须继续保持；用户后续授权的本机安装已完成，未进行公开发布。
+
+本机替换已完成（用户在质量验收后明确授权）：`publish-v3` 安装到原 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本仍1.1.0。Setup/GUI完整性校验退出0；659份payload、3份入口、7份候选模块及update-base重复核验一致，桌面/开始菜单快捷方式保留。2821份正式/旧资料文件仅比对脱敏元数据，前后未变，不读内容、令牌，不复制或启动Production。667份旧程序核验备份至 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-195908-acgn-quality/Program`。包装后另用新空Test Profile实际启动并正常退出0；不替代此前完整详情UI证据或真实私库验收。安装源码HEAD为`cffb0bb`，实现`fc74f10`；回执 `local-promotion/installation-receipt.json`、`independent-installed-verification.json`。没有公开发布、推送或合并主分支。
 
 ## MusicBrainz 检索修复（2026-10-15，当前）
 

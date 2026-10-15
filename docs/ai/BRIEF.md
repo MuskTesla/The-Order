@@ -1,7 +1,9 @@
 # The Order：当前实现与评审交接
 ## ACGN 全媒体质量集成（2026-10-15，当前隔离开发入口）
 
-源码 `D:/Projects/The-Order-worktrees/acgn-quality-20261015` / `codex/acgn-quality-20261015`。从音乐检索工作区 HEAD `874ed514` 加全部 10 项未提交成果逐份校验复制，继承检查点 `5bb654d`；该快照不是本轮新增功能。原工作区保持不变。本轮明确不替换日用、不读写 Production、不推送、合并或发布；版本与锁定依赖不变。证据根 `.artifacts/acgn-quality-20261015`。
+源码 `D:/Projects/The-Order-worktrees/acgn-quality-20261015` / `codex/acgn-quality-20261015`。从音乐检索工作区 HEAD `874ed514` 加全部 10 项未提交成果逐份校验复制，继承检查点 `5bb654d`；该快照不是本轮新增功能。原工作区保持不变。质量开发阶段未替换日用、不读写 Production、不推送、合并或发布；用户在验收后明确授权本机替换，已完成，见下一段。版本与锁定依赖不变。证据根 `.artifacts/acgn-quality-20261015`。
+
+本机替换已完成（用户在质量验收后明确授权）：`publish-v3` 安装到原 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本仍1.1.0。Setup/GUI完整性校验退出0；659份payload、3份入口、7份候选模块及update-base重复核验一致，桌面/开始菜单快捷方式保留。2821份正式/旧资料文件仅比对脱敏元数据，前后未变，不读内容、令牌，不复制或启动Production。667份旧程序核验备份至 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-195908-acgn-quality/Program`。包装后另用新空Test Profile实际启动并正常退出0；不替代此前完整详情UI证据或真实私库验收。安装源码HEAD为`cffb0bb`，实现`fc74f10`；回执 `local-promotion/installation-receipt.json`、`independent-installed-verification.json`。没有公开发布、推送或合并主分支。
 
 五个 Astra Ultra 子代理分波独立调查 Galgame、Anime、Music、Manga/Novel、集成状态，主代理裁决并复核。实际运行 Provider 仍为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 仅有前期评估，没有运行适配器，不得宣称已接入。真实资料保留主样本与补充卷册、发行版及错误对照的不同分母，原始响应和字段级矩阵在证据根。
 
