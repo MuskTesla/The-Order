@@ -1,6 +1,20 @@
 # 开发与维护
 
-## ACGN 多语言资料 v1（2026-10-15，当前）
+## ACGN 真实体验 Gate（2026-10-15，当前）
+
+维护入口 `D:/Projects/The-Order-worktrees/acgn-experience-gate-20261015`，分支 `codex/acgn-experience-gate-20261015`，基线 e62bc12；前一语言 worktree 与根仓库的既有未提交性能工作均保留。本轮没有安装、Production、密钥、推送、合并或发布操作。现有用户身份持久化、语言偏好和缓存格式不变，无 schema migration。
+
+固定 SDK10.0.401、锁定还原与既有依赖；最终构建 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -o .artifacts/acgn-experience-gate-20261015/publish-v9`。原工具/依赖 junction 只复用已锁定运行时，不升级包。候选必须通过本证据根 `Start-IsolatedTest.ps1 -RunName <全新名字> -PublishName publish-v9` 启动，固定为自建标记 Test Profile；不能裸启动 EXE。Test 种子是21项合成库，没有复制真实库、缓存或凭据；元数据首次经匿名公开API读取，后续缓存单独标注。用 Control exit 正常关闭后，以本证据根 ui-runner verify 核对 library payload 字节。
+
+`Accept-V9.ps1` 在实际窗口执行7组连续场景，原生控件回执及截图分别保存。驱动 `native/scripts/invoke-acgn-control.ps1 -ControlDirectory <本证据根/新run> -ProfileDirectory <本证据根/test-profile> -Mode invoke -Id GameRelatedJump` 验证运行 PID/路径、Test marker、有限控件及详情主体互斥。Expand/Collapse 使用原生对应 pattern，Invoke 必须命中实际可用按钮，不重试已发送的点击；最多等2秒让滚动布局稳定。观看平台只能 inspect/focus，不能通过这个驱动打开外站。该机制不提供任意代码、桌面输入、授权、启动或真实数据操作。
+
+完整客户端仍从 `services/bangumi-auth-worker` 运行 `node test/run-client-bridge.mjs --all-client-tests`，设置 `THE_ORDER_TEST_DOTNET=<固定SDK绝对路径>`、`THE_ORDER_TEST_RESULTS_DIR=<本轮证据根/新目录>`。本轮最终 tests-accepted/client-full-with-worker-1792078380573.trx **3821/0/0**，含本地 workerd/SQLite 合成交换1、刷新1、直连资料2，不是 Cloudflare 部署或真实授权。新增9项用例；聚焦141/0/0、后续38/0/0与早期全套3815/0/0有重叠，不能相加。全套无失败或跳过；基线阶段的历史进程超时不能算成本轮失败，也不能藏掉历史证据。
+
+早期v2由本轮测试助手缺少using/错误peer构造器导致编译失败，后续构建已修复并保留日志；初版100ms布局等待出现未发送点击的命中失败，现为有界2秒等待，未绕过命中检查；错误的控制器动作/Expander模式也保留在早期回执。真实404反例与修复后的原生重试、返回恢复在截图索引中。`report.md` 明确分开真实公开API、缓存、原生UI、控制入口及模拟故障；不把它们混作全场景人工验收。
+
+仅允许在当前支持边界内进入RC验证准备。漫画逐章目录仍缺失；各媒体完整主题/DPI、物理鼠标/滚轮、真实断网与OAuth/Production验收尚缺。最终候选及核心模块哈希、场景结果、提交与限制见本证据根 completion.json / report.md / screenshots-review.html。维护时继续保护原始语言、独立Release/Volume/Publication身份及用户确认目录，不把远程缓存当用户决定备份。
+
+## ACGN 多语言资料 v1（2026-10-15，上一节点）
 
 维护入口 `D:/Projects/The-Order-worktrees/acgn-language-v1-20261015`，分支 `codex/acgn-language-v1-20261015`；基线 cffb0bb 加原工作区两份文档的完整继承检查点 bd576da。原质量工作区不变。本轮不访问 Production、不迁移真实数据、不替换日用、不推送或发布。运行 Provider 仍为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 不在运行链路。
 

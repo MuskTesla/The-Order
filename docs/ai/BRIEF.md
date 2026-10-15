@@ -1,5 +1,19 @@
 # The Order：当前实现与评审交接
-## ACGN 多语言资料 v1（2026-10-15，当前隔离开发入口）
+## ACGN 真实体验 Gate（2026-10-15，当前隔离开发入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/acgn-experience-gate-20261015` / `codex/acgn-experience-gate-20261015`，基线为多语言阶段最终 HEAD `e62bc12f83264f80b80974050b91f75c984c38e6`。已核实包含五领域质量、红队、用户身份决定持久化及语言 v1；原多语言 worktree 保持干净且 HEAD 不变，长期根仓库既有性能工作不动。本轮不读取 Production、真实库或令牌，不替换安装、不推送、不合并、不发布。实际运行 Provider 为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 没有运行适配器。证据 `.artifacts/acgn-experience-gate-20261015`。
+
+实际启动 WinUI Test 窗口并用原生 automation peer 执行按钮、超链接、Expander、焦点及返回，WGC 仅捕获准确 Test PID/EXE/Profile 窗口。没有通用桌面控制、物理鼠标键盘输入或外部平台打开。原生控件驱动见 `native/scripts/invoke-acgn-control.ps1`，仅允许有标记 Test Profile 的详情页与有限元数据控件，禁止游戏启动、授权及文件操作。不能把这种交互证据称为人工滚轮手感验收。
+
+新增本地游戏“关联作品”和动画分集/PV/观看渠道快捷入口；分集点击立即呈现加载与取消，完成后不夺回滚动位置。数字发行曲目组与实体 CD 的标题正确区分。漫画明确说明当前逐章目录未提供，不把章节总数伪装成目录。真实公共 404 发现初始资料失败却声称 Bangumi 可浏览，已修复来源阶段提示、失败原因、重试入口和虚假空简介；保留原反例截图。
+
+实现检查点 `459b7ca`、失败恢复修复 `6829058`，后续滚动与最终交付提交见证据根 completion.json。锁定 Release x64 最终候选 `publish-v9`；完整客户端 `tests-accepted/client-full-with-worker-1792078380573.trx` 为 **3821 通过 / 0 失败 / 0 跳过**，较基线新增9项书籍能力/身份隔离与失败恢复测试。包含本地合成 Worker 契约，不是真实 OAuth。此前 v6 全套3815/0/0也保留，不相加。最终 UI 场景、原生回执、候选哈希、退出与合成库字节一致性分别保存，截图索引 `screenshots-review.html`，具体证据见 report.md。
+
+CLANNAD 游戏→动画分集/角色/Staff/PV实播/观看链接，以及 OST 原始3CD→2022数字版→曲目/录音/返回通过；重启恢复选定发行版。漫画系列→8卷→NDL ISBN9784861762499、魔夜小说系列→上卷→NDL ISBN9784065443958及出版确认恢复通过。CLANNAD漫画采用明确公开ID的控制入口，不能冒充当前游戏关系数据中并不存在的直接入口；另实际走通目录魔夜→TYPE-MOON学园漫画→单行本的上游关系卡片。目录950的进入使用现有Test入口，不代表书架新增本地魔夜安装。
+
+Gate 为 **CONDITIONAL GO：可以进入 RC 验证准备，不能宣布正式发布就绪**。逐章目录没有实现；断网/429/超时主要为自动化模拟验证，真实UI覆盖公开失败及恢复；物理输入、所有媒体的完整主题/DPI矩阵、真实账号及Production均未验收。下一步优先做这些定向人工验收，不新增Provider或重做架构。新入口须经本证据根受限启动脚本，不能裸启动候选 EXE。
+
+## ACGN 多语言资料 v1（2026-10-15，上一节点）
 
 当前源码 `D:/Projects/The-Order-worktrees/acgn-language-v1-20261015` / `codex/acgn-language-v1-20261015`，从全媒体质量 HEAD `cffb0bb09acfe00b558030291f05094d3c5b5a35` 创建独立 worktree，逐字节保留原工作区两份维护文档。继承检查点 `bd576da` 只保存既有安装记录，不是多语言实现。本轮禁止 Production、真实用户资料、日用替换、推送、合并和发布；下方历史安装授权不适用于本轮。依赖与产品版本不变，证据根 `.artifacts/acgn-language-v1-20261015`。
 
