@@ -1,10 +1,15 @@
-param([Parameter(Mandatory)][string]$PublishedDirectory, [Parameter(Mandatory)][string]$OutputDirectory, [string]$SourceManifest, [string]$Packages = (Join-Path $env:USERPROFILE '.nuget/packages'))
+param([Parameter(Mandatory)][string]$PublishedDirectory, [Parameter(Mandatory)][string]$OutputDirectory, [string]$SourceManifest, [string]$Packages = (Join-Path $env:USERPROFILE '.nuget/packages'), [string]$DocumentationDirectory, [switch]$IncludeTestLauncher)
 $ErrorActionPreference='Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $source = [IO.Path]::GetFullPath($PublishedDirectory)
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $repo '.artifacts')).TrimEnd('\') + '\'
 if (!$output.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $output)) { throw 'Fresh workspace artifact output required; existing candidates are immutable.' }
+$documentation = if ($DocumentationDirectory) { [IO.Path]::GetFullPath($DocumentationDirectory) } else { Join-Path $repo 'docs/release/1.1.0' }
+if (!$documentation.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Release documentation must come from this source checkout.' }
+foreach ($name in @('README.md','CHANGELOG.md','BUILD.md','AUTHENTICATION.md')) {
+    if (!(Test-Path -LiteralPath (Join-Path $documentation $name) -PathType Leaf)) { throw 'Complete, source-controlled release documentation is required.' }
+}
 $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $source 'TheOrder.WinUI.exe'))
 if ($version.FileVersion -ne '1.1.0.0') { throw 'Publish the explicitly versioned 1.1.0 application before packaging.' }
 $sourceIdentity = $null
@@ -15,7 +20,7 @@ if ($SourceManifest) {
         $path = [IO.Path]::GetFullPath((Join-Path $repo $file.path))
         if (!$path.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase) -or !(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-FileHash -LiteralPath $path).Hash -ne $file.sha256) { throw 'Source changed after freeze; rebuild and use a fresh source checkpoint.' }
     }
-    $sourceIdentity = @{manifestSha256=(Get-FileHash -LiteralPath $sourceManifestPath).Hash;files=@($frozen.items).Count;head=$frozen.head;branch=$frozen.branch;dirty=$true}
+    $sourceIdentity = @{manifestSha256=(Get-FileHash -LiteralPath $sourceManifestPath).Hash;files=@($frozen.items).Count;head=$frozen.head;branch=$frozen.branch;dirty=$(if ($frozen.PSObject.Properties.Name -contains 'dirty') { [bool]$frozen.dirty } else { $true })}
 }
 # Reuse the checked runtime/CRT/license assembly; the isolated RC launcher remains available.
 & (Join-Path $PSScriptRoot 'package-native-rc.ps1') -PublishedDirectory $source -OutputDirectory $output -Packages $Packages | Out-Null
@@ -48,11 +53,12 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'launch-native-release.ps1') -De
 $entry = '@echo off' + "`r`n" + 'setlocal' + "`r`n" + 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0launch.ps1"' + "`r`n" + 'set "theOrderExit=%errorlevel%"' + "`r`n" + 'if not "%theOrderExit%"=="0" pause' + "`r`n" + 'exit /b %theOrderExit%' + "`r`n"
 [IO.File]::WriteAllText((Join-Path $output 'Start-The-Order.cmd'), $entry, [Text.Encoding]::ASCII)
 $testEntry = $entry.Replace('launch.ps1"', 'launch.ps1" -Test')
-[IO.File]::WriteAllText((Join-Path $output 'Start-Test.cmd'), $testEntry, [Text.Encoding]::ASCII)
-Copy-Item -LiteralPath (Join-Path $repo 'docs/release/1.1.0/README.md') -Destination (Join-Path $output 'README.md')
-Copy-Item -LiteralPath (Join-Path $repo 'docs/release/1.1.0/CHANGELOG.md') -Destination (Join-Path $output 'CHANGELOG.md')
-Copy-Item -LiteralPath (Join-Path $repo 'docs/release/1.1.0/BUILD.md') -Destination (Join-Path $output 'BUILD.md')
-Copy-Item -LiteralPath (Join-Path $repo 'docs/release/1.1.0/AUTHENTICATION.md') -Destination (Join-Path $output 'AUTHENTICATION.md')
+if ($IncludeTestLauncher) { [IO.File]::WriteAllText((Join-Path $output 'Start-Test.cmd'), $testEntry, [Text.Encoding]::ASCII) }
+else { Remove-Item -LiteralPath (Join-Path $output 'Start-Test.cmd') }
+foreach ($name in @('README.md','CHANGELOG.md','BUILD.md','AUTHENTICATION.md','ROLLBACK.md','HUMAN-CHECKS.md')) {
+    $document = Join-Path $documentation $name
+    if (Test-Path -LiteralPath $document -PathType Leaf) { Copy-Item -LiteralPath $document -Destination (Join-Path $output $name) }
+}
 # These are individual files created above, confined to this fresh output.
 Remove-Item -LiteralPath (Join-Path $output 'README-RC.txt')
 Remove-Item -LiteralPath (Join-Path $output 'launch-test.ps1')
