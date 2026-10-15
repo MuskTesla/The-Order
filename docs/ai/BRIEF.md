@@ -1,4 +1,18 @@
 # The Order：当前实现与评审交接
+## ACGN 多语言资料 v1（2026-10-15，当前隔离开发入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/acgn-language-v1-20261015` / `codex/acgn-language-v1-20261015`，从全媒体质量 HEAD `cffb0bb09acfe00b558030291f05094d3c5b5a35` 创建独立 worktree，逐字节保留原工作区两份维护文档。继承检查点 `bd576da` 只保存既有安装记录，不是多语言实现。本轮禁止 Production、真实用户资料、日用替换、推送、合并和发布；下方历史安装授权不适用于本轮。依赖与产品版本不变，证据根 `.artifacts/acgn-language-v1-20261015`。
+
+新增独立资料语言偏好（简/繁中文、日本语、English、原文）与备用语言，不改变当前构建关闭界面语言选择的策略。公共 `ContentLanguage` 只生成显示投影，保留 Provider、资源类型、编号、字段、原文、语言、来源及机器翻译标记；顺序为首选语言、可用中文其他字形、配置的备用语言、原文、其他已有资料。字形未声明的中文保持 `zh`，未声明的简介语言保持 `und`，Provider locale 仅作排序提示；不以出版物正文语言或 MusicBrainz text-representation 断言每个标题的语言。机器翻译保留在原文区，v1 不自动采用。姓名、歌名、ISBN、编号、日期不作字面翻译；没有已发表的对应形式时保留原样。
+
+NextMoe 游戏标题、人物、别名、简介、标签；AniList/Bangumi 动画、漫画、小说标题与简介、人物和 Staff；MusicBrainz 专辑标题及原文、曲目署名；NDL 单卷书名和出版资料均使用同一规则或保留来源原文。跨站借用字段仍须通过既有可信映射，候选预览不借用原作品身份。补存 AniList romaji 和 Bangumi name_cn，兼容旧缓存；多语言投影不进入跨媒体身份判断、识别或库写入。发现目录页面曾把投影送入关系解析，已改为使用原始 Provider 快照。
+
+设置使用可选 `native-content-language-v1.json`，复用 Native Profile lease、目录 pin、串行原子写入；不会迁移主库、改写旧界面语言组件或身份决定。未来版本/外来 Profile 文件只读保留。关闭后重开恢复偏好；修改后重新进入详情生效。新增 `ILocalContentTranslationPack` 仅为可选本地简介翻译的轻量契约，未安装模型、服务、推理框架或后台任务。
+
+用户在实际验证中指出旧书页卡片叠在新小说页：已复现为根媒体页与目录容器同时 Visible。打开目录时关闭旧媒体容器，反向切换也保持互斥；Test 控制器每步断言只能显示一个详情主体。`Accept-Ui-V8.ps1` 执行准确失败路径并通过，保留失败截图及修复后真实 WGC 对比。`publish-v8` 为当前已验证候选，仅用本证据根标记 Test Profile；没有替换日用。完整构建、测试、公开响应、回放、截图与未验证范围见本轮 `report.md`、`ui-acceptance.json`、`field-coverage.md`。
+
+实现提交 `fd89363e525976aa3c9111c4858109b92a8865cb`，24个原生源码/测试文件，57项新增用例。最终完整客户端 `tests-accepted/client-full-with-worker-1792072699239.trx` 为 **3812 通过 / 0 失败 / 0 跳过**，本地 Worker 合成契约通过（交换1、刷新1、直连资料2）。上一轮3810/1/0的既有进程交接超时、该项单独1/0/0复测及最初XAML样式异常均保留；未降低测试或改启动/会话实现。13份公开HTTP响应含12个200、1个MusicBrainz503后重试成功；早期LiveProbe被自身封面host白名单拒绝，不称全部探针成功。最终代码在12条公开记录上重放5种偏好，60组显示投影保留原始对象；回放无新增请求。Test合成库21项payload前后字节一致，原工作区两份dirty文档哈希保持。GO限于本轮测试版，可选翻译模型、真实Production和手动鼠标交互未验收。
+
 ## ACGN 全媒体质量集成（2026-10-15，当前隔离开发入口）
 
 源码 `D:/Projects/The-Order-worktrees/acgn-quality-20261015` / `codex/acgn-quality-20261015`。从音乐检索工作区 HEAD `874ed514` 加全部 10 项未提交成果逐份校验复制，继承检查点 `5bb654d`；该快照不是本轮新增功能。原工作区保持不变。质量开发阶段未替换日用、不读写 Production、不推送、合并或发布；用户在验收后明确授权本机替换，已完成，见下一段。版本与锁定依赖不变。证据根 `.artifacts/acgn-quality-20261015`。

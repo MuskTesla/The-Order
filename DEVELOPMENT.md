@@ -1,5 +1,19 @@
 # 开发与维护
 
+## ACGN 多语言资料 v1（2026-10-15，当前）
+
+维护入口 `D:/Projects/The-Order-worktrees/acgn-language-v1-20261015`，分支 `codex/acgn-language-v1-20261015`；基线 cffb0bb 加原工作区两份文档的完整继承检查点 bd576da。原质量工作区不变。本轮不访问 Production、不迁移真实数据、不替换日用、不推送或发布。运行 Provider 仍为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 不在运行链路。
+
+固定 SDK10.0.401 和既有锁依赖；构建 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -o .artifacts/acgn-language-v1-20261015/publish-v8`。不要裸启动或把候选放进日用目录。受限 `Start-IsolatedTest.ps1 -RunName <全新名字> -PublishName publish-v8` 设置本轮标记 Test Profile、现有 Test 控制器与匿名公开 API，清除继承的资料目录环境变量，不复制真实库或凭据。`Accept-Ui-V8.ps1` 保存五类详情、窄窗口与已证实的跨容器重叠回归；其 run 目录要求全新，重复执行须使用新的目录名。截图助手只接受匹配 publish-v8、Test PID/Profile 和新 PNG；不控制桌面。退出使用 Control exit，再由 ui-runner verify 检查合成 library payload 字节。
+
+资料偏好是独立可选组件 `native-content-language-v1.json`（含 ProfileId、StoreId、Version=1），和旧 `native-language-v1.json` 区分。复用 Native Profile 的路径验证、lease 与 WindowsAtomicFile，最多4096字节，旧有效文件有 .bak；不改主库 schema。保存失败不改变当前选项，未知版本/外来身份只读保留。没有缓存清理或主库迁移需求；旧程序忽略新组件，回退时保留它即可。跨站人工身份决定仍由既有持久化组件管理。
+
+完整客户端入口仍在 `services/bangumi-auth-worker` 执行 `node test/run-client-bridge.mjs --all-client-tests`，显式设置 `THE_ORDER_TEST_DOTNET=<本工作区固定SDK绝对路径>` 和 `THE_ORDER_TEST_RESULTS_DIR=<本轮证据根/全新测试目录>`。本地 Worker 上游是合成契约，不是真实 OAuth 联调。公开 Provider 验证原始响应在 live-data；final-source-replay.json 使用当前解析器/语言选择器重放这些哈希固定响应，不能与新实时请求混称。过程中的 XAML 样式异常、QA 允许域名遗漏、旧进程测试超时及修复前 UI 重叠证据均保留。
+
+最终实现 fd89363；WinUI publish-v8 构建退出0，最终全套 tests-accepted/client-full-with-worker-1792072699239.trx 为3812/0/0，包含57项新增语言/原始字段/安全保存用例。tests-final 首次3810/1/0因既有ProcessFactRemediationTests进程交接等待超时；该项tests-recheck单独通过，完整重跑通过，不把分次相加当全套结果。当前源码公开响应回放12条×5种偏好、13份原始HTTP响应SHA256保持；真实UI测试仅用Test Profile及公开匿名数据。ui-verify-v8.log证明合成library payload字节相同。完整限制、字段级矩阵、失败与整改证据见report.md。
+
+修改资料语言后重新进入详情生效；界面语言构建开关不变。显示投影不能送进身份匹配、缓存持久化或库事务。增加本地翻译包应通过 ILocalContentTranslationPack 返回独立、有来源的 synopsis 变体，必须显式启用、可取消、限制大小；本轮未安装翻译包，不允许在线翻译服务成为依赖。
+
 ## ACGN 全媒体质量候选（2026-10-15）
 
 当前隔离维护入口 `D:/Projects/The-Order-worktrees/acgn-quality-20261015`，分支 `codex/acgn-quality-20261015`，继承检查点 `5bb654d`。保护原音乐工作区全部 10 项 dirty；开发阶段没有本机替换、Production 操作、真实资料迁移或发布授权；用户随后明确授权替换，已完成本机安装，未授权公开发布。证据 `.artifacts/acgn-quality-20261015`。不要裸启动候选；`Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v3` 只使用本证据根的标记 Test profile，种子来自已校验 SHA256 的既有合成 library payload，没有复制凭据或真实库。
