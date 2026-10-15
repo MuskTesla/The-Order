@@ -84,6 +84,10 @@ public sealed class AcgnRedTeamEvidenceTests
         Assert.Equal(2167, result.Binding?.MediaId); Assert.Equal(1, provider.Searches);
         Assert.Equal(1, disk.Values[key].Binding?.AutomaticPolicyVersion);
         disk.Values[key] = new(key, AniListTestData.Stamp, Binding: new(source.Fingerprint, 8888, source.Kind, "用户核对确认 · Bangumi → AniList"));
+        // User confirmations now live outside the metadata cache. Native legacy
+        // envelope migration is covered by MediaIdentityPersistenceTests.
+        await disk.IdentityDecisions.ApplyAsync(new(new("AniList", "Anime", "8888"), MediaIdentityDecisionKind.Confirmed,
+            MediaIdentityContext.From(source), "TV", null, AniListTestData.Stamp, MediaIdentityDecisionOrigin.LegacyConfirmation, "用户核对确认 · 旧版迁移"), 0, default);
         Assert.Equal(8888, (await new AniListService(provider, disk).MatchAsync(source, null, false, default)).Binding?.MediaId);
         Assert.Equal(1, provider.Searches);
     }

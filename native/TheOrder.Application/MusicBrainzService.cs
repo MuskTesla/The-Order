@@ -1,10 +1,11 @@
 namespace TheOrder.Application;
 
-// Small public metadata cache. Manual edition choices are keyed by the complete bridge facts,
-// never by a title, and cannot edit a game, playtime, or any other library component.
+// Public metadata remains disposable. User edition decisions use a stable typed
+// Bangumi source in a separate Native Profile component.
 public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrainzCache? disk = null,
-    Func<DateTimeOffset>? clock = null) : IMusicBrainzReader
+    Func<DateTimeOffset>? clock = null, IMediaIdentityDecisions? identityDecisions = null) : IMusicBrainzReader
 {
+    private readonly IMediaIdentityDecisions decisions = identityDecisions ?? (disk as IMediaIdentityDecisionOwner)?.IdentityDecisions ?? new SessionMediaIdentityDecisions();
     public static readonly TimeSpan SearchFreshFor = TimeSpan.FromHours(1), AlbumFreshFor = TimeSpan.FromDays(1), MaximumStaleAge = TimeSpan.FromDays(7);
     private readonly object gate = new();
     private readonly SemaphoreSlim commits = new(1);
@@ -16,14 +17,23 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     public async Task<MusicBrainzMatchResult> MatchAsync(MusicAlbumSource source, bool refresh, CancellationToken cancellation)
     {
         if (!source.IsValid) throw new InvalidDataException("音乐匹配依据无效。");
-        var binding = await ReadAsync("binding:" + source.Fingerprint, cancellation).ConfigureAwait(false);
-        if (!refresh && binding?.Binding is { } chosen)
-            return new(new([], 0, false, null, null), null, chosen.ReleaseId, true, false, null);
+        var context = MediaIdentityContext.From(source);
+        var user = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        MusicBrainzMatchResult Select(MediaIdentityDecisionDocument current, MusicBrainzSearchResult search, string? automatic, bool cached, bool stale, string? warning)
+        {
+            var selected = current.Confirmed;
+            return new(search, selected is null && !current.HasLegacyConflict && automatic is { } id && !current.Rejects(MediaIdentityDecisionRules.Target(id)) ? id : null,
+                selected?.Target.Id, cached, stale, current.HasLegacyConflict ? "历史发行版关联存在冲突，原记录保留，请重新核对。" : warning)
+            { NeedsReview = selected is not null && MediaIdentityDecisionRules.NeedsReview(context, selected), ConfirmedReleaseGroupId = selected?.TargetParentId,
+                RejectedIds = current.Decisions.Where(d => d.Kind == MediaIdentityDecisionKind.Rejected).Select(d => d.Target.Id).ToArray() };
+        }
+        if (!refresh && user.Confirmed is not null) return Select(user, new([], 0, false, null, null), null, true, false, null);
         // Retrieval revisions invalidate negative/partial search caches without invalidating confirmed identities.
         var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-3")));
         var result = await LoadAsync(key, refresh, SearchFreshFor, async token =>
             new(key, Now, Search: await provider.SearchAsync(source, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
-        return new(result.Value.Search!, MusicBrainzMatching.Automatic(source, result.Value.Search!), binding?.Binding?.ReleaseId,
+        var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        return Select(current, result.Value.Search!, current.Revision == user.Revision ? MusicBrainzMatching.Automatic(source, result.Value.Search!) : null,
             result.Cached, result.Stale, result.Warning);
     }
     public async Task<MusicBrainzAlbumResult> LoadAlbumAsync(string releaseId, bool refresh, CancellationToken cancellation)
@@ -46,18 +56,30 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     {
         if (!source.IsValid || !MusicBrainzValidation.Album(album) || MusicBrainzMatching.Assess(source, album.Release).HasIdentityConflict)
             throw new InvalidDataException("音乐发行版或专辑组的明确编号存在冲突，未保存此关联。");
-        await commits.WaitAsync(cancellation).ConfigureAwait(false);
-        try
-        {
-            cancellation.ThrowIfCancellationRequested();
-            var binding = new MusicBrainzCacheValue("binding:" + source.Fingerprint, Now,
-                Binding: new(source.Fingerprint, album.Release.Id));
-            // Once the atomic replacement succeeds its value must also become
-            // the session's choice, including cancellation after replacement.
-            if (disk is not null) await disk.WriteAsync(binding, cancellation).ConfigureAwait(false);
-            lock (gate) { Remember(binding); cacheMutation++; }
-        }
-        finally { commits.Release(); }
+        var context = MediaIdentityContext.From(source); var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        await decisions.ApplyAsync(new(MediaIdentityDecisionRules.Target(album.Release.Id), MediaIdentityDecisionKind.Confirmed, context,
+            "Release", album.Release.ReleaseGroupId, Now, MediaIdentityDecisionOrigin.User, "用户核对发行版 · Bangumi → MusicBrainz"), current.Revision, cancellation).ConfigureAwait(false);
+    }
+    public async Task RejectAsync(MusicAlbumSource source, MusicBrainzReleaseCandidate release, CancellationToken cancellation)
+    {
+        if (!source.IsValid || !MusicBrainzValidation.Candidate(release)) throw new InvalidDataException("排除发行版的身份无效。");
+        var context = MediaIdentityContext.From(source); var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        await decisions.ApplyAsync(new(MediaIdentityDecisionRules.Target(release.Id), MediaIdentityDecisionKind.Rejected, context,
+            "Release", release.ReleaseGroupId, Now, MediaIdentityDecisionOrigin.User, "用户排除此发行版 · 不再自动关联"), current.Revision, cancellation).ConfigureAwait(false);
+    }
+    private async Task<MediaIdentityDecisionDocument> ReadDecisions(MediaIdentityContext context, CancellationToken cancellation)
+    {
+        var current = await decisions.ReadAsync(context, cancellation).ConfigureAwait(false);
+        if (!MediaIdentityDecisionRules.Valid(current) || current.Anchor != context.Anchor) throw new IOException("已保存的发行版关联身份不可验证，未自动匹配。");
+        return current;
+    }
+    public async Task RevokeAsync(MusicAlbumSource source, string expectedReleaseId, CancellationToken cancellation)
+    {
+        if (!source.IsValid || !MusicBrainzReference.ValidId(expectedReleaseId)) throw new InvalidDataException("待解除的发行版身份无效。");
+        var context = MediaIdentityContext.From(source); var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        if (current.Confirmed is not { } selected || selected.Target.Id != expectedReleaseId) throw new IOException("已保存的发行版已改变，请重新读取后再解除。");
+        await decisions.ApplyAsync(selected with { Kind = MediaIdentityDecisionKind.Rejected, Context = context, DecidedAtUtc = Now,
+            Origin = MediaIdentityDecisionOrigin.User, Evidence = "用户解除发行版关联 · 不再自动接受" }, current.Revision, cancellation).ConfigureAwait(false);
     }
     private async Task<(MusicBrainzCacheValue Value, bool Cached, bool Stale, string? Warning)> LoadAsync(string key, bool refresh,
         TimeSpan fresh, Func<CancellationToken, Task<MusicBrainzCacheValue>> fetch, CancellationToken cancellation)

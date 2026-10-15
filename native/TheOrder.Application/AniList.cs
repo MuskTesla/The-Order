@@ -79,6 +79,9 @@ public sealed record AniListBinding(string SourceFingerprint, int MediaId, AniLi
     // re-evaluated because their candidate search did not record completeness.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int AutomaticPolicyVersion { get; init; }
+    [JsonIgnore] public bool NeedsReview { get; init; }
+    [JsonIgnore] public string? ConfirmedFormat { get; init; }
+    [JsonIgnore] public bool IsUserDecision { get; init; }
 }
 public sealed record AniListCacheValue(string Key, DateTimeOffset CachedAtUtc, AniListMedia[]? Search = null,
     AniListDetails? Details = null, AniListBinding? Binding = null, bool Rejected = false)
@@ -87,7 +90,10 @@ public sealed record AniListCacheValue(string Key, DateTimeOffset CachedAtUtc, A
     public bool SearchComplete { get; init; }
 }
 public sealed record AniListSearchCandidates(AniListMedia[] Items, bool Complete);
-public sealed record AniListMatch(AniListMedia[] Candidates, AniListBinding? Binding, string? Notice = null);
+public sealed record AniListMatch(AniListMedia[] Candidates, AniListBinding? Binding, string? Notice = null)
+{
+    public int[] RejectedIds { get; init; } = [];
+}
 public sealed record AniListResult(AniListDetails Details, bool FromCache, bool IsStale, string? Warning);
 public enum AniListFailure { Offline, Timeout, RateLimited, Server, Unavailable, InvalidResponse, ResponseTooLarge }
 public sealed class AniListException(AniListFailure failure, string message) : Exception(message)
@@ -114,6 +120,10 @@ public interface IAniListReader
     Task<AniListMatch> FindCandidatesAsync(AniListSource source, bool refresh, CancellationToken cancellation);
     Task<AniListResult> LoadAsync(int id, AniListMediaKind kind, bool refresh, int peoplePage, CancellationToken cancellation);
     Task ConfirmAsync(AniListSource source, AniListDetails details, CancellationToken cancellation);
+    Task RejectAsync(AniListSource source, AniListMedia media, CancellationToken cancellation)
+        => Task.FromException(new NotSupportedException("当前资料读取器不支持修改关联。"));
+    Task RevokeAsync(AniListSource source, int expectedMediaId, CancellationToken cancellation)
+        => Task.FromException(new NotSupportedException("当前资料读取器不支持修改关联。"));
 }
 public sealed record AniListAssessment(bool Conflict, string[] Evidence);
 public static class AniListMatching

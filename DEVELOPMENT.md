@@ -1,5 +1,15 @@
 # 开发与维护
 
+## ACGN 身份持久化集成（2026-10-15，当前）
+
+维护入口 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`；红队整合提交9becb20与原8feede0 tree相同，基线491/0/0。新用户组件 `native-media-identities-v1` 复用NativeProfile身份、路径pin、进程写入所有权和WindowsAtomicFile；按来源Revision比较提交，不与远程cache淘汰共用容量。书籍继续使用既有独立publication-bindings；其读取发现旧层级并显示待核对，不改主Profile或库schema。未经新授权不得在真实资料上试迁移或用历史安装授权替换日用。
+
+固定SDK路径同下文；已按锁文件restore测试与WinUI。最终全套含Worker合成联调：在 `services/bangumi-auth-worker` 设置 `THE_ORDER_TEST_DOTNET=<固定SDK绝对路径>`、`THE_ORDER_TEST_RESULTS_DIR=<本轮证据根/tests-final>`，执行 `node test/run-client-bridge.mjs --all-client-tests`。该可选参数只扩展本地测试范围，不部署Worker。最终 `client-full-with-worker-1792051622242.trx` 为3689/0/0；合成上游拒绝其他地址，交换1、刷新1、直连资料2。依赖沿用锁文件一致的既有node_modules junction，没有npm安装/升级。先前无Worker的全套3684/0/1和自动cache新反例2项失败保留，不用它们替代最终结果。
+
+最终WinUI构建 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-identity-20261015/publish-v2`，日志 `build-winui-v2.log`。不要并行写同一Release输出。新入口 `.artifacts/acgn-identity-20261015/Start-IsolatedTest.ps1 -RunName <新的短名>`，必要时显式 `-ReuseTestProfile`；`-ValidateOnly`只验证候选及Test路径，不启动应用。默认全新空Test资料，不读取Production、不复制凭据；预设原生Test控制目录供下一阶段受限夹具使用。候选构建/入口校验不等于实际视觉验收。
+
+迁移先备份准确旧Envelope及规范化记录，成功归档后才允许远程缓存淘汰旧绑定；源ID缺失时只凭旧完整指纹归属，不按标题猜。归属回执在主提交后失败会保留已提交选择，并在后续读取修复。恢复旧格式的合成测试校验了逐字节Envelope及v1 reader；未运行旧EXE或真实降级。新用户组件是必须单独保留的用户资料，不能被缓存清理命令删除，主库旧导出/lastGood不包含它。最终源文件哈希、兼容证明及原工作区不变证据都在本轮证据根。
+
 ## ACGN 架构红队验证入口（2026-10-15，当前）
 
 源码 `D:/Projects/The-Order-worktrees/acgn-redteam-20261015`，分支 `codex/acgn-redteam-20261015`；继承快照 `50efc66` 完整保留前轮 12 项 dirty。仅本轮改动独立提交，证据 `.artifacts/acgn-redteam-20261015`。禁止 Production、日用安装、推送及发布；下面历史安装命令不构成本轮授权。

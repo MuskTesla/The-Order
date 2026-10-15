@@ -59,12 +59,15 @@ const address="http://127.0.0.1:"+server.address().port+"/";
 const dotnet=process.env.THE_ORDER_TEST_DOTNET;
 assert(dotnet,"Set THE_ORDER_TEST_DOTNET to the existing pinned SDK executable");
 await mkdir(resolve(root,"tests"),{recursive:true});
-const runName="worker-client-bridge-"+Date.now();
+const fullSuite=process.argv.includes("--all-client-tests");
+const runName=(fullSuite?"client-full-with-worker-":"worker-client-bridge-")+Date.now();
+const resultDirectory=process.env.THE_ORDER_TEST_RESULTS_DIR?resolve(process.env.THE_ORDER_TEST_RESULTS_DIR):resolve(root,"tests");
+await mkdir(resultDirectory,{recursive:true});
 try{
   const child=spawn(dotnet,["test",resolve(repo,"native/TheOrder.Tests/TheOrder.Tests.csproj"),"-c","Release","--no-restore","-p:Platform=x64","-p:UseSharedCompilation=true",
-    "--filter","FullyQualifiedName~WorkerBrokerIntegrationTests","--logger","trx;LogFileName="+runName+".trx","--results-directory",resolve(root,"tests")],
+    ...(fullSuite?[]:["--filter","FullyQualifiedName~WorkerBrokerIntegrationTests"]),"--logger","trx;LogFileName="+runName+".trx","--results-directory",resultDirectory],
     {cwd:repo,stdio:"inherit",windowsHide:true,env:{...process.env,THE_ORDER_WORKER_FIXTURE_URL:address}});
   const code=await new Promise((resolve,reject)=>{child.on("exit",resolve);child.on("error",reject);});
   assert.equal(code,0,"C# / Worker contract smoke failed");
-  console.log(JSON.stringify({localContract:"PASS",syntheticUpstream:true,exchanges,refreshes,directMetadata,productionProfileAccess:false,cloudflareDeployment:false,realAccountAuthorization:false}));
+  console.log(JSON.stringify({localContract:"PASS",clientSuite:fullSuite?"full":"worker-only",syntheticUpstream:true,exchanges,refreshes,directMetadata,productionProfileAccess:false,cloudflareDeployment:false,realAccountAuthorization:false}));
 }finally{await new Promise(resolve=>server.close(resolve));await mf.dispose();}

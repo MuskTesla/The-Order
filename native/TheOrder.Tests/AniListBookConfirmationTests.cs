@@ -42,7 +42,8 @@ public sealed class AniListBookConfirmationTests
             Assert.DoesNotContain(disk.Values.Keys, x => x.StartsWith("binding:"));
             await vm.PreviewAsync(45821); Assert.True(vm.CanConfirm); Assert.Contains("出版与连载", vm.Message);
             await vm.ConfirmAsync(); Assert.Equal(AniListDetailState.Ready, vm.State); Assert.False(vm.HasUnconfirmedPreview);
-            Assert.Equal(45821, Assert.Single(disk.Values.Values, x => x.Binding is not null).Binding!.MediaId);
+            Assert.Equal("45821", (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(vm.Source!), default)).Confirmed!.Target.Id);
+            Assert.DoesNotContain(disk.Values.Values, x => x.Binding is not null);
         }
         using var reopened = new AniListDetailsViewModel(Bridge(), new AniListService(provider, disk));
         await reopened.OpenAsync(Item()); Assert.Equal(AniListDetailState.Ready, reopened.State); Assert.Equal(45821, reopened.Media!.Id);
@@ -78,12 +79,13 @@ public sealed class AniListBookConfirmationTests
         Assert.Equal(45821, match.Binding?.MediaId); Assert.Equal("Bangumi 明确外部编号", match.Binding!.Evidence);
     }
     [Fact]
-    public async Task AChangedBookSourceStillRequiresANewConfirmation()
+    public async Task AChangedBookPublicationDateDoesNotEraseTheStableUserConfirmation()
     {
         var disk = new AniListMemoryCache(); var service = new AniListService(Provider(), disk);
         await service.ConfirmAsync(Source(), Details(), default);
         Assert.NotNull((await service.MatchAsync(Source(), null, false, default)).Binding);
-        Assert.Null((await service.MatchAsync(Source() with { Date = "2010-06-01" }, null, false, default)).Binding);
-        Assert.Single(disk.Values.Values, x => x.Binding is not null);
+        Assert.NotNull((await service.MatchAsync(Source() with { Date = "2010-06-01" }, null, false, default)).Binding);
+        Assert.NotNull((await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(Source()), default)).Confirmed);
+        Assert.DoesNotContain(disk.Values.Values, x => x.Binding is not null);
     }
 }

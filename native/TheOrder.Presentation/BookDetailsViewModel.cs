@@ -35,7 +35,7 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     public long Version => generation;
     public string DefaultTitle => Source?.OriginalTitle is { Length: > 0 } original ? original : Source?.Title ?? "";
     public string DefaultIsbn => Source?.Isbns.FirstOrDefault() ?? "";
-    public bool PreviewIsBound => Preview is { } p && Bindings.Any(x => x.PublicationId == p.Publication.Id);
+    public bool PreviewIsBound => Preview is { } p && Bindings.Any(x => x.PublicationId == p.Publication.Id && !x.NeedsReview);
     public string ConfirmationBlock => Preview is not { } p ? "请先预览一条出版记录。"
         : p.IsStale ? "当前显示旧资料，请刷新出版记录后再确认。"
         : p.Publication.IsAggregate ? "这是集合记录，不能确认为独立出版物。"
@@ -68,7 +68,8 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     {
         var saved = await books.BindingsAsync(Source!, token);
         if (!accept()) return;
-        AcceptBindings(saved); Message = saved.Length == 0 ? "尚未确认出版记录；检索结果需要逐条核对。" : $"已保存 {saved.Length} 条出版记录，可按需打开核对。";
+        AcceptBindings(saved); Message = saved.Length == 0 ? "尚未确认出版记录；检索结果需要逐条核对。" : $"已保存 {saved.Length} 条出版记录，可按需打开核对。"
+            + (saved.Any(x => x.NeedsReview) ? " 部分来源资料或层级已变化，原关联保留，请重新核对。" : "");
     });
     public Task LoadRelationsAsync(bool refresh = false)
     {
@@ -229,7 +230,8 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     }
     private void AcceptBindings(BookPublicationBinding[] saved)
     {
-        if (saved.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != Source!.Identity || x.SourceFingerprint != Source.Fingerprint)) throw new InvalidDataException();
+        if (saved.Any(x => !BookValidation.Binding(x) || x.SourceIdentity.Provider != Source!.Identity.Provider || x.SourceIdentity.Id != Source.Identity.Id
+            || !x.NeedsReview && (x.SourceIdentity != Source.Identity || x.SourceFingerprint != Source.Fingerprint))) throw new InvalidDataException();
         Bindings = saved; BindingsLoaded = true;
     }
     private void Stop() { generation++; var old = request; request = null; navigating = false; old?.Cancel(); }

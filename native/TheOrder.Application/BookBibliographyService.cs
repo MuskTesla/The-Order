@@ -79,9 +79,23 @@ public sealed class BookBibliographyService(IBookBibliographyProvider provider, 
     {
         if (!source.IsValid) throw new InvalidDataException("书籍身份无效。");
         if (choices is null) return [];
-        var saved = await choices.ReadAsync(source.Identity, cancellation).ConfigureAwait(false);
-        if (saved.Length > 64 || saved.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != source.Identity)) throw new IOException("出版关联不可读取，原文件保留。");
-        return saved.Where(x => x.SourceFingerprint == source.Fingerprint).ToArray();
+        // Classification and descriptive facts may change while the provider ID
+        // remains the same. Discover old choices, retaining their original scope;
+        // changed evidence is visible as NeedsReview instead of disappearing.
+        var saved = new List<BookPublicationBinding>();
+        foreach (var level in Enum.GetValues<BookEntityLevel>())
+        {
+            var identity = source.Identity with { Level = level };
+            var rows = await choices.ReadAsync(identity, cancellation).ConfigureAwait(false);
+            if (rows.Length > 64 || rows.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != identity)) throw new IOException("出版关联不可读取，原文件保留。");
+            saved.AddRange(rows);
+        }
+        return saved.GroupBy(x => x.PublicationId, StringComparer.Ordinal).Select(group =>
+        {
+            var chosen = group.OrderByDescending(x => x.SourceIdentity == source.Identity && x.SourceFingerprint == source.Fingerprint)
+                .ThenByDescending(x => x.ConfirmedAtUtc).First();
+            return chosen with { NeedsReview = chosen.SourceIdentity != source.Identity || chosen.SourceFingerprint != source.Fingerprint };
+        }).ToArray();
     }
     public async Task ConfirmAsync(BookSource source, BookPublication publication, CancellationToken cancellation)
     {
@@ -125,9 +139,14 @@ public sealed class BookBibliographyService(IBookBibliographyProvider provider, 
         await writes.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
-            var saved = await choices.ReadAsync(source.Identity, cancellation).ConfigureAwait(false);
-            if (saved.Length > 64 || saved.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != source.Identity)) throw new IOException("出版关联不可更新，原文件保留。");
-            await choices.WriteAsync(source.Identity, saved.Where(x => x.PublicationId != publicationId).ToArray(), cancellation).ConfigureAwait(false);
+            foreach (var level in Enum.GetValues<BookEntityLevel>())
+            {
+                var identity = source.Identity with { Level = level };
+                var saved = await choices.ReadAsync(identity, cancellation).ConfigureAwait(false);
+                if (saved.Length > 64 || saved.Any(x => !BookValidation.Binding(x) || x.SourceIdentity != identity)) throw new IOException("出版关联不可更新，原文件保留。");
+                if (saved.Any(x => x.PublicationId == publicationId))
+                    await choices.WriteAsync(identity, saved.Where(x => x.PublicationId != publicationId).ToArray(), cancellation).ConfigureAwait(false);
+            }
         }
         finally { writes.Release(); }
     }

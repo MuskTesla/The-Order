@@ -1,4 +1,18 @@
 # The Order：当前实现与评审交接
+## ACGN 人工身份决定持久化与集成（2026-10-15，当前隔离开发入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`。独立复审红队报告及四代理结论后，从继承快照 `50efc66` 整合 `8feede0` 为 `9becb20dae35d147615cc5d869711edbf3e4928d`，两提交 tree 完全相同；整合基线重新执行491项全部通过。上一轮readability的12项dirty哈希逐份未变、红队原工作树保持干净。本轮用户只授权测试版开发和集成，不授权Production、日用替换、推送或发布。
+
+新增 `MediaIdentityDecisions` / `IsolatedMediaIdentityDecisions`，在同一 Native Profile 的 `native-media-identities-v1` 保存用户确认、排除和撤销状态；键仅含来源Provider/资源/ID、目的及媒体，标题、日期和普通元数据不再改变确认入口。保留类型/粒度/格式、MB发行组、原证据指纹、来源及时间，按Revision原子更新；自动结果不写入用户决定。新旧自动请求返回前重新检查用户决定，排除目标不会被搜索、外链或迟到响应重新接受。AniList旧自动proof仍有绕过刷新和过期完整性检查的遗漏，本轮用两项失败反例验证并关闭：现每次依候选/详情各自TTL与完整性决定自动结果，不读永久binding捷径。
+
+旧缓存中的人工绑定先独立归档，逐文件保留原始Envelope供回退；再凭准确旧指纹补全稳定来源编号。已归属条目此后不依赖旧指纹。无法归属的历史记录不按同名猜ID，保留待复核并暂缓该来源域未确认项的自动匹配；归属完成后恢复新条目自动匹配。旧自动proof不会变成人工确认。旧缓存满128个绑定时，也能在完成备份后安全淘汰，避免历史绑定继续占满远程缓存。没有升级主Profile或游戏库schema，没有在真实资料上执行迁移。
+
+书籍出版沿用原独立 `native-book-publications-v1`，不另迁一套书目存储。读取按稳定Provider/ID发现旧层级文件；资料或层级变化时保留原身份与指纹并标NeedsReview，可预览重核或解除。动画/音乐详情新增排除与取消关联；目标远程删除时可仅凭已保存ID解除。明确ID/类型/粒度冲突不能被旧确认提升可信；目标格式变化与内部关联导航不再借用原Bangumi的简介/封面。
+
+最终测试 `tests-final/client-full-with-worker-1792051622242.trx`：**3689通过/0失败/0跳过**，含39项新持久化用例及1项新图片夹具契约用例，与先前491/534等数字有重叠。旧图片夹具改用独立回环请求，产品重定向保护未放宽。原Worker跳过通过本地Miniflare/workerd合成上游启用，全套内实际交换1次、刷新1次、直接资料读取2次；不是真实账号授权或Cloudflare部署。最终候选 `publish-v2`、日志 `build-winui-v2.log`；本轮未运行实际WinUI窗口或截图。完整证据和提交见 `.artifacts/acgn-identity-20261015/report.md` / `completion.json`。
+
+Gate：隔离测试版代码集成GO；真实UI和正式发布仍需单独验收。下一步使用本证据根的 `Start-The-Order-Identity-Test.cmd` 或 `Start-IsolatedTest.ps1` 创建全新Test Profile，不复制私库或令牌；仅入口静态校验不等于UI通过。书架导出/旧组件lastGood不能替代新用户关联目录的完整备份；备份本轮关联需保留整个新组件。仍需真实UI核对取消、重启恢复、候选排除与旧历史待复核等流程。
+
 ## ACGN 架构红队（2026-10-15，当前隔离开发入口）
 
 当前源码 `D:/Projects/The-Order-worktrees/acgn-redteam-20261015` / `codex/acgn-redteam-20261015`。以 `detail-readability-20261015` 的 `531cf8c` 加全部 12 项未提交成果建立隔离快照 `50efc66670cf40bb69607afabc999e9bdd43ba63`；快照不是红队新增成果。原工作区 12 项哈希逐份保持。本轮明确禁止 Production 操作、替换日用、推送、合并及发布，覆盖下方历史安装授权。版本与依赖不变。

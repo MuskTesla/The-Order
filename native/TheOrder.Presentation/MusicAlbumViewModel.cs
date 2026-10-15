@@ -21,6 +21,8 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
     public bool CanLoad => active && !disposed && !IsBusy && Item is not null;
     public bool CanConfirm => CanLoad && State == MusicAlbumState.Preview && Source is not null && Preview is not null
         && !MusicBrainzMatching.Assess(Source, Preview.Album.Release).HasIdentityConflict;
+    public bool CanReject => CanLoad && Source is not null && Displayed is not null && State is MusicAlbumState.Ready or MusicAlbumState.Preview;
+    public bool CanRevoke => CanLoad && Source is not null && Match?.ConfirmedReleaseId is not null;
     public bool CanCancel => active && !disposed && IsBusy;
     public MusicBrainzAlbumResult? Displayed => Preview ?? Album;
     public Task OpenAsync(BangumiRelationItem item, CancellationToken cancellation = default)
@@ -99,6 +101,13 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
                 Validate(id, album);
                 // Search documents are not a substitute for the final release identity and facts.
                 var assessment = MusicBrainzMatching.Assess(Source, album.Album.Release);
+                if (match.NeedsReview || match.ConfirmedReleaseGroupId is { } originalGroup && album.Album.Release.ReleaseGroupId != originalGroup)
+                {
+                    Album = null; Preview = album; State = MusicAlbumState.Preview;
+                    Match = match with { Search = new([album.Album.Release], 1, false, null, null) };
+                    Message = "已保存的发行版仍保留，但条目层级或所属专辑组已变化，请重新核对。";
+                    return;
+                }
                 if (!assessment.HasIdentityConflict && (match.ConfirmedReleaseId is not null || assessment.Strong))
                 {
                     Album = album; State = MusicAlbumState.Ready;
@@ -158,6 +167,31 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
     {
         if (!CanLoad || Match is null) return;
         Preview = null; State = MusicAlbumState.Choosing; Message = "请选择具体发行版。"; Notify();
+    }
+    public async Task RejectAsync(CancellationToken cancellation = default)
+    {
+        if (!CanReject || Source is not { } source || Displayed?.Album.Release is not { } release) return;
+        await Request(async (token, accepts) =>
+        {
+            await music.RejectAsync(source, release, token);
+            if (!accepts()) return;
+            Album = Preview = null; SelectionReason = "";
+            Match = await music.MatchAsync(source, true, token);
+            if (!accepts()) return;
+            State = MusicAlbumState.Choosing;
+            Message = "已取消此发行版关联并排除自动匹配。仍可手动核对后重新确认。";
+        }, cancellation);
+    }
+    public async Task RevokeAsync(CancellationToken cancellation = default)
+    {
+        if (!CanRevoke || Source is not { } source || Match?.ConfirmedReleaseId is not { } id) return;
+        await Request(async (token, accepts) =>
+        {
+            await music.RevokeAsync(source, id, token); if (!accepts()) return;
+            Album = Preview = null; SelectionReason = "";
+            Match = Match! with { ConfirmedReleaseId = null, AutomaticReleaseId = null, RejectedIds = Match.RejectedIds.Append(id).Distinct().ToArray() };
+            State = MusicAlbumState.Choosing; Message = "已解除保存的发行版并排除自动匹配。可按需查找其他发行版。";
+        }, cancellation);
     }
     private async Task Request(Func<CancellationToken, Func<bool>, Task> action, CancellationToken cancellation)
     {

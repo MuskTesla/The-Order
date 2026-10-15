@@ -11,6 +11,15 @@ namespace TheOrder.Tests;
 public sealed class MediaNetworkStressTests
 {
     [Fact]
+    public async Task LoopbackRoutingDoesNotChangeTheLogicalUriOrWeakenTheRedirectContract()
+    {
+        await using var server = new Server([1]); using var http = new HttpClient(new LoopbackTransport(server.Port));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://images.example/cover");
+        using var response = await http.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode); Assert.Equal("https://images.example/cover", request.RequestUri!.AbsoluteUri);
+        Assert.Same(request, response.RequestMessage); Assert.Equal(request.RequestUri, response.RequestMessage!.RequestUri); Assert.Equal(1, server.Requests);
+    }
+    [Fact]
     public async Task LoopbackFixtureRepeatedShutdownDrainsItsPendingAccept()
     {
         for (int i = 0; i < 50; i++)
@@ -56,11 +65,17 @@ public sealed class MediaNetworkStressTests
     private sealed class LoopbackTransport(int port) : HttpMessageHandler
     {
         private readonly HttpMessageInvoker transport = new(new SocketsHttpHandler { UseProxy = false, UseCookies = false, AllowAutoRedirect = false });
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
         {
             Assert.Equal("images.example", request.RequestUri!.Host); Assert.Null(request.Headers.Authorization);
-            request.RequestUri = new Uri($"http://127.0.0.1:{port}" + request.RequestUri.AbsolutePath);
-            return transport.SendAsync(request, cancellation);
+            Assert.Equal(HttpMethod.Get, request.Method); Assert.Null(request.Content);
+            // Route the fixture's physical socket without mutating the logical
+            // request. Production's no-redirect check must remain meaningful.
+            using var physical = new HttpRequestMessage(request.Method, new Uri($"http://127.0.0.1:{port}" + request.RequestUri.PathAndQuery));
+            foreach (var header in request.Headers) physical.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            var response = await transport.SendAsync(physical, cancellation);
+            response.RequestMessage = request;
+            return response;
         }
         protected override void Dispose(bool disposing) { if (disposing) transport.Dispose(); base.Dispose(disposing); }
     }

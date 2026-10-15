@@ -117,6 +117,7 @@ internal static class Composition
         services.AddSingleton<IMusicBrainzProvider>(p => new MusicBrainzProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IMusicBrainzEntityReader>(p => (IMusicBrainzEntityReader)p.GetRequiredService<IMusicBrainzProvider>());
         services.AddSingleton<IMusicBrainzCache, IsolatedMusicBrainzCache>();
+        services.AddSingleton<IMediaIdentityDecisions, IsolatedMediaIdentityDecisions>();
         services.AddSingleton<IMusicBrainzReader, MusicBrainzService>();
         services.AddSingleton<IAniListProvider>(p => new AniListProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
         services.AddSingleton<IAniListCache, IsolatedAniListCache>();

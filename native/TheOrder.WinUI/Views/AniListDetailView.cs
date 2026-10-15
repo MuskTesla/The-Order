@@ -25,7 +25,7 @@ public sealed class AniListDetailView : Grid, IDisposable
     private readonly Dictionary<string, (bool Main, bool Other, bool OtherOpen)> synopsisStates = new();
     private string? synopsisIdentity;
     private readonly ProgressRing ring = new() { Width = 18, Height = 18 };
-    private readonly Button cancel = Button("取消读取"), refresh = Button("刷新资料"), confirm = Button("确认使用此条目"), choose = Button("选择其他条目"), search = Button("查找"), more = Button("更多角色与制作人员"), toCharacters = Button("角色与声优"), toStaff = Button("制作人员"), toRelations = Button("前后作");
+    private readonly Button cancel = Button("取消读取"), refresh = Button("刷新资料"), confirm = Button("确认使用此条目"), reject = Button("排除此条目"), choose = Button("选择其他条目"), search = Button("查找"), more = Button("更多角色与制作人员"), toCharacters = Button("角色与声优"), toStaff = Button("制作人员"), toRelations = Button("前后作");
     private readonly TextBox searchText = new() { PlaceholderText = "原文标题，或 AniList 作品链接", MaxLength = 2000, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Expander characters = Expand("角色与日语声优"), staff = Expand("制作人员"), genres = Expand("类型与标签"), related = Expand("前后作与其他关联"), sources = Expand("资料来源与对应关系");
     private readonly Expander bridgeSummary = Expand("Bangumi 简介");
@@ -43,6 +43,7 @@ public sealed class AniListDetailView : Grid, IDisposable
     private Func<string, Task>? openBangumi; private string origin = "", label = "", evidence = "";
     private bool active, disposed; private long coverVersion, restored, scrollInputVersion; private string? requestedCover;
     private AniListResult[]? shownPages; private AniListMedia[]? shownCandidates;
+    private int[]? shownRejected;
     private IBangumiWatchLinksReader? watchData; private WatchDataQuery? watchQuery; private WatchDataResult? watchResult;
     private CancellationTokenSource? watchStop; private long watchVersion;
     public AniListDetailView()
@@ -55,7 +56,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); heading.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         heading.Children.Add(cover); var labels = new StackPanel { Spacing = 9, Children = { type, title, alternate, facts, selection } }; SetColumn(labels, 1); heading.Children.Add(labels);
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
-        actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(confirm); actions.Children.Add(choose); actions.Children.Add(toCharacters); actions.Children.Add(toStaff); actions.Children.Add(toRelations);
+        actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(confirm); actions.Children.Add(reject); actions.Children.Add(choose); actions.Children.Add(toCharacters); actions.Children.Add(toStaff); actions.Children.Add(toRelations);
         var searchRow = new Grid { ColumnSpacing = 8 }; searchRow.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         searchRow.Children.Add(searchText); SetColumn(search, 1); searchRow.Children.Add(search);
         candidateSection.Children.Add(Text(20, "选择对应作品")); candidateSection.Children.Add(searchRow); candidateSection.Children.Add(candidates);
@@ -71,6 +72,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         scroll.PointerPressed += (_, _) => scrollInputVersion++; scroll.KeyDown += (_, _) => scrollInputVersion++;
         cancel.Click += (_, _) => model?.Cancel(); refresh.Click += async (_, _) => await RefreshAsync();
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
+        AutomationProperties.SetAutomationId(reject, "AniListReject");
+        ToolTipService.SetToolTip(reject, "取消关联并排除自动匹配；仍可手动核对后重新确认。");
+        reject.Click += async (_, _) => { if (model?.CanReject == true) await model.RejectAsync(); else if (model is not null) await model.RevokeAsync(); };
         choose.Click += async (_, _) => { if (model is not null) { await model.ChooseAgainAsync(); candidateSection.StartBringIntoView(); } }; more.Click += async (_, _) => { if (model is not null) await model.MoreAsync(); };
         toCharacters.Click += (_, _) => ShowSection(characters); toStaff.Click += (_, _) => ShowSection(staff); toRelations.Click += (_, _) => ShowSection(related);
         foreach (var panel in new[] { candidates, characterCards, relatedCards }) panel.SizeChanged += (_, _) => ClampCards(panel);
@@ -143,6 +147,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         RenderMatchReview(media);
         status.Visibility = Visible(status.Text.Length > 0); ring.IsActive = model?.IsBusy == true; ring.Visibility = cancel.Visibility = Visible(ring.IsActive);
         confirm.Visibility = Visible(model?.State == AniListDetailState.Preview); confirm.IsEnabled = model?.CanConfirm == true;
+        reject.Visibility = Visible(model?.IsBridge == true && (details is not null || model?.SavedUserTargetId is not null));
+        reject.IsEnabled = model?.CanReject == true || model?.CanRevoke == true;
+        reject.Content = details is null || model?.State == AniListDetailState.Ready ? "取消关联" : "排除此条目";
         choose.Visibility = Visible(model?.IsBridge == true && details is not null); choose.IsEnabled = model?.CanLoad == true;
         foreach (var button in new[] { toCharacters, toStaff, toRelations }) { button.Visibility = Visible(details is not null); button.IsEnabled = model?.CanLoad == true; }
         toCharacters.Content = isAnime ? "角色与声优" : "角色"; toStaff.Content = isAnime ? "制作人员" : "作者与制作"; toRelations.Content = "关联作品";
@@ -151,7 +158,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         search.IsEnabled = searchText.IsEnabled = refresh.IsEnabled = model?.CanLoad == true;
         // Only an established bridge can supply the displayed work's primary synopsis.
         // A mismatched preview keeps the original subject clearly separate.
-        var bridgePrimary = !preview && bridge?.Summary is { Length: > 0 };
+        var bridgePrimary = useBangumiSource && bridge?.Summary is { Length: > 0 };
         var synopsisKey = media is not null ? "anilist/" + media.Id + "/" + preview : "bangumi/" + bridge?.Id;
         var previousState = (Main: synopsis.Expanded, Other: bridgeSynopsis.Expanded, OtherOpen: bridgeSummary.IsExpanded);
         if (synopsisIdentity != synopsisKey && synopsisIdentity is not null)
@@ -161,15 +168,17 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
         var restoredSynopsis = synopsisIdentity == synopsisKey ? previousState : synopsisStates.GetValueOrDefault(synopsisKey);
         synopsisIdentity = synopsisKey;
-        synopsis.Text = bridgePrimary ? bridge!.Summary : details?.Description is { Length: > 0 } text ? text : !preview && bridge?.Summary is { Length: > 0 } fallback ? fallback : "原站暂未提供简介。";
+        synopsis.Text = bridgePrimary ? bridge!.Summary : details?.Description is { Length: > 0 } text ? text : useBangumiSource && bridge?.Summary is { Length: > 0 } fallback ? fallback : "原站暂未提供简介。";
         synopsis.Heading = bridgePrimary || media is null ? "简介 · Bangumi" : "简介 · AniList";
-        bridgeSynopsis.Text = bridgePrimary ? details?.Description ?? "" : bridge?.Summary ?? "";
+        bridgeSynopsis.Text = bridgePrimary ? details?.Description ?? "" : model?.IsBridge == true ? bridge?.Summary ?? "" : "";
         bridgeSummary.Header = bridgePrimary ? "其他简介 · AniList 原文" : preview ? "原条目简介 · Bangumi" : "其他简介 · Bangumi";
         bridgeSummary.Visibility = Visible(bridgeSynopsis.Text.Length > 0 && bridgeSynopsis.Text != synopsis.Text);
         synopsis.Expanded = restoredSynopsis.Main; bridgeSynopsis.Expanded = restoredSynopsis.Other; bridgeSummary.IsExpanded = restoredSynopsis.OtherOpen;
-        var coverUrl = media?.CoverUrl ?? bridge?.CoverUrl ?? (model?.IsBridge == true ? model?.Item?.CoverUrl : null);
-        SetCover(coverUrl, bridge?.CoverUrl);
-        if (!ReferenceEquals(shownCandidates, model?.Candidates)) { shownCandidates = model?.Candidates; RenderCandidates(); }
+        var bridgeCover = useBangumiSource ? bridge?.CoverUrl ?? model?.Item?.CoverUrl : null;
+        var coverUrl = media?.CoverUrl ?? bridgeCover;
+        SetCover(coverUrl, bridgeCover);
+        if (!ReferenceEquals(shownCandidates, model?.Candidates) || !ReferenceEquals(shownRejected, model?.RejectedIds))
+        { shownCandidates = model?.Candidates; shownRejected = model?.RejectedIds; RenderCandidates(); }
         if (!ReferenceEquals(shownPages, model?.PeoplePages)) { shownPages = model?.PeoplePages; RenderDetails(details); }
         foreach (var button in relatedCards.Children.OfType<Button>()) button.IsEnabled = model?.CanLoad == true && model?.State == AniListDetailState.Ready;
         relatedNotice.Visibility = Visible(preview);
@@ -247,6 +256,7 @@ public sealed class AniListDetailView : Grid, IDisposable
             var body = new StackPanel { Spacing = 6, Children = { Text(16, candidate.Title), Text(13, candidate.NativeTitle), Text(13, factsText) } };
             var assessment = model?.Source is { } source ? AniListMatching.Assess(source, candidate) : null;
             if (assessment?.Conflict == true) body.Children.Add(Text(13, "证据有差异，请先核对"));
+            if (model?.RejectedIds.Contains(candidate.Id) == true) body.Children.Add(Text(13, "已排除自动关联 · 可手动核对"));
             var button = Card(body, 330); AutomationProperties.SetAutomationId(button, "AniListCandidate-" + candidate.Id);
             button.Click += async (_, _) => { if (model?.CanLoad == true) { await model.PreviewAsync(candidate.Id); scroll.ChangeView(null, 0, null, true); } };
             candidates.Children.Add(button);

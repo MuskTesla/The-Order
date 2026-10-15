@@ -24,7 +24,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     private readonly Grid header = new() { ColumnSpacing = 20 };
     private readonly ProgressRing ring = new() { Width = 18, Height = 18 };
     private readonly Button cancel = Button("取消读取"), retry = Button("重试"), editions = Button("选择其他发行版"), refresh = Button("刷新音乐资料");
-    private readonly Button confirm = Button("确认使用此发行版"), chooseAgain = Button("重新选择"), showTracks = Button("查看曲目列表");
+    private readonly Button confirm = Button("确认使用此发行版"), reject = Button("排除此发行版"), chooseAgain = Button("重新选择"), showTracks = Button("查看曲目列表");
     private readonly TextBox searchQuery = new() { PlaceholderText = "专辑名，或 MusicBrainz 发行版 / 专辑组链接", MaxLength = 2000, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Button search = Button("查找专辑");
     private readonly Grid searchRow = new() { ColumnSpacing = 8 };
@@ -72,6 +72,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         var info = new StackPanel { Spacing = 10, Children = { type, title, artist, releaseFacts, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
         actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(showTracks); actions.Children.Add(editions);
         confirmActions.Children.Add(confirm); confirmActions.Children.Add(chooseAgain);
+        actions.Children.Add(reject); AutomationProperties.SetAutomationId(reject, "MusicAlbumReject");
+        ToolTipService.SetToolTip(reject, "取消关联并排除自动匹配；仍可手动核对后重新确认。");
         searchRow.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         searchRow.Children.Add(searchQuery); SetColumn(search, 1); searchRow.Children.Add(search);
         candidateSection.Children.Add(Text(22, "选择发行版")); candidateSection.Children.Add(searchRow); candidateSection.Children.Add(candidates);
@@ -90,6 +92,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         cancel.Click += (_, _) => model?.Cancel(); retry.Click += async (_, _) => await RefreshAsync(); refresh.Click += async (_, _) => await RefreshAsync();
         editions.Click += async (_, _) => { if (model is not null) await model.ChooseEditionAsync(); };
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
+        reject.Click += async (_, _) => { if (model?.CanReject == true) await model.RejectAsync(); else if (model is not null) await model.RevokeAsync(); };
         chooseAgain.Click += (_, _) => model?.BackToEditions();
         showTracks.Click += (_, _) => tracksSection.StartBringIntoView();
         search.Click += async (_, _) => await SearchAsync();
@@ -143,6 +146,9 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         showTracks.Visibility = Visible(album?.Discs.Any(x => x.Tracks.Length > 0) == true);
         actions.Visibility = Visible(actions.Children.OfType<FrameworkElement>().Any(x => x.Visibility == Visibility.Visible));
         confirmActions.Visibility = Visible(model?.State == MusicAlbumState.Preview); confirm.IsEnabled = model?.CanConfirm == true;
+        reject.Visibility = Visible(model?.Displayed is not null || model?.Match?.ConfirmedReleaseId is not null);
+        reject.IsEnabled = model?.CanReject == true || model?.CanRevoke == true;
+        reject.Content = model?.Displayed is null || model?.State == MusicAlbumState.Ready ? "取消关联" : "排除此发行版";
         candidateSection.Visibility = Visible(model?.State == MusicAlbumState.Choosing || model?.State == MusicAlbumState.Failed && source is not null);
         search.IsEnabled = searchQuery.IsEnabled = model?.CanLoad == true;
         if (!ReferenceEquals(shownSearch, model?.Match?.Search)) { shownSearch = model?.Match?.Search; RenderCandidates(); }
@@ -205,6 +211,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             if (candidate.Status.Length > 0) card.Children.Add(Text(13, candidate.Status switch
             { "Official" => "正式发行", "Pseudo-Release" => "曲目别名版本", "Bootleg" => "非官方发行", _ => candidate.Status }));
             if (evidence.HasConflict) { var warning = Text(13, "发行信息有差异，请核对后选择"); warning.Opacity = .8; card.Children.Add(warning); }
+            if (model?.Match?.RejectedIds.Contains(candidate.Id) == true) card.Children.Add(Text(13, "已排除自动关联 · 可手动核对"));
             card.Children.Add(new Expander { Header = "匹配依据", HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, Content = Text(13, string.Join("\n", evidence.Evidence)) });
             var preview = Button("查看此发行版与曲目"); AutomationProperties.SetAutomationId(preview, "MusicEdition-" + candidate.Id);

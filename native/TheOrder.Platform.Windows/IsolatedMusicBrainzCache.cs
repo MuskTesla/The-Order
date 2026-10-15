@@ -9,8 +9,9 @@ namespace TheOrder.Platform.Windows;
 // Public display data and user-confirmed edition choices live outside library.json. The existing
 // profile identity/path pins/atomic writer protect this disposable cache exactly like relations.
 public sealed class IsolatedMusicBrainzCache(NativeConfiguration configuration,
-    Func<PersistenceStage, Task>? persistenceProbe = null) : IMusicBrainzCache
+    Func<PersistenceStage, Task>? persistenceProbe = null) : IMusicBrainzCache, IMediaIdentityDecisionOwner
 {
+    public IMediaIdentityDecisions IdentityDecisions { get; } = new IsolatedMediaIdentityDecisions(configuration, persistenceProbe);
     public const string DirectoryName = "native-musicbrainz-v1";
     private const int MaximumFiles = 128, MaximumPayload = 4 * 1024 * 1024, MaximumEnvelope = 6 * 1024 * 1024;
     private const long MaximumBytes = 64L * 1024 * 1024;
@@ -30,6 +31,8 @@ public sealed class IsolatedMusicBrainzCache(NativeConfiguration configuration,
     {
         cancellation.ThrowIfCancellationRequested();
         if (!MusicBrainzValidation.Cache(value)) throw new InvalidDataException("音乐缓存格式无效。");
+        if (value.Binding is null && IdentityDecisions is IsolatedMediaIdentityDecisions userData)
+            await userData.ArchiveLegacyAsync(MediaIdentityPurpose.MusicRelease, cancellation).ConfigureAwait(false);
         var payload = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
         if (payload.Length > MaximumPayload) throw new IOException("音乐缓存超过大小限制。");
         try
@@ -50,7 +53,8 @@ public sealed class IsolatedMusicBrainzCache(NativeConfiguration configuration,
                 {
                     if (total <= MaximumBytes && count <= MaximumFiles) break;
                     // Confirmed choices are tiny and should outlive the metadata cache. Unknown files are preserved.
-                    if (file.FullName.Equals(target, StringComparison.OrdinalIgnoreCase) || ReadVerified(file.FullName, profile) is not { Binding: null }) continue;
+                    if (file.FullName.Equals(target, StringComparison.OrdinalIgnoreCase) || ReadVerified(file.FullName, profile) is not { } verified
+                        || value.Binding is not null && verified.Binding is not null) continue;
                     remove.Add(file.FullName); total -= file.Length; count--;
                 }
                 if (total > MaximumBytes || count > MaximumFiles) return false;
@@ -62,7 +66,7 @@ public sealed class IsolatedMusicBrainzCache(NativeConfiguration configuration,
                     if (stage != PersistenceStage.BeforeReplace) return;
                     if (File.Exists(target) && ReadVerified(target, profile, value.Key) is null) throw new IOException("音乐缓存身份已改变，保留原文件。");
                     foreach (var path in remove)
-                    { if (ReadVerified(path, profile) is not { Binding: null }) throw new IOException("音乐缓存维护条件已改变。"); File.Delete(path); }
+                    { if (ReadVerified(path, profile) is not { } verified || value.Binding is not null && verified.Binding is not null) throw new IOException("音乐缓存维护条件已改变。"); File.Delete(path); }
                 }).ConfigureAwait(false);
                 return true;
             }, true, cancellation).ConfigureAwait(false);
@@ -71,7 +75,7 @@ public sealed class IsolatedMusicBrainzCache(NativeConfiguration configuration,
         catch (Exception e) when (e is NativeProfileException or DataIsolationException)
         { throw new IOException("音乐缓存资料路径不可用。", e); }
     }
-    private static MusicBrainzCacheValue? ReadVerified(string path, NativeProfileStore profile, string? expected = null)
+    internal static MusicBrainzCacheValue? ReadVerified(string path, NativeProfileStore profile, string? expected = null)
     {
         try
         {

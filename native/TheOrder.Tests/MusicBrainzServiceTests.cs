@@ -17,8 +17,9 @@ internal sealed class MusicTestProvider : IMusicBrainzProvider
     public Task<MusicBrainzAlbum> FetchAlbumAsync(string id, CancellationToken token) { Albums++; return Load(id, token); }
     public Task<MusicBrainzSearchResult> EditionsAsync(string id, CancellationToken token) => Task.FromResult(MusicTestData.Search());
 }
-internal sealed class MusicMemoryCache : IMusicBrainzCache
+internal sealed class MusicMemoryCache : IMusicBrainzCache, IMediaIdentityDecisionOwner
 {
+    public IMediaIdentityDecisions IdentityDecisions { get; } = new SessionMediaIdentityDecisions();
     public Dictionary<string, MusicBrainzCacheValue> Values = [];
     public Task<MusicBrainzCacheValue?> ReadAsync(string key, CancellationToken token) { token.ThrowIfCancellationRequested(); return Task.FromResult(Values.GetValueOrDefault(key)); }
     public Task WriteAsync(MusicBrainzCacheValue value, CancellationToken token) { token.ThrowIfCancellationRequested(); Values[value.Key] = value; return Task.CompletedTask; }

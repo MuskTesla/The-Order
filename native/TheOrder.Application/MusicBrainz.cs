@@ -90,7 +90,12 @@ public sealed record MusicBrainzCandidateAssessment(MusicBrainzReleaseCandidate 
     public bool HasIdentityConflict { get; init; }
 }
 public sealed record MusicBrainzMatchResult(MusicBrainzSearchResult Search, string? AutomaticReleaseId,
-    string? ConfirmedReleaseId, bool FromCache, bool IsStale, string? Warning);
+    string? ConfirmedReleaseId, bool FromCache, bool IsStale, string? Warning)
+{
+    public bool NeedsReview { get; init; }
+    public string? ConfirmedReleaseGroupId { get; init; }
+    public string[] RejectedIds { get; init; } = [];
+}
 public sealed record MusicBrainzAlbumResult(MusicBrainzAlbum Album, bool FromCache, bool IsStale, string? Warning);
 public sealed record MusicBrainzBinding(string SourceFingerprint, string ReleaseId);
 public sealed record MusicBrainzCacheValue(string Key, DateTimeOffset CachedAtUtc, MusicBrainzSearchResult? Search = null,
@@ -115,6 +120,10 @@ public interface IMusicBrainzReader
     Task<MusicBrainzAlbumResult> LoadAlbumAsync(string releaseId, bool refresh, CancellationToken cancellation);
     Task<MusicBrainzSearchResult> EditionsAsync(string releaseGroupId, CancellationToken cancellation);
     Task ConfirmAsync(MusicAlbumSource source, MusicBrainzAlbum album, CancellationToken cancellation);
+    Task RejectAsync(MusicAlbumSource source, MusicBrainzReleaseCandidate release, CancellationToken cancellation)
+        => Task.FromException(new NotSupportedException("当前资料读取器不支持修改关联。"));
+    Task RevokeAsync(MusicAlbumSource source, string expectedReleaseId, CancellationToken cancellation)
+        => Task.FromException(new NotSupportedException("当前资料读取器不支持修改关联。"));
 }
 
 public static class MusicBrainzMatching

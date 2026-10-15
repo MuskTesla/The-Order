@@ -147,6 +147,9 @@ public sealed class AcgnRedTeamIdentityTests
             await vm.ConfirmAsync(); Assert.DoesNotContain(disk.Values.Values, x => x.Binding is not null);
         }
         await disk.WriteAsync(new("binding:" + source.Fingerprint, DateTimeOffset.UtcNow, Binding: new(source.Fingerprint, MusicTestData.Other)), default);
+        await disk.IdentityDecisions.ApplyAsync(new(MediaIdentityDecisionRules.Target(MusicTestData.Other), MediaIdentityDecisionKind.Confirmed,
+            MediaIdentityContext.From(source), "Release", MusicTestData.Group, DateTimeOffset.UtcNow,
+            MediaIdentityDecisionOrigin.LegacyConfirmation, "用户选择 · 旧版迁移"), 0, default);
         using var reopened = new MusicAlbumViewModel(new MusicSubjectReader(source.Facts), new MusicBrainzService(provider, disk));
         await reopened.OpenAsync(MusicTestData.Item());
         Assert.Equal(MusicAlbumState.Choosing, reopened.State); Assert.Null(reopened.Album); Assert.Contains("冲突", reopened.Message);
@@ -182,7 +185,8 @@ public sealed class AcgnRedTeamIdentityTests
         await reopened.OpenAsync(MusicTestData.Item());
         Assert.Equal(MusicAlbumState.Ready, reopened.State); Assert.Equal(MusicTestData.Other, reopened.Album?.Album.Release.Id);
         Assert.Contains("核对版本", reopened.Message);
-        Assert.Single(disk.Values.Values, x => x.Binding?.ReleaseId == MusicTestData.Other);
+        Assert.Equal(MusicTestData.Other, (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default)).Confirmed!.Target.Id);
+        Assert.DoesNotContain(disk.Values.Values, x => x.Binding is not null);
     }
 
     [Theory]

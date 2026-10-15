@@ -6,11 +6,12 @@ using TheOrder.Application;
 
 namespace TheOrder.Platform.Windows;
 
-// Public display data and user-confirmed media choices live outside library.json. The existing
-// profile identity/path pins/atomic writer protect this disposable cache exactly like relations.
+// Disposable public metadata/automatic proofs. Manual v1 bindings are read only
+// for migration into the separate Native Profile user-decision component.
 public sealed class IsolatedAniListCache(NativeConfiguration configuration,
-    Func<PersistenceStage, Task>? persistenceProbe = null) : IAniListCache
+    Func<PersistenceStage, Task>? persistenceProbe = null) : IAniListCache, IMediaIdentityDecisionOwner
 {
+    public IMediaIdentityDecisions IdentityDecisions { get; } = new IsolatedMediaIdentityDecisions(configuration, persistenceProbe);
     public const string DirectoryName = "native-anilist-v1";
     private const int MaximumFiles = 128, MaximumPayload = 4 * 1024 * 1024, MaximumEnvelope = 6 * 1024 * 1024;
     private const long MaximumBytes = 64L * 1024 * 1024;
@@ -30,6 +31,9 @@ public sealed class IsolatedAniListCache(NativeConfiguration configuration,
     {
         cancellation.ThrowIfCancellationRequested();
         if (!AniListValidation.Cache(value)) throw new InvalidDataException("AniList缓存格式无效。");
+        var archivedForEviction = value.Binding is null || value.Binding.AutomaticPolicyVersion > 0;
+        if (archivedForEviction && IdentityDecisions is IsolatedMediaIdentityDecisions userData)
+            await userData.ArchiveLegacyAsync(MediaIdentityPurpose.AniListMedia, cancellation).ConfigureAwait(false);
         var payload = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
         if (payload.Length > MaximumPayload) throw new IOException("AniList缓存超过大小限制。");
         try
@@ -49,8 +53,10 @@ public sealed class IsolatedAniListCache(NativeConfiguration configuration,
                 foreach (var file in files.OrderBy(f => f.LastWriteTimeUtc))
                 {
                     if (total <= MaximumBytes && count <= MaximumFiles) break;
-                    // Confirmed choices are tiny and should outlive the metadata cache. Unknown files are preserved.
-                    if (file.FullName.Equals(target, StringComparison.OrdinalIgnoreCase) || ReadVerified(file.FullName, profile) is not { Binding: null }) continue;
+                    // Manual legacy choices and exact envelopes have already
+                    // been archived in user data. Unknown files are preserved.
+                    if (file.FullName.Equals(target, StringComparison.OrdinalIgnoreCase) || ReadVerified(file.FullName, profile) is not { } verified
+                        || !archivedForEviction && verified.Binding is not null) continue;
                     remove.Add(file.FullName); total -= file.Length; count--;
                 }
                 if (total > MaximumBytes || count > MaximumFiles) return false;
@@ -62,7 +68,7 @@ public sealed class IsolatedAniListCache(NativeConfiguration configuration,
                     if (stage != PersistenceStage.BeforeReplace) return;
                     if (File.Exists(target) && ReadVerified(target, profile, value.Key) is null) throw new IOException("AniList缓存身份已改变，保留原文件。");
                     foreach (var path in remove)
-                    { if (ReadVerified(path, profile) is not { Binding: null }) throw new IOException("AniList缓存维护条件已改变。"); File.Delete(path); }
+                    { if (ReadVerified(path, profile) is not { } verified || !archivedForEviction && verified.Binding is not null) throw new IOException("AniList缓存维护条件已改变。"); File.Delete(path); }
                 }).ConfigureAwait(false);
                 return true;
             }, true, cancellation).ConfigureAwait(false);
@@ -71,7 +77,7 @@ public sealed class IsolatedAniListCache(NativeConfiguration configuration,
         catch (Exception e) when (e is NativeProfileException or DataIsolationException)
         { throw new IOException("AniList缓存资料路径不可用。", e); }
     }
-    private static AniListCacheValue? ReadVerified(string path, NativeProfileStore profile, string? expected = null)
+    internal static AniListCacheValue? ReadVerified(string path, NativeProfileStore profile, string? expected = null)
     {
         try
         {

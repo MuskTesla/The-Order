@@ -188,6 +188,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
             var row = new StackPanel { Spacing = 6 };
             var publication = model.Preview?.Publication is { } preview && preview.Id == binding.PublicationId ? preview : model.Candidates.FirstOrDefault(x => x.Id == binding.PublicationId);
             row.Children.Add(Text(14, publication?.Title ?? $"NDL 出版记录 {binding.PublicationId}"));
+            if (binding.NeedsReview) row.Children.Add(Text(12, "来源资料或层级已变化 · 原关联保留，请重新核对"));
             if (publication is not null) row.Children.Add(Secondary(12, string.Join(" · ", new[] { publication.Volume, publication.PublicationDate, string.Join(" / ", publication.Publishers) }.Where(x => !string.IsNullOrWhiteSpace(x)))));
             var load = Button("查看版本"); var forget = Button("解除关联");
             AutomationProperties.SetAutomationId(load, "BookSaved-" + binding.PublicationId); AutomationProperties.SetAutomationId(forget, "BookForget-" + binding.PublicationId);

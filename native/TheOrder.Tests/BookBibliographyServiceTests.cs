@@ -35,7 +35,7 @@ public sealed class BookBibliographyServiceTests
         await service.SearchAsync(new("CLANNAD"), false, default); Assert.Empty(await service.BindingsAsync(source, default));
         await service.ConfirmAsync(source, Publication(), default); Assert.Equal(1, provider.Fetches);
         Assert.Single(await new BookBibliographyService(provider, store, store).BindingsAsync(source, default));
-        Assert.Empty(await service.BindingsAsync(source with { OriginalTitle = "different volume" }, default));
+        Assert.True(Assert.Single(await service.BindingsAsync(source with { OriginalTitle = "different volume" }, default)).NeedsReview);
         await service.RemoveAsync(source, Publication().Id, default); Assert.Empty(await service.BindingsAsync(source, default));
     }
     [Fact] public async Task IsbnConflictAndAggregateCannotBeConfirmedAndSameTitleDoesNotOverrideThem()

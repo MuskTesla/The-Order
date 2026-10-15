@@ -4,8 +4,9 @@ using System.Text;
 namespace TheOrder.Application;
 
 public sealed class AniListService(IAniListProvider provider, IAniListCache? disk = null,
-    Func<DateTimeOffset>? clock = null) : IAniListReader
+    Func<DateTimeOffset>? clock = null, IMediaIdentityDecisions? identityDecisions = null) : IAniListReader
 {
+    private readonly IMediaIdentityDecisions decisions = identityDecisions ?? (disk as IMediaIdentityDecisionOwner)?.IdentityDecisions ?? new SessionMediaIdentityDecisions();
     public static readonly TimeSpan FreshFor = TimeSpan.FromHours(24), SearchFreshFor = TimeSpan.FromHours(6), MaximumStaleAge = TimeSpan.FromDays(14);
     private readonly object gate = new(); private readonly SemaphoreSlim commits = new(1);
     private readonly Dictionary<string, AniListCacheValue> memory = new();
@@ -19,16 +20,40 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
     private async Task<AniListMatch> MatchCoreAsync(AniListSource source, string? query, bool refresh, bool allowBinding, CancellationToken cancellation)
     {
         if (!source.IsValid) throw new InvalidDataException("Bangumi 作品身份无效。");
-        if (allowBinding && query is null && !source.HasAmbiguousExternalIdentity && await ReadAsync("binding:" + source.Fingerprint, cancellation).ConfigureAwait(false) is { Binding: { } binding }
-            && binding.SourceFingerprint == source.Fingerprint && binding.Kind == source.Kind && CanReuseBinding(binding)) return new([], binding);
-        if (allowBinding && query is null && !source.HasAmbiguousExternalIdentity && source.ExternalLinks.Length > 0)
+        var context = MediaIdentityContext.From(source);
+        var user = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        AniListMatch Selected(MediaIdentityDecisionDocument document, AniListMedia[] candidates)
+        {
+            var d = document.Confirmed!;
+            return new(candidates, new(source.Fingerprint, int.Parse(d.Target.Id, System.Globalization.CultureInfo.InvariantCulture), source.Kind, d.Evidence)
+            { NeedsReview = source.HasAmbiguousExternalIdentity || MediaIdentityDecisionRules.NeedsReview(context, d), ConfirmedFormat = d.TargetFormat, IsUserDecision = true },
+                "使用独立保存的用户关联；资料变化不会自动改绑。") { RejectedIds = Rejected(document) };
+        }
+        static int[] Rejected(MediaIdentityDecisionDocument document) => document.Decisions.Where(x => x.Kind == MediaIdentityDecisionKind.Rejected)
+            .Select(x => int.Parse(x.Target.Id, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        async Task<AniListMatch> Finish(AniListMatch result)
+        {
+            // Provider/cache awaits may finish after a manual decision. Always
+            // re-read the user component before returning an automatic result.
+            var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+            if (allowBinding && query is null && current.Confirmed is not null) return Selected(current, result.Candidates);
+            if (result.Binding is { } b && (current.HasLegacyConflict || current.Revision != user.Revision
+                || current.Rejects(new("AniList", source.Kind == AniListMediaKind.Anime ? "Anime" : "Manga", b.MediaId.ToString(System.Globalization.CultureInfo.InvariantCulture)))))
+                result = result with { Binding = null, Notice = "已保留你的关联决定；请核对候选，不会重新自动接受已排除的条目。" };
+            return result with { RejectedIds = Rejected(current) };
+        }
+        if (allowBinding && query is null && user.Confirmed is not null) return Selected(user, []);
+        // Automatic proofs are disposable hints. Reuse the candidate/details
+        // caches below with their own TTL/completeness checks, never a permanent
+        // binding shortcut that could bypass a refresh or newer partial search.
+        if (allowBinding && query is null && !user.HasLegacyConflict && !source.HasAmbiguousExternalIdentity && source.ExternalLinks.Length > 0)
         {
             var references = source.ExternalLinks.Select(x => { AniListReference.TryParse(x, out var r); return r!; }).Distinct().ToArray();
             var values = new List<AniListMedia>();
             foreach (var reference in references.Take(2)) values.Add(await provider.ResolveAsync(reference, cancellation).ConfigureAwait(false));
             if (values.Select(x => x.Id).Distinct().Count() == 1 && !AniListMatching.Assess(source, values[0]).Conflict)
-                return new(values.ToArray(), new(source.Fingerprint, values[0].Id, source.Kind, "Bangumi 明确外部编号"));
-            return new(values.DistinctBy(x => x.Id).ToArray(), null, "外部编号证据存在差异，请核对候选。");
+                return await Finish(new(values.ToArray(), new(source.Fingerprint, values[0].Id, source.Kind, "Bangumi 明确外部编号"))).ConfigureAwait(false);
+            return await Finish(new(values.DistinctBy(x => x.Id).ToArray(), null, "外部编号证据存在差异，请核对候选。")).ConfigureAwait(false);
         }
         var queryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(query ?? "")))[..16];
         var key = "search:" + source.Fingerprint + ":" + queryHash;
@@ -37,8 +62,8 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
             var candidates = await provider.SearchCandidatesAsync(source, query, token).ConfigureAwait(false);
             return new AniListCacheValue(key, Now, Search: candidates.Items) { SearchComplete = candidates.Complete };
         }, cancellation).ConfigureAwait(false);
-        if (allowBinding && query is null && !result.Stale && result.Value.SearchComplete
-            && AniListMatching.AutomaticCandidate(source, result.Value.Search!) is { } winner)
+        if (allowBinding && query is null && !user.HasLegacyConflict && !result.Stale && result.Value.SearchComplete
+            && AniListMatching.AutomaticCandidate(source, result.Value.Search!) is { } winner && !user.Rejects(MediaIdentityDecisionRules.Target(winner)))
         {
             try
             {
@@ -48,19 +73,23 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
                     var proof = new AniListBinding(source.Fingerprint, winner.Id, source.Kind,
                         "自动关联 · 唯一候选的标题、发行形式及首播日期一致"
                         + (source.Episodes is { } eps && details.Details.Media.Episodes is { } count && eps != count ? "（集数口径相差1集）" : "")) { AutomaticPolicyVersion = 1 };
-                    proof = await SaveBindingAsync(proof, cancellation, onlyIfUnbound: true).ConfigureAwait(false);
-                    return new(result.Value.Search!, proof, result.Warning);
+                    proof = await SaveAutomaticProofAsync(proof, cancellation).ConfigureAwait(false);
+                    return await Finish(new(result.Value.Search!, proof, result.Warning)).ConfigureAwait(false);
                 }
             }
             catch (Exception e) when (e is AniListException or IOException or UnauthorizedAccessException)
-            { return new(result.Value.Search!, null, "暂时无法核实或保存自动关联，请核对候选；Bangumi 资料仍可浏览。"); }
+            { return await Finish(new(result.Value.Search!, null, "暂时无法核实或保存自动关联，请核对候选；Bangumi 资料仍可浏览。")).ConfigureAwait(false); }
         }
-        return new(result.Value.Search!, null, source.HasAmbiguousExternalIdentity
+        return await Finish(new(result.Value.Search!, null, user.HasLegacyConflict ? "历史关联证据不完整或冲突，原记录已独立保留，请手动核对。" : source.HasAmbiguousExternalIdentity
             ? "来源外部编号不完整或有歧义，未自动关联；请先核对来源记录。"
-            : result.Warning ?? (!result.Value.SearchComplete && result.Value.Search!.Length > 0 ? "候选检索可能不完整，请核对后选择。" : null));
+            : result.Warning ?? (!result.Value.SearchComplete && result.Value.Search!.Length > 0 ? "候选检索可能不完整，请核对后选择。" : null))).ConfigureAwait(false);
     }
-    private static bool CanReuseBinding(AniListBinding binding)
-        => !binding.Evidence.StartsWith("自动关联", StringComparison.Ordinal) || binding.AutomaticPolicyVersion == 1;
+    private async Task<MediaIdentityDecisionDocument> ReadDecisions(MediaIdentityContext context, CancellationToken cancellation)
+    {
+        var value = await decisions.ReadAsync(context, cancellation).ConfigureAwait(false);
+        if (!MediaIdentityDecisionRules.Valid(value) || value.Anchor != context.Anchor) throw new IOException("已保存的关联身份不可验证，未自动匹配。");
+        return value;
+    }
     public async Task<AniListResult> LoadAsync(int id, AniListMediaKind kind, bool refresh, int peoplePage, CancellationToken cancellation)
     {
         if (id <= 0 || !Enum.IsDefined(kind) || peoplePage is < 1 or > 10) throw new InvalidDataException("AniList 作品身份无效。");
@@ -75,17 +104,33 @@ public sealed class AniListService(IAniListProvider provider, IAniListCache? dis
     {
         if (!source.IsValid || !AniListValidation.Details(details) || AniListMatching.Assess(source, details.Media).Conflict)
             throw new InvalidDataException("作品类型或发行证据不一致，未保存此关联。");
-        await SaveBindingAsync(new(source.Fingerprint, details.Media.Id, details.Media.Kind,
-            "用户核对确认 · Bangumi → AniList"), cancellation).ConfigureAwait(false);
+        var context = MediaIdentityContext.From(source);
+        var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        await decisions.ApplyAsync(new(MediaIdentityDecisionRules.Target(details.Media), MediaIdentityDecisionKind.Confirmed, context,
+            details.Media.Format, null, Now, MediaIdentityDecisionOrigin.User, "用户核对确认 · Bangumi → AniList"), current.Revision, cancellation).ConfigureAwait(false);
     }
-    private async Task<AniListBinding> SaveBindingAsync(AniListBinding binding, CancellationToken cancellation, bool onlyIfUnbound = false)
+    public async Task RejectAsync(AniListSource source, AniListMedia media, CancellationToken cancellation)
+    {
+        if (!source.IsValid || !AniListValidation.Media(media) || source.Kind != media.Kind) throw new InvalidDataException("排除条目的媒体身份无效。");
+        var context = MediaIdentityContext.From(source); var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        await decisions.ApplyAsync(new(MediaIdentityDecisionRules.Target(media), MediaIdentityDecisionKind.Rejected, context, media.Format,
+            null, Now, MediaIdentityDecisionOrigin.User, "用户排除此条目 · 不再自动关联"), current.Revision, cancellation).ConfigureAwait(false);
+    }
+    public async Task RevokeAsync(AniListSource source, int expectedMediaId, CancellationToken cancellation)
+    {
+        if (!source.IsValid || expectedMediaId <= 0) throw new InvalidDataException("待解除的关联身份无效。");
+        var context = MediaIdentityContext.From(source); var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
+        if (current.Confirmed is not { } selected || selected.Target.Id != expectedMediaId.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            throw new IOException("已保存的关联已经改变，请重新读取后再解除。");
+        await decisions.ApplyAsync(selected with { Kind = MediaIdentityDecisionKind.Rejected, Context = context, DecidedAtUtc = Now,
+            Origin = MediaIdentityDecisionOrigin.User, Evidence = "用户解除已保存关联 · 不再自动接受" }, current.Revision, cancellation).ConfigureAwait(false);
+    }
+    private async Task<AniListBinding> SaveAutomaticProofAsync(AniListBinding binding, CancellationToken cancellation)
     {
         await commits.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
             cancellation.ThrowIfCancellationRequested();
-            if (onlyIfUnbound && await ReadAsync("binding:" + binding.SourceFingerprint, cancellation).ConfigureAwait(false) is { Binding: { } existing }
-                && CanReuseBinding(existing)) return existing;
             var value = new AniListCacheValue("binding:" + binding.SourceFingerprint, Now, Binding: binding);
             if (disk is not null) await disk.WriteAsync(value, cancellation).ConfigureAwait(false);
             // A completed atomic replacement is the committed state, even if

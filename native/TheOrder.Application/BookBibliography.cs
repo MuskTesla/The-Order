@@ -79,7 +79,11 @@ public sealed record BookPublicationResult(BookPublication Publication, bool Fro
     public bool FromSearch { get; init; }
 }
 public sealed record BookPublicationBinding(BookIdentity SourceIdentity, string SourceFingerprint,
-    string PublicationId, DateTimeOffset ConfirmedAtUtc, string Evidence);
+    string PublicationId, DateTimeOffset ConfirmedAtUtc, string Evidence)
+{
+    // A projection state, never a silent rewrite of the original confirmation.
+    [System.Text.Json.Serialization.JsonIgnore] public bool NeedsReview { get; init; }
+}
 public sealed record BookCacheValue(string Key, DateTimeOffset CachedAtUtc, BookSearchPage? Search = null, BookPublication? Publication = null, bool Rejected = false);
 public enum BookFailure { Offline, Timeout, RateLimited, Server, Unavailable, InvalidResponse, ResponseTooLarge }
 public sealed class BookProviderException(BookFailure failure, string message) : Exception(message) { public BookFailure Failure { get; } = failure; }

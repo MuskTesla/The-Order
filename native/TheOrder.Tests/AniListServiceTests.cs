@@ -6,11 +6,20 @@ using Xunit;
 
 namespace TheOrder.Tests;
 
-internal sealed class AniListMemoryCache : IAniListCache
+internal sealed class AniListMemoryCache : IAniListCache, IMediaIdentityDecisionOwner
 {
+    private IMediaIdentityDecisions? choices;
+    public IMediaIdentityDecisions IdentityDecisions => choices ??= new TestMediaIdentityDecisions(() => Refuse);
     public readonly Dictionary<string,AniListCacheValue> Values=new();public bool Refuse;
     public Task<AniListCacheValue?> ReadAsync(string key,CancellationToken cancellation){cancellation.ThrowIfCancellationRequested();return Task.FromResult(Values.GetValueOrDefault(key));}
     public Task WriteAsync(AniListCacheValue value,CancellationToken cancellation){cancellation.ThrowIfCancellationRequested();if(Refuse)throw new IOException("缓存不可写");Values[value.Key]=value;return Task.CompletedTask;}
+}
+internal sealed class TestMediaIdentityDecisions(Func<bool>? refuse = null) : IMediaIdentityDecisions
+{
+    private readonly SessionMediaIdentityDecisions inner = new();
+    public Task<MediaIdentityDecisionDocument> ReadAsync(MediaIdentityContext source, CancellationToken cancellation) => inner.ReadAsync(source, cancellation);
+    public Task<MediaIdentityDecisionDocument> ApplyAsync(MediaIdentityDecision decision, long expectedRevision, CancellationToken cancellation)
+    { if (refuse?.Invoke() == true) throw new IOException("合成用户关联存储不可写"); return inner.ApplyAsync(decision, expectedRevision, cancellation); }
 }
 internal sealed class AniListFakeProvider : IAniListProvider
 {
@@ -45,7 +54,9 @@ public sealed class AniListServiceTests
         var disk=new AniListMemoryCache();var provider=new AniListFakeProvider();var source=AniListTestData.Source();
         await new AniListService(provider,disk).ConfirmAsync(source,AniListTestData.Details(),default);
         var reopened=new AniListService(provider,disk);Assert.NotNull((await reopened.MatchAsync(source,null,false,default)).Binding);
-        Assert.Null((await reopened.MatchAsync(source with{Date="2008-10-03"},null,false,default)).Binding);Assert.Equal(1,provider.Searches);
+        // Changed ordinary facts do not erase the user's stable-ID decision;
+        // final media validation in the view model still blocks identity conflicts.
+        Assert.NotNull((await reopened.MatchAsync(source with{Date="2008-10-03"},null,false,default)).Binding);Assert.Equal(0,provider.Searches);
     }
     [Fact] public async Task FailedPersistenceCannotClaimConfirmedChoice()
     {
@@ -114,7 +125,9 @@ public sealed class AniListDetailsViewModelTests
         var disk=new AniListMemoryCache();using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(new AniListFakeProvider(),disk));
         await vm.OpenAsync(Item());Assert.Equal(AniListDetailState.Choosing,vm.State);Assert.False(vm.CanConfirm);
         await vm.PreviewAsync(2167);Assert.Equal(AniListDetailState.Preview,vm.State);Assert.True(vm.CanConfirm);Assert.DoesNotContain(disk.Values,x=>x.Key.StartsWith("binding:"));
-        await vm.ConfirmAsync();Assert.Equal(AniListDetailState.Ready,vm.State);Assert.Single(disk.Values,x=>x.Key.StartsWith("binding:"));
+        await vm.ConfirmAsync();Assert.Equal(AniListDetailState.Ready,vm.State);
+        Assert.NotNull((await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(vm.Source!),default)).Confirmed);
+        Assert.DoesNotContain(disk.Values,x=>x.Key.StartsWith("binding:"));
     }
     [Fact] public async Task WrongCandidateTypeBlocksConfirmation()
     {

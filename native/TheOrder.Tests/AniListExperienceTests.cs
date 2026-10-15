@@ -57,9 +57,11 @@ public sealed class AniListExperienceTests
     {
         var disk = new AniListMemoryCache(); var service = new AniListService(new AniListFakeProvider(), disk); var source = StrongSource();
         await service.ConfirmAsync(source, AniListTestData.Details(), default);
-        var before = disk.Values["binding:" + source.Fingerprint];
+        var before = await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source),default);
         var match = await service.MatchAsync(source, source.Title, false, default);
-        Assert.Null(match.Binding); Assert.Single(match.Candidates); Assert.Equal(before, disk.Values[before.Key]);
+        Assert.Null(match.Binding); Assert.Single(match.Candidates);
+        var after = await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source),default);
+        Assert.Equal(before.Revision,after.Revision); Assert.Equal(before.Confirmed,after.Confirmed);
     }
     [Fact] public async Task CandidateRefreshBypassesBindingWithoutReplacingNativeTitleSearchByTranslatedDisplayTitle()
     {
@@ -98,8 +100,8 @@ public sealed class AniListExperienceTests
         using var reopened = new AniListDetailsViewModel(new AniListBridgeReader(), reader);
         await reopened.OpenAsync(Item()); Assert.Empty(reopened.Candidates);
         await reopened.ChooseAgainAsync(); Assert.Equal(AniListDetailState.Choosing, reopened.State); Assert.NotEmpty(reopened.Candidates);
-        var binding = disk.Values.Values.Single(x => x.Binding is not null).Binding;
-        Assert.Equal(2167, binding!.MediaId); Assert.Null(reopened.Displayed);
+        var binding = (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(reopened.Source!), default)).Confirmed;
+        Assert.Equal("2167", binding!.Target.Id); Assert.Null(reopened.Displayed);
     }
     private static BangumiRelationItem Item() => new("51", BangumiRelationKind.Anime, "CLANNAD", "CLANNAD -クラナド-", "动画", null);
 }

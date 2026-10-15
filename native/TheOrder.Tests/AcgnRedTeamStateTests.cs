@@ -27,7 +27,7 @@ public sealed class AcgnRedTeamStateTests
         var oldRead = service.MatchAsync(source, null, false, default);
         await disk.Started.Task;
         await service.ConfirmAsync(source, Details(102), default);
-        Assert.Equal(102, disk.Value.Binding!.MediaId);
+        Assert.Equal("102", (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default)).Confirmed!.Target.Id);
         if (evictNewChoice)
             for (var id = 1000; id < 1065; id++) await service.LoadAsync(id, AniListMediaKind.Anime, false, 1, default);
         disk.Resume.SetResult();
@@ -48,7 +48,7 @@ public sealed class AcgnRedTeamStateTests
         var oldRead = service.MatchAsync(source, false, default);
         await disk.Started.Task;
         await service.ConfirmAsync(source, Album(ReleaseB), default);
-        Assert.Equal(ReleaseB, disk.Value.Binding!.ReleaseId);
+        Assert.Equal(ReleaseB, (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default)).Confirmed!.Target.Id);
         if (evictNewChoice)
             for (var id = 1000; id < 1065; id++) await service.LoadAlbumAsync(id.ToString("x8") + "-1111-1111-1111-111111111111", false, default);
         disk.Resume.SetResult();
@@ -76,10 +76,10 @@ public sealed class AcgnRedTeamStateTests
             await service.ConfirmAsync(source, Details(101), default);
             cancelAfterReplace = true;
             var error = await Record.ExceptionAsync(() => service.ConfirmAsync(source, Details(102), cancel.Token));
-            var committed = await disk.ReadAsync("binding:" + source.Fingerprint, default);
-            Assert.Equal(102, committed!.Binding!.MediaId);
+            var committed = await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default);
+            Assert.Equal("102", committed.Confirmed!.Target.Id);
             var sameSession = await service.MatchAsync(source, null, false, default);
-            Assert.Equal(committed.Binding.MediaId, sameSession.Binding!.MediaId);
+            Assert.Equal(committed.Confirmed.Target.Id, sameSession.Binding!.MediaId.ToString());
             Assert.Null(error); // An already committed operation must not be reported as rolled back.
         }
         finally
@@ -108,7 +108,7 @@ public sealed class AcgnRedTeamStateTests
             await service.ConfirmAsync(source, Details(101), default);
             cancelBeforeReplace = true;
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ConfirmAsync(source, Details(102), cancel.Token));
-            Assert.Equal(101, (await disk.ReadAsync("binding:" + source.Fingerprint, default))!.Binding!.MediaId);
+            Assert.Equal("101", (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default)).Confirmed!.Target.Id);
             Assert.Equal(101, (await service.MatchAsync(source, null, false, default)).Binding!.MediaId);
             cancelBeforeReplace = false;
             await service.ConfirmAsync(source, Details(102), default);
@@ -136,7 +136,7 @@ public sealed class AcgnRedTeamStateTests
             enabled = true;
             var error = await Record.ExceptionAsync(() => service.ConfirmAsync(source, Album(ReleaseB), cancel.Token));
             var expected = committed ? ReleaseB : ReleaseA;
-            Assert.Equal(expected, (await disk.ReadAsync("binding:" + source.Fingerprint, default))!.Binding!.ReleaseId);
+            Assert.Equal(expected, (await disk.IdentityDecisions.ReadAsync(MediaIdentityContext.From(source), default)).Confirmed!.Target.Id);
             Assert.Equal(expected, (await service.MatchAsync(source, false, default)).ConfirmedReleaseId);
             if (committed) Assert.Null(error); else Assert.IsAssignableFrom<OperationCanceledException>(error);
         });
@@ -324,8 +324,9 @@ public sealed class AcgnRedTeamStateTests
         public Task<MusicBrainzSearchResult> EditionsAsync(string releaseGroupId, CancellationToken cancellation) => Task.FromResult(new MusicBrainzSearchResult([], 0, false, null, null));
         public Task<MusicBrainzAlbum> FetchAlbumAsync(string releaseId, CancellationToken cancellation) => Task.FromResult(Album(releaseId));
     }
-    private sealed class DelayedAniListCache(AniListCacheValue value) : IAniListCache
+    private sealed class DelayedAniListCache(AniListCacheValue value) : IAniListCache, IMediaIdentityDecisionOwner
     {
+        public IMediaIdentityDecisions IdentityDecisions { get; } = new SessionMediaIdentityDecisions();
         private readonly Dictionary<string, AniListCacheValue> values = new() { [value.Key] = value };
         private readonly string originalKey = value.Key;
         public AniListCacheValue Value => values[originalKey];
@@ -341,8 +342,9 @@ public sealed class AcgnRedTeamStateTests
         public Task WriteAsync(AniListCacheValue incoming, CancellationToken cancellation)
         { cancellation.ThrowIfCancellationRequested(); values[incoming.Key] = incoming; return Task.CompletedTask; }
     }
-    private sealed class DelayedMusicCache(MusicBrainzCacheValue value) : IMusicBrainzCache
+    private sealed class DelayedMusicCache(MusicBrainzCacheValue value) : IMusicBrainzCache, IMediaIdentityDecisionOwner
     {
+        public IMediaIdentityDecisions IdentityDecisions { get; } = new SessionMediaIdentityDecisions();
         private readonly Dictionary<string, MusicBrainzCacheValue> values = new() { [value.Key] = value };
         private readonly string originalKey = value.Key;
         public MusicBrainzCacheValue Value => values[originalKey];
