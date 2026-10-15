@@ -4,7 +4,7 @@
 
 维护入口 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，干净基线690d9c9。产物 `.artifacts/ndl-reliability-20261015/publish-v1`，版本1.1.0；锁定还原、固定SDK10.0.401、x64和NativeProductionCandidate=true。该工作区保留前阶段源码，未升级依赖。
 
-实现提交26571dc，源码冻结清单在证据根source-manifest.json。release-package与prepared-install已生成，payload Test预检659份通过且ProfileOpened=false。正式进程仍在运行，安装未执行；用户正常退出后，运行该证据根Install-Local.ps1。该脚本拒绝运行中的程序、固定原正式目录、先建立仓库外程序回退副本，再静默安装和逐文件核验，并比较正式资料的文件元数据。不得以包已生成或预检通过宣称已安装；最终以installation-receipt.json为准。
+实现提交26571dc，源码冻结清单在证据根source-manifest.json。用户正常退出后已执行Install-Local.ps1，原目录安装及GUI入口校验退出0；659份payload和3份入口哈希一致，2629份正式资料文件元数据未变。旧程序667份文件已核验回退备份，路径在BRIEF顶部和prepared-install/installation-receipt.json。没有打开Production或读取资料内容、凭据；不把安装入口校验当正式私库功能测试。先前等待退出的状态仅为历史记录，当前状态为INSTALLED_AND_VERIFIED。
 
 短回归使用固定dotnet执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:UseSharedCompilation=true --filter "FullyQualifiedName~Book|FullyQualifiedName~Ndl"`；163项通过。新增独立确认保护后只重复BookBibliographyServiceTests，20项通过，3项新增、17项重叠。证据为同根 `tests/ndl-focused.trx` 和 `tests/confirmation-safety.trx`。无全仓或长资源测试。
 

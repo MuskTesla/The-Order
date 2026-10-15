@@ -3,7 +3,7 @@
 
 当前源码 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，从干净 `690d9c9e95a8d2d67a2f6642d78f228ff9bc81d2` 独立继续，上一轮源码与正式安装保留。版本仍1.1.0。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装状态以本节后续回执为准。
 
-实现提交 `26571dc`。安装包 `prepared-install/distribution/The-Order-1.1.0-Setup-x64.exe` 已就绪，SHA256 `7D0CBAC2431230F4454231AFF87D19F8D91E16E86FA874C2EE9FAEACCC4EB964`；659份payload预检通过、未打开Profile。**当前尚未安装，等待正在运行的正式程序正常退出**；已向用户请求从托盘退出。没有强杀程序或修改正式文件，原安装仍为上一轮版本。退出后执行本证据根Install-Local.ps1，会备份原程序、保留Profile、校验新文件和GUI入口，并写安装回执；脚本本身不是替换已成功的证据。
+实现提交 `26571dc9af92493f777ee45af747c57c6f5d969d`。用户正常退出后已完成原目录本机替换，安装及GUI入口校验均退出0；659份payload、files.json和3份入口文件哈希一致。安装包SHA256 `7D0CBAC2431230F4454231AFF87D19F8D91E16E86FA874C2EE9FAEACCC4EB964`。安装前后2629份正式资料的文件元数据一致，未读取内容或凭据、未启动Production、未强杀进程。旧程序667份文件已备份并核验，回退目录 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-113114-ndl-reliability/Program`。正式入口仍 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`。实际回执为本证据根 `prepared-install/installation-receipt.json`；此前等待退出的记录为历史状态。没有GitHub推送、主分支合并或公开发布。
 
 已复现真实NDL标题检索22秒无响应，ISBN及OAI独立记录也存在波动。修复每页10条并保留100候选总边界（末页起始91，旧20条缓存仍可读）；一次12秒请求卡住或连接失败最多重试一次，始终共用原25秒总预算、全局串行与1秒间隔。长Retry-After期间立即说明限流；已有请求占用串行入口超过2秒时明确返回繁忙，不再一直等待后误报普通超时。取消不重试，格式/身份/权限错误不重试。
 
