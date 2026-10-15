@@ -1,7 +1,19 @@
 # The Order：当前实现与评审交接
+## MusicBrainz 常见歌名检索（2026-10-15，当前隔离开发入口）
+
+源码 `D:/Projects/The-Order-worktrees/music-retrieval-20261015` / `codex/music-retrieval-20261015`，基于874ed514并保留原工作树2份dirty维护文档；本轮实现未提交，冻结哈希见 `.artifacts/music-retrieval-20261015/implementation-freeze.json`。用户明确要求解决后替换正式版；实际安装状态以该证据根local-promotion回执为准，不授权推送或公开发布。
+
+已完成本机替换：publish-v1安装到原 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本仍1.1.0；Setup与GUI校验退出0，659份payload、3份入口及4份核心托管模块独立重复校验一致，原桌面/开始菜单快捷方式保留。2821份正式资料仅比对脱敏文件元数据，前后未变，不读内容/令牌、不启动Production。667份旧程序已核验备份至 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-171517-music-retrieval/Program`；实际回执 `local-promotion/installation-receipt.json`、`independent-installed-verification.json`。包装候选在新空Test Profile启动并正常退出0；不是正式私库全功能UI验收。
+
+已修复Bangumi音乐完整别名被丢弃及短标题前25项非空就停止后续检索的问题。别名/日期/艺术家上下文优先，截断或矛盾结果继续有界检索；6个标题查询上限、35秒期限、1.1秒全局节流保留。CV前缀只作查询，不推导人物等价。retrieval-4让旧噪声搜索缓存失效，但旧来源指纹与独立人工确认/拒绝不变；别名+日期仍不能单独自动绑定。
+
+真实Blue sky原搜索450项，前25项无目标；新Provider带别名及模拟旧缓存无别名两种输入均找到1项正确发行版78b1fb7c、YSCD-0044、2016-05-27、1CD/3曲。CLANNAD OST原可靠发行选择保持。新反例修复前2失败，最终相关264/0/0、全套3697/0/0（本地Worker合成联调，不能相加），WinUI Release x64 publish-v1成功。证据/限制见同根report.md；没有在Production内做开发测试。
+
 ## ACGN 人工身份决定持久化与集成（2026-10-15，当前隔离开发入口）
 
-当前源码 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`。独立复审红队报告及四代理结论后，从继承快照 `50efc66` 整合 `8feede0` 为 `9becb20dae35d147615cc5d869711edbf3e4928d`，两提交 tree 完全相同；整合基线重新执行491项全部通过。上一轮readability的12项dirty哈希逐份未变、红队原工作树保持干净。本轮用户只授权测试版开发和集成，不授权Production、日用替换、推送或发布。
+当前源码 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`。独立复审红队报告及四代理结论后，从继承快照 `50efc66` 整合 `8feede0` 为 `9becb20dae35d147615cc5d869711edbf3e4928d`，两提交 tree 完全相同；整合基线重新执行491项全部通过。上一轮readability的12项dirty哈希逐份未变、红队原工作树保持干净。开发阶段仅授权隔离集成；用户随后明确要求“替换本机正式版”，本机替换已完成，实际回执见下一段。未授权推送或公开发布。
+
+本机替换：实现提交 `874ed514ad411c77b8d4374ee7377316a204492b` 的已验证 `publish-v2` 经既有release/installer脚本包装，安装至原 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本仍1.1.0。安装、GUI完整性校验退出0，659份payload、files.json、3份GUI入口和update-base校验一致；独立重复哈希及桌面/开始菜单快捷方式核验通过。2641份Production/旧Electron文件仅比较名称哈希、长度和修改时间，元数据未变，没有读取内容、复制令牌或启动Production。旧程序667份文件完整核验备份至 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-163329-acgn-identity/Program`。回执在本轮证据根 `local-promotion/installation-receipt.json`、`independent-installed-verification.json`。安装前复用新空Test Profile实际启动包装候选并经既有Test退出流程正常结束（退出0）；这只证明启动，不替代真实UI验收。没有强杀、真实迁移、主分支合并或公开发布。
 
 新增 `MediaIdentityDecisions` / `IsolatedMediaIdentityDecisions`，在同一 Native Profile 的 `native-media-identities-v1` 保存用户确认、排除和撤销状态；键仅含来源Provider/资源/ID、目的及媒体，标题、日期和普通元数据不再改变确认入口。保留类型/粒度/格式、MB发行组、原证据指纹、来源及时间，按Revision原子更新；自动结果不写入用户决定。新旧自动请求返回前重新检查用户决定，排除目标不会被搜索、外链或迟到响应重新接受。AniList旧自动proof仍有绕过刷新和过期完整性检查的遗漏，本轮用两项失败反例验证并关闭：现每次依候选/详情各自TTL与完整性决定自动结果，不读永久binding捷径。
 

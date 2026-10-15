@@ -46,16 +46,20 @@ public sealed partial class MusicBrainzProvider(HttpClient http, MusicBrainzRate
                 var result = MapSearch(data.RootElement);
                 if (result.Candidates.Length > 0) return result;
             }
-            using var titles = await SearchQuery("release:" + Quote(source.Title[..Math.Min(source.Title.Length, 300)]), token).ConfigureAwait(false);
-            var titleResult = MapSearch(titles.RootElement);
-            if (titleResult.Candidates.Length == 0)
-                foreach (var query in MusicBrainzSearchQueries.Fallback(source))
-                {
-                    using var more = await SearchQuery(query, token).ConfigureAwait(false);
-                    var found = MapSearch(more.RootElement);
-                    if (found.Candidates.Length > 0) return found with { Notice = "已通过标题片段与发行信息找到候选，请核对后确认。" };
-                }
-            return titleResult with
+            MusicBrainzSearchResult? best = null;
+            foreach (var query in MusicBrainzSearchQueries.Retrieval(source))
+            {
+                using var titles = await SearchQuery(query, token).ConfigureAwait(false);
+                var found = MapSearch(titles.RootElement);
+                if (found.Candidates.Length == 0) continue;
+                found = found with { Candidates = found.Candidates.OrderByDescending(x => MusicBrainzSearchQueries.EvidenceOrder(source, x)).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray() };
+                if (best is null || MusicBrainzSearchQueries.EvidenceOrder(source, found.Candidates[0]).CompareTo(MusicBrainzSearchQueries.EvidenceOrder(source, best.Candidates[0])) > 0) best = found;
+                // A truncated/contradictory hit is not a useful stopping condition:
+                // continue the bounded plan instead of repeating the old first-hit bug.
+                if (!found.Truncated && found.Candidates.Any(x => !MusicBrainzMatching.Assess(source, x).HasConflict))
+                    return found with { Notice = "已通过来源标题、别名或标题片段与发行信息找到候选，请核对后确认。" };
+            }
+            return (best ?? new MusicBrainzSearchResult([], 0, false, null, null)) with
             { Notice = source.Facts.ExternalIds.Any(x => x.Kind == MusicBrainzEntityKind.Recording)
                 ? "来源的编号属于单曲录音，不能直接绑定专辑。请确认发行版。" : "请核对目录编号、日期和曲目后选择发行版。" };
         }, cancellation).ConfigureAwait(false);

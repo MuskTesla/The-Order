@@ -29,7 +29,10 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
         }
         if (!refresh && user.Confirmed is not null) return Select(user, new([], 0, false, null, null), null, true, false, null);
         // Retrieval revisions invalidate negative/partial search caches without invalidating confirmed identities.
-        var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-3")));
+        // Keep legacy source fingerprints/user choices stable. Aliases affect
+        // retrieval only, and are included separately in the new cache generation.
+        var hints = System.Text.Json.JsonSerializer.Serialize(source.Facts.TitleAliases);
+        var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-4:" + hints)));
         var result = await LoadAsync(key, refresh, SearchFreshFor, async token =>
             new(key, Now, Search: await provider.SearchAsync(source, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
         var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);

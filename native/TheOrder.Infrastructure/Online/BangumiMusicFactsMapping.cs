@@ -8,7 +8,7 @@ internal static class BangumiMusicFactsMapping
 {
     internal static BangumiMusicFacts Map(JsonElement root)
     {
-        var catalogues = new List<string>(); var artists = new List<string>(); var labels = new List<string>();
+        var catalogues = new List<string>(); var artists = new List<string>(); var labels = new List<string>(); var aliases = new List<string>();
         var references = new List<MusicBrainzReference>(); string? barcode = null; int? discs = null;
         if (root.TryGetProperty("infobox", out var box) && box.ValueKind == JsonValueKind.Array)
         {
@@ -21,6 +21,7 @@ internal static class BangumiMusicFactsMapping
                 {
                     switch (key)
                     {
+                        case "别名": case "Alias": case "Aliases": aliases.Add(value); break;
                         case "商品编号": case "目录编号": case "唱片编号": case "品番": case "Catalog Number":
                             catalogues.AddRange(value.Split(['/', ';', '；', ',', '、'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Where(x => x.Length <= 200)); break;
                         case "艺术家": case "Artist": case "Artists":
@@ -38,7 +39,7 @@ internal static class BangumiMusicFactsMapping
             }
         }
         return new(catalogues.Distinct().Take(32).ToArray(), artists.Distinct().Take(64).ToArray(), labels.Distinct().Take(32).ToArray(),
-            barcode, discs, references.Distinct().Take(16).ToArray());
+            barcode, discs, references.Distinct().Take(16).ToArray()) { TitleAliases = aliases.Distinct().Take(16).ToArray() };
     }
     private static IEnumerable<string> Values(JsonElement value)
     {

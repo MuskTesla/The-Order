@@ -9,6 +9,43 @@ internal static class MusicBrainzSearchQueries
     private static readonly HashSet<string> Generic = new(StringComparer.OrdinalIgnoreCase)
     { "original", "soundtrack", "soundtracks", "ost", "vocal", "harmony", "hamony", "version", "versions", "album", "music", "the", "and", "for", "instrumental" };
     internal static string Quote(string text) => "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+    internal const int MaximumTitleQueries = 6;
+    internal static string[] Retrieval(MusicAlbumSource source)
+    {
+        var aliases = source.Facts.TitleAliases.Where(x => MusicBrainzMatching.Normalize(x) != MusicBrainzMatching.Normalize(source.Title))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Take(4).ToArray();
+        string Title(string text) => "release:" + Quote(text.Normalize(NormalizationForm.FormKC)[..Math.Min(text.Normalize(NormalizationForm.FormKC).Length, 300)]);
+        string Or(IEnumerable<string> values) { var rows = values.ToArray(); return rows.Length == 1 ? rows[0] : "(" + string.Join(" OR ", rows) + ")"; }
+        var title = Or(aliases.Append(source.Title).Select(Title));
+        var queries = new List<string>();
+        // Never let the first page of a common short title suppress context queries.
+        if (source.ReleaseDate is not null) queries.Add(title + " AND date:" + Quote(source.ReleaseDate));
+        if (aliases.Length > 0) queries.Add(Or(aliases.Select(Title)));
+        var artists = ArtistTerms(source.Facts.Artists).Select(x => "artist:" + Quote(x)).ToArray();
+        if (artists.Length > 0) queries.Add(title + " AND " + Or(artists));
+        queries.Add(Title(source.Title));
+        queries.AddRange(Fallback(source));
+        return queries.Distinct().Take(MaximumTitleQueries).ToArray();
+    }
+    internal static string[] ArtistTerms(IEnumerable<string> artists) => artists.Take(2).SelectMany(value =>
+    {
+        var full = value.Normalize(NormalizationForm.FormKC);
+        // CV stage names can differ between sites. The character name remains a
+        // useful query, but this stripping never establishes artist equivalence.
+        var character = Regex.Replace(full, @"\s*\(\s*CV\s*:.*$", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Trim();
+        return new[] { character, full }.Where(x => x.Length > 0).Select(x => x[..Math.Min(x.Length, 200)]);
+    }).Distinct(StringComparer.OrdinalIgnoreCase).Take(4).ToArray();
+    internal static (bool Catalogue, bool Barcode, bool Date, bool Title, bool Artist, bool Consistent) EvidenceOrder(MusicAlbumSource source, MusicBrainzReleaseCandidate candidate)
+    {
+        var catalogues = MusicBrainzMatching.Catalogues(source.Facts.CatalogNumbers).Select(MusicBrainzMatching.Normalize).ToArray();
+        var found = candidate.Labels.Where(x => x.CatalogNumber is not null).Select(x => MusicBrainzMatching.Normalize(x.CatalogNumber!)).ToArray();
+        var artist = MusicBrainzMatching.Normalize(candidate.Artist);
+        return (catalogues.Length > 0 && catalogues.All(found.Contains), source.Facts.Barcode is { } code && code == candidate.Barcode,
+            source.ReleaseDate is { } date && date == candidate.Date,
+            source.Facts.TitleAliases.Prepend(source.Title).Any(x => MusicBrainzMatching.Normalize(x) == MusicBrainzMatching.Normalize(candidate.Title)),
+            artist.Length > 0 && ArtistTerms(source.Facts.Artists).Any(x => artist.Contains(MusicBrainzMatching.Normalize(x), StringComparison.Ordinal)),
+            !MusicBrainzMatching.Assess(source, candidate).HasConflict);
+    }
     internal static string[] Fallback(MusicAlbumSource source)
     {
         // These are search variants, never identity aliases. Prefer distinctive CJK fragments;

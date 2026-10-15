@@ -161,7 +161,7 @@ public sealed class MusicBrainzTests
         using var http = new HttpClient(handler); var provider = new MusicBrainzProvider(http, time.Rate());
         var source = MusicTestData.Source() with { Title = "Album\" OR artist:*", Facts = BangumiMusicFacts.Empty with { ExternalIds = [new(MusicBrainzEntityKind.Recording, MusicTestData.Recording)] } };
         var result = await provider.SearchAsync(source, default); Assert.Empty(result.Candidates);
-        Assert.Contains("单曲录音", result.Notice); Assert.InRange(handler.Urls.Count, 1, 5); Assert.Contains("query=release%3A", handler.Urls[0]);
+        Assert.Contains("单曲录音", result.Notice); Assert.InRange(handler.Urls.Count, 1, MusicBrainzSearchQueries.MaximumTitleQueries); Assert.Contains("query=release%3A", handler.Urls[0]);
         Assert.All(handler.Urls, url => Assert.DoesNotContain("/recording/", url));
     }
     [Fact] public async Task EveryViewAndRetryShareMonotonicOneSecondPacing()
@@ -191,7 +191,7 @@ public sealed class MusicBrainzTests
             return Task.FromResult(MusicTestData.Response(json));
         });
         using var http = new HttpClient(handler); var result = await new MusicBrainzProvider(http, new MusicTestData.Clock().Rate()).SearchAsync(source, default);
-        Assert.Single(result.Candidates); Assert.Equal(2, calls.Count); Assert.Contains("标题片段", result.Notice);
+        Assert.Single(result.Candidates); Assert.Equal(3, calls.Count); Assert.Contains("标题片段", result.Notice);
         Assert.Null(MusicBrainzMatching.Automatic(source, result));
     }
     [Fact] public async Task ExplicitReleaseGroupListsOnlyItsEditionsAndNeverTreatsGroupAsRelease()

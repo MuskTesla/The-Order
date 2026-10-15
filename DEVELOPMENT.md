@@ -1,8 +1,18 @@
 # 开发与维护
 
+## MusicBrainz 检索修复（2026-10-15，当前）
+
+当前工作区 `D:/Projects/The-Order-worktrees/music-retrieval-20261015`，分支codex/music-retrieval-20261015，基于874ed514并保留继承dirty。本轮产品变更未提交；源码冻结、真实公开API和修复前反例保留在 `.artifacts/music-retrieval-20261015`。仅改变来源音乐别名/查询计划、候选顺序、检索缓存代际及提示，不迁移用户决定或改变游戏库schema。新增TitleAliases兼容旧JSON，原指纹不加入查询别名；Search key另含retrieval-4与别名。
+
+相关回归264/0/0；按上一节既有本地Worker入口运行全套，`tests-full/client-full-with-worker-1792054990288.trx`为3697/0/0。真实LiveProbe用本轮编译Provider和匿名官方API验证Blue sky两种输入、CLANNAD及准确发行曲目，所有原始JSON/503和初轮探针断言失败保留，不冒充真实账号或私库验收。WinUI Release x64 publish-v1退出0。用户授权本机替换，包装/安装依旧脚本与边界，回执在local-promotion；没有公开发布/推送授权。
+
+本机安装已完成：659payload+3入口逐份及独立核验通过，4核心托管DLL与publish-v1相同；Setup/GUI验证退出0，原快捷方式可用。2821份正式资料文件元数据未变，未读取内容或凭据、未运行Production迁移；667旧程序仓库外完整回退路径见BRIEF。仅额外运行空Test启动/正常退出检查，不作为真实详情交互验收。代码仍为未提交冻结变更，安装回执用sourceHead/sourceDirty/sourceManifestSha256标记，不能误称874ed514本身包含本轮修复。
+
 ## ACGN 身份持久化集成（2026-10-15，当前）
 
-维护入口 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`；红队整合提交9becb20与原8feede0 tree相同，基线491/0/0。新用户组件 `native-media-identities-v1` 复用NativeProfile身份、路径pin、进程写入所有权和WindowsAtomicFile；按来源Revision比较提交，不与远程cache淘汰共用容量。书籍继续使用既有独立publication-bindings；其读取发现旧层级并显示待核对，不改主Profile或库schema。未经新授权不得在真实资料上试迁移或用历史安装授权替换日用。
+维护入口 `D:/Projects/The-Order-worktrees/acgn-identity-20261015` / `codex/acgn-identity-20261015`；红队整合提交9becb20与原8feede0 tree相同，基线491/0/0。新用户组件 `native-media-identities-v1` 复用NativeProfile身份、路径pin、进程写入所有权和WindowsAtomicFile；按来源Revision比较提交，不与远程cache淘汰共用容量。书籍继续使用既有独立publication-bindings；其读取发现旧层级并显示待核对，不改主Profile或库schema。用户随后明确授权本机替换，已将874ed514/publish-v2安装至原正式入口，未授权真实资料试迁移或公开发布。
+
+本机替换证据 `local-promotion/`：现成 `package-native-release.ps1`、`package-native-installer.ps1` 包装，659份payload与3份入口逐份哈希一致，Setup及GUI校验退出0；包装候选在新空Test Profile启动/正常退出0。受限 `Install-Local.ps1` 只更新原程序，拒绝运行中或链接目标，667份旧程序已核验备份到仓库外回退目录；2641份正式资料仅比较脱敏文件元数据且完全未变，不读内容、不启动Production。安装及独立复核回执位于该证据目录；版本仍1.1.0，无GitHub上传或主分支合并。真实UI验收仍未完成，不能用启动检查替代。
 
 固定SDK路径同下文；已按锁文件restore测试与WinUI。最终全套含Worker合成联调：在 `services/bangumi-auth-worker` 设置 `THE_ORDER_TEST_DOTNET=<固定SDK绝对路径>`、`THE_ORDER_TEST_RESULTS_DIR=<本轮证据根/tests-final>`，执行 `node test/run-client-bridge.mjs --all-client-tests`。该可选参数只扩展本地测试范围，不部署Worker。最终 `client-full-with-worker-1792051622242.trx` 为3689/0/0；合成上游拒绝其他地址，交换1、刷新1、直连资料2。依赖沿用锁文件一致的既有node_modules junction，没有npm安装/升级。先前无Worker的全套3684/0/1和自动cache新反例2项失败保留，不用它们替代最终结果。
 

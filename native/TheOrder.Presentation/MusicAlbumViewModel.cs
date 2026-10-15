@@ -125,6 +125,7 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
             State = MusicAlbumState.Choosing;
             Message = match.Search.Candidates.Length == 0 ? "MusicBrainz 暂未找到对应发行版，仍可查看 Bangumi 资料。"
                 : "请选择具体发行版。可以先查看曲目，再确认使用。";
+            if (match.Search.Notice is { } notice) Message += " " + notice;
             if (match.Search.Truncated) Message += " 当前仅列出前 25 项，请在原站进一步核对。";
         }, cancellation);
     }

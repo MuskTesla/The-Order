@@ -33,11 +33,14 @@ public sealed record MusicBrainzReference(MusicBrainzEntityKind Kind, string Id)
 public sealed record BangumiMusicFacts(string[] CatalogNumbers, string[] Artists, string[] Labels, string? Barcode,
     int? DiscCount, MusicBrainzReference[] ExternalIds)
 {
+    // Declared subject aliases are retrieval evidence, not new external identities.
+    public string[] TitleAliases { get; init; } = [];
     public static readonly BangumiMusicFacts Empty = new([], [], [], null, null, []);
     public bool IsValid => MusicBrainzValidation.Texts(CatalogNumbers, 32, 200) && MusicBrainzValidation.Texts(Artists, 64, 500)
         && MusicBrainzValidation.Texts(Labels, 32, 500) && (Barcode is null || Regex.IsMatch(Barcode, "^[0-9]{8,14}$"))
         && (DiscCount is null or > 0 and <= 50) && ExternalIds is { Length: <= 16 }
-        && ExternalIds.All(x => x is not null && Enum.IsDefined(x.Kind) && MusicBrainzReference.ValidId(x.Id));
+        && ExternalIds.All(x => x is not null && Enum.IsDefined(x.Kind) && MusicBrainzReference.ValidId(x.Id))
+        && MusicBrainzValidation.Texts(TitleAliases, 16, 2000);
 }
 public sealed record MusicAlbumSource(string BangumiId, string Title, string? ReleaseDate, BangumiMusicFacts Facts)
 {
@@ -143,8 +146,9 @@ public static class MusicBrainzMatching
     public static MusicBrainzCandidateAssessment Assess(MusicAlbumSource source, MusicBrainzReleaseCandidate candidate)
     {
         var evidence = new List<string>(); bool conflict = false, identityConflict = false;
-        var title = Normalize(source.Title) == Normalize(candidate.Title);
-        evidence.Add(title ? "标题一致" : "标题不同，请核对");
+        var primaryTitle = Normalize(source.Title) == Normalize(candidate.Title);
+        var title = primaryTitle || source.Facts.TitleAliases.Any(x => Normalize(x) == Normalize(candidate.Title));
+        evidence.Add(primaryTitle ? "标题一致" : title ? "来源提供的完整标题别名一致" : "标题不同，请核对");
         var expected = Catalogues(source.Facts.CatalogNumbers).Select(Normalize).ToArray();
         var actual = candidate.Labels.Where(x => !string.IsNullOrWhiteSpace(x.CatalogNumber)).Select(x => Normalize(x.CatalogNumber!)).ToArray();
         bool catalogue = expected.Length > 0 && expected.All(actual.Contains);
