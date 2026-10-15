@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using TheOrder.Application;
 
 namespace TheOrder.Infrastructure.Online;
@@ -130,7 +131,7 @@ public sealed partial class MusicBrainzProvider
                     foreach (var (key, label) in new[] { ("begin", "起始日期"), ("end", "结束日期") })
                     {
                         var date = OptionalText(span, key, 100);
-                        if (date is not null && !MusicBrainzValidation.Date(date)) throw Invalid();
+                        if (date is not null && !ArtistLifeSpanDate(date)) throw Invalid();
                         Add(label, date);
                     }
                 }
@@ -158,5 +159,21 @@ public sealed partial class MusicBrainzProvider
             OptionalText(root, "disambiguation", 1000), aliases, facts.ToArray(), relations.ToArray(), truncated, stamp);
         if (!MusicBrainzEntityValidation.Detail(detail)) throw Invalid();
         return detail;
+    }
+    private static bool ArtistLifeSpanDate(string value)
+    {
+        if (MusicBrainzValidation.Date(value)) return true;
+        // MusicBrainz's PartialDate formatter preserves an unknown year as ????
+        // and an unknown month before a known day as ??. Missing days are omitted.
+        // This display-only lifespan date must never weaken release matching dates.
+        if (value.Length is not (7 or 10) || !value.Contains('?')
+            || !Regex.IsMatch(value, @"\A(?:[0-9]{4}|\?{4})-(?:[0-9]{2}|\?{2})(?:-[0-9]{2})?\z", RegexOptions.CultureInvariant)) return false;
+        var parts = value.Split('-');
+        int? year = parts[0] == "????" ? null : int.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
+        int? month = parts[1] == "??" ? null : int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+        int? day = parts.Length == 2 ? null : int.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+        if (year is < 1 || month is < 1 or > 12 || day is < 1 or > 31 || month is null && day is null) return false;
+        // A missing year can be a leap year; do not invent one in the stored value.
+        return month is null || day is null || day <= DateTime.DaysInMonth(year ?? 2000, month.Value);
     }
 }

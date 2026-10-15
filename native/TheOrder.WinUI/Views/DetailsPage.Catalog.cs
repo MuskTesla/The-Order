@@ -267,10 +267,10 @@ public sealed partial class DetailsPage
                     await RichCatalog.ReleasesFixtureAsync("expand");
                 }
                 break;
-            case "aniOpen" when subjectId is not null:
+            case "aniOpen" or "mediaOpen" when subjectId is not null:
                 if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test
                     || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null
-                    || kind is not (null or BangumiRelationKind.Anime or BangumiRelationKind.Book)) throw new InvalidDataException("Isolated public subject fixture required.");
+                    || kind is not (null or BangumiRelationKind.Anime or BangumiRelationKind.Book or BangumiRelationKind.Music)) throw new InvalidDataException("Isolated public subject fixture required.");
                 relatedMedia.Deactivate(); BangumiRelated.SuspendNavigation(); HeroStage.ReleaseBeforeLeave();
                 DetailsRoot.Visibility = Visibility.Collapsed; RelatedMediaHost.Visibility = Visibility.Visible;
                 relatedMedia.RelationLabel = "隔离只读验证"; relatedMedia.RelationEvidence = "Test fixture directly opens a public Bangumi identity; no synthetic relation is asserted as real.";
@@ -289,7 +289,7 @@ public sealed partial class DetailsPage
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack": case "musicEntity": case "musicEntityBack":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose": case "aniReview": case "aniSources": case "aniSynopsis":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;

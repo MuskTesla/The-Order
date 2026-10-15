@@ -14,15 +14,21 @@ public sealed class AniListDetailView : Grid, IDisposable
 {
     private readonly CoverPresenter cover = new() { Width = 136, Height = 190, PreserveEntireImage = true, ImageCornerRadius = 8, VerticalAlignment = VerticalAlignment.Top };
     private readonly Grid heading = new() { ColumnSpacing = 20 };
-    private readonly TextBlock title = Text(28), alternate = Text(14), type = Text(14), relation = Text(16), status = Text(14), selection = Text(14), summary = Text(16);
+    private readonly TextBlock title = Text(28), alternate = Text(14), type = Text(14), relation = Text(14), status = Text(14), selection = Text(13);
+    private readonly DetailSynopsis synopsis = new(), bridgeSynopsis = new() { Heading = "" };
     private readonly TagFlowPanel facts = Flow(), actions = Flow(), candidates = Flow(360), characterCards = Flow(270), relatedCards = Flow(340), tags = Flow();
-    private readonly StackPanel candidateSection = new() { Spacing = 12 }, summarySection = new() { Spacing = 12 }, staffBody = new() { Spacing = 8 }, sourceBody = new() { Spacing = 10 };
+    private readonly StackPanel candidateSection = new() { Spacing = 12 }, sourceBody = new() { Spacing = 10 };
+    private readonly TextBlock relatedNotice = Text(13, "确认对应作品后，可以继续浏览关联作品。");
+    private readonly CreditColumnsPanel staffBody = new();
+    private readonly Expander matchReview = Expand("核对条目信息");
+    private string? shownReview;
+    private readonly Dictionary<string, (bool Main, bool Other, bool OtherOpen)> synopsisStates = new();
+    private string? synopsisIdentity;
     private readonly ProgressRing ring = new() { Width = 18, Height = 18 };
     private readonly Button cancel = Button("取消读取"), refresh = Button("刷新资料"), confirm = Button("确认使用此条目"), choose = Button("选择其他条目"), search = Button("查找"), more = Button("更多角色与制作人员"), toCharacters = Button("角色与声优"), toStaff = Button("制作人员"), toRelations = Button("前后作");
     private readonly TextBox searchText = new() { PlaceholderText = "原文标题，或 AniList 作品链接", MaxLength = 2000, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Expander characters = Expand("角色与日语声优"), staff = Expand("制作人员"), genres = Expand("类型与标签"), related = Expand("前后作与其他关联"), sources = Expand("资料来源与对应关系");
     private readonly Expander bridgeSummary = Expand("Bangumi 简介");
-    private readonly TextBlock bridgeText = Text(15);
     private readonly ScrollViewer scroll;
     private readonly StackPanel body = new() { Spacing = 22 };
     private readonly AnimeAvailabilityView availability = new();
@@ -45,7 +51,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         AutomationProperties.SetAutomationId(confirm, "AniListConfirm"); AutomationProperties.SetAutomationId(characters, "AniListCharacters");
         AutomationProperties.SetAutomationId(staff, "AniListStaff"); AutomationProperties.SetAutomationId(related, "AniListRelations");
         AutomationProperties.SetAutomationId(status, "AniListStatus"); AutomationProperties.SetAutomationId(searchText, "AniListSearch");
-        title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; type.Opacity = alternate.Opacity = selection.Opacity = .7;
+        title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; type.Opacity = alternate.Opacity = selection.Opacity = .75; relation.Opacity = .8;
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); heading.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         heading.Children.Add(cover); var labels = new StackPanel { Spacing = 9, Children = { type, title, alternate, facts, selection } }; SetColumn(labels, 1); heading.Children.Add(labels);
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
@@ -53,11 +59,11 @@ public sealed class AniListDetailView : Grid, IDisposable
         var searchRow = new Grid { ColumnSpacing = 8 }; searchRow.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         searchRow.Children.Add(searchText); SetColumn(search, 1); searchRow.Children.Add(search);
         candidateSection.Children.Add(Text(20, "选择对应作品")); candidateSection.Children.Add(searchRow); candidateSection.Children.Add(candidates);
-        summarySection.Children.Add(Text(20, "简介")); summarySection.Children.Add(summary);
-        characters.Content = characterCards; staff.Content = staffBody; genres.Content = tags; related.Content = relatedCards; sources.Content = sourceBody;
-        bridgeSummary.Content = bridgeText;
+        characters.Content = characterCards; staff.Content = staffBody; genres.Content = tags; related.Content = new StackPanel { Spacing = 12, Children = { relatedNotice, relatedCards } }; sources.Content = sourceBody;
+        bridgeSummary.Content = bridgeSynopsis;
         body.Children.Add(heading); body.Children.Add(relation); body.Children.Add(status); body.Children.Add(actions); body.Children.Add(watchLinks); body.Children.Add(availability); body.Children.Add(candidateSection);
-        body.Children.Add(summarySection); body.Children.Add(bridgeSummary); body.Children.Add(episodeList); body.Children.Add(publications); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
+        body.Children.Insert(4, matchReview);
+        body.Children.Add(synopsis); body.Children.Add(bridgeSummary); body.Children.Add(episodeList); body.Children.Add(publications); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
         scroll = new() { Content = body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch }; Children.Add(scroll);
         // Observe even natively handled wheel input so a delayed navigation restore
         // cannot overwrite a user's scroll. Do not implement a second scroll path.
@@ -95,7 +101,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         availability.Stop();
         publications.Deactivate();
         watchLinks.Show(null, []);
-        requestedCover = null; cover.SourceKey = null; searchText.Text = ""; restored = 0;
+        requestedCover = null; cover.SourceKey = null; searchText.Text = ""; restored = 0; shownReview = null;
+        synopsisStates.Clear(); synopsisIdentity = null; synopsis.Expanded = bridgeSynopsis.Expanded = bridgeSummary.IsExpanded = false;
         foreach (var section in new[] { characters, staff, genres, related, sources }) section.IsExpanded = false;
         scroll.ChangeView(null, 0, null); return model?.OpenAsync(item, cancellation) ?? Task.CompletedTask;
     }
@@ -117,33 +124,52 @@ public sealed class AniListDetailView : Grid, IDisposable
         var linkData = watchIdentity is null ? [] : AniListWatchLinksAdapter.From(watchIdentity, details).Concat(watchResult?.Links ?? []).ToArray();
         watchLinks.Show(watchIdentity, linkData, watchResult); availability.Show(media?.Id, isAnime, details?.Trailer, model?.CanLoad == true);
         type.Text = media is null ? (model?.Item?.Kind == BangumiRelationKind.Anime ? "动画" : "书籍") + " · Bangumi" : media.TypeName + " · AniList";
-        title.Text = media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
-        alternate.Text = media is null ? bridge?.OriginalTitle ?? "" : string.Join(" / ", new[] { model?.IsBridge == true ? bridge?.Title : null, media.NativeTitle }.Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
+        title.Text = !preview && bridge?.Title is { Length: > 0 } bridgeTitle ? bridgeTitle : media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
+        alternate.Text = media is null ? bridge?.OriginalTitle ?? "" : string.Join(" / ", new[] { media.Title, media.NativeTitle }.Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
         alternate.Visibility = Visible(alternate.Text.Length > 0); selection.Text = model?.State == AniListDetailState.Preview ? "预览 · 尚未确认对应作品" : model?.SelectionReason.StartsWith("用户核对", StringComparison.Ordinal) == true ? "已确认对应作品" : model?.SelectionReason ?? ""; selection.Visibility = Visible(selection.Text.Length > 0);
         facts.Children.Clear();
         if (media is not null)
         {
-            AddFact(Format(media.Format)); AddFact(Status(media.Status)); if (media.StartDate is { } start) AddFact("首发 · " + start);
+            AddFact(Format(media.Format)); AddFact(Status(media.Status, isAnime)); if (media.StartDate is { } start) AddFact((isAnime ? "首播 · " : "开始 · ") + start);
             if (media.Episodes is { } eps) AddFact(eps + " 集"); if (media.Chapters is { } chapters) AddFact(chapters + " 话"); if (media.Volumes is { } volumes) AddFact(volumes + " 卷");
             if (details?.Studios.Length > 0) AddFact("制作 · " + string.Join(" / ", details.Studios));
         }
         else { if (bridge?.ReleaseDate is { } date) AddFact(date); if (bridge?.Platform is { } platform) AddFact(platform); }
         relation.Text = model?.IncomingOrigin is { } previous ? $"与《{previous}》的关联 · {Relation(model.IncomingRelation ?? "OTHER")}" : $"与《{origin}》的关联 · {label}";
-        status.Text = model?.Message ?? ""; status.Visibility = Visible(status.Text.Length > 0); ring.IsActive = model?.IsBusy == true; ring.Visibility = cancel.Visibility = Visible(ring.IsActive);
+        status.Text = model?.Message ?? "";
+        RenderMatchReview(media);
+        status.Visibility = Visible(status.Text.Length > 0); ring.IsActive = model?.IsBusy == true; ring.Visibility = cancel.Visibility = Visible(ring.IsActive);
         confirm.Visibility = Visible(model?.State == AniListDetailState.Preview); confirm.IsEnabled = model?.CanConfirm == true;
         choose.Visibility = Visible(model?.IsBridge == true && details is not null); choose.IsEnabled = model?.CanLoad == true;
         foreach (var button in new[] { toCharacters, toStaff, toRelations }) { button.Visibility = Visible(details is not null); button.IsEnabled = model?.CanLoad == true; }
+        toCharacters.Content = isAnime ? "角色与声优" : "角色"; toStaff.Content = isAnime ? "制作人员" : "作者与制作"; toRelations.Content = "关联作品";
         actions.Visibility = Visible(actions.Children.OfType<FrameworkElement>().Any(x => x.Visibility == Visibility.Visible));
         candidateSection.Visibility = Visible(model?.IsBridge == true && details is null && model?.Bridge is not null);
         search.IsEnabled = searchText.IsEnabled = refresh.IsEnabled = model?.CanLoad == true;
-        summary.Text = details?.Description is { Length: > 0 } text ? text : bridge?.Summary is { Length: > 0 } fallback ? fallback : "原站暂未提供简介。";
-        ((TextBlock)summarySection.Children[0]).Text = details?.Description is { Length: > 0 } ? "简介 · AniList 原文" : "简介 · Bangumi";
-        bridgeText.Text = bridge?.Summary ?? ""; bridgeSummary.Visibility = Visible(details is not null && bridgeText.Text.Length > 0 && bridgeText.Text != summary.Text);
+        // Only an established bridge can supply the displayed work's primary synopsis.
+        // A mismatched preview keeps the original subject clearly separate.
+        var bridgePrimary = !preview && bridge?.Summary is { Length: > 0 };
+        var synopsisKey = media is not null ? "anilist/" + media.Id + "/" + preview : "bangumi/" + bridge?.Id;
+        var previousState = (Main: synopsis.Expanded, Other: bridgeSynopsis.Expanded, OtherOpen: bridgeSummary.IsExpanded);
+        if (synopsisIdentity != synopsisKey && synopsisIdentity is not null)
+        {
+            synopsisStates[synopsisIdentity] = previousState;
+            if (synopsisStates.Count > 32) synopsisStates.Remove(synopsisStates.Keys.First());
+        }
+        var restoredSynopsis = synopsisIdentity == synopsisKey ? previousState : synopsisStates.GetValueOrDefault(synopsisKey);
+        synopsisIdentity = synopsisKey;
+        synopsis.Text = bridgePrimary ? bridge!.Summary : details?.Description is { Length: > 0 } text ? text : !preview && bridge?.Summary is { Length: > 0 } fallback ? fallback : "原站暂未提供简介。";
+        synopsis.Heading = bridgePrimary || media is null ? "简介 · Bangumi" : "简介 · AniList";
+        bridgeSynopsis.Text = bridgePrimary ? details?.Description ?? "" : bridge?.Summary ?? "";
+        bridgeSummary.Header = bridgePrimary ? "其他简介 · AniList 原文" : preview ? "原条目简介 · Bangumi" : "其他简介 · Bangumi";
+        bridgeSummary.Visibility = Visible(bridgeSynopsis.Text.Length > 0 && bridgeSynopsis.Text != synopsis.Text);
+        synopsis.Expanded = restoredSynopsis.Main; bridgeSynopsis.Expanded = restoredSynopsis.Other; bridgeSummary.IsExpanded = restoredSynopsis.OtherOpen;
         var coverUrl = media?.CoverUrl ?? bridge?.CoverUrl ?? (model?.IsBridge == true ? model?.Item?.CoverUrl : null);
         SetCover(coverUrl, bridge?.CoverUrl);
         if (!ReferenceEquals(shownCandidates, model?.Candidates)) { shownCandidates = model?.Candidates; RenderCandidates(); }
         if (!ReferenceEquals(shownPages, model?.PeoplePages)) { shownPages = model?.PeoplePages; RenderDetails(details); }
         foreach (var button in relatedCards.Children.OfType<Button>()) button.IsEnabled = model?.CanLoad == true && model?.State == AniListDetailState.Ready;
+        relatedNotice.Visibility = Visible(preview);
         more.Visibility = Visible(model?.PeoplePages.LastOrDefault()?.Details is { } page && (page.MoreCharacters || page.MoreStaff)); more.IsEnabled = model?.CanMore == true;
         RenderSources(media);
         if (model is not null && !model.IsBusy && restored != model.RestoreVersion)
@@ -178,12 +204,43 @@ public sealed class AniListDetailView : Grid, IDisposable
     }
     private bool AcceptWatch(long version, WatchDataQuery query, CancellationToken cancellation) => active && !disposed && !cancellation.IsCancellationRequested && version == watchVersion && watchQuery == query;
     private void CancelWatchRead() { watchVersion++; watchStop?.Cancel(); watchStop?.Dispose(); watchStop = null; watchQuery = null; }
+    private void RenderMatchReview(AniListMedia? media)
+    {
+        var source = model?.Source;
+        var show = model?.State == AniListDetailState.Preview && source is not null && media is not null;
+        matchReview.Visibility = Visible(show);
+        if (!show) return;
+        var assessment = AniListMatching.Assess(source!, media!);
+        // Replace only the ordinary assessment message, never a network/save failure.
+        if (status.Text == string.Join(" · ", assessment.Evidence))
+            status.Text = assessment.Conflict ? "候选与原条目存在冲突，暂不能确认。请选择其他条目，或展开核对差异。" : "请核对下方条目信息，确认后保存对应关系。";
+        var key = source!.Fingerprint + "/" + media!.Id + "/" + media.Title + "/" + media.Format + "/" + media.StartDate + "/" + string.Join("|", assessment.Evidence);
+        if (shownReview == key) return;
+        shownReview = key;
+        matchReview.Header = assessment.Conflict ? "条目信息有冲突 · 查看差异" : "核对条目信息";
+        var comparison = new StackPanel { Spacing = 12 };
+        var columns = new CreditColumnsPanel();
+        void Add(string provider, string name, string format, string? date)
+        {
+            var caption = Text(12, provider); caption.Opacity = .75;
+            var heading = Text(15, name); heading.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+            var card = new StackPanel { Spacing = 6, Children = { caption, heading, Text(13, format), Text(13, "记录日期 · " + (date ?? "未提供")) } };
+            columns.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new(12), Child = card });
+        }
+        Add("Bangumi · 原条目", source.Title, source.Platform ?? "未提供形式", source.Date);
+        Add("AniList · 候选", media.Title, Format(media.Format), media.StartDate);
+        comparison.Children.Add(columns);
+        var raw = new StackPanel { Spacing = 6 };
+        foreach (var item in assessment.Evidence) raw.Children.Add(Text(13, item));
+        var original = Expand("完整匹配依据"); original.Content = raw; comparison.Children.Add(original);
+        matchReview.Content = comparison; matchReview.IsExpanded = assessment.Conflict;
+    }
     private void RenderCandidates()
     {
         candidates.Children.Clear();
         foreach (var candidate in model?.Candidates ?? [])
         {
-            var factsText = string.Join(" · ", new[] { Format(candidate.Format), candidate.StartDate, candidate.Episodes is { } count ? count + " 集" : null }.Where(x => x is not null));
+            var factsText = string.Join(" · ", new[] { Format(candidate.Format), candidate.StartDate, candidate.Episodes is { } count ? count + " 集" : null, candidate.Volumes is { } volumes ? volumes + " 卷" : null, candidate.Chapters is { } chapters ? chapters + " 话" : null }.Where(x => x is not null));
             var body = new StackPanel { Spacing = 6, Children = { Text(16, candidate.Title), Text(13, candidate.NativeTitle), Text(13, factsText) } };
             var assessment = model?.Source is { } source ? AniListMatching.Assess(source, candidate) : null;
             if (assessment?.Conflict == true) body.Children.Add(Text(13, "证据有差异，请先核对"));
@@ -201,16 +258,23 @@ public sealed class AniListDetailView : Grid, IDisposable
         foreach (var value in details.Genres.Concat(details.Tags).Distinct()) tags.Children.Add(new Border { Background = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"], CornerRadius = new(5), Padding = new(8, 4, 8, 4), Child = Text(13, value) });
         genres.Header = $"类型与标签 · {tags.Children.Count}";
         var allCharacters = (model?.PeoplePages ?? []).SelectMany(x => x.Details.Characters).DistinctBy(x => x.Person.Id).ToArray();
-        characters.Header = $"角色与日语声优 · {allCharacters.Length}";
+        var anime = details.Media.Kind == AniListMediaKind.Anime;
+        characters.Header = $"{(anime ? "角色与日语声优" : "角色")} · {allCharacters.Length}";
         foreach (var character in allCharacters)
         {
             var image = Picture(character.Person.ImageUrl, 54, 76);
-            var labels = new StackPanel { Spacing = 5, Children = { Text(15, PersonName(character.Person)), Text(12, Role(character.Role)), Text(13, VoiceCaption(character)) } };
+            var labels = new StackPanel { Spacing = 5, Children = { Text(15, PersonName(character.Person)), Text(12, Role(character.Role)) } };
+            if (anime) labels.Children.Add(Text(13, VoiceCaption(character)));
             characterCards.Children.Add(Frame(Row(image, labels), 255));
         }
-        var allStaff = (model?.PeoplePages ?? []).SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).ToArray(); staff.Header = $"制作人员 · {allStaff.Length}";
-        foreach (var person in allStaff) staffBody.Children.Add(Text(14, StaffRole(person.Role) + " · " + PersonName(person.Person)));
-        related.Header = $"前后作与其他关联 · {details.Relations.Length}";
+        var allStaff = (model?.PeoplePages ?? []).SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).ToArray(); staff.Header = $"{(anime ? "制作人员" : "作者与制作")} · {allStaff.Length}";
+        foreach (var group in allStaff.GroupBy(x => x.Role))
+        {
+            var role = Text(12, StaffRole(group.Key)); role.Opacity = .75;
+            var card = new StackPanel { Spacing = 6, Children = { role, Text(15, string.Join(" / ", group.Select(x => PersonName(x.Person)))) } };
+            staffBody.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Child = card, Padding = new(12) });
+        }
+        related.Header = $"关联作品 · {details.Relations.Length}";
         foreach (var item in details.Relations.OrderBy(x => x.Relation is "SEQUEL" or "PREQUEL" ? 0 : x.Relation == "ADAPTATION" ? 1 : 2))
         {
             var labels = new StackPanel { Spacing = 5, Children = { Text(16, item.Media.Title), Text(13, Relation(item.Relation) + " · " + item.Media.TypeName) } };
@@ -227,7 +291,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         if (model?.Item is { } item) sourceBody.Children.Add(Link(model.IsBridge ? "Bangumi 原始条目" : "起始 Bangumi 条目", item.Url, false));
         if (model?.IsBridge == true && model.Source is { } source && media is not null)
         {
-            var raw = new StackPanel { Spacing = 8, Children = { Text(13, string.Join(" · ", AniListMatching.Assess(source, media).Evidence)) } };
+            var raw = new StackPanel { Spacing = 8 };
+            foreach (var itemEvidence in AniListMatching.Assess(source, media).Evidence) raw.Children.Add(Text(13, itemEvidence));
             if (evidence.Length > 0) raw.Children.Add(Text(13, "原始关系 · " + evidence));
             foreach (var url in source.ExternalLinks) raw.Children.Add(Text(13, "外部编号证据 · " + url));
             sourceBody.Children.Add(new Expander { Header = "对应证据", HorizontalAlignment = HorizontalAlignment.Stretch, Content = raw });
@@ -282,6 +347,9 @@ public sealed class AniListDetailView : Grid, IDisposable
             case "aniCharacters": ShowSection(characters); break;
             case "aniStaff": ShowSection(staff); break;
             case "aniRelations": ShowSection(related); break;
+            case "aniReview": ShowSection(matchReview); break;
+            case "aniSources": ShowSection(sources); break;
+            case "aniSynopsis": synopsis.ExpandForFixture(); synopsis.StartBringIntoView(); break;
             case "aniPV": availability.ExpandForFixture(); availability.StartBringIntoView(); break;
             case "aniPVLoad": await availability.StartAsync(); availability.StartBringIntoView(); break;
             case "aniPVStart": _ = availability.StartAsync(); break;
@@ -298,7 +366,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
     }
     internal object Evidence => new { state = model?.State.ToString(), subjectId = model?.Item?.Id, mediaId = model?.Media?.Id, title = title.Text, kind = model?.Media?.Kind.ToString(), historyDepth = model?.HistoryDepth, canConfirm = model?.CanConfirm, confirmButtonEnabled = confirm.IsEnabled, fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, restoredOffset = model?.RestoreOffset,
-        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = summary.Text, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
+        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = model?.PeoplePages.SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).Count(), staffGroups = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = synopsis.Text, synopsis = synopsis.Evidence, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
     public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); publications.Deactivate(); episodeSource = null; episodeList.SetSource(null); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); publications.Dispose(); episodeList.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; bookSubjects = null; bookReader = null; bookRelations = null; }
     private static string PersonName(AniListPerson p) => p.NativeName.Length > 0 ? p.NativeName : p.Name;
@@ -313,8 +381,8 @@ public sealed class AniListDetailView : Grid, IDisposable
     private static Button Button(string content) => new() { Content = content, CornerRadius = new(6), MinHeight = 32, HorizontalAlignment = HorizontalAlignment.Left };
     private static Expander Expand(string heading) => new() { Header = heading, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private static string Format(string value) => value switch { "TV" => "电视动画", "TV_SHORT" => "电视短篇", "MOVIE" => "剧场版", "OVA" => "OVA", "ONA" => "网络动画", "SPECIAL" => "特别篇", "MUSIC" => "音乐影像", "MANGA" => "漫画", "NOVEL" => "小说", "ONE_SHOT" => "短篇漫画", _ => value };
-    private static string Status(string value) => value switch { "FINISHED" => "已完结", "RELEASING" => "连载 / 播出中", "NOT_YET_RELEASED" => "尚未发行", "CANCELLED" => "已取消", "HIATUS" => "暂停", _ => value };
+    private static string Status(string value, bool anime) => value switch { "FINISHED" => "已完结", "RELEASING" => anime ? "播出中" : "连载中", "NOT_YET_RELEASED" => anime ? "尚未播出" : "尚未发行", "CANCELLED" => "已取消", "HIATUS" => "暂停", _ => value };
     private static string Role(string value) => value switch { "MAIN" => "主要角色", "SUPPORTING" => "配角", "BACKGROUND" => "背景角色", _ => value };
-    private static string StaffRole(string value) => value switch { "Director" => "导演", "Series Composition" => "系列构成", "Original Creator" => "原作", "Music" => "音乐", "Character Design" => "角色设计", "Animation Director" => "作画监督", "Sound Director" => "音响监督", "Script" => "脚本", _ => value };
+    private static string StaffRole(string value) => value switch { "Director" => "导演", "Series Composition" => "系列构成", "Original Creator" => "原作", "Story" => "故事", "Art" => "作画", "Story & Art" => "故事与作画", "Illustration" => "插画", "Music" => "音乐", "Character Design" => "角色设计", "Animation Director" => "作画监督", "Sound Director" => "音响监督", "Script" => "脚本", _ => value };
     private static string Relation(string value) => value switch { "SEQUEL" => "续作", "PREQUEL" => "前作", "ADAPTATION" => "改编关联", "SOURCE" => "原作", "SIDE_STORY" => "外传", "SPIN_OFF" => "衍生", "ALTERNATIVE" => "不同版本 / 演绎", "SUMMARY" => "总集篇", "PARENT" => "本篇", "CHARACTER" => "角色关联", "COMPILATION" => "合集", "CONTAINS" => "收录", _ => "其他关联" };
 }

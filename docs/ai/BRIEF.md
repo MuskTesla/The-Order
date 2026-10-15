@@ -1,4 +1,18 @@
 # The Order：当前实现与评审交接
+## 书籍与音乐详情可读性优化（2026-10-15，当前开发入口；已完成隔离验收）
+
+当前源码 `D:/Projects/The-Order-worktrees/detail-readability-20261015` / `codex/detail-readability-20261015`，从干净基线 `531cf8c` 隔离继续，保留上一轮书籍手动确认、NDL 可靠性及其他既有成果。版本仍为 1.1.0。本轮最新请求是详情页可读性与布局优化，未要求替换日用安装；当前未提交、未安装、未推送、未合并或公开发布。下方各阶段的“当前／最新入口”和安装结果均为历史记录，以本节为维护入口。
+
+主要修改位于 `native/TheOrder.WinUI/Views/`：书籍与出版资料改为对齐字段、中文职责分组、紧凑自适应 NDL 表单、突出卷次与出版信息的候选卡，以及读取后更新标题的已保存版本；编号、原始职责、许可及来源仍可访问。音乐专辑将发行资料拆成易读字段，保持紧凑曲目行，展开后按职责呈现 Credits；Recording／Work／Artist 的关系采用专业信息卡片，保留原方向、原始属性和精确身份导航。新增 `DetailSynopsis` 与 `MusicDetailFormatting` 仅承担视图展示。
+
+共用简介限制阅读宽度为 860，默认七行并支持展开全文；书籍／动画在已确认桥接后优先显示原 Bangumi 标题和简介，未确认预览继续隔离来源。简介展开状态只在当前视图的内存字典中按身份保存，最多 32 项。游戏目录简介限制阅读宽度；未重写游戏操作、PV 或观看入口。未改变匹配与确认规则、缓存或用户映射持久格式、Production Profile 或 OAuth 服务，也没有依赖升级或资料迁移。真实音乐人导航发现旧解析器拒绝 `????-10-21`，因此额外仅在 `MusicBrainzProvider.Entities` 的 Artist 生卒日期支持官方未知组件格式并原样保留；发行版与关系日期仍严格校验。新增 27 项日期正反测试。
+
+证据根 `.artifacts/detail-readability-20261015`。最终相关回归 **229 通过／0 失败／0 跳过**，见 `tests/detail-regression-final.trx`、`tests-final.log`；锁定 WinUI x64 构建 `publish-v6` 通过，见 `build-v6.log`。v5 最终布局与 v6 一致，v6 仅补人物日期解析。实际窗口检查深浅主题、常规和 640 窄窗、已确认/冲突预览、出版版本、多碟曲目和分组职责；截图含 `music-album-dark-final.png`、`music-credits-dark-final.png`、`music-credits-light-narrow-final.png`、`book-candidates-light-final.png`、`book-search-form-light-final.png`、`book-saved-dark-v4.png`、`anime-staff-dark-v4.png`、`match-conflict-dark-final.png`。构建和模拟测试不能代替未覆盖的鼠标、长时或全媒体验收。
+
+本轮实际 Test 已读取公开 Bangumi 43194／AniList 45821，NDL 标题查询返回五条并确认保存 `000010877344`；音乐 Bangumi 8201 对应已核对的限定发行 `a9f46365-0bdd-4015-9253-3d271a5ee8ee`（SRCL 7331／7332，CD 六曲、DVD 两曲）。v6 中 Artist ryo、Work、Recording 真实请求均 Ready，失败原响应、最小对照及官方格式依据保存在 `music-artist-diagnosis/`，最终截图 `music-artist-dark-final.png`。曲目内部导航稳定复验返回 338→338 并保留展开；首次夹具动画未稳定的 280→0 记录保留，不作通过依据。仅捕获准确 Test HWND，未使用桌面输入、真实书架或凭据；正常退出后 `test-library-proof.json` 确认合成书架 payload 字节不变（不宣称缓存/测试映射未变）。
+
+本轮布局与短回归可进入用户评审。已知既有缺口：展开 NDL 搜索/预览后，经 AniList 关联作品离开再返回，子区域会重置；当前偏移目标 2293 被夹到 825。独立比对确认重置链在基线已存在，未运行旧版作数值对照；仅简介展开返回 825→825 通过。见 `synopsis-return-nonzero-final.json` 与 `synopsis-only-return-final.json`。不宣称全面导航验收或可直接发布；未替换日用安装、未提交。
+
 ## AniList 书籍手动确认修复（2026-10-15，最新入口）
 
 当前源码 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，从干净16607fe独立继续，保留NDL可靠性及全部既有成果。版本仍1.1.0，未升级依赖或迁移资料。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装结果以本轮后续回执为准。

@@ -16,7 +16,8 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
     private sealed record Frame(MusicBrainzEntityResult Result, double Offset, bool Aliases, bool Relations, bool Evidence);
     private readonly List<Frame> history = [];
     private readonly TextBlock type = Text(13), title = Text(28), subtitle = Text(14), message = Text(14), original = Text(13);
-    private readonly StackPanel facts = new() { Spacing = 8 }, links = new() { Spacing = 8 };
+    private readonly TagFlowPanel facts = MusicDetailFormatting.Facts();
+    private readonly CreditColumnsPanel links = new();
     private readonly Expander aliases = Section("其他名称"), relations = Section("专业关系"), evidence = Section("资料来源与关系依据");
     private readonly StackPanel evidenceBody = new() { Spacing = 8 };
     private readonly HyperlinkButton back = Link("返回专辑"), external = Link("MusicBrainz 原资料 ↗");
@@ -42,7 +43,7 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
         actions.Children.Add(progress); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(refresh);
         aliases.Content = original; relations.Content = links; relations.IsExpanded = true;
         evidence.Content = evidenceBody;
-        var body = new StackPanel { Spacing = 20, Children = { back,
+        var body = new StackPanel { Spacing = 24, MaxWidth = 1160, HorizontalAlignment = HorizontalAlignment.Stretch, Children = { back,
             new StackPanel { Spacing = 8, Children = { type, title, subtitle } }, message, actions, facts, aliases, relations, external, evidence } };
         scroll = new() { Content = body, HorizontalContentAlignment = HorizontalAlignment.Stretch,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -106,7 +107,7 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
         var detail = model?.Detail;
         type.Text = Kind(model?.Reference?.Kind) + " · MusicBrainz";
         title.Text = detail?.Title ?? (model?.IsBusy == true ? "正在读取资料…" : "音乐资料");
-        subtitle.Text = string.Join(" · ", new[] { detail?.EntityType, detail?.Disambiguation }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        subtitle.Text = string.Join(" · ", new[] { MusicDetailFormatting.EntityType(detail?.EntityType), detail?.Disambiguation }.Where(x => !string.IsNullOrWhiteSpace(x)));
         subtitle.Visibility = Visible(subtitle.Text.Length > 0);
         ShowMessage(model?.Message ?? "");
         back.Content = new TextBlock { Text = history.Count == 0 ? "返回专辑" : "返回上一项", IsHitTestVisible = false };
@@ -121,17 +122,23 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
         aliases.Visibility = Visible(detail?.Aliases.Length > 0); original.Text = string.Join("\n", detail?.Aliases ?? []);
         relations.Visibility = Visible(detail?.Relations.Length > 0);
         if (detail is null) return;
-        foreach (var fact in detail.Facts) facts.Children.Add(Text(14, fact.Label + " · " + fact.Value));
+        foreach (var fact in detail.Facts)
+        {
+            var value = fact.Label == "语言" ? string.Join(" / ", fact.Value.Split(" · ").Select(MusicDetailFormatting.Language)) : fact.Value;
+            facts.Children.Add(MusicDetailFormatting.Fact(fact.Label, value));
+        }
+        relations.Header = "专业关系 · " + detail.Relations.Length;
         foreach (var relation in detail.Relations)
         {
             var target = relation.Target;
             var content = new StackPanel { Spacing = 4, IsHitTestVisible = false };
-            content.Children.Add(Text(15, RelationLabel(detail.Reference.Kind, relation) + " · " + relation.Title));
-            var note = string.Join(" · ", new[] { Kind(target.Kind), relation.Attributes.Length > 0 ? string.Join(" / ", relation.Attributes) : null,
+            var role = Text(12, RelationLabel(detail.Reference.Kind, relation)); role.Opacity = .75; content.Children.Add(role);
+            var name = Text(15, relation.Title); name.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; content.Children.Add(name);
+            var note = string.Join(" · ", new[] { Kind(target.Kind), relation.Attributes.Length > 0 ? string.Join(" / ", relation.Attributes.Select(MusicDetailFormatting.Attribute)) : null,
                 relation.Begin, relation.End }.Where(x => !string.IsNullOrWhiteSpace(x)));
             var noteText = Text(12, note); noteText.Opacity = .7; content.Children.Add(noteText);
             var button = new Button { Content = content, Padding = new(12, 10, 12, 10), HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left, CornerRadius = new(6) };
+                HorizontalContentAlignment = HorizontalAlignment.Left, CornerRadius = new(8) };
             AutomationProperties.SetName(button, relation.Title + " · " + Kind(target.Kind));
             button.Click += async (_, _) => await FollowAsync(target); links.Children.Add(button);
             evidenceBody.Children.Add(Text(12, relation.RelationType + " · " + relation.Direction + " · " + relation.Title + "\n" + target.Url));

@@ -1,5 +1,19 @@
 # 开发与维护
 
+## 详情可读性优化（2026-10-15，当前开发；隔离验收完成）
+
+维护入口为 `D:/Projects/The-Order-worktrees/detail-readability-20261015` / `codex/detail-readability-20261015`，干净基线 `531cf8c`，版本保持 1.1.0。旧工作树和本机正式安装保留；本轮未提交、未安装、未推送或合并。下方同日期旧入口和旧安装状态保留作历史证据，不能据此切回旧候选继续开发或自动替换程序。
+
+主要修改在 `native/TheOrder.WinUI/Views/`：`BookPublicationView`、`AniListDetailView`、`MusicBrainzAlbumView`、`MusicBrainzEntityDetailView`、`CatalogContentView`、`DetailsPage.Catalog`，以及新增的 `DetailSynopsis`／`MusicDetailFormatting`。额外修复 `MusicBrainzProvider.Entities` 人物生卒日期未知组件，保留原串；通用发行日期和关系日期校验不变。共享身份模型、网络请求、匹配确认、缓存和映射持久格式均未改变。书籍表单与字段、音乐曲目和专业关系保持单个页面滚动器；默认简介七行、860 阅读宽度，展开记忆只在当前视图内按身份保存，最多 32 项，不写用户资料。
+
+构建沿用锁文件、固定 SDK 10.0.401、x64、`NativeProductionCandidate=true` 和 `UseSharedCompilation=true`，不要并行写同一个 Native 构建输出。证据根 `.artifacts/detail-readability-20261015`，最终候选 `publish-v6`，日志 `build-v6.log`。`tests/detail-regression-final.trx` **229／0／0**：过滤 AniList、BookDetailsViewModelTests、BookBibliographyServiceTests、MusicAlbumViewModelTests、MusicBrainzDeepeningTests、MusicBrainzEntityTests、MusicBrainzArtistPartialDateTests；最后一类新增 27 项。此前 202 项结果保留，不能与最终 229 相加。没有全仓或长时测试。
+
+隔离窗口使用该证据根已有 `Start-IsolatedTest.ps1 -RunName <新的短名称> -PublishName <已验证候选目录>` 与 `Control.ps1`。禁止裸启动候选以免默认进入 Production；`fixture-ready` 仅表示控制入口存在，仍须等 `probe` 中 `runtime.lifecycle.ready=true` 再导航。书籍实际样本为 Bangumi 43194、AniList 45821 和 NDL `000010877344`；音乐为 Bangumi 8201 的限定发行 `a9f46365-0bdd-4015-9253-3d271a5ee8ee`。只读公开资料与 Test 内确认映射不等于真实用户资料操作。
+
+实际窗口截图在本证据根 `*.png`，状态证据在各 `ui*/bangumi-evidence.json`；截图限制准确 Test PID／EXE／HWND，不使用桌面输入。深浅色、640 窄窗、真实出版结果、人物职责、冲突预览已观察。v6 的 Artist／Work／Recording 真实请求成功；`music-artist-ready-final.json`、`music-recording-final.json`、`music-return-settled-before.json`／`after.json` 留证。MusicBrainz 人物原始响应与官方 PartialDate 格式依据在 `music-artist-diagnosis/`；未知日期不得用于放宽发行版匹配。
+
+Test 已通过 Control 的 `exit` 正常退出；等待确切 PID 结束后执行 `dotnet run --project <证据根>/runner/BooksProof.csproj -c Release -p:Platform=x64 --no-build -- verify`，`test-library-proof.json` 确认合成库 payload 未变。首次在退出尚未完成时验证被 writer lock 正确拒绝，等待退出后才重试，未绕过锁。既有 NDL 搜索子状态在 AniList 跨作品返回时不恢复，见 BRIEF 当前节；主简介展开和音乐稳定返回通过。布局可进入用户评审，不代表全面发布 Gate；未验证物理鼠标和长时稳定性。本轮不提交或更换日用安装。
+
 ## AniList 书籍确认修复（2026-10-15，当前）
 
 入口 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，基线16607fe；版本1.1.0、原锁文件与SDK10.0.401保持。候选 `.artifacts/anilist-book-confirm-20261015/publish-v1`，生产资料未作为测试输入。
