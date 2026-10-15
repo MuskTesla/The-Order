@@ -1,5 +1,15 @@
 # 开发与维护
 
+## ACGN 全媒体质量候选（2026-10-15）
+
+当前隔离维护入口 `D:/Projects/The-Order-worktrees/acgn-quality-20261015`，分支 `codex/acgn-quality-20261015`，继承检查点 `5bb654d`。保护原音乐工作区全部 10 项 dirty；本轮没有本机替换、Production 操作、真实资料迁移或发布授权。证据 `.artifacts/acgn-quality-20261015`。不要裸启动候选；`Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v3` 只使用本证据根的标记 Test profile，种子来自已校验 SHA256 的既有合成 library payload，没有复制凭据或真实库。
+
+固定 SDK 10.0.401，锁定 restore；WinUI 使用 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-quality-20261015/publish-v3`。全套通过 `services/bangumi-auth-worker/test/run-client-bridge.mjs --all-client-tests`，显式设置 `THE_ORDER_TEST_DOTNET` 为固定 SDK 和 `THE_ORDER_TEST_RESULTS_DIR` 为本证据根 `tests-full`。该入口启用本地合成上游，3755/0/0 并不代表真实 OAuth 授权或正式私库验收。
+
+当前控制入口保留 Test profile 双重限制；新增 `catalogEntityOpen` 仅接受准确 `Character:<id>`、`CreditName:<id>`、`Person:<id>`、`Company:<id>`，用于验证真实公开实体来源，不能用于 Production。截图助手只允许准确 Test PID、EXE、Profile 与新 PNG 输出路径，通过 WGC 捕获窗口，不控制桌面。退出通过 Control `exit`，等待进程正常结束，再运行隔离 `ui-runner` 的 verify 核对合成 library payload 字节；不强杀或恢复真实资料。
+
+最终 Native 源码提交 `998465c`（实现 `fc74f10`）；测试全套后仅增加 Test 嵌套书籍控制转发，已用 v3 实际窗口验证。完整字段与分母见 `field-coverage.md` / `corpus-summary.json`，UI链路、重启恢复、截图和限制见 `report.md` / `ui-acceptance.json`。PV probe 为就绪未播放，不能称真实视频播放通过。原始工作区10项哈希须继续保持；本轮没有正式安装或发布授权。
+
 ## MusicBrainz 检索修复（2026-10-15，当前）
 
 当前工作区 `D:/Projects/The-Order-worktrees/music-retrieval-20261015`，分支codex/music-retrieval-20261015，基于874ed514并保留继承dirty。本轮产品变更未提交；源码冻结、真实公开API和修复前反例保留在 `.artifacts/music-retrieval-20261015`。仅改变来源音乐别名/查询计划、候选顺序、检索缓存代际及提示，不迁移用户决定或改变游戏库schema。新增TitleAliases兼容旧JSON，原指纹不加入查询别名；Search key另含retrieval-4与别名。
@@ -2676,11 +2686,3 @@ NDL数据来源许可与加工说明已加入THIRD_PARTY_NOTICES；不搬NDL正�
 901相关回归TRX为tests/deepening-regression.trx；最终95定点TRX为tests/deepening-final.trx，不能相加成独立测试数量。最终定点filter：BangumiEpisodes、BangumiEpisodeAuthorization、BangumiEpisodeExpiry、MusicBrainzDeepening、CatalogReleases、AniListVoiceRoles；使用既有dotnet test命令和独立结果目录。截图及accepted证明明确区分110研究请求、真实GUI Provider路径与合成故障测试。
 
 Episodes复用SubjectDetails同一transport/auth队列与25秒预算，50条分页，仅授权canonical subject_id+limit50+offset（50倍数≤10000）。会话cache32页/1小时fresh/7天最大stale，500行UI上限，追加新鲜页不能隐去旧页过期提示；OAuth到期通过RequireCurrent阻止迟到结果。NextMoe display releases32页/8MiB/5分钟cache，100条分页/500条UI上限，普通ClearCache包括它；网络失败可保留已显示旧行并提示，明确拒绝/格式损坏必须清除。Music Work从既有album include返回，不逐曲请求；App.xaml模板编译生成WinUI类型信息，不再运行时XamlReader解析自定义控件。
-## ACGN 全媒体质量候选（2026-10-15）
-
-当前隔离维护入口 `D:/Projects/The-Order-worktrees/acgn-quality-20261015`，分支 `codex/acgn-quality-20261015`，继承检查点 `5bb654d`。保护原音乐工作区全部 10 项 dirty；本轮没有本机替换、Production 操作、真实资料迁移或发布授权。证据 `.artifacts/acgn-quality-20261015`。不要裸启动候选；`Start-IsolatedTest.ps1 -RunName <新名字> -PublishName publish-v2` 只使用本证据根的标记 Test profile，种子来自已校验 SHA256 的既有合成 library payload，没有复制凭据或真实库。
-
-固定 SDK 10.0.401，锁定 restore；WinUI 使用 `dotnet publish native/TheOrder.WinUI/TheOrder.WinUI.csproj -c Release --no-restore -p:Platform=x64 -p:NativeProductionCandidate=true -p:UseSharedCompilation=true -o .artifacts/acgn-quality-20261015/publish-v2`。全套通过 `services/bangumi-auth-worker/test/run-client-bridge.mjs --all-client-tests`，显式设置 `THE_ORDER_TEST_DOTNET` 为固定 SDK 和 `THE_ORDER_TEST_RESULTS_DIR` 为本证据根 `tests-full`。该入口启用本地合成上游，3755/0/0 并不代表真实 OAuth 授权或正式私库验收。
-
-当前控制入口保留 Test profile 双重限制；新增 `catalogEntityOpen` 仅接受准确 `Character:<id>`、`CreditName:<id>`、`Person:<id>`、`Company:<id>`，用于验证真实公开实体来源，不能用于 Production。截图助手只允许准确 Test PID、EXE、Profile 与新 PNG 输出路径，通过 WGC 捕获窗口，不控制桌面。退出通过 Control `exit`，等待进程正常结束，再运行隔离 `ui-runner` 的 verify 核对合成 library payload 字节；不强杀或恢复真实资料。
-
