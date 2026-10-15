@@ -185,7 +185,7 @@ public sealed partial class DetailsPage
                 && CatalogHost.Visibility != Visibility.Visible && RelatedMediaHost.Visibility != Visibility.Visible && ReadBangumiIdentity(out _) == identity);
         SynchronizeBangumi();
     }
-    public void ConfigureMusic(IMusicBrainzReader music) { relatedMedia?.ConfigureMusic(music); browser?.ConfigureMusic(music); }
+    public void ConfigureMusic(IMusicBrainzReader music, IMusicBrainzEntityReader? entities = null) { relatedMedia?.ConfigureMusic(music, entities); browser?.ConfigureMusic(music, entities); }
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) { relatedMedia?.ConfigureAniList(reader, watchPreferences, watchReader); browser?.ConfigureAniList(reader, watchPreferences, watchReader); }
     public void ConfigureReleases(ICatalogReleaseReader reader, Func<long> auth) { RichCatalog.ReleasesAuthGeneration = auth; RichCatalog.ReleasesReader = reader; browser?.ConfigureReleases(reader, auth); }
     public void ConfigureEpisodes(IBangumiEpisodesReader reader) { relatedMedia?.ConfigureEpisodes(reader); browser?.ConfigureEpisodes(reader); }
@@ -255,6 +255,18 @@ public sealed partial class DetailsPage
             case "releaseExpand": await RichCatalog.ReleasesFixtureAsync("expand"); break;
             case "releaseRefresh": await RichCatalog.ReleasesFixtureAsync("refresh"); break;
             case "releaseInspect": await RichCatalog.ReleasesFixtureAsync("inspect"); break;
+            case "releaseFilter": await RichCatalog.ReleasesFixtureAsync("filter", subjectId); break;
+            case "releaseRow": await RichCatalog.ReleasesFixtureAsync("row", subjectId); break;
+            case "releaseRebind":
+                if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test) throw new InvalidOperationException("Test profile required.");
+                var metadata = ViewModel.Draft?.Source.Metadata;
+                if (metadata is not null)
+                {
+                    RichCatalog.SetWork(metadata, ViewModel.Draft?.Source.Personal.Name, true);
+                    RichCatalog.SetWork(metadata, ViewModel.Draft?.Source.Personal.Name, true);
+                    await RichCatalog.ReleasesFixtureAsync("expand");
+                }
+                break;
             case "aniOpen" when subjectId is not null:
                 if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test
                     || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null) throw new InvalidDataException("Isolated public subject fixture required.");
@@ -274,9 +286,9 @@ public sealed partial class DetailsPage
             case "back": await GoBackCatalogAsync(); break;
             case "mediaCancel": relatedMedia?.CancelForFixture(); break;
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
-            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack":
+            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack": case "musicEntity": case "musicEntityBack":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;

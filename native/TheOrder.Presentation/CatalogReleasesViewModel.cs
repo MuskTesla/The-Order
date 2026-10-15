@@ -14,6 +14,14 @@ public sealed class CatalogReleasesViewModel(ICatalogReleaseReader reader, Func<
     private bool disposed;
     public string? WorkId { get; private set; }
     public CatalogReleaseEdition[] Items { get; private set; } = [];
+    public CatalogReleaseEdition[] VisibleItems { get; private set; } = [];
+    public string? KindFilter { get; private set; }
+    public string? LanguageFilter { get; private set; }
+    public string? PlatformFilter { get; private set; }
+    public bool HasFilters => KindFilter is not null || LanguageFilter is not null || PlatformFilter is not null;
+    public string[] Kinds => Items.Select(row => row.Kind).Distinct(StringComparer.Ordinal).OrderBy(CatalogReleaseFacts.KindOrder).ThenBy(value => value, StringComparer.Ordinal).ToArray();
+    public string[] Languages => Items.SelectMany(row => row.Languages).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+    public string[] Platforms => Items.SelectMany(row => row.Platforms).Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray();
     public string? NextCursor { get; private set; }
     public DateTimeOffset? FetchedAtUtc { get; private set; }
     public bool Expanded { get; private set; }
@@ -32,6 +40,28 @@ public sealed class CatalogReleasesViewModel(ICatalogReleaseReader reader, Func<
         if (WorkId == workId && sourceAuth == Auth) return;
         Stop(); WorkId = workId; sourceAuth = Auth; Expanded = false; Reset();
         State = workId is null ? CatalogReleasesState.Idle : CatalogReleasesState.Ready; Notify();
+    }
+    // These filters describe only the pages already loaded. They never change remote
+    // queries, recognition evidence or local installation identities.
+    public void SetFilters(string? kind, string? language, string? platform)
+    {
+        if (disposed) return;
+        kind = Kinds.Contains(kind, StringComparer.Ordinal) ? kind : null;
+        language = Languages.Contains(language, StringComparer.Ordinal) ? language : null;
+        platform = Platforms.Contains(platform, StringComparer.Ordinal) ? platform : null;
+        if (KindFilter == kind && LanguageFilter == language && PlatformFilter == platform) return;
+        KindFilter = kind; LanguageFilter = language; PlatformFilter = platform; ApplyFilters(); Notify();
+    }
+    public void ClearFilters() => SetFilters(null, null, null);
+    private void ApplyFilters()
+    {
+        if (!Kinds.Contains(KindFilter, StringComparer.Ordinal)) KindFilter = null;
+        if (!Languages.Contains(LanguageFilter, StringComparer.Ordinal)) LanguageFilter = null;
+        if (!Platforms.Contains(PlatformFilter, StringComparer.Ordinal)) PlatformFilter = null;
+        VisibleItems = Items.Where(row => (KindFilter is null || row.Kind == KindFilter)
+            && (LanguageFilter is null || row.Languages.Contains(LanguageFilter, StringComparer.Ordinal))
+            && (PlatformFilter is null || row.Platforms.Contains(PlatformFilter, StringComparer.Ordinal)))
+            .OrderBy(row => CatalogReleaseFacts.KindOrder(row.Kind)).ToArray();
     }
     public Task ExpandAsync()
     {
@@ -74,14 +104,15 @@ public sealed class CatalogReleasesViewModel(ICatalogReleaseReader reader, Func<
             }
             if (existing.Count > MaximumRows) throw new InvalidDataException();
             Items = existing.Values.ToArray(); NextCursor = page.NextCursor; FetchedAtUtc = page.FetchedAtUtc; Loaded = true;
+            ApplyFilters();
             if (!append) seenCursors.Clear();
             if (cursor is not null) seenCursors.Add(cursor);
             if (page.NextCursor is not null) seenCursors.Add(page.NextCursor);
             State = CatalogReleasesState.Ready;
             Message = Items.Length == 0 ? "本次未收录发行记录。"
-                : NextCursor is null ? $"已显示 {Items.Length} 条发行记录。"
-                : Items.Length >= MaximumRows ? $"已显示 {Items.Length} 条，达到本页展示上限；原站仍有后续资料。"
-                : $"已显示 {Items.Length} 条，可继续读取下一页。";
+                : NextCursor is null ? $"已载入 {Items.Length} 条发行记录。"
+                : Items.Length >= MaximumRows ? $"已载入 {Items.Length} 条，达到本页展示上限；原站仍有后续资料。"
+                : $"已载入 {Items.Length} 条，可继续读取下一页。";
         }
         catch (OperationCanceledException)
         {
@@ -115,7 +146,7 @@ public sealed class CatalogReleasesViewModel(ICatalogReleaseReader reader, Func<
         Notify();
     }
     public void Deactivate() { Stop(); WorkId = null; Expanded = false; Reset(); State = CatalogReleasesState.Idle; Notify(); }
-    private void Reset() { Items = []; NextCursor = null; FetchedAtUtc = null; Loaded = false; Message = ""; seenCursors.Clear(); }
+    private void Reset() { Items = []; VisibleItems = []; KindFilter = LanguageFilter = PlatformFilter = null; NextCursor = null; FetchedAtUtc = null; Loaded = false; Message = ""; seenCursors.Clear(); }
     private void Stop() { version++; var prior = request; request = null; prior?.Cancel(); }
     private void Notify() => Changed(string.Empty);
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; }

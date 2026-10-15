@@ -119,9 +119,19 @@ public sealed partial class NextMoeCatalog
             var s = source.GetString()!; var id = external.GetString()!;
             return new WorkReference(s, id, ReleaseReferenceUrl(s, id));
         }).ToArray();
+        CatalogReleaseEngine? engine = null;
+        var engineField = Field(row, "engine");
+        if (engineField.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null)
+        {
+            if (engineField.ValueKind != JsonValueKind.Object || Text(engineField, "object") != "engine"
+                || Field(engineField, "id").ValueKind != JsonValueKind.String
+                || Field(engineField, "display_name").ValueKind != JsonValueKind.String)
+                throw new OnlineException(OnlineFailure.InvalidResponse);
+            engine = new(Field(engineField, "id").GetString()!, Field(engineField, "display_name").GetString()!);
+        }
         var result = new CatalogReleaseEdition(Required("id", 20), workId, Optional("title", 512), null,
             Required("release_kind", 64), Optional("date", 10), language.Length == 0 ? [] : [language],
-            platforms.Distinct(StringComparer.Ordinal).ToArray(), refs);
+            platforms.Distinct(StringComparer.Ordinal).ToArray(), refs) { Engine = engine };
         if (!CatalogReleaseFacts.Valid(result, workId)) throw new OnlineException(OnlineFailure.InvalidResponse);
         return result;
     }

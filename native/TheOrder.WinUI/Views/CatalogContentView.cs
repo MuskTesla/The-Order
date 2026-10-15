@@ -30,7 +30,7 @@ public sealed class CatalogContentView : StackPanel,IImageHost
     }
     public void DeactivateReleases() { releasesWorkId = null; releases.Deactivate(); }
     internal object ReleaseEvidence => releases.Evidence;
-    internal async Task<object> ReleasesFixtureAsync(string action)
+    internal async Task<object> ReleasesFixtureAsync(string action, string? value = null)
     {
         switch (action)
         {
@@ -42,6 +42,10 @@ public sealed class CatalogContentView : StackPanel,IImageHost
             case "refresh": await releases.RefreshAsync(); break;
             case "cancel": releases.Cancel(); break;
             case "inspect": break;
+            case "filter":
+                var filters = (value ?? "").Split('|');
+                releases.FilterForFixture(filters.ElementAtOrDefault(0), filters.ElementAtOrDefault(1), filters.ElementAtOrDefault(2)); break;
+            case "row" when value is not null: releases.ExpandRowForFixture(value); break;
             default: throw new ArgumentException("Unknown releases fixture action.", nameof(action));
         }
         return ReleaseEvidence;

@@ -12,6 +12,10 @@ public sealed class BangumiEpisodesViewModel(IBangumiEpisodesReader reader) : Ob
     public string? SubjectId { get; private set; }
     public long Version => generation;
     public BangumiEpisode[] Episodes { get; private set; } = [];
+    public int? SelectedType { get; private set; }
+    public BangumiEpisode[] VisibleEpisodes => BangumiEpisodeDisplay.Project(Episodes, SelectedType);
+    public BangumiEpisodeTypeFilter[] TypeFilters => BangumiEpisodeDisplay.Filters(Episodes);
+    public bool HasUnloadedEpisodes => Result is not null && NextOffset < Total;
     public BangumiEpisodesResult? Result { get; private set; }
     public BangumiEpisodesState State { get; private set; }
     public string Message { get; private set; } = "";
@@ -30,7 +34,12 @@ public sealed class BangumiEpisodesViewModel(IBangumiEpisodesReader reader) : Ob
     {
         if (disposed) return;
         Stop(); SubjectId = BangumiRelationIdentityResolver.ValidSubjectId(verifiedBangumiId) ? verifiedBangumiId : null;
-        Episodes = []; Result = null; NextOffset = 0; State = BangumiEpisodesState.Idle; Message = ""; Notify();
+        Episodes = []; Result = null; NextOffset = 0; SelectedType = null; State = BangumiEpisodesState.Idle; Message = ""; Notify();
+    }
+    public void SetType(int? type)
+    {
+        if (disposed || !BangumiEpisodeDisplay.ValidType(type) || SelectedType == type) return;
+        SelectedType = type; Notify();
     }
     public Task ExpandAsync() => Result is not null ? Task.CompletedTask : ReadAsync(false, false);
     public Task RefreshAsync() => ReadAsync(true, false);

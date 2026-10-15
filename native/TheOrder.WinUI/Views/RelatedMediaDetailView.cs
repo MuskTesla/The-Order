@@ -116,12 +116,12 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         model = new(reader); model.PropertyChanged += OnState;
     }
 
-    public void ConfigureMusic(IMusicBrainzReader music)
+    public void ConfigureMusic(IMusicBrainzReader music, IMusicBrainzEntityReader? entities = null)
     {
         if (disposed || subjectReader is null || images is null || openLink is null) return;
         musicView?.Dispose(); if (musicView is not null) Children.Remove(musicView);
         musicView = new() { Visibility = Visibility.Collapsed };
-        musicView.Configure(subjectReader, music, images, registry, openLink); Children.Add(musicView);
+        musicView.Configure(subjectReader, music, images, registry, openLink, entities); Children.Add(musicView);
     }
 
     public void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null)
@@ -255,7 +255,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
     }
     internal Task RefreshForFixtureAsync() => RefreshAsync();
     internal void CancelForFixture() { if (aniListActive) aniListView?.Cancel(); else if (musicActive) musicView?.Cancel(); else model?.Cancel(); }
-    internal bool GoBackMedia() => aniListActive && aniListView?.GoBack() == true;
+    internal bool GoBackMedia() => aniListActive && aniListView?.GoBack() == true || musicActive && musicView?.GoBack() == true;
     internal Task AniListFixtureAsync(string action, string? id) => aniListActive ? aniListView?.FixtureAsync(action, id) ?? Task.CompletedTask : Task.CompletedTask;
     internal Task MusicFixtureAsync(string action, string? id)
     {
@@ -266,9 +266,12 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
             "musicConfirm" => musicView.ConfirmForFixture(),
             "musicEditions" => musicView.EditionsForFixture(),
             "musicTrack" => ShowMusicTrack(id),
+            "musicEntity" when MusicBrainzReference.TryParse(id, out var reference) && reference is not null => musicView.EntityForFixture(reference),
+            "musicEntityBack" => BackMusicEntity(),
             "musicTracks" => ShowMusicTracks(id), _ => Task.CompletedTask
         };
     }
+    private Task BackMusicEntity() { musicView?.GoBack(); return Task.CompletedTask; }
     private Task ShowMusicTrack(string? id) { if (int.TryParse(id, out var position) && position is > 0 and <= 1000) musicView?.TrackForFixture(position); return Task.CompletedTask; }
     private Task ShowMusicTracks(string? id) { musicView?.TracksForFixture(int.TryParse(id, out var n) ? n : null); return Task.CompletedTask; }
     internal object Evidence => aniListActive ? (object)new { active, state = "AniListMedia", aniList = aniListView?.Evidence } : musicActive ? (object)new

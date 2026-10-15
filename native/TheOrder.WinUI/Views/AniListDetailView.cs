@@ -265,6 +265,8 @@ public sealed class AniListDetailView : Grid, IDisposable
     {
         if (model is null) return;
         if (action.StartsWith("book", StringComparison.Ordinal)) { await publications.FixtureAsync(action, id); return; }
+        if (action == "aniEpisodeFilter") { episodeList.FilterForFixture(int.TryParse(id, out var filter) ? filter : null); return; }
+        if (action == "aniEpisodeExpand" && int.TryParse(id, out var episode)) { episodeList.ExpandEpisodeForFixture(episode); return; }
         if (action == "aniEpisodes")
         {
             var idBefore = episodeSource; var stateBefore = model; var restoreBefore = model.RestoreVersion;

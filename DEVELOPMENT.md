@@ -1,5 +1,17 @@
 # 开发与维护
 
+## ACGN 深层导航与本机更新（2026-10-15，当前）
+
+维护入口 `D:/Projects/The-Order-worktrees/acgn-depth-navigation-20261015` / `codex/acgn-depth-navigation-20261015`，基线a1d360a。最终候选 `.artifacts/acgn-depth-navigation-20261015/publish-v4`。锁文件和固定SDK10.0.401构建，使用既有x64、NativeProductionCandidate=true、UseSharedCompilation=true；不并行写Native构建输出。上轮worktree保留不变。未更改版本或依赖。
+
+本轮相关回归 `tests/regression-final.trx` 1094通过，最后节点 `tests/nodes-final.trx` 146通过，均0失败/跳过，数量有重叠。新节点覆盖MusicBrainzEntity、BangumiEpisodeDisplay、CatalogReleaseExploration；旧Book/NDL/AniList/Bangumi/MusicBrainz/Related/NextMoe等相关回归保留。ui-review.md和core-review.md记录3项已关闭P2，不把旧失败删掉或重标通过。
+
+真实窗口仅通过本证据根 `Start-IsolatedTest.ps1 -RunName <新名称> -PublishName publish-v4` 使用标记Test profile；Control.ps1为既有受限fixture，新增musicEntity/Back、aniEpisodeFilter/Expand、releaseFilter/Row/Rebind。Rebind只在Test调用真实SetWork两次，检查卸载代际；只读元数据，不启动游戏。最终截图accepted-v4-前缀；截图工具限制准确PID、EXE和Test根，不是Production控制接口。
+
+MusicEntity reader复用原Provider实例、匿名HTTP、全局限流与35秒操作预算，只有精确Work/Artist/Recording查询，不递归抓关系。缓存32项/4MiB，单项512KiB，24h fresh、14d瞬态回退；永久拒绝设有界拒绝标记，所有公开返回深快照。UI历史16层且无第二层滚动器，返回专辑/实体保留位置和折叠，延迟恢复遇用户输入或新导航取消。Episode与发行筛选只作用已载入行，不把未加载说成没有资料；NextMoe发行engine原样验证，不改变识别Reader或安装。
+
+用户已授权完成后替换本机正式程序。只能复用package-native-release.ps1、package-native-installer.ps1生成新包；安装前确保正式/测试进程均正常退出，备份原Program到仓库外本机回退目录，仅比较Production文件元数据、不读取内容。安装回执必须显示payload与GUI入口逐份哈希一致、Profile元数据未变；不推送、主分支合并或公开发布。原始正式资料和凭据不可随Test复制。安装结果应更新BRIEF并指向实际回执，准备完成不等于已安装。
+
 ## PV 原生滚轮修复候选（2026-10-14）
 
 最新候选 `.artifacts/pv-native-scroll-20261014/publish-v3/`，同一 `codex/anilist-20261014`、HEAD `cddd6d5`加保留的dirty。短相关回归 `tests/related-final.trx` 583／0／0、9秒；原生OS输入比较记录在该证据根的 `ui-acceptance.json`。PV初始化前先拦截垂直滚轮，父host再恢复同一事件，原ScrollViewer处理原生惯性；不再以固定像素ChangeView模拟滚动。不能把初始化后直接重置Handled的早期候选当成最终修复，它已在实际输入对比中被否决。

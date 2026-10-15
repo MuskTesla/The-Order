@@ -7,7 +7,7 @@ namespace TheOrder.Infrastructure.Online;
 
 // Anonymous, fixed-origin public provider. Never uses the authenticated NextMoe transport.
 public sealed partial class MusicBrainzProvider(HttpClient http, MusicBrainzRateCoordinator? coordinator = null,
-    TimeSpan? operationTimeout = null, Func<DateTimeOffset>? clock = null) : IMusicBrainzProvider
+    TimeSpan? operationTimeout = null, Func<DateTimeOffset>? clock = null) : IMusicBrainzProvider, IMusicBrainzEntityReader
 {
     public const string UserAgent = "TheOrder/1.1.0 (https://github.com/Ph-Rank/The-Order)";
     public const int MaximumResponseBytes = 8 * 1024 * 1024;
@@ -120,7 +120,7 @@ public sealed partial class MusicBrainzProvider(HttpClient http, MusicBrainzRate
                 throw new MusicBrainzException(response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.ServiceUnavailable
                     ? MusicBrainzFailure.RateLimited : MusicBrainzFailure.Server, "MusicBrainz 暂时繁忙，请稍后重试。");
             }
-            if (response.StatusCode == HttpStatusCode.NotFound) throw new MusicBrainzException(MusicBrainzFailure.Unavailable, "MusicBrainz 未提供此发行版资料。");
+            if (response.StatusCode == HttpStatusCode.NotFound) throw new MusicBrainzException(MusicBrainzFailure.Unavailable, "MusicBrainz 未提供此条目的音乐资料。");
             if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType != "application/json") throw Invalid();
             var bytes = await ReadBytes(response.Content, token).ConfigureAwait(false);
             return JsonDocument.Parse(bytes, new() { MaxDepth = 64 });

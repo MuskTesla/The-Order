@@ -47,7 +47,7 @@ public sealed partial class OnlinePage : Page, IImageHost
     public static Visibility TextVisible(string? text) => !string.IsNullOrWhiteSpace(text) ? Visibility.Visible : Visibility.Collapsed;
     public void FocusSearch() { _ = ReturnToSearchAsync(); OnlineQueryBox.Focus(FocusState.Keyboard); }
     public void Cancel() => browser.Cancel();
-    internal void ConfigureMusic(IMusicBrainzReader music) => browser.ConfigureMusic(music);
+    internal void ConfigureMusic(IMusicBrainzReader music, IMusicBrainzEntityReader? entities = null) => browser.ConfigureMusic(music, entities);
     internal void ConfigureAniList(IAniListReader reader, IWatchLinkPreferencesStore? watchPreferences = null, IBangumiWatchLinksReader? watchReader = null) => browser.ConfigureAniList(reader, watchPreferences, watchReader);
     internal void ConfigureReleases(ICatalogReleaseReader reader, Func<long> auth) => browser.ConfigureReleases(reader, auth);
     internal void ConfigureEpisodes(IBangumiEpisodesReader reader) => browser.ConfigureEpisodes(reader);

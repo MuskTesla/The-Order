@@ -44,6 +44,12 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     private long generation;
     private bool active, disposed;
     private bool startPending, startQueued, coverFallback;
+    private MusicBrainzEntityDetailView? entityView;
+    private bool entityActive;
+    private double entityReturnOffset;
+    private double? pendingAlbumOffset;
+    private long albumRestoreVersion;
+    private bool restoringAlbum;
     private string? requestedCover;
     public MusicBrainzAlbumView()
     {
@@ -72,10 +78,11 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         var body = new StackPanel { Spacing = 20, Children = { header, relation, status, actions, confirmActions, candidateSection, tracksSection, credits, summarySection, sources } };
         scroll = new() { Content = body, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Children.Add(scroll);
-        scroll.Loaded += (_, _) => QueueStart(); body.SizeChanged += (_, _) => QueueStart();
-        scroll.PointerWheelChanged += (_, _) => startPending = false;
-        scroll.PointerPressed += (_, _) => startPending = false;
-        scroll.KeyDown += (_, _) => startPending = false;
+        scroll.Loaded += (_, _) => QueueStart(); body.SizeChanged += (_, _) => { QueueStart(); RestoreAlbumPosition(); };
+        void UserInput() { startPending = false; pendingAlbumOffset = null; albumRestoreVersion++; }
+        scroll.AddHandler(UIElement.PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => UserInput()), true);
+        scroll.PointerPressed += (_, _) => UserInput();
+        scroll.KeyDown += (_, _) => UserInput();
         cancel.Click += (_, _) => model?.Cancel(); retry.Click += async (_, _) => await RefreshAsync(); refresh.Click += async (_, _) => await RefreshAsync();
         editions.Click += async (_, _) => { if (model is not null) await model.ChooseEditionAsync(); };
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
@@ -87,15 +94,25 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         Unloaded += (_, _) => { if (!IsLoaded) Deactivate(); };
     }
     public void Configure(IBangumiSubjectDetailsReader subjects, IMusicBrainzReader music, IImagePipeline images,
-        IRemoteCoverRegistry? coverRegistry, Func<string, Task> openBangumi)
+        IRemoteCoverRegistry? coverRegistry, Func<string, Task> openBangumi, IMusicBrainzEntityReader? entities = null)
     {
         Deactivate(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); }
         registry = coverRegistry; cover.Pipeline = images; bangumiLink = openBangumi;
         model = new(subjects, music); model.PropertyChanged += StateChanged;
+        if (entityView is not null) { entityView.Dispose(); Children.Remove(entityView); entityView = null; }
+        if (entities is not null)
+        {
+            entityView = new() { Visibility = Visibility.Collapsed };
+            entityView.Configure(entities, OpenMusicSourceAsync);
+            entityView.ReturnToAlbum = ReturnFromEntity;
+            Children.Add(entityView);
+        }
     }
     public Task OpenAsync(BangumiRelationItem item, string originTitle, string? labelText, string? evidence, CancellationToken cancellation)
     {
         active = true; generation++; startPending = true; origin = originTitle; relationLabel = labelText ?? item.Relation; relationEvidence = evidence ?? "";
+        entityView?.Deactivate(); entityActive = false; if (entityView is not null) entityView.Visibility = Visibility.Collapsed; scroll.Visibility = Visibility.Visible;
+        pendingAlbumOffset = null; albumRestoreVersion++;
         shownAlbum = null; shownSearch = null; coverKey = null; sources.IsExpanded = raw.IsExpanded = credits.IsExpanded = false;
         candidates.Children.Clear(); discs.Children.Clear(); personnel.Children.Clear(); credits.Visibility = Visibility.Collapsed; cover.SourceKey = null;
         requestedCover = null; coverFallback = false;
@@ -145,7 +162,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             startQueued = false;
             if (!active || disposed || !startPending || !scroll.IsLoaded || scroll.ActualHeight <= 0) return;
             scroll.UpdateLayout();
-            if (scroll.ChangeView(null, 0, null, true)) startPending = false;
+            if (scroll.ChangeView(null, 0, null, true) || scroll.VerticalOffset == 0) startPending = false;
         });
     }
     private void RenderCandidates()
@@ -174,7 +191,12 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     {
         discs.Children.Clear(); personnel.Children.Clear(); credits.Visibility = Visibility.Collapsed;
         if (album is null) return;
-        foreach (var credit in album.Credits) personnel.Children.Add(Text(14, Credit(credit)));
+        foreach (var credit in album.Credits)
+        {
+            if (credit.ArtistId is { } artistId && entityView is not null)
+            { var item = new MusicBrainzReference(MusicBrainzEntityKind.Artist, artistId); var link = new HyperlinkButton { Content = Credit(credit), Padding = new(0), HorizontalAlignment = HorizontalAlignment.Left }; link.Click += async (_, _) => await OpenEntityAsync(item); personnel.Children.Add(link); }
+            else personnel.Children.Add(Text(14, Credit(credit)));
+        }
         credits.Visibility = Visible(personnel.Children.Count > 0);
         foreach (var disc in album.Discs)
         {
@@ -189,7 +211,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
                 // The page owns the only scrolling viewport. EffectiveViewport-based realization
                 // keeps long discs bounded without an inner list scrollbar or trapped wheel input.
                 var list = new ItemsRepeater { Layout = new StackLayout(), HorizontalAlignment = HorizontalAlignment.Stretch,
-                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x)).ToArray(), ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["MusicTrackTemplate"] };
+                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x, entityView is not null ? OpenEntityAsync : null)).ToArray(), ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["MusicTrackTemplate"] };
                 AutomationProperties.SetAutomationId(list, "MusicDiscTracks-" + disc.Position); expander.Content = list;
             }
             expander.Expanding += (_, _) => Populate(); if (expander.IsExpanded) Populate(); discs.Children.Add(expander);
@@ -285,8 +307,44 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     private static TextBlock Text(double size, string value = "") => new() { FontSize = size, Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private static Button Button(string value) => new() { Content = value, MinHeight = 32, CornerRadius = new(6), HorizontalAlignment = HorizontalAlignment.Left };
     private static Visibility Visible(bool value) => value ? Visibility.Visible : Visibility.Collapsed;
-    internal Task RefreshAsync() => model?.RefreshAsync() ?? Task.CompletedTask;
-    internal void Cancel() => model?.Cancel();
+    internal Task RefreshAsync() => entityActive ? entityView?.RefreshAsync() ?? Task.CompletedTask : model?.RefreshAsync() ?? Task.CompletedTask;
+    internal void Cancel() { if (entityActive) entityView?.Cancel(); else model?.Cancel(); }
+    private static async Task OpenMusicSourceAsync(string url)
+    {
+        if (!MusicBrainzReference.TryParse(url, out _) || !await Windows.System.Launcher.LaunchUriAsync(new Uri(url)))
+            throw new InvalidOperationException("MusicBrainz 原站暂时无法打开。");
+    }
+    private async Task OpenEntityAsync(MusicBrainzReference reference)
+    {
+        if (!active || disposed || entityView is null || !MusicBrainzReference.ValidId(reference.Id)
+            || reference.Kind is not (MusicBrainzEntityKind.Work or MusicBrainzEntityKind.Artist or MusicBrainzEntityKind.Recording)) return;
+        entityReturnOffset = scroll.VerticalOffset; startPending = false; pendingAlbumOffset = null; albumRestoreVersion++;
+        entityActive = true; scroll.Visibility = Visibility.Collapsed; entityView.Visibility = Visibility.Visible;
+        await entityView.OpenAsync(reference);
+    }
+    private void ReturnFromEntity()
+    {
+        if (disposed || !active || entityView is null) return;
+        entityActive = false; startPending = false; entityView.Visibility = Visibility.Collapsed; scroll.Visibility = Visibility.Visible;
+        pendingAlbumOffset = entityReturnOffset; var version = ++albumRestoreVersion;
+        scroll.UpdateLayout(); RestoreAlbumPosition();
+        DispatcherQueue.TryEnqueue(() => { if (!disposed && active && !entityActive && version == albumRestoreVersion) { scroll.UpdateLayout(); RestoreAlbumPosition(); } });
+    }
+    private void RestoreAlbumPosition()
+    {
+        if (restoringAlbum || !active || disposed || entityActive || pendingAlbumOffset is not { } target
+            || scroll.ViewportHeight <= 0 || target > 0 && scroll.ScrollableHeight <= 0) return;
+        restoringAlbum = true;
+        try
+        {
+            scroll.ChangeView(null, target, null, true);
+            if (Math.Abs(scroll.VerticalOffset - Math.Min(target, scroll.ScrollableHeight)) < .5) pendingAlbumOffset = null;
+        }
+        finally { restoringAlbum = false; }
+    }
+    internal bool GoBack() => entityActive && entityView?.GoBack() == true;
+    internal Task EntityForFixture(MusicBrainzReference reference) => entityActive
+        ? entityView?.FollowForFixture(reference) ?? Task.CompletedTask : OpenEntityAsync(reference);
     internal Task PreviewForFixture(string id) => model?.PreviewAsync(id) ?? Task.CompletedTask;
     internal Task ConfirmForFixture() => model?.ConfirmAsync() ?? Task.CompletedTask;
     internal Task EditionsForFixture() => model?.ChooseEditionAsync() ?? Task.CompletedTask;
@@ -316,6 +374,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         candidateIds = model?.Match?.Search.Candidates.Select(x => x.Id).ToArray(), canConfirm = model?.CanConfirm,
         cover.SourceStatus, cover.HasImage, coverUrl = model?.Displayed?.Album.CoverUrl, width = ActualWidth, titleWidth = title.ActualWidth,
         scrollOffset = scroll.VerticalOffset, visibleDiscs = discs.Children.OfType<Expander>().Where(x => x.IsExpanded).Select(x => AutomationProperties.GetAutomationId(x)).ToArray(),
+        entityActive, entity = entityActive ? entityView?.Evidence : null,
         coverFallback, trackScrollers = CountScrollers(tracksSection), realizedTracks = discs.Children.OfType<Expander>().Select(x => x.Content).OfType<ItemsRepeater>()
             .Select(x => new { count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(x),
                 rowHeights = Enumerable.Range(0, Math.Min(5, Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(x)))
@@ -328,8 +387,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
             count += CountScrollers(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i));
         return count;
     }
-    public void Deactivate() { active = false; generation++; startPending = false; model?.Deactivate(); cover.SourceKey = null; coverKey = null; requestedCover = null; ring.IsActive = false; }
-    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; }
+    public void Deactivate() { active = false; generation++; startPending = false; pendingAlbumOffset = null; albumRestoreVersion++; model?.Deactivate(); entityView?.Deactivate(); entityActive = false; cover.SourceKey = null; coverKey = null; requestedCover = null; ring.IsActive = false; }
+    public void Dispose() { if (disposed) return; Deactivate(); disposed = true; if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } entityView?.Dispose(); cover.Pipeline = null; }
     private const string TrackTemplate = """
     <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:views="using:TheOrder.WinUI.Views">
       <Border Padding="0,7" BorderBrush="{ThemeResource DividerBrush}" BorderThickness="0,0,0,1">
@@ -339,9 +398,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     """;
 }
 [Microsoft.UI.Xaml.Data.Bindable]
-public sealed class MusicTrackRow(MusicBrainzTrack track)
+public sealed class MusicTrackRow(MusicBrainzTrack track, Func<MusicBrainzReference, Task>? navigate = null)
 {
     public MusicBrainzTrack Track => track;
+    public Func<MusicBrainzReference, Task>? Navigate => navigate;
     public bool IsExpanded { get; set; }
     public string Number => track.Number;
     public string Title => track.Title;
@@ -376,16 +436,16 @@ public sealed class MusicTrackRowView : StackPanel
         var details = new StackPanel { Spacing = 6, Margin = new(42, 0, 0, 0), Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed };
         var track = row.Track;
         if (track.RecordingId is { } recording)
-            details.Children.Add(Link("录音原资料 · MusicBrainz", new(MusicBrainzEntityKind.Recording, recording)));
+            details.Children.Add(Link("录音资料", new(MusicBrainzEntityKind.Recording, recording), row.Navigate));
         // Credits retains the previous cache contract; linked Work credits appear once under their Work.
         var workCredits = track.Works.SelectMany(x => x.Credits).ToHashSet();
-        foreach (var credit in track.Credits.Where(x => !workCredits.Contains(x))) details.Children.Add(Credit(credit));
+        foreach (var credit in track.Credits.Where(x => !workCredits.Contains(x))) details.Children.Add(Credit(credit, row.Navigate));
         foreach (var work in track.Works)
         {
-            details.Children.Add(Link("作品 · " + work.Title, new(MusicBrainzEntityKind.Work, work.Id)));
+            details.Children.Add(Link("作品 · " + work.Title, new(MusicBrainzEntityKind.Work, work.Id), row.Navigate));
             var facts = string.Join(" · ", new[] { work.Type, work.Languages.Length > 0 ? "语言 · " + string.Join(" / ", work.Languages) : null }.OfType<string>());
             if (facts.Length > 0) details.Children.Add(Text(facts, 13));
-            foreach (var credit in work.Credits) details.Children.Add(Credit(credit));
+            foreach (var credit in work.Credits) details.Children.Add(Credit(credit, row.Navigate));
         }
         if (details.Children.Count > 0)
         {
@@ -397,9 +457,9 @@ public sealed class MusicTrackRowView : StackPanel
         }
         Children.Add(grid); Children.Add(details);
     }
-    private static UIElement Credit(MusicBrainzCredit credit) => credit.ArtistId is { } id
-        ? Link(MusicBrainzAlbumView.Credit(credit), new(MusicBrainzEntityKind.Artist, id)) : Text(MusicBrainzAlbumView.Credit(credit), 13);
-    private static HyperlinkButton Link(string label, MusicBrainzReference reference)
+    private static UIElement Credit(MusicBrainzCredit credit, Func<MusicBrainzReference, Task>? navigate) => credit.ArtistId is { } id
+        ? Link(MusicBrainzAlbumView.Credit(credit), new(MusicBrainzEntityKind.Artist, id), navigate) : Text(MusicBrainzAlbumView.Credit(credit), 13);
+    private static HyperlinkButton Link(string label, MusicBrainzReference reference, Func<MusicBrainzReference, Task>? navigate)
     {
         var link = new HyperlinkButton { Content = LinkText(label), Padding = new(0), MinHeight = 20,
             HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
@@ -407,6 +467,7 @@ public sealed class MusicTrackRowView : StackPanel
         {
             try
             {
+                if (navigate is not null) { await navigate(reference); return; }
                 if (!MusicBrainzReference.TryParse(reference.Url, out _) || !await Windows.System.Launcher.LaunchUriAsync(new Uri(reference.Url)))
                     throw new InvalidOperationException();
             }

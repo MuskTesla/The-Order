@@ -48,7 +48,7 @@ public sealed partial class MainWindow : Window
     private readonly BangumiSettingsViewModel bangumiSettings;
     private readonly LibraryBackupViewModel backups;
     private readonly DispatcherTimer backupTimer = new() { Interval = TimeSpan.FromMinutes(5) };
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, IMusicBrainzEntityReader musicEntities, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
         this.nextMoeSettings = nextMoeSettings; this.bangumiSettings = bangumiSettings;
@@ -92,7 +92,7 @@ public sealed partial class MainWindow : Window
         detailsPage.ConfigurePersonalSync(nextMoeSettings);
         detailsPage.ConfigureCatalog(browsing, browsing, coverRegistry, () => online.AuthGeneration, presentations, () => library.CurrentSnapshot, personalBanners, catalog as IRelatedGameIdentityReader);
         detailsPage.ConfigureBangumi(bangumiRelations, bangumiSubjects, relationSemantics, () => bangumiSettings.Access.Capture().Scope);
-        detailsPage.ConfigureMusic(musicBrainz);
+        detailsPage.ConfigureMusic(musicBrainz, musicEntities);
         detailsPage.ConfigureAniList(aniList, watchPreferences, watchReader);
         detailsPage.ConfigureBooks(bookBibliography, bookRelations);
         detailsPage.ConfigureEpisodes(episodes);
@@ -103,7 +103,7 @@ public sealed partial class MainWindow : Window
             await workspace.ExecuteFileMutationAsync(token => filesClient.CoverAsync(details, null, token), details.Id); };
         onlinePage = new(online, images, browsing, browsing, coverRegistry, presentations, () => library.CurrentSnapshot);
         onlinePage.ConfigureRelatedWorks(bangumiRelations, bangumiSubjects, relationSemantics, catalog as IRelatedGameIdentityReader, () => bangumiSettings.Access.Capture().Scope);
-        onlinePage.ConfigureMusic(musicBrainz);
+        onlinePage.ConfigureMusic(musicBrainz, musicEntities);
         onlinePage.ConfigureAniList(aniList, watchPreferences, watchReader);
         onlinePage.ConfigureBooks(bookBibliography, bookRelations);
         onlinePage.ConfigureEpisodes(episodes);
