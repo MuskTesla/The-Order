@@ -41,7 +41,7 @@ public sealed partial class MusicBrainzProvider
         {
             Disambiguation = OptionalText(root, "disambiguation", 1000), Packaging = OptionalText(root, "packaging", 100),
             TextLanguage = TextRepresentation(root, "language"), TextScript = TextRepresentation(root, "script"),
-            MediaFormats = formats, ReleaseEvents = ReleaseEvents(root)
+            MediaFormats = formats, ReleaseEvents = ReleaseEvents(root), ArtistCredits = ArtistCredits(root)
         };
         if (!MusicBrainzValidation.Candidate(value)) throw Invalid(); return value;
     }
@@ -64,7 +64,7 @@ public sealed partial class MusicBrainzProvider
                         if (rel.ValueKind == JsonValueKind.Object && rel.TryGetProperty("work", out var work)) credits.AddRange(Credits(work));
                 songs.Add(new(Number(track, "position") ?? 0, Text(track, "number", 100), Text(track, "title", 2000, required: true),
                     Artist(track), Number(track, "length") ?? Number(recording, "length"), Id(recording, "id"), credits.Distinct().Take(64).ToArray())
-                { Works = Works(recording) });
+                { Works = Works(recording), ArtistCredits = ArtistCredits(track) });
             }
             discs.Add(new(Number(row, "position") ?? 0, Text(row, "title", 2000), Text(row, "format", 100), songs.OrderBy(x => x.Position).ToArray()));
         }
@@ -136,6 +136,36 @@ public sealed partial class MusicBrainzProvider
             if (attributes.Length > 0) role = (role + " · " + string.Join(", ", attributes));
             if (role.Length <= 200) yield return new(role, name, id);
         }
+    }
+    private static MusicBrainzArtistCredit[] ArtistCredits(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("artist-credit", out var rows)) return [];
+        if (rows.ValueKind != JsonValueKind.Array || rows.GetArrayLength() > 64) throw Invalid();
+        var credits = new List<MusicBrainzArtistCredit>();
+        foreach (var row in rows.EnumerateArray())
+        {
+            if (row.ValueKind != JsonValueKind.Object) throw Invalid();
+            var name = Text(row, "name", 500); string? id = null;
+            if (row.TryGetProperty("artist", out var artist) && artist.ValueKind != JsonValueKind.Null)
+            {
+                if (artist.ValueKind != JsonValueKind.Object) throw Invalid();
+                if (name.Length == 0) name = Text(artist, "name", 500);
+                if (artist.TryGetProperty("id", out var identity) && identity.ValueKind != JsonValueKind.Null)
+                {
+                    if (identity.ValueKind != JsonValueKind.String || !MusicBrainzReference.ValidId(identity.GetString())) throw Invalid();
+                    id = identity.GetString();
+                }
+            }
+            var join = "";
+            if (row.TryGetProperty("joinphrase", out var phrase) && phrase.ValueKind != JsonValueKind.Null)
+            {
+                if (phrase.ValueKind != JsonValueKind.String || !MusicBrainzValidation.Text(phrase.GetString(), 100)) throw Invalid();
+                join = phrase.GetString()!; // Spaces are meaningful in credited joins.
+            }
+            if (name.Length == 0) { if (id is not null) throw Invalid(); continue; }
+            credits.Add(new(name, id, join));
+        }
+        return credits.ToArray();
     }
     private static string Artist(JsonElement root)
     {

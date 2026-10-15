@@ -245,6 +245,15 @@ public sealed partial class DetailsPage
     internal object BangumiEvidence => new { relations = BangumiRelated.Evidence, mediaVisible = RelatedMediaHost.Visibility == Visibility.Visible, media = relatedMedia?.Evidence, catalogVisible = CatalogHost.Visibility == Visibility.Visible, catalog = browser?.RelationEvidence, gameId = ViewModel.Draft?.Source.Id, gameScroll = DetailsScroll.VerticalOffset, releases = RichCatalog.ReleaseEvidence };
     internal async Task BangumiFixtureAsync(string action, BangumiRelationKind? kind = null, string? subjectId = null)
     {
+        if (action == "catalogEntityOpen")
+        {
+            var parts = subjectId?.Split(':');
+            if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || parts is not { Length: 2 }
+                || !Enum.TryParse<CatalogEntityKind>(parts[0], out var entityKind)
+                || entityKind is not (CatalogEntityKind.Character or CatalogEntityKind.CreditName or CatalogEntityKind.Person or CatalogEntityKind.Company)
+                || !TheOrder.Infrastructure.Online.RemoteWorkDto.ValidId(parts[1])) throw new InvalidDataException("Isolated typed entity fixture required.");
+            await OpenCatalogAsync(new(entityKind, parts[1], "公开目录实体只读验证")); return;
+        }
         if (CatalogHost.Visibility == Visibility.Visible && browser is not null && action != "back")
         { await browser.RelatedFixtureAsync(action, kind, subjectId); return; }
         switch (action)

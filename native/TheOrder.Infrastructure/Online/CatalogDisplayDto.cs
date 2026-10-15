@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using TheOrder.Application;
 using TheOrder.Domain;
 using static TheOrder.Infrastructure.Online.RemoteWorkDto;
@@ -70,7 +72,71 @@ internal static class CatalogDisplayDto
         if(kind == CatalogEntityKind.Trait) foreach(var item in Rows(row,"parents").Concat(Rows(row,"subtraits")).Take(200)) if(ValidId(Text(item,"id"))) related.Add(Ref(item,CatalogEntityKind.Trait));
         if(kind == CatalogEntityKind.Company) foreach(var relation in Rows(row,"relations").Take(64)) { var company=Field(relation,"company"); if(ValidId(Text(company,"id"))) related.Add(Ref(company,CatalogEntityKind.Company,Text(relation,"phrase"))); }
         var facts=new List<string>();foreach(var (key,label) in new[]{("company_kind","类型"),("release_date","日期"),("work_count","相关作品"),("height_cm","身高"),("weight_kg","体重"),("birth_year","出生年份"),("gender","性别"),("blood_type","血型")}){var field=Field(row,key);var value=field.ValueKind==JsonValueKind.Number?field.GetRawText():Text(row,key);if(value.Length>0)facts.Add(UiText.Get(label)+" · "+value);}
-        var refs=Rows(row,"refs").Take(64).Select(r=>new WorkReference(Text(r,"source"),Text(r,"external_id"),ReferenceUrl(Text(r,"source"),Text(r,"external_id")))).ToImmutableArray();
+        if (kind == CatalogEntityKind.Character) AddCharacterFacts(row, facts);
+        foreach (var alias in Rows(row,"aliases").Take(32))
+        {
+            var value=Text(alias,"value"); var language=Text(alias,"lang");
+            if(value.Length is <1 or >256 || value.Any(char.IsControl)) continue;
+            var qualifiers=new List<string>();
+            if(language.Length is >0 and <=32 && language.All(c=>char.IsAsciiLetterOrDigit(c)||c=='-')) qualifiers.Add(language);
+            if(Field(alias,"is_machine").ValueKind==JsonValueKind.True) qualifiers.Add(UiText.Get("机器翻译"));
+            facts.Add(UiText.Get("别名")+" · "+value+(qualifiers.Count==0?"":"（"+string.Join(" · ",qualifiers)+"）"));
+        }
+        var refs=EntityReferences(row,kind);
         return new CatalogEntityDetail(Ref(row,kind,image:image),description,[..facts],[..related.DistinctBy(e=>(e.Kind,e.Id))],refs) { Introductions=Introductions(row) };
+    }
+
+    private static void AddCharacterFacts(JsonElement row,List<string> facts)
+    {
+        var birthday=Text(row,"birthday");
+        if ((birthday.Length==5 && DateOnly.TryParseExact("2000-"+birthday,"yyyy-MM-dd",CultureInfo.InvariantCulture,DateTimeStyles.None,out _))
+            || (birthday.Length==10 && DateOnly.TryParseExact(birthday,"yyyy-MM-dd",CultureInfo.InvariantCulture,DateTimeStyles.None,out _)))
+            facts.Add(UiText.Get("生日")+" · "+birthday);
+        var measurements=Field(row,"measurements");
+        var values=new[]{"bust_cm","waist_cm","hip_cm"}.Select(key=>
+        {
+            var value=Field(measurements,key);
+            return value.ValueKind==JsonValueKind.Number && value.TryGetDecimal(out var number) && number is >0 and <=400
+                ? number.ToString("0.##",CultureInfo.InvariantCulture):null;
+        }).ToArray();
+        if(values.Any(v=>v is not null)) facts.Add(UiText.Get("三围（胸/腰/臀，cm）")+" · "+string.Join(" / ",values.Select(v=>v??"—")));
+    }
+
+    // Entity references are not Work references: Bangumi /person and /character
+    // are separate namespaces, and numeric VNDB refs are not safe staff IDs.
+    private static ImmutableArray<WorkReference> EntityReferences(JsonElement row,CatalogEntityKind kind)
+    {
+        var result=new List<WorkReference>();
+        foreach(var reference in Rows(row,"refs").Take(64))
+        {
+            var source=Text(reference,"source"); var id=Text(reference,"external_id");
+            if(source.Length is <1 or >64 || id.Length is <1 or >256 || source.Any(char.IsControl) || id.Any(char.IsControl)) continue;
+            string? url=null;
+            if(source=="bangumi" && ValidId(id))
+                url=kind switch {CatalogEntityKind.Character=>"https://bgm.tv/character/"+id,
+                    CatalogEntityKind.CreditName or CatalogEntityKind.Person or CatalogEntityKind.Company=>"https://bgm.tv/person/"+id,_=>null};
+            if(source=="vndb") url=EntityLink("vndb","https://vndb.org/"+id,kind);
+            result.Add(new(source,id,url));
+        }
+        foreach(var link in Rows(row,"links").Take(64))
+        {
+            var source=Text(link,"source"); var url=EntityLink(source,Text(link,"url"),kind);
+            if(url is not null && !result.Any(r=>r.Url==url)) result.Add(new(source,url,url));
+        }
+        return [..result.Distinct()];
+    }
+
+    private static string? EntityLink(string source,string raw,CatalogEntityKind kind)
+    {
+        if(raw.Length>2048 || !Uri.TryCreate(raw,UriKind.Absolute,out var uri) || uri.Scheme!="https"
+            || !uri.IsDefaultPort || uri.UserInfo.Length!=0 || uri.Query.Length!=0 || uri.Fragment.Length!=0) return null;
+        string? prefix=source switch
+        {
+            "vndb" when uri.Host=="vndb.org"=>kind switch {CatalogEntityKind.Character=>"c",CatalogEntityKind.CreditName or CatalogEntityKind.Person=>"s",CatalogEntityKind.Company=>"p",_=>null},
+            "bangumi" when uri.Host is "bgm.tv" or "bangumi.tv" or "chii.in"=>kind switch {CatalogEntityKind.Character=>"character/",CatalogEntityKind.CreditName or CatalogEntityKind.Person or CatalogEntityKind.Company=>"person/",_=>null},
+            _=>null
+        };
+        return prefix is not null && Regex.IsMatch(uri.AbsolutePath,"^/"+Regex.Escape(prefix)+"[0-9]{1,20}$",RegexOptions.CultureInvariant)
+            ? uri.AbsoluteUri:null;
     }
 }

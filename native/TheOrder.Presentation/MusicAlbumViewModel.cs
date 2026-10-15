@@ -12,23 +12,26 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
     public BangumiSubjectDetailsResult? SourceDetails { get; private set; }
     public MusicAlbumSource? Source { get; private set; }
     public MusicBrainzMatchResult? Match { get; private set; }
+    // A manual search or edition list is disposable; the last saved user target
+    // must remain available even if the next preview fails or is removed.
+    public string? SavedUserTargetId { get; private set; }
     public MusicBrainzAlbumResult? Album { get; private set; }
     public MusicBrainzAlbumResult? Preview { get; private set; }
     public MusicAlbumState State { get; private set; }
     public string Message { get; private set; } = "";
     public string SelectionReason { get; private set; } = "";
-    public bool IsBusy => State is MusicAlbumState.LoadingSource or MusicAlbumState.Matching or MusicAlbumState.LoadingAlbum;
+    public bool IsBusy => operation is not null || State is MusicAlbumState.LoadingSource or MusicAlbumState.Matching or MusicAlbumState.LoadingAlbum;
     public bool CanLoad => active && !disposed && !IsBusy && Item is not null;
     public bool CanConfirm => CanLoad && State == MusicAlbumState.Preview && Source is not null && Preview is not null
         && !MusicBrainzMatching.Assess(Source, Preview.Album.Release).HasIdentityConflict;
     public bool CanReject => CanLoad && Source is not null && Displayed is not null && State is MusicAlbumState.Ready or MusicAlbumState.Preview;
-    public bool CanRevoke => CanLoad && Source is not null && Match?.ConfirmedReleaseId is not null;
+    public bool CanRevoke => CanLoad && Source is not null && SavedUserTargetId is not null;
     public bool CanCancel => active && !disposed && IsBusy;
     public MusicBrainzAlbumResult? Displayed => Preview ?? Album;
     public Task OpenAsync(BangumiRelationItem item, CancellationToken cancellation = default)
     {
         if (disposed) return Task.CompletedTask;
-        Stop(); active = true; Item = item; SourceDetails = null; Source = null; Match = null; Album = Preview = null; SelectionReason = "";
+        Stop(); active = true; Item = item; SourceDetails = null; Source = null; Match = null; SavedUserTargetId = null; Album = Preview = null; SelectionReason = "";
         State = MusicAlbumState.Idle;
         if (item.Kind != BangumiRelationKind.Music || !BangumiRelationIdentityResolver.ValidSubjectId(item.Id))
         { State = MusicAlbumState.Failed; Message = "音乐条目身份无效，请返回重试。"; Notify(); return Task.CompletedTask; }
@@ -91,7 +94,7 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
             var match = await music.MatchAsync(Source, refresh, token);
             if (!accepts()) return;
             if (!MusicBrainzValidation.Search(match.Search)) throw new InvalidDataException();
-            Match = match; Preview = null;
+            Match = match; SavedUserTargetId = match.ConfirmedReleaseId; Preview = null;
             var id = match.ConfirmedReleaseId ?? match.AutomaticReleaseId;
             if (!choose && id is not null)
             {
@@ -159,6 +162,10 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
             State = MusicAlbumState.LoadingAlbum; Message = "正在保存发行版选择…"; Notify();
             await music.ConfirmAsync(source, preview.Album, token);
             if (!accepts()) return;
+            SavedUserTargetId = preview.Album.Release.Id;
+            Match = Match! with { ConfirmedReleaseId = SavedUserTargetId, AutomaticReleaseId = null,
+                ConfirmedReleaseGroupId = preview.Album.Release.ReleaseGroupId, NeedsReview = false,
+                RejectedIds = Match!.RejectedIds.Where(id => id != SavedUserTargetId).ToArray() };
             Album = preview; Preview = null; State = MusicAlbumState.Ready; SelectionReason = "你确认的发行版";
             Message = Warnings(MusicBrainzMatching.Assess(source, preview.Album.Release).HasConflict
                 ? "所选发行版的日期、目录编号或其他发行信息与来源不同，请核对版本。" : null, preview.Warning, preview.Album.CoverWarning);
@@ -174,21 +181,27 @@ public sealed class MusicAlbumViewModel(IBangumiSubjectDetailsReader subjects, I
         if (!CanReject || Source is not { } source || Displayed?.Album.Release is not { } release) return;
         await Request(async (token, accepts) =>
         {
+            State = MusicAlbumState.LoadingAlbum; Message = "正在取消关联并排除此发行版…"; Notify();
             await music.RejectAsync(source, release, token);
             if (!accepts()) return;
+            if (SavedUserTargetId == release.Id) SavedUserTargetId = null;
             Album = Preview = null; SelectionReason = "";
-            Match = await music.MatchAsync(source, true, token);
+            var match = await music.MatchAsync(source, true, token);
             if (!accepts()) return;
+            if (!MusicBrainzValidation.Search(match.Search)) throw new InvalidDataException();
+            Match = match; SavedUserTargetId = match.ConfirmedReleaseId;
             State = MusicAlbumState.Choosing;
             Message = "已取消此发行版关联并排除自动匹配。仍可手动核对后重新确认。";
         }, cancellation);
     }
     public async Task RevokeAsync(CancellationToken cancellation = default)
     {
-        if (!CanRevoke || Source is not { } source || Match?.ConfirmedReleaseId is not { } id) return;
+        if (!CanRevoke || Source is not { } source || SavedUserTargetId is not { } id) return;
         await Request(async (token, accepts) =>
         {
+            State = MusicAlbumState.LoadingAlbum; Message = "正在解除已保存的发行版关联…"; Notify();
             await music.RevokeAsync(source, id, token); if (!accepts()) return;
+            SavedUserTargetId = null;
             Album = Preview = null; SelectionReason = "";
             Match = Match! with { ConfirmedReleaseId = null, AutomaticReleaseId = null, RejectedIds = Match.RejectedIds.Append(id).Distinct().ToArray() };
             State = MusicAlbumState.Choosing; Message = "已解除保存的发行版并排除自动匹配。可按需查找其他发行版。";

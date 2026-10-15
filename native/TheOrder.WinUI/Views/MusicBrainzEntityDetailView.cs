@@ -124,6 +124,12 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
         if (detail is null) return;
         foreach (var fact in detail.Facts)
         {
+            if (fact.Label == "艺术家" && detail.ArtistCredits.Length > 0)
+            {
+                var label = Text(12, "艺术家"); label.Opacity = .72;
+                facts.Children.Add(new StackPanel { Spacing = 3, Children = { label, MusicDetailFormatting.Artists(detail.ArtistCredits, FollowAsync) } });
+                continue;
+            }
             var value = fact.Label == "语言" ? string.Join(" / ", fact.Value.Split(" · ").Select(MusicDetailFormatting.Language)) : fact.Value;
             facts.Children.Add(MusicDetailFormatting.Fact(fact.Label, value));
         }
@@ -145,7 +151,8 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
         }
         if (detail.RelationsTruncated) links.Children.Add(Text(13, "本次仅显示部分关系；更多资料可在原站查看。"));
         evidenceBody.Children.Insert(0, Text(13, "来源 · MusicBrainz\n" + detail.Reference.Kind + " · " + detail.Reference.Id));
-        if (detail.Relations.Length == 0) facts.Children.Add(Text(13, "此条目暂未提供可继续浏览的关系。"));
+        if (detail.Relations.Length == 0 && !detail.ArtistCredits.Any(x => x.ArtistId is not null))
+            facts.Children.Add(Text(13, "此条目暂未提供可继续浏览的关系。"));
     }
     private static string RelationLabel(MusicBrainzEntityKind from, MusicBrainzEntityRelation relation) => relation.RelationType switch
     {
@@ -166,6 +173,9 @@ public sealed class MusicBrainzEntityDetailView : Grid, IDisposable
     internal Task RefreshAsync() => model?.RefreshAsync() ?? Task.CompletedTask;
     internal object Evidence => new { active, state = model?.State.ToString(), reference = model?.Reference, title = title.Text, historyDepth = history.Count,
         fromCache = model?.Result?.FromCache, stale = model?.Result?.IsStale, facts = model?.Detail?.Facts, relations = model?.Detail?.Relations,
+        artistCredits = model?.Detail?.ArtistCredits,
+        artistLinks = facts.Children.OfType<StackPanel>().SelectMany(x => x.Children.OfType<TagFlowPanel>())
+            .SelectMany(x => x.Children.OfType<HyperlinkButton>()).Select(InteractiveCardEvidence.Hit).ToArray(),
         visualFactCount = facts.Children.Count, visualRelationCount = links.Children.OfType<Button>().Count(),
         message = message.Text, scrollOffset = scroll.VerticalOffset, width = ActualWidth, links = links.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray() };
     public void Deactivate() { active = false; navigation++; model?.Deactivate(); progress.IsActive = false; history.Clear(); shown = null; }

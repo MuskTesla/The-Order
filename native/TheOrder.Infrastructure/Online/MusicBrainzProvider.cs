@@ -56,7 +56,9 @@ public sealed partial class MusicBrainzProvider(HttpClient http, MusicBrainzRate
                 if (best is null || MusicBrainzSearchQueries.EvidenceOrder(source, found.Candidates[0]).CompareTo(MusicBrainzSearchQueries.EvidenceOrder(source, best.Candidates[0])) > 0) best = found;
                 // A truncated/contradictory hit is not a useful stopping condition:
                 // continue the bounded plan instead of repeating the old first-hit bug.
-                if (!found.Truncated && found.Candidates.Any(x => !MusicBrainzMatching.Assess(source, x).HasConflict))
+                if (!found.Truncated && found.Candidates.Any(x => !MusicBrainzMatching.Assess(source, x).HasConflict
+                    && (source.Facts.Artists.Length == 0 || x.Artist.Length == 0
+                        || MusicBrainzSearchQueries.EvidenceOrder(source, x).Artist || MusicBrainzMatching.Assess(source, x).Strong)))
                     return found with { Notice = "已通过来源标题、别名或标题片段与发行信息找到候选，请核对后确认。" };
             }
             return (best ?? new MusicBrainzSearchResult([], 0, false, null, null)) with

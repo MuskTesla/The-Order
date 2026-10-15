@@ -83,6 +83,7 @@ public sealed partial class MusicBrainzProvider
     {
         Aliases = detail.Aliases.ToArray(),
         Facts = detail.Facts.ToArray(),
+        ArtistCredits = detail.ArtistCredits.ToArray(),
         Relations = detail.Relations.Select(relation => relation with { Attributes = relation.Attributes.ToArray() }).ToArray()
     };
     private static string? TruncationWarning(MusicBrainzEntityDetail detail) => detail.RelationsTruncated
@@ -156,7 +157,8 @@ public sealed partial class MusicBrainzProvider
             }
         }
         var detail = new MusicBrainzEntityDetail(reference, title, OptionalText(root, "type", 100),
-            OptionalText(root, "disambiguation", 1000), aliases, facts.ToArray(), relations.ToArray(), truncated, stamp);
+            OptionalText(root, "disambiguation", 1000), aliases, facts.ToArray(), relations.ToArray(), truncated, stamp)
+        { ArtistCredits = reference.Kind == MusicBrainzEntityKind.Recording ? ArtistCredits(root) : [] };
         if (!MusicBrainzEntityValidation.Detail(detail)) throw Invalid();
         return detail;
     }

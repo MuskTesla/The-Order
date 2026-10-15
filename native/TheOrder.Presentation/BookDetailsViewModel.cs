@@ -12,6 +12,8 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     private readonly Stack<Frame> history = new();
     private CancellationTokenSource? request;
     private string? rootFingerprint;
+    private BangumiSubjectDetails? rootBangumi;
+    private AniListDetails? rootAniList;
     private long generation;
     private bool active, disposed, navigating;
     public BookSource? Source { get; private set; }
@@ -51,7 +53,16 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
         BookSource? source = bg is not null ? BookSource.From(bg)
             : aniList?.Media.Kind == AniListMediaKind.Manga ? BookSource.From(aniList) : null;
         var fingerprint = source?.Fingerprint;
-        if (active && rootFingerprint == fingerprint) return;
+        rootBangumi = bg; rootAniList = bg is null ? aniList : null;
+        if (active && rootFingerprint == fingerprint)
+        {
+            // Descriptive facts can change without changing publication identity.
+            // Keep current exploration and pending requests, but refresh visible
+            // root facts. A root saved in history is refreshed when restored.
+            if (Source?.Fingerprint == fingerprint)
+            { Bangumi = rootBangumi; AniList = rootAniList; Notify(); }
+            return;
+        }
         Stop(); history.Clear(); rootFingerprint = fingerprint; active = source is not null;
         Source = source; Bangumi = bg; AniList = bg is null ? aniList : null;
         Expanded = false; ResetResults(); Incoming = ""; Message = ""; State = source is null ? BookDetailsState.Idle : BookDetailsState.Ready;
@@ -112,7 +123,9 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     {
         if (navigating) { Cancel(); return true; }
         if (history.Count == 0) return false;
-        Stop(); Restore(history.Pop()); Expanded = true; State = BookDetailsState.Ready; Notify(); return true;
+        Stop(); Restore(history.Pop());
+        if (Source?.Fingerprint == rootFingerprint) { Bangumi = rootBangumi; AniList = rootAniList; }
+        Expanded = true; State = BookDetailsState.Ready; Notify(); return true;
     }
     public Task SearchAsync(string? title = null, string? isbn = null, bool refresh = false)
     {

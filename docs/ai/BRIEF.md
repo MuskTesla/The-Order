@@ -1,4 +1,14 @@
 # The Order：当前实现与评审交接
+## ACGN 全媒体质量集成（2026-10-15，当前隔离开发入口）
+
+源码 `D:/Projects/The-Order-worktrees/acgn-quality-20261015` / `codex/acgn-quality-20261015`。从音乐检索工作区 HEAD `874ed514` 加全部 10 项未提交成果逐份校验复制，继承检查点 `5bb654d`；该快照不是本轮新增功能。原工作区保持不变。本轮明确不替换日用、不读写 Production、不推送、合并或发布；版本与锁定依赖不变。证据根 `.artifacts/acgn-quality-20261015`。
+
+五个 Astra Ultra 子代理分波独立调查 Galgame、Anime、Music、Manga/Novel、集成状态，主代理裁决并复核。实际运行 Provider 仍为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 仅有前期评估，没有运行适配器，不得宣称已接入。真实资料保留主样本与补充卷册、发行版及错误对照的不同分母，原始响应和字段级矩阵在证据根。
+
+修复 NextMoe 不同声优署名编号的同名合并及实体来源资源路径，补充人物生日、三围、注明语言与机器翻译的别名及可核对来源。AniList 只对关联节点允许明确的 `format:null`，不再丢弃有效父作品；主作品匹配仍要求有效形式。书籍同身份的普通资料刷新不再滞留旧事实，并保留查询、预览与内部返回状态。音乐检索继续使用已知艺术家上下文；人工确认、排除、解除和迟到搜索的页面状态保持一致。发行版、曲目、录音保留结构化艺术家署名及准确 Artist ID，可深入内部人物页面；不能用这些 Artist ID 确认专辑身份。音乐搜索、发行缓存对 Provider、磁盘适配器及消费者进行嵌套数组隔离，人工决定仍独立于缓存。
+
+已执行修复前反例并保留失败 TRX；当前完整客户端回归 `tests-full/` 为 **3755 通过 / 0 失败 / 0 跳过**，包含 58 项新增用例。局部 171、177、224、6 等结果有重叠，不能相加。全套通过现有本地 Worker 合成契约（交换 1、刷新 1、直连资料 2），不是 Cloudflare 部署或真实账号授权。锁定 WinUI Release x64 `publish-v2` 构建成功；真实 Test UI 验收仍在进行，最终结论须见本证据根 report/completion，不以编译或子代理报告代替。
+
 ## MusicBrainz 常见歌名检索（2026-10-15，当前隔离开发入口）
 
 源码 `D:/Projects/The-Order-worktrees/music-retrieval-20261015` / `codex/music-retrieval-20261015`，基于874ed514并保留原工作树2份dirty维护文档；本轮实现未提交，冻结哈希见 `.artifacts/music-retrieval-20261015/implementation-freeze.json`。用户明确要求解决后替换正式版；实际安装状态以该证据根local-promotion回执为准，不授权推送或公开发布。

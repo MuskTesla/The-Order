@@ -35,15 +35,15 @@ internal static class MusicBrainzSearchQueries
         var character = Regex.Replace(full, @"\s*\(\s*CV\s*:.*$", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Trim();
         return new[] { character, full }.Where(x => x.Length > 0).Select(x => x[..Math.Min(x.Length, 200)]);
     }).Distinct(StringComparer.OrdinalIgnoreCase).Take(4).ToArray();
-    internal static (bool Catalogue, bool Barcode, bool Date, bool Title, bool Artist, bool Consistent) EvidenceOrder(MusicAlbumSource source, MusicBrainzReleaseCandidate candidate)
+    internal static (bool Catalogue, bool Barcode, bool Date, bool Artist, bool Title, bool Consistent) EvidenceOrder(MusicAlbumSource source, MusicBrainzReleaseCandidate candidate)
     {
         var catalogues = MusicBrainzMatching.Catalogues(source.Facts.CatalogNumbers).Select(MusicBrainzMatching.Normalize).ToArray();
         var found = candidate.Labels.Where(x => x.CatalogNumber is not null).Select(x => MusicBrainzMatching.Normalize(x.CatalogNumber!)).ToArray();
         var artist = MusicBrainzMatching.Normalize(candidate.Artist);
         return (catalogues.Length > 0 && catalogues.All(found.Contains), source.Facts.Barcode is { } code && code == candidate.Barcode,
             source.ReleaseDate is { } date && date == candidate.Date,
-            source.Facts.TitleAliases.Prepend(source.Title).Any(x => MusicBrainzMatching.Normalize(x) == MusicBrainzMatching.Normalize(candidate.Title)),
             artist.Length > 0 && ArtistTerms(source.Facts.Artists).Any(x => artist.Contains(MusicBrainzMatching.Normalize(x), StringComparison.Ordinal)),
+            source.Facts.TitleAliases.Prepend(source.Title).Any(x => MusicBrainzMatching.Normalize(x) == MusicBrainzMatching.Normalize(candidate.Title)),
             !MusicBrainzMatching.Assess(source, candidate).HasConflict);
     }
     internal static string[] Fallback(MusicAlbumSource source)

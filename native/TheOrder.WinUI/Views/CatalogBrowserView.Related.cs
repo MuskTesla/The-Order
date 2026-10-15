@@ -135,6 +135,10 @@ public sealed partial class CatalogBrowserView
     {
         switch (action)
         {
+            case "catalogEntitySources":
+                if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test) throw new InvalidOperationException("Test profile required.");
+                foreach (var expander in body.Children.OfType<Expander>().Where(x => Equals(x.Tag, "entity-sources"))) expander.IsExpanded = true;
+                break;
             case "releaseExpand": if (workContent is not null) await workContent.ReleasesFixtureAsync("expand"); break;
             case "releaseRefresh": if (workContent is not null) await workContent.ReleasesFixtureAsync("refresh"); break;
             case "releaseInspect": if (workContent is not null) await workContent.ReleasesFixtureAsync("inspect"); break;

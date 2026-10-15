@@ -16,6 +16,8 @@ namespace TheOrder.WinUI.Views;
 public sealed class MusicBrainzAlbumView : Grid, IDisposable
 {
     private readonly TextBlock title = Text(28), type = Text(14), artist = Text(16);
+    private readonly ContentControl artistLinks = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
+    private MusicBrainzArtistCredit[]? shownArtists;
     private readonly TextBlock relation = Text(14), status = Text(14), choiceReason = Text(13);
     private readonly DetailSynopsis summary = new() { Heading = "简介 · Bangumi" };
     private readonly TagFlowPanel releaseFacts = MusicDetailFormatting.Facts();
@@ -69,7 +71,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         var coverFrame = new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = cover };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         header.Children.Add(coverFrame);
-        var info = new StackPanel { Spacing = 10, Children = { type, title, artist, releaseFacts, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
+        var info = new StackPanel { Spacing = 10, Children = { type, title, artist, artistLinks, releaseFacts, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
         actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(showTracks); actions.Children.Add(editions);
         confirmActions.Children.Add(confirm); confirmActions.Children.Add(chooseAgain);
         actions.Children.Add(reject); AutomationProperties.SetAutomationId(reject, "MusicAlbumReject");
@@ -137,6 +139,15 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         RenderReleaseFacts(album, source);
         choiceReason.Text = model?.State == MusicAlbumState.Preview ? "发行版预览 · 尚未确认" : model?.SelectionReason ?? "";
         foreach (var text in new[] { artist, choiceReason }) text.Visibility = Visible(text.Text.Length > 0);
+        var creditedArtists = album?.Release.ArtistCredits;
+        if (!ReferenceEquals(shownArtists, creditedArtists))
+        {
+            shownArtists = creditedArtists;
+            artistLinks.Content = creditedArtists is { Length: > 0 }
+                ? MusicDetailFormatting.Artists(creditedArtists, entityView is not null ? OpenEntityAsync : null) : null;
+        }
+        artistLinks.Visibility = Visible(creditedArtists is { Length: > 0 });
+        if (creditedArtists is { Length: > 0 }) artist.Visibility = Visibility.Collapsed;
         relation.Text = origin.Length == 0 ? relationLabel : $"与《{origin}》的关联 · {relationLabel}";
         status.Text = model?.Message ?? ""; status.Visibility = Visible(status.Text.Length > 0);
         ring.IsActive = model?.IsBusy == true; ring.Visibility = Visible(ring.IsActive);
@@ -146,7 +157,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         showTracks.Visibility = Visible(album?.Discs.Any(x => x.Tracks.Length > 0) == true);
         actions.Visibility = Visible(actions.Children.OfType<FrameworkElement>().Any(x => x.Visibility == Visibility.Visible));
         confirmActions.Visibility = Visible(model?.State == MusicAlbumState.Preview); confirm.IsEnabled = model?.CanConfirm == true;
-        reject.Visibility = Visible(model?.Displayed is not null || model?.Match?.ConfirmedReleaseId is not null);
+        reject.Visibility = Visible(model?.Displayed is not null || model?.SavedUserTargetId is not null);
         reject.IsEnabled = model?.CanReject == true || model?.CanRevoke == true;
         reject.Content = model?.Displayed is null || model?.State == MusicAlbumState.Ready ? "取消关联" : "排除此发行版";
         candidateSection.Visibility = Visible(model?.State == MusicAlbumState.Choosing || model?.State == MusicAlbumState.Failed && source is not null);
@@ -403,6 +414,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     internal object Evidence => new
     {
         state = model?.State.ToString(), subjectId = model?.Item?.Id, title = title.Text, status = status.Text, model?.SelectionReason,
+        artistCredits = model?.Displayed?.Album.Release.ArtistCredits,
+        artistLinks = (artistLinks.Content as TagFlowPanel)?.Children.OfType<HyperlinkButton>().Select(InteractiveCardEvidence.Hit).ToArray(),
         releaseId = model?.Displayed?.Album.Release.Id, releaseGroupId = model?.Displayed?.Album.Release.ReleaseGroupId,
         date = model?.Displayed?.Album.Release.Date, labels = model?.Displayed?.Album.Release.Labels,
         discs = model?.Displayed?.Album.Discs.Select(x => new { x.Position, x.Title, x.Format, tracks = x.Tracks.Length,
@@ -485,6 +498,8 @@ public sealed class MusicTrackRowView : StackPanel
         var track = row.Track;
         if (track.RecordingId is { } recording)
             details.Children.Add(Link("查看录音资料 →", new(MusicBrainzEntityKind.Recording, recording), row.Navigate));
+        if (track.ArtistCredits.Length > 0)
+            details.Children.Add(new StackPanel { Spacing = 3, Children = { Text("曲目署名", 12), MusicDetailFormatting.Artists(track.ArtistCredits, row.Navigate) } });
         // Credits retains the previous cache contract; linked Work credits appear once under their Work.
         var workCredits = track.Works.SelectMany(x => x.Credits).ToHashSet();
         var recordingCredits = track.Credits.Where(x => !workCredits.Contains(x)).ToArray();

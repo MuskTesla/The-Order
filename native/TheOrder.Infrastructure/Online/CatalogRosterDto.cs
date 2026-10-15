@@ -27,11 +27,16 @@ internal static class CatalogRosterDto
         public bool Supplement => Image(Field(Value, "image")) is null && Text(Value, "roster_role") is "" or "unknown" && Text(Value, "identity").Length == 0;
         public bool IllustratedRoster => Image(Field(Value, "image")) is not null && Text(Value, "roster_role") is "main" or "secondary" or "appears";
     }
-    private static bool VoiceNamesMatch(JsonElement a, JsonElement b)
+    private static bool SameVoiceIdentity(JsonElement a, JsonElement b)
     {
         var personA = Text(a, "person_id"); var personB = Text(b, "person_id");
         if (ValidId(personA) && ValidId(personB) && personA != personB) return false;
-        return VoiceIdentity(a) is not null && VoiceIdentity(b) is not null && Spellings(a).Overlaps(Spellings(b));
+        // A name is not proof that two separately numbered credit names describe
+        // one actor. Only an exact credit or explicit person identity can bridge
+        // partial rows; aliases must not erase a different known identifier.
+        var creditA = Text(a, "id"); var creditB = Text(b, "id");
+        return ValidId(creditA) && creditA == creditB
+            || ValidId(personA) && personA == personB;
     }
     internal static IEnumerable<JsonElement[]> Groups(JsonElement work)
     {
@@ -57,7 +62,7 @@ internal static class CatalogRosterDto
             var exact = groups.Where(g => g != group && anchors[g].Any(r => r.IllustratedRoster)
                 && anchors[g].Any(r => group.Any(s => s.Names.Overlaps(r.Names)
                     && s.Voices.Any(v => VoiceIdentity(v) is { } id && anchors[g].SelectMany(x => x.Voices).Any(w => VoiceIdentity(w) == id))))).ToArray();
-            var matches = exact.Length > 0 ? exact : groups.Where(g => g != group && anchors[g].Any(r => r.IllustratedRoster && group.Any(s => s.Names.Overlaps(r.Names) && s.Voices.Any(v => r.Voices.Any(w => VoiceNamesMatch(v, w)))))).ToArray();
+            var matches = exact.Length > 0 ? exact : groups.Where(g => g != group && anchors[g].Any(r => r.IllustratedRoster && group.Any(s => s.Names.Overlaps(r.Names) && s.Voices.Any(v => r.Voices.Any(w => SameVoiceIdentity(v, w)))))).ToArray();
             if (matches.Length == 1) { matches[0].AddRange(group); groups.Remove(group); }
         }
         return groups.Select(g => g.Select(r => r.Value).ToArray()).ToArray();
@@ -68,7 +73,7 @@ internal static class CatalogRosterDto
         foreach (var voice in rows.Where(v => Localized(v).Length > 0))
         {
             var identity = VoiceIdentity(voice);
-            if (kept.Any(other => identity is not null && identity == VoiceIdentity(other) || VoiceNamesMatch(voice, other) || identity is null && VoiceIdentity(other) is null && Clean(Localized(voice)) == Clean(Localized(other)))) continue;
+            if (kept.Any(other => SameVoiceIdentity(voice, other) || identity is null && VoiceIdentity(other) is null && Clean(Localized(voice)) == Clean(Localized(other)))) continue;
             kept.Add(voice); if (kept.Count == 16) break;
         }
         return kept;

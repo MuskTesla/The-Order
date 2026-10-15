@@ -9,6 +9,7 @@ public sealed record MusicBrainzEntityDetail(MusicBrainzReference Reference, str
     bool RelationsTruncated, DateTimeOffset FetchedAtUtc)
 {
     public string Url => Reference.Url;
+    public MusicBrainzArtistCredit[] ArtistCredits { get; init; } = [];
 }
 public sealed record MusicBrainzEntityResult(MusicBrainzEntityDetail Detail, bool FromCache, bool IsStale, string? Warning);
 public interface IMusicBrainzEntityReader
@@ -26,6 +27,7 @@ public static class MusicBrainzEntityValidation
         && (detail.EntityType is null || MusicBrainzValidation.Text(detail.EntityType, 100))
         && (detail.Disambiguation is null || MusicBrainzValidation.Text(detail.Disambiguation, 1000))
         && MusicBrainzValidation.Texts(detail.Aliases, 128, 2000)
+        && MusicBrainzValidation.ArtistCredits(detail.ArtistCredits)
         && detail.Facts is { Length: <= 32 } && detail.Facts.All(f => f is not null
             && MusicBrainzValidation.Text(f.Label, 100, false) && MusicBrainzValidation.Text(f.Value, 4000, false))
         && detail.Relations is { Length: <= MaximumRelations } && detail.Relations.All(r => r is not null

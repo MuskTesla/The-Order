@@ -112,14 +112,20 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
     private static string Type(AniListMediaKind kind) => kind == AniListMediaKind.Anime ? "ANIME" : "MANGA";
     private static JsonElement MediaNode(JsonDocument document) => document.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("Media", out var value) && value.ValueKind == JsonValueKind.Object
         ? value : throw new AniListException(AniListFailure.Unavailable, "AniList 没有此作品，仍可查看 Bangumi 资料。");
-    public static AniListMedia MapMedia(JsonElement row)
+    public static AniListMedia MapMedia(JsonElement row) => MapMedia(row, allowUnknownRelationFormat: false);
+    private static AniListMedia MapMedia(JsonElement row, bool allowUnknownRelationFormat)
     {
         var kind = Str(row, "type") switch { "ANIME" => AniListMediaKind.Anime, "MANGA" => AniListMediaKind.Manga, _ => throw Invalid() };
         var titles = Node(row, "title"); var native = Str(titles, "native"); var english = Str(titles, "english"); var romaji = Str(titles, "romaji");
         var result = new AniListMedia(Number(row, "id") ?? 0, Number(row, "idMal"), kind, english.Length > 0 ? english : romaji.Length > 0 ? romaji : native,
             native, english, Str(row, "format"), Str(row, "status"), Image(Node(row, "coverImage"), "large"), Date(Node(row, "startDate")), Date(Node(row, "endDate")),
             Positive(row, "episodes"), Positive(row, "chapters"), Positive(row, "volumes"), Rows(row, "synonyms").Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).Where(x => x.Length > 0).Take(30).ToArray());
-        if (!AniListValidation.Media(result)) throw Invalid(); return result;
+        // Announced related works can legitimately have format:null. Keep the
+        // typed relation without making unknown format a valid primary match.
+        // Other malformed format values still follow the strict validation.
+        var unknownRelationFormat = allowUnknownRelationFormat && row.TryGetProperty("format", out var format)
+            && format.ValueKind == JsonValueKind.Null;
+        if (!(unknownRelationFormat ? AniListValidation.RelationMedia(result) : AniListValidation.Media(result))) throw Invalid(); return result;
     }
     public static AniListDetails MapDetails(JsonElement row, int page, DateTimeOffset fetched)
     {
@@ -129,7 +135,7 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
             Rows(row, "tags").Where(x => !Flag(x, "isGeneralSpoiler") && !Flag(x, "isMediaSpoiler")).Select(x => Str(x, "name")).Where(x => x.Length > 0).Distinct().Take(100).ToArray(),
             Rows(characters, "edges").Take(24).Select(MapCharacter).ToArray(),
             Rows(staff, "edges").Take(32).Select(x => new AniListStaff(Person(Node(x, "node")), Str(x, "role"))).ToArray(),
-            Rows(Node(row, "relations"), "edges").Take(100).Where(x => Str(Node(x, "node"), "type") is "ANIME" or "MANGA").Select(x => new AniListRelation(MapMedia(Node(x, "node")), Str(x, "relationType"))).ToArray(),
+            Rows(Node(row, "relations"), "edges").Take(100).Where(x => Str(Node(x, "node"), "type") is "ANIME" or "MANGA").Select(x => new AniListRelation(MapMedia(Node(x, "node"), allowUnknownRelationFormat: true), Str(x, "relationType"))).ToArray(),
             page, Flag(Node(characters, "pageInfo"), "hasNextPage"), Flag(Node(staff, "pageInfo"), "hasNextPage"), fetched)
         {
             WatchLinks = Rows(row, "externalLinks").Where(x => Str(x, "type") == "STREAMING" && !Flag(x, "isDisabled"))

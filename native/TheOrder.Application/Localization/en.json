@@ -959,5 +959,10 @@
   "关联本篇": "Related main game",
   "未公开姓名": "Unnamed character",
   "未收录角色图片": "No character image listed",
-  "Fan disc": "Fan disc"
+  "Fan disc": "Fan disc",
+  "生日": "Birthday",
+  "别名": "Alias",
+  "机器翻译": "Machine translation",
+  "三围（胸/腰/臀，cm）": "Measurements (bust/waist/hips, cm)",
+  "资料来源": "Sources"
 }

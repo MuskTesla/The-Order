@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using TheOrder.Application;
 
@@ -68,6 +69,37 @@ internal static class MusicDetailFormatting
     {
         var parts = SplitCredit(credit);
         return credit.Name + (parts.Attributes.Length == 0 ? "" : " · " + parts.Attributes);
+    }
+    internal static TagFlowPanel Artists(IEnumerable<MusicBrainzArtistCredit> credits, Func<MusicBrainzReference, Task>? navigate)
+    {
+        var row = new TagFlowPanel { HorizontalSpacing = 0, VerticalSpacing = 4, MaximumItemWidth = 310 };
+        foreach (var credit in credits)
+        {
+            if (credit.ArtistId is { } id)
+            {
+                var reference = new MusicBrainzReference(MusicBrainzEntityKind.Artist, id);
+                var label = Text(credit.Name, 14); label.IsHitTestVisible = false;
+                var link = new HyperlinkButton { Content = label, Padding = new(0, 3, 0, 3), MinHeight = 30,
+                    HorizontalAlignment = HorizontalAlignment.Left, HorizontalContentAlignment = HorizontalAlignment.Left };
+                AutomationProperties.SetAutomationId(link, "MusicArtist-" + id);
+                AutomationProperties.SetName(link, credit.Name + " · 音乐人 / 团体");
+                ToolTipService.SetToolTip(link, reference.Url);
+                link.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        if (navigate is not null) { await navigate(reference); return; }
+                        if (!MusicBrainzReference.TryParse(reference.Url, out _) || !await Windows.System.Launcher.LaunchUriAsync(new Uri(reference.Url)))
+                            throw new InvalidOperationException();
+                    }
+                    catch { label.Text = credit.Name + "（未能打开，可重试）"; }
+                };
+                row.Children.Add(link);
+            }
+            else row.Children.Add(Text(credit.Name, 14));
+            if (credit.JoinPhrase.Length > 0) row.Children.Add(Text(credit.JoinPhrase, 14));
+        }
+        return row;
     }
     internal static TextBlock Text(string value, double size) => new() { Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
 }

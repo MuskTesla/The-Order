@@ -32,7 +32,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
         // Keep legacy source fingerprints/user choices stable. Aliases affect
         // retrieval only, and are included separately in the new cache generation.
         var hints = System.Text.Json.JsonSerializer.Serialize(source.Facts.TitleAliases);
-        var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-4:" + hints)));
+        var key = "search:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source.Fingerprint + ":retrieval-5:" + hints)));
         var result = await LoadAsync(key, refresh, SearchFreshFor, async token =>
             new(key, Now, Search: await provider.SearchAsync(source, token).ConfigureAwait(false)), cancellation).ConfigureAwait(false);
         var current = await ReadDecisions(context, cancellation).ConfigureAwait(false);
@@ -96,6 +96,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
             var value = await fetch(cancellation).ConfigureAwait(false); cancellation.ThrowIfCancellationRequested();
             if (value.Key != key || !MusicBrainzValidation.Cache(value) || value.CachedAtUtc > Now.AddMinutes(5))
                 throw new MusicBrainzException(MusicBrainzFailure.InvalidResponse, "MusicBrainz 资料身份或格式不一致。");
+            value = Snapshot(value);
             await commits.WaitAsync(cancellation).ConfigureAwait(false);
             try
             {
@@ -104,7 +105,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
                 {
                     var persisted = false;
                     if (disk is not null)
-                        try { await disk.WriteAsync(value, cancellation).ConfigureAwait(false); persisted = true; }
+                        try { await disk.WriteAsync(Snapshot(value), cancellation).ConfigureAwait(false); persisted = true; }
                         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
                     if (!persisted) cancellation.ThrowIfCancellationRequested();
                     lock (gate)
@@ -114,7 +115,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
                 }
             }
             finally { commits.Release(); }
-            return (value, false, false, null);
+            return (Snapshot(value), false, false, null);
         }
         catch (MusicBrainzException e) when (prior is not null && e.Failure is MusicBrainzFailure.Offline or MusicBrainzFailure.Timeout
             or MusicBrainzFailure.Server or MusicBrainzFailure.RateLimited)
@@ -153,7 +154,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
             lock (gate)
             {
                 if (memory.TryGetValue(key, out var current))
-                { if (!Valid(current)) return null; Remember(current); return current; }
+                { if (!Valid(current)) return null; Remember(current); return Snapshot(current); }
                 observedMutation = cacheMutation;
             }
             if (disk is null) return null;
@@ -165,7 +166,7 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
             {
                 if (cacheMutation != observedMutation) continue;
                 if (!Valid(value)) return null;
-                Remember(value!); return value;
+                var owned = Snapshot(value!); Remember(owned); return Snapshot(owned);
             }
         }
     }
@@ -173,5 +174,26 @@ public sealed class MusicBrainzService(IMusicBrainzProvider provider, IMusicBrai
     {
         memory.Remove(value.Key); memory[value.Key] = value;
         while (memory.Count > 64) memory.Remove(memory.Keys.First());
+    }
+    // Arrays remain serialization-compatible, but neither a provider, disk
+    // adapter nor a UI consumer may retain the cache's mutable ownership.
+    private static MusicBrainzCacheValue Snapshot(MusicBrainzCacheValue value)
+    {
+        static MusicBrainzReleaseCandidate Release(MusicBrainzReleaseCandidate release) => release with
+        { Labels = release.Labels.ToArray(), MediaFormats = release.MediaFormats.ToArray(),
+            ReleaseEvents = release.ReleaseEvents.ToArray(), ArtistCredits = release.ArtistCredits.ToArray() };
+        return value with
+        {
+            Search = value.Search is { } search ? search with { Candidates = search.Candidates.Select(Release).ToArray() } : null,
+            Album = value.Album is { } album ? album with
+            {
+                Release = Release(album.Release), SecondaryTypes = album.SecondaryTypes.ToArray(), Credits = album.Credits.ToArray(),
+                Discs = album.Discs.Select(disc => disc with { Tracks = disc.Tracks.Select(track => track with
+                {
+                    Credits = track.Credits.ToArray(), ArtistCredits = track.ArtistCredits.ToArray(),
+                    Works = track.Works.Select(work => work with { Languages = work.Languages.ToArray(), Credits = work.Credits.ToArray() }).ToArray()
+                }).ToArray() }).ToArray()
+            } : null
+        };
     }
 }

@@ -71,6 +71,10 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
         mediaVisible = mediaActive,
         media = mediaDetail?.Evidence,
         releases = workContent?.ReleaseEvidence,
+        entityFacts = current?.Kind is not (null or CatalogEntityKind.Work) ? body.Children.OfType<TextBlock>().Select(x => x.Text).ToArray() : null,
+        entitySources = body.Children.OfType<Expander>().Where(x => Equals(x.Tag, "entity-sources"))
+            .SelectMany(x => x.Content is StackPanel panel ? panel.Children.OfType<TagFlowPanel>() : [])
+            .SelectMany(x => x.Children.OfType<HyperlinkButton>()).Select(x => new { label = x.Content?.ToString(), url = x.Tag as string }).ToArray(),
         focus = XamlRoot is not null && Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) is DependencyObject focused
             ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(focused) : null
     };
@@ -153,6 +157,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
                 if (detail.Entity.ImageUrl is { } url) body.Children.Add(new CoverPresenter { SourceKey = registry.Register(url, "entity"), Width = 180, Height = 220, PreserveEntireImage = true, HorizontalAlignment = HorizontalAlignment.Left });
                 if (!detail.Facts.IsEmpty) body.Children.Add(new TextBlock { Text = string.Join("\n", detail.Facts), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
                 if (detail.Description.Length > 0) body.Children.Add(new MarkdownView { Text = CatalogLanguage.Select(detail.Introductions)?.Value ?? detail.Description, Images = Images, Registry = registry, OpenLink = OpenLinkAsync });
+                body.Children.Add(EntitySources(detail));
                 if (!detail.Related.IsEmpty) { var links = new TagFlowPanel(); foreach (var item in detail.Related) links.Children.Add(item.Kind == CatalogEntityKind.Trait ? CatalogTagChip.Create(CatalogLanguage.Name(item), item, e => OpenAsync(e)) : EntityLink(item)); body.Children.Add(links); }
                 if (entity.Kind == CatalogEntityKind.Trait)
                 {
@@ -204,6 +209,25 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
     private void Failure(string text, CatalogEntityRef entity) { message.Text = text; var retry = new Button { Content = UiText.Get("重试"), HorizontalAlignment = HorizontalAlignment.Left }; retry.Click += async (_, _) => await LoadAsync(entity, null); body.Children.Add(retry); }
     private CatalogContentView Content() => new() { ReleasesAuthGeneration = releasesAuth, ReleasesReader = releasesReader, Images = Images, Registry = registry, Browse = e => OpenAsync(e), OpenLink = OpenLinkAsync };
     private HyperlinkButton EntityLink(CatalogEntityRef entity) { var button = new HyperlinkButton { Content = CatalogLanguage.Name(entity), Padding = new Thickness(0, 0, 12, 0) }; button.Click += async (_, _) => await OpenAsync(entity); return button; }
+    private UIElement EntitySources(CatalogEntityDetail detail)
+    {
+        var source = new StackPanel { Spacing = 8 };
+        source.Children.Add(new TextBlock { Text = "NextMoe", TextWrapping = TextWrapping.Wrap });
+        var links = new TagFlowPanel { HorizontalSpacing = 12, VerticalSpacing = 8 };
+        foreach (var reference in detail.References.Where(r => r.Url is not null).DistinctBy(r => r.Url))
+        {
+            var url = reference.Url!;
+            var name = reference.Source switch { "vndb" => "VNDB", "bangumi" => "Bangumi", _ => reference.Source };
+            var link = new HyperlinkButton { Content = name, Tag = url, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(link, "CatalogEntitySource-" + reference.Source);
+            ToolTipService.SetToolTip(link, url);
+            link.Click += async (_, _) => await OpenSourceAsync(url);
+            links.Children.Add(link);
+        }
+        if (links.Children.Count > 0) source.Children.Add(links);
+        return new Expander { Header = UiText.Get("资料来源"), Tag = "entity-sources", Content = source, HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch, IsExpanded = false };
+    }
     private UIElement SourceLinks(WorkMetadata work, BannerChoice? artwork)
     {
         var source = new StackPanel { Spacing = 8 };

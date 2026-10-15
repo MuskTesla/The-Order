@@ -54,7 +54,7 @@ public sealed record AniListMedia(int Id, int? MalId, AniListMediaKind Kind, str
     int? Episodes, int? Chapters, int? Volumes, string[] Synonyms)
 {
     public string Url => new AniListReference(Id, Kind).Url;
-    public string TypeName => Kind == AniListMediaKind.Anime ? "动画" : Format == "NOVEL" ? "轻小说 / 小说" : "漫画";
+    public string TypeName => Kind == AniListMediaKind.Anime ? "动画" : Format.Length == 0 ? "书籍" : Format == "NOVEL" ? "轻小说 / 小说" : "漫画";
 }
 public sealed record AniListPerson(int Id, string Name, string NativeName, string? ImageUrl);
 public sealed record AniListVoiceRole(AniListPerson Person, string? RoleNotes, string? DubGroup);
@@ -203,8 +203,11 @@ public static class AniListValidation
         && u.Scheme == "https" && u.IsDefaultPort && u.UserInfo.Length == 0 && u.Query.Length == 0 && u.Fragment.Length == 0
         && u.Host == "s4.anilist.co" && u.AbsolutePath.StartsWith("/file/anilistcdn/", StringComparison.Ordinal)
         && url == u.AbsoluteUri && !url.Contains("/../", StringComparison.Ordinal);
-    public static bool Media(AniListMedia? m) => m is not null && m.Id > 0 && Enum.IsDefined(m.Kind) && (m.MalId is null or > 0)
-        && Text(m.Title, 2000, false) && Text(m.NativeTitle, 2000) && Text(m.EnglishTitle, 2000) && Text(m.Format, 64, false)
+    public static bool Media(AniListMedia? m) => MediaCore(m, requireFormat: true);
+    public static bool RelationMedia(AniListMedia? m) => MediaCore(m, requireFormat: false);
+    private static bool MediaCore(AniListMedia? m, bool requireFormat) => m is not null && m.Id > 0 && Enum.IsDefined(m.Kind) && (m.MalId is null or > 0)
+        && Text(m.Title, 2000, false) && Text(m.NativeTitle, 2000) && Text(m.EnglishTitle, 2000)
+        && (Text(m.Format, 64, false) || !requireFormat && m.Format == "")
         && Text(m.Status, 64) && (m.CoverUrl is null || Image(m.CoverUrl)) && (m.StartDate is null || Date(m.StartDate))
         && (m.EndDate is null || Date(m.EndDate)) && (m.Episodes is null or > 0 and <= 1000000)
         && (m.Chapters is null or > 0 and <= 1000000) && (m.Volumes is null or > 0 and <= 1000000) && Texts(m.Synonyms, 30, 2000);
@@ -215,7 +218,7 @@ public static class AniListValidation
         && d.Characters is { Length: <= 24 } && d.Characters.All(x => x is not null && Person(x.Person) && Text(x.Role, 100) && x.VoiceActors is { Length: <= 8 } && x.VoiceActors.All(Person)
             && x.VoiceRoles is { Length: <= 8 } && x.VoiceRoles.All(r => r is not null && Person(r.Person) && OptionalText(r.RoleNotes, 1000) && OptionalText(r.DubGroup, 500)))
         && d.Staff is { Length: <= 32 } && d.Staff.All(x => x is not null && Person(x.Person) && Text(x.Role, 300))
-        && d.Relations is { Length: <= 100 } && d.Relations.All(x => x is not null && Media(x.Media) && Text(x.Relation, 100, false))
+        && d.Relations is { Length: <= 100 } && d.Relations.All(x => x is not null && RelationMedia(x.Media) && Text(x.Relation, 100, false))
         && d.WatchLinks is { Length: <= 24 } && d.WatchLinks.All(AniListPlayback.ValidWatchLink)
         && (d.Trailer is null || AniListPlayback.ValidTrailer(d.Trailer))
         && d.PeoplePage is > 0 and <= 10 && d.FetchedAtUtc != default;

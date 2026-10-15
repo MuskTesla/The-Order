@@ -57,6 +57,9 @@ public sealed record MusicAlbumSource(string BangumiId, string Title, string? Re
     }
 }
 public sealed record MusicBrainzLabel(string Name, string? CatalogNumber);
+// The credited spelling and join phrase belong to this release/track/recording.
+// Artist identities are navigation facts, never evidence of release identity.
+public sealed record MusicBrainzArtistCredit(string Name, string? ArtistId, string JoinPhrase);
 public sealed record MusicBrainzCredit(string Role, string Name, string? ArtistId);
 public sealed record MusicBrainzWork(string Id, string Title, string? Type, string[] Languages, MusicBrainzCredit[] Credits)
 {
@@ -67,6 +70,7 @@ public sealed record MusicBrainzTrack(int Position, string Number, string Title,
 {
     // Optional additions retain the original serialized track/constructor contract.
     public MusicBrainzWork[] Works { get; init; } = [];
+    public MusicBrainzArtistCredit[] ArtistCredits { get; init; } = [];
 }
 public sealed record MusicBrainzDisc(int Position, string Title, string Format, MusicBrainzTrack[] Tracks);
 public sealed record MusicBrainzReleaseEvent(string? Date, string? Country);
@@ -79,6 +83,7 @@ public sealed record MusicBrainzReleaseCandidate(string Id, string? ReleaseGroup
     public string? TextScript { get; init; }
     public string[] MediaFormats { get; init; } = [];
     public MusicBrainzReleaseEvent[] ReleaseEvents { get; init; } = [];
+    public MusicBrainzArtistCredit[] ArtistCredits { get; init; } = [];
 }
 public sealed record MusicBrainzSearchResult(MusicBrainzReleaseCandidate[] Candidates, int Total, bool Truncated,
     string? ExplicitReleaseId, string? Notice);
@@ -185,6 +190,9 @@ public static class MusicBrainzValidation
     public static bool Text(string? text, int max, bool empty = true) => text is not null && text.Length <= max
         && (empty || !string.IsNullOrWhiteSpace(text)) && !text.Any(char.IsControl);
     public static bool Texts(string[]? values, int count, int max) => values is not null && values.Length <= count && values.All(x => Text(x, max, false));
+    public static bool ArtistCredits(MusicBrainzArtistCredit[]? values) => values is { Length: <= 64 }
+        && values.All(x => x is not null && Text(x.Name, 500, false) && Text(x.JoinPhrase, 100)
+            && (x.ArtistId is null || MusicBrainzReference.ValidId(x.ArtistId)));
     public static bool Date(string? value, bool full = false) => value is not null && (full
         ? DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
         : Date(value, true) || Regex.IsMatch(value, @"^[1-9]\d{3}$") || Regex.IsMatch(value, @"^[1-9]\d{3}-(0[1-9]|1[0-2])$"));
@@ -196,7 +204,7 @@ public static class MusicBrainzValidation
         && c.DiscCount is null or >= 0 and <= 50 && c.TrackCount is null or >= 0 and <= 5000
         && (c.Disambiguation is null || Text(c.Disambiguation, 1000)) && (c.Packaging is null || Text(c.Packaging, 100))
         && (c.TextLanguage is null || Text(c.TextLanguage, 20)) && (c.TextScript is null || Text(c.TextScript, 20))
-        && Texts(c.MediaFormats, 50, 100) && c.ReleaseEvents is { Length: <= 256 }
+        && Texts(c.MediaFormats, 50, 100) && ArtistCredits(c.ArtistCredits) && c.ReleaseEvents is { Length: <= 256 }
         && c.ReleaseEvents.All(e => e is not null && (e.Date is null || Date(e.Date)) && (e.Country is null || Text(e.Country, 100)));
     public static bool Search(MusicBrainzSearchResult? s) => s is not null && s.Candidates is { Length: <= 25 }
         && s.Total >= s.Candidates.Length && s.Truncated == (s.Total > s.Candidates.Length) && s.Candidates.All(Candidate) && s.Candidates.Select(x => x.Id).Distinct().Count() == s.Candidates.Length
@@ -212,7 +220,8 @@ public static class MusicBrainzValidation
         && a.Discs.All(d => d is not null && d.Position is > 0 and <= 50 && Text(d.Title, 2000) && Text(d.Format, 100)
             && d.Tracks is { Length: <= 1000 } && d.Tracks.All(t => t is not null && t.Position is > 0 and <= 1000
                 && Text(t.Number, 100) && Text(t.Title, 2000, false) && Text(t.Artist, 2000) && (t.LengthMs is null or >= 0 and <= 86400000)
-                && (t.RecordingId is null || MusicBrainzReference.ValidId(t.RecordingId)) && t.Credits is { Length: <= 64 } && t.Credits.All(Credit)
+                && (t.RecordingId is null || MusicBrainzReference.ValidId(t.RecordingId)) && ArtistCredits(t.ArtistCredits)
+                && t.Credits is { Length: <= 64 } && t.Credits.All(Credit)
                 && t.Works is { Length: <= 16 } && t.Works.All(Work) && t.Works.Select(w => w.Id).Distinct().Count() == t.Works.Length)
             && d.Tracks.Select(t => t.Position).Distinct().Count() == d.Tracks.Length)
         && a.Discs.Select(d => d.Position).Distinct().Count() == a.Discs.Length && a.Discs.Sum(d => d.Tracks.Length) <= 5000

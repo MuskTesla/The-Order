@@ -20,6 +20,8 @@ public sealed class BookPublicationView : StackPanel, IDisposable
     private readonly Button back = Button("返回上一本"), cancel = Button("取消读取"), reloadSaved = Button("刷新已保存版本"), refreshRelations = Button("刷新关系"), search = Button("查找"), next = Button("查看更多版本"), confirm = Button("确认此出版版本"), refreshPreview = Button("刷新记录");
     private BookDetailsViewModel? model;
     private string? shownSource;
+    private BangumiSubjectDetails? shownBangumiFacts;
+    private AniListDetails? shownAniListFacts;
     private BangumiRelationsLoadResult? shownRelations;
     private BookPublication[]? shownCandidates;
     private BookPublicationBinding[]? shownBindings;
@@ -92,8 +94,10 @@ public sealed class BookPublicationView : StackPanel, IDisposable
             syncing = true; raw.IsExpanded = false; relations.IsExpanded = model.Relations is not null; ndl.IsExpanded = model.Search is not null; syncing = false;
             shownRelations = null; shownCandidates = null; shownBindings = null; shownPreview = null;
             relationCards.Children.Clear(); candidateCards.Children.Clear(); savedBody.Children.Clear(); previewBody.Children.Clear();
-            RenderFacts();
+            shownBangumiFacts = model.Bangumi; shownAniListFacts = model.AniList; RenderFacts();
         }
+        if (!ReferenceEquals(shownBangumiFacts, model.Bangumi) || !ReferenceEquals(shownAniListFacts, model.AniList))
+        { shownBangumiFacts = model.Bangumi; shownAniListFacts = model.AniList; RenderFacts(); }
         relations.Visibility = Visible(source.Identity.Provider == "Bangumi");
         relations.IsEnabled = ndl.IsEnabled = model.CanLoad;
         relationNotice.Text = model.Relations is { } r ? $"{r.Snapshot.Items.Count(x => x.Kind == BangumiRelationKind.Book)} 项关联 · Bangumi" + Cache(r.FromCache, r.IsStale, r.Warning)

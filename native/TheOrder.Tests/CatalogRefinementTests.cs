@@ -149,14 +149,31 @@ public sealed class CatalogRefinementTests
         Assert.Equal("Synthetic voice",Assert.Single(Assert.Single(unlinked.Presentation!.Characters).Voices).Name);
     }
     [Theory][InlineData(false)][InlineData(true)]
-    public void UniqueIncompleteRosterCanUseBothPublishedCharacterAndActorSpellings(bool reverse)
+    public void DifferentCreditIdsCannotMergeIncompleteRosterByCharacterAndActorSpellings(bool reverse)
     {
         var full=Character("81","虚构 秀樹",null,"99",true,"major");
         full["localized"]=new JsonObject {["zh-Hans"]=new JsonObject {["value"]="虚构秀树"}};
         full["voices"]![0]!["display_name"]="测试 声优";
         var supplement=Character("82","虚构秀树",null,"100",false);supplement["voices"]![0]!["display_name"]="测试声优";
-        var work=reverse?Characters(supplement,full):Characters(full,supplement);var c=Assert.Single(work.Presentation!.Characters);
-        Assert.Equal("81",c.Entity.Id);Assert.NotNull(c.Entity.ImageUrl);Assert.Single(c.Voices);Assert.Equal("major",c.Spoiler);
+        var work=reverse?Characters(supplement,full):Characters(full,supplement);
+        Assert.Equal(new[]{"81","82"},work.Presentation!.Characters.Select(c=>c.Entity.Id).Order());
+        var illustrated=work.Presentation.Characters.Single(c=>c.Entity.Id=="81");
+        Assert.NotNull(illustrated.Entity.ImageUrl);Assert.Equal("major",illustrated.Spoiler);
+        Assert.Equal("99",Assert.Single(illustrated.Voices).Id);
+        Assert.Equal("100",Assert.Single(work.Presentation.Characters.Single(c=>c.Entity.Id=="82").Voices).Id);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public void ExplicitSharedPersonCanMergeIncompleteRosterAcrossDifferentCreditIds(bool reverse)
+    {
+        var full=Character("81","虚构 秀樹","77","99",true,"major");
+        full["localized"]=new JsonObject {["zh-Hans"]=new JsonObject {["value"]="虚构秀树"}};
+        full["voices"]![0]!["display_name"]="第一个署名";
+        var supplement=Character("82","虚构秀树","77","100",false);
+        supplement["voices"]![0]!["display_name"]="不同署名";
+        var work=reverse?Characters(supplement,full):Characters(full,supplement);
+        var character=Assert.Single(work.Presentation!.Characters);
+        Assert.Equal("81",character.Entity.Id);Assert.Equal("major",character.Spoiler);
+        Assert.Equal("99",Assert.Single(character.Voices).Id);
     }
     [Fact]
     public void AmbiguousCompleteRostersAndConflictingActorPersonsCannotMergeByName()

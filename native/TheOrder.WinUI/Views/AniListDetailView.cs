@@ -290,7 +290,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         related.Header = $"关联作品 · {details.Relations.Length}";
         foreach (var item in details.Relations.OrderBy(x => x.Relation is "SEQUEL" or "PREQUEL" ? 0 : x.Relation == "ADAPTATION" ? 1 : 2))
         {
-            var labels = new StackPanel { Spacing = 5, Children = { Text(16, item.Media.Title), Text(13, Relation(item.Relation) + " · " + item.Media.TypeName) } };
+            var labels = new StackPanel { Spacing = 5, Children = { Text(16, item.Media.Title), Text(13, Relation(item.Relation) + " · " + item.Media.TypeName
+                + (item.Media.Format.Length == 0 ? " · 发行形式待定" : "")) } };
             var button = Card(Row(Picture(item.Media.CoverUrl, 48, 68), labels), 320); AutomationProperties.SetAutomationId(button, "AniListRelation-" + item.Media.Id);
             button.Click += async (_, _) => { if (model is not null) { await model.ExploreAsync(item, scroll.VerticalOffset); scroll.ChangeView(null, 0, null, true); } }; relatedCards.Children.Add(button);
         }
