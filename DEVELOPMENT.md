@@ -1,6 +1,22 @@
 # 开发与维护
 
-## ACGN 真实体验 Gate（2026-10-15，当前）
+## 全局启动与本机体验候选（2026-10-16，当前）
+
+当前维护 worktree `D:/Projects/The-Order-worktrees/launch-global-rc-20261016` / `codex/launch-global-rc-20261016`，基线240e3a5；不要到根仓库的既有 dirty 性能工作或历史发布目录继续开发。应用行为 f82ad94，构建符号处理6338e60，RC2分发源码冻结5b23883；后续文档提交见本轮 `.artifacts/launch-global-rc-20261016/completion.json`。用户最终仅另行授权本机体验替换，不等于远端发布或真实资料操作授权。
+
+固定 SDK10.0.401，锁定 restore，Release x64、`NativeProductionCandidate=true`、`UseSharedCompilation=true`，publish 加 `-p:PathMap=<当前源码绝对路径>=/_/TheOrder -p:CopyOutputSymbolsToPublishDirectory=false`。不要并行写同一 Native 构建输出。`publish-v3` 为最终应用代码；打包 `package-native-release.ps1 -PublishedDirectory <publish-v3> -OutputDirectory <全新package> -SourceManifest <source-freeze-rc2.json> -DocumentationDirectory <仓库/docs/release/candidate-20261016>`，再以已验证 Inno6.7.3 调用 `package-native-installer.ps1`。默认不包含 Test 启动器；不能把 Test-only RC wrapper 当可安装 release 包。
+
+全局偏好 `native-global-launch-v1.json` 是可选用户资料，不是缓存，首次三个 Enabled 均 false。旧主库无写入/迁移需求；用户明确保存新的游戏三态才会产生 nativeExtras v2。备份/降级必须保留全部用户伴随组件，不能只导出主库。旧版会安全拒绝新配置；同物理Root的合成全量快照恢复验证通过，不能直接把复制到新目录的 Profile 当可用克隆。
+
+完整回归入口仍在 `services/bangumi-auth-worker` 执行 `node test/run-client-bridge.mjs --all-client-tests`，显式指定 `THE_ORDER_TEST_DOTNET=<本工作区固定SDK>` 和 `THE_ORDER_TEST_RESULTS_DIR=<全新结果目录>`。最终 `tests-full/client-full-with-worker-1792088849561.trx` **3981/0/0**，包含本地 workerd/SQLite 合成契约，不是真实账号授权。集成232、音频36为重叠子集；不得相加。包复制10/0、Inno文本文件选择安装夹具12/0不是完整应用安装测试。准确旧版DLL兼容16/0+14/0及真实Setup离线字节重建有独立回执，不冒充VM升级或更新执行。
+
+实际UI入口为证据根 `Start-FinalCandidate.ps1 -RunName <未使用的ui-rc数字>`，严格绑定 `installer-rc2/payload` 和自建 `test-profile-final`；禁止裸启动默认Production。该测试库是公开元数据+22项合成记录，无真实游戏或凭据。`Control.ps1 -Control <新run> -Action exit` 正常退出。原生 peer 负责有限按钮/展开/焦点；三态选择使用有界原生 ComboBox 设置，不能写成物理键盘。当前 `ui-rc4` 已完成设置和三类人工选择重启恢复并退出；`test-library-final-proof.json` 比较全部字段，只允许已测试的那项启动覆盖修改。
+
+UI实验中的旧夹具目录和存档路径曾过期，保存被正确拒绝；在程序退出后用真实 Profile writer 仅修正合成路径，失败回执保留。受限控制器重复打开安装草稿曾等待正常保存提示；一次性 UIA 仅对准确Test PID的该提示调用原生“放弃草稿”，无桌面输入、任意目标或游戏启动。最终重新验证全部相关步骤，未修改产品来绕过校验。
+
+用户授权的本机替换已完成，详见 BRIEF 当前节与 `local-promotion/installation-receipt.json`；安装后的空Test smoke也通过，未启动Production。常规重复安装不能照抄该已完成的不可重试脚本；先确认新的明确授权、准确包和全新回退。原安装程序与新发行包的载荷、GUI、Setup及旧程序回退均已校验。未准备隔离VM、其他实际DPI、物理输入与真实工具联调仍待人工，不开启宿主网络/代理/安全/DPI设置来伪造隔离验证。发布材料与网络/许可边界见 `docs/release/candidate-20261016/`，最终Gate为CONDITIONAL GO。
+
+## ACGN 真实体验 Gate（2026-10-15，上一节点）
 
 维护入口 `D:/Projects/The-Order-worktrees/acgn-experience-gate-20261015`，分支 `codex/acgn-experience-gate-20261015`，基线 e62bc12；前一语言 worktree 与根仓库的既有未提交性能工作均保留。本轮没有安装、Production、密钥、推送、合并或发布操作。现有用户身份持久化、语言偏好和缓存格式不变，无 schema migration。
 

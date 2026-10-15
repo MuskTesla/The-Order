@@ -1,5 +1,23 @@
 # The Order：当前实现与评审交接
-## ACGN 真实体验 Gate（2026-10-15，当前隔离开发入口）
+## 全局启动策略与 RC 收口（2026-10-16，当前开发入口）
+
+源码 `D:/Projects/The-Order-worktrees/launch-global-rc-20261016`，分支 `codex/launch-global-rc-20261016`，基线 `240e3a59e516a96f1de76e34e8a53490fef7f9a2`。已核实五领域、红队、人工身份决定与语言 v1 均在基线；长期根仓库的既有性能工作及上一工作树未改动。实际 Provider 仍是 NextMoe、Bangumi、AniList、MusicBrainz、NDL；没有新增 MangaDex/MangaUpdates/VGMdb 适配器。证据根 `.artifacts/launch-global-rc-20261016`，最终交付提交见 `completion.json`。
+
+全局 LE、Magpie、后台静音首次默认**全部关闭**。`native-global-launch-v1.json` 为绑定 Profile/Store 的可选用户组件，复用 lease、原子写入和备份；不复制全局快照到游戏。新导入安装默认 Inherit，游戏文件夹可分别选择 Inherit/Enabled/Disabled，支持取消和一键恢复全局。既有未声明三态的安装保留旧路径及原有效行为；只有明确保存/恢复继承才写入新的 `nativeExtras.version=2`。配置仍按 Installation 区分，保留多安装、参数、工作目录、存档、Steam、管理员及 DPI 选择。
+
+同一不可变 LaunchPolicy 在准备、最终进程创建、会话与静音中解析当前偏好；配置变化使旧启动批准失效，不会偷偷启动过时设置。LE 仍是游戏启动 broker，Magpie 为独立辅助进程，不混同生命周期。缺路径、无效文件及失败有明确提示。音频只作用于确认的游戏 PID，保留用户静音意图和准确会话实例；退出、部分枚举失败、音量调整和主程序异常退出均有验证。新增按需、短生命周期的同 EXE 音频 guard，无服务、自启或提权。不能承诺 guard 自身被强杀、断电或未知独立音频子进程的恢复。
+
+应用行为冻结在 `f82ad94`，构建/排除符号检查点 `6338e60`；分发源码冻结 `5b238833f24ce9071858b78c4ce1c12210ef78e3`。`publish-v3` → `package-rc2` → `installer-rc2`，均是同一应用代码；后续仅交付文档。完整客户端含本地合成 Worker 契约 **3981/0/0**，相关集成 **232/0/0**，音频定点 **36/0/0**；分组重叠，不相加。6 种真实 Windows 零 PCM 场景及实际分发 EXE guard smoke 通过；不是物理前台切换体验验证。
+
+实际 RC2 WinUI 使用22项合成库，无真实游戏或凭据。CLANNAD→动画分集/人物/Staff/PV实播/观看，以及 OST 3CD→数字发行→曲目/录音通过；本地魔夜→真实 Bangumi 漫画/小说关系→系列→单卷→NDL ISBN 通过，未注入目标媒体 ID 伪造自然关联。漫画 `025541257`/ISBN9784041017319、小说 `034881042`/ISBN9784065443958及音乐手选发行版均在进程重启后恢复。合成库逐字段比较仅保留预期的游戏覆盖修改，其余个人字段及安装不变。独立查看24张真实截图无布局阻断；实际200% DPI、深浅主题及窄窗已观察，未完成100%/150%或物理滚轮验收。
+
+旧 v9→新 v3 的准确 DLL 兼容证明16/0，公开1.1.0→新 v3为14/0。全关全局伴随文件不影响旧版；新三态配置被旧 Profile 安全拒绝，不自动落回备份。公开版依赖 `UnknownLibraryField` 拒绝，旧 v9依赖 `UnsupportedLibrarySchema`，不能声称旧 codec 理解 v2。同一物理目录恢复升级前合成快照可重开；真实用户降级前须保留完整 Profile，程序回退本身不能恢复随后新增的资料。
+
+用户最后明确授权本机体验替换，已安装至 `C:/Users/MUSK/AppData/Local/Programs/The Order/TheOrder.exe`，版本仍1.1.0。Setup/GUI校验退出0，654份载荷与入口逐份核验；安装后实际 EXE 在全新空 Test Profile 启动/正常退出0，三项初始默认均关闭。667份旧程序完整备份至 `C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261016-031521-launch-global-rc2/Program`；旧清单拥有且哈希未变的6个PDB与测试入口移入同回退根的 RetiredPayload，未知文件保留。未读取、枚举、备份、迁移或启动真实 Production 资料，也不以“未访问”冒充逐字节私库比较。回执在 `local-promotion/`。
+
+Gate：**CONDITIONAL GO / READY FOR HUMAN VALIDATION**。已允许本机体验，不是公开发布就绪：没有准备好的隔离 Windows VM/Sandbox，干净安装/完整升级卸载回退/真实更新交接仍阻塞；另缺完整实际DPI、物理输入、真实OAuth和真实LE/Magpie发行版与无害程序联调。安装包无PDB/测试入口/构建路径，保留依赖许可和放送数据署名；真实旧Setup→新Setup离线差分重建哈希一致，但同版本不构成自动更新资格。未推送、合并主分支、修改公共更新源或发布。人工清单见 `docs/release/candidate-20261016/HUMAN-CHECKS.md`，报告与截图见证据根。
+
+## ACGN 真实体验 Gate（2026-10-15，上一隔离节点）
 
 当前源码 `D:/Projects/The-Order-worktrees/acgn-experience-gate-20261015` / `codex/acgn-experience-gate-20261015`，基线为多语言阶段最终 HEAD `e62bc12f83264f80b80974050b91f75c984c38e6`。已核实包含五领域质量、红队、用户身份决定持久化及语言 v1；原多语言 worktree 保持干净且 HEAD 不变，长期根仓库既有性能工作不动。本轮不读取 Production、真实库或令牌，不替换安装、不推送、不合并、不发布。实际运行 Provider 为 NextMoe、Bangumi、AniList、MusicBrainz、NDL；MangaDex/MangaUpdates 没有运行适配器。证据 `.artifacts/acgn-experience-gate-20261015`。
 
