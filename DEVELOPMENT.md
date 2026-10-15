@@ -4,6 +4,8 @@
 
 维护入口 `D:/Projects/The-Order-worktrees/ndl-reliability-20261015` / `codex/ndl-reliability-20261015`，干净基线690d9c9。产物 `.artifacts/ndl-reliability-20261015/publish-v1`，版本1.1.0；锁定还原、固定SDK10.0.401、x64和NativeProductionCandidate=true。该工作区保留前阶段源码，未升级依赖。
 
+实现提交26571dc，源码冻结清单在证据根source-manifest.json。release-package与prepared-install已生成，payload Test预检659份通过且ProfileOpened=false。正式进程仍在运行，安装未执行；用户正常退出后，运行该证据根Install-Local.ps1。该脚本拒绝运行中的程序、固定原正式目录、先建立仓库外程序回退副本，再静默安装和逐文件核验，并比较正式资料的文件元数据。不得以包已生成或预检通过宣称已安装；最终以installation-receipt.json为准。
+
 短回归使用固定dotnet执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:UseSharedCompilation=true --filter "FullyQualifiedName~Book|FullyQualifiedName~Ndl"`；163项通过。新增独立确认保护后只重复BookBibliographyServiceTests，20项通过，3项新增、17项重叠。证据为同根 `tests/ndl-focused.trx` 和 `tests/confirmation-safety.trx`。无全仓或长资源测试。
 
 `NdlBibliographyProvider`共用25秒总预算，一次尝试12秒、至多两次；HTTP 429/502/503/504的原有限重试保留。连接失败或尝试超时可重试，用户取消和总截止不重试。请求串行、至少1秒间隔；长限流冷却及入口占用明确快速降级。每页10项、最后起始91保留100候选浏览；解析旧20项缓存不变。
