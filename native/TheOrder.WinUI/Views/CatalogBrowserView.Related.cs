@@ -156,7 +156,8 @@ public sealed partial class CatalogBrowserView
             case "mediaRefresh": if (mediaDetail is not null) await mediaDetail.RefreshForFixtureAsync(); break;
             case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack": case "musicEntity": case "musicEntityBack":
                 if (mediaActive && mediaDetail is not null) await mediaDetail.MusicFixtureAsync(action, id); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose": case "aniReview": case "aniSources": case "aniSynopsis":
+            case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (mediaActive && mediaDetail is not null) await mediaDetail.AniListFixtureAsync(action, id); break;
             case "sources": relatedWorks?.SourcesForFixture(); break;
             case "rawEvidence": relatedWorks?.RawEvidenceForFixture(); break;
