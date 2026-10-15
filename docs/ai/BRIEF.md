@@ -3,6 +3,8 @@
 
 当前源码 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，从干净16607fe独立继续，保留NDL可靠性及全部既有成果。版本仍1.1.0，未升级依赖或迁移资料。用户此前本机替换授权继续有效；不授权推送、主分支合并或公开发布。安装结果以本轮后续回执为准。
 
+实现提交 `2396ead77bdf6204543df3eb00a64e05450c744f` 已安装到原正式目录 `C:/Users/MUSK/AppData/Local/Programs/The Order`。安装和GUI入口校验退出0，659份payload、files.json及3份入口哈希一致；安装前后2521份正式资料文件元数据未变，未读取内容/凭据或启动Production。旧程序667份文件的已核验回退副本：`C:/Users/MUSK/AppData/Local/TheOrder-Local-Rollback/20261015-123151-anilist-confirm/Program`。包SHA256 `B5AD8228CBC198614D1C323418AED2A4F88400019B2A7CAF31245DC14A48677A`；回执在本证据根prepared-install/installation-receipt.json。正式程序自行退出后完成替换，没有强杀或使用桌面控制。
+
 根因是AniListMatching.Assess把动画的发行年份硬冲突规则用于全部书籍，导致已经预览的正确漫画仍无法手动确认。真实匿名API核对：Bangumi43194为漫画系列（2卷），date=2010-05-26；AniList45821为MANGA（2卷14话），startDate=2009-08-26。现对书籍保留两站日期并提示出版/连载口径可能不同，单纯年份差异不再禁用用户确认。动画原年份约束、媒体/格式/明确外站编号冲突和单卷不能绑定多卷的边界保留；书籍仍不按同名或日期自动绑定，明确外部ID逻辑不变。
 
 证据根 `.artifacts/anilist-book-confirm-20261015`：146项相关回归通过、0失败/跳过，执行约1秒，新增10项覆盖MANGA/NOVEL日期差异、明确编号、层级冲突、手动确认与重新打开；锁定依赖的WinUI publish-v1通过。首次测试编译的xUnit2031写法问题已修正，不作为通过证据。2份公开API原响应及哈希在public-source-evidence.json指定文件，未使用Production缓存或凭据。

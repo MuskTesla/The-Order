@@ -4,6 +4,8 @@
 
 入口 `D:/Projects/The-Order-worktrees/anilist-book-confirm-20261015` / `codex/anilist-book-confirm-20261015`，基线16607fe；版本1.1.0、原锁文件与SDK10.0.401保持。候选 `.artifacts/anilist-book-confirm-20261015/publish-v1`，生产资料未作为测试输入。
 
+实现提交2396ead已完成本机原目录安装；Install-Local.ps1拒绝运行中程序、保留旧程序回退、逐文件核验，安装及GUI校验均退出0，2521份正式资料文件元数据未变。完整安装与回退回执在本证据根prepared-install，BRIEF顶部记录实际备份路径。没有启动Production或读取凭据，不能将入口校验当私库全功能验收。
+
 主要修改AniListMatching.Assess：Anime年份仍是硬冲突；Book日期作为原始证据和口径提示，不单独阻止手动确认。StrongEvidence对Book继续返回false；明确ID、Format、Kind以及Volume/Publication→多卷防护保留。不改变Fingerprint、用户映射格式或缓存版本。
 
 固定dotnet执行 `test native/TheOrder.Tests/TheOrder.Tests.csproj --no-restore -c Release -p:UseSharedCompilation=true --filter "FullyQualifiedName~AniList|FullyQualifiedName~BookDetailsViewModelTests|FullyQualifiedName~BookBibliographyServiceTests"`，最终146/0/0、约1秒；TRX在本证据根tests/confirmation-regression-final.trx。没有全仓或长时测试。
