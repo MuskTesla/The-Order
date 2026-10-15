@@ -20,16 +20,23 @@ public static class CatalogLanguage
         var index = Array.IndexOf(fallbacks, normalized); return index < 0 ? 10 : index + 1;
     }
     public static CatalogLocalizedText? Select(IEnumerable<CatalogLocalizedText>? values, string? language = null)
-        => values?.Where(v => !string.IsNullOrWhiteSpace(v.Value))
-        .OrderBy(v => LanguageRank(v.Language, language ?? UiText.Language))
-        .ThenBy(v => v.IsMachine ? 1 : 0).ThenBy(v => v.Source is "kungal" or "curated" ? 0 : 1).FirstOrDefault();
+    {
+        var rows = (values ?? []).Where(v => !string.IsNullOrWhiteSpace(v.Value))
+            .OrderBy(v => v.Source is "kungal" or "curated" ? 0 : 1).ToArray();
+        var selected = ContentLanguage.Select(rows.Select((v, i) => new ContentText(new("NextMoe", "LocalizedProjection", i.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            "display", v.Value, ContentLanguage.Normalize(v.Language), v.IsMachine ? ContentTextOrigin.MachineTranslation : v.Source == "original" ? ContentTextOrigin.ProviderOriginal : ContentTextOrigin.ProviderTranslation, v.Source == "original")),
+            language is null ? null : new(ContentLanguage.Normalize(language), ContentLanguage.Current.Fallback)).Selected;
+        return selected is null ? null : rows[int.Parse(selected.Identity.Id, System.Globalization.CultureInfo.InvariantCulture)];
+    }
     public static string Name(CatalogEntityRef entity)
     {
         var names = entity.Names ?? [];
+        var preferred = ContentLanguage.Preferred;
         if (entity.Kind == CatalogEntityKind.Character && IsUnnamed(Original(entity) ?? entity.Name)) return UiText.Get("未公开姓名");
-        var exact = Select(names.Where(n => Normalize(n.Language) == UiText.Language));
+        if (preferred == ContentLanguage.Original) return Original(entity) ?? entity.Name;
+        var exact = Select(names.Where(n => Normalize(n.Language) == preferred));
         if (entity.Kind is CatalogEntityKind.Tag or CatalogEntityKind.Trait)
-            return exact?.Value ?? CatalogVocabulary.Name(Original(entity) ?? entity.Name);
+            return exact?.Value ?? CatalogVocabulary.Name(Original(entity) ?? entity.Name, preferred);
         if (entity.Kind is CatalogEntityKind.Character or CatalogEntityKind.CreditName or CatalogEntityKind.Person)
         {
             var original = Original(entity);
@@ -37,10 +44,10 @@ public static class CatalogLanguage
             // UI should retain the published original script instead. English
             // uses a published en/latin name, otherwise the original consistently
             // for both characters and voices (not a Chinese fallback or a guessed reading).
-            if (UiText.Language == "ja" && original is not null && HasJapaneseScript(original) &&
+            if (preferred == "ja" && original is not null && HasJapaneseScript(original) &&
                 (exact is null || !HasJapaneseScript(exact.Value))) return original;
             if (exact is not null) return exact.Value;
-            if (UiText.Language is "ja" or "en" && original is not null) return original;
+            if (preferred is "ja" or "en" && original is not null) return original;
         }
         return exact?.Value ?? Select(names)?.Value ?? entity.Name;
     }
@@ -60,17 +67,20 @@ public static class CatalogLanguage
         "fandisc_of" => UiText.Get("关联本篇"), "has_fandisc" => UiText.Get("Fan disc"),
         _ => null
     };
-    public static string Title(WorkMetadata work) => Select(work.Presentation?.Names)?.Value ?? work.Title;
+    public static string Title(WorkMetadata work) => work.Presentation?.Names is not { Length: > 0 }
+        ? ContentLanguage.Preferred == ContentLanguage.Original && work.OriginalTitle.Length > 0 ? work.OriginalTitle : work.Title
+        : ContentLanguage.Catalog(new("NextMoe", "Work", work.Id), "title", work.Presentation.Names,
+            work.OriginalTitle.Length > 0 ? work.OriginalTitle : work.Title).Text;
     public static WorkMetadata Project(WorkMetadata work)
     {
         var p = work.Presentation; if (p is null) return work;
-        var intro = Select(p.Introductions);
+        var intro = ContentLanguage.CatalogSynopsis(work).Selected;
         ImmutableArray<CatalogEntityRef> Names(ImmutableArray<CatalogEntityRef> rows) => [..rows.Select(Project)];
         var companies = Names(p.Companies);
-        return work with { Title = Title(work), Description = intro?.Value ?? work.Description,
+        return work with { Title = Title(work), Description = intro?.Text ?? (p.Introductions is { Length: > 0 } ? "" : work.Description),
             Developers = [..work.Developers.Select(name => p.Companies.FirstOrDefault(c => c.Name == name) is { } c ? Name(c) : name)],
             Tags = p.Tags.IsEmpty ? work.Tags : [..p.Tags.Select(Name)],
-            Presentation = p with { IntroSource = intro?.Source ?? p.IntroSource, Companies = companies, Engines = Names(p.Engines),
+            Presentation = p with { IntroSource = intro?.Attribution ?? p.IntroSource, Companies = companies, Engines = Names(p.Engines),
                 Series = Names(p.Series), Tags = Names(p.Tags), RelatedWorks = Names(CatalogRelatedWorks.Visible(p)),
                 Characters = [..p.Characters.Select(c => c with { Entity = Project(c.Entity), Voices = Names(c.Voices) })],
                 Credits = [..p.Credits.Select(c => c with { People = Names(c.People) })] } };
@@ -78,7 +88,7 @@ public static class CatalogLanguage
     public static string? Fallback(WorkMetadata work)
     {
         var intro = Select(work.Presentation?.Introductions);
-        return intro is null || Normalize(intro.Language) == UiText.Language ? null : UiText.FormatKey("暂无所选语言的简介，显示原文（{0}）。", LanguageName(intro.Language));
+        return intro is null || ContentLanguage.Preferred == ContentLanguage.Original || Normalize(intro.Language) == ContentLanguage.Preferred ? null : "简介 · " + LanguageName(intro.Language);
     }
     public static string LanguageName(string language) => Normalize(language) switch { "zh-Hans" => "简体中文", "zh-Hant" => "繁體中文", "ja" => "日本語", "en" => "English", _ => language };
 }

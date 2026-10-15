@@ -12,12 +12,15 @@ namespace TheOrder.WinUI.Startup;
 
 internal static class Composition
 {
-    public static NativeHost Create(LanguageSettings languages, LanguagePreferencesStore languageStore)
+    public static NativeHost Create(LanguageSettings languages, LanguagePreferencesStore languageStore,
+        ContentLanguageSettings contentLanguages, ContentLanguagePreferencesStore contentStore)
     {
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables("THE_ORDER_NATIVE_").Build();
         var services = new ServiceCollection();
         services.AddSingleton(languages);
         services.AddSingleton<ILanguagePreferencesStore>(_ => languageStore);
+        services.AddSingleton(contentLanguages);
+        services.AddSingleton<IContentLanguagePreferencesStore>(_ => contentStore);
         services.AddLogging(builder =>
         {
             builder.AddDebug().SetMinimumLevel(LogLevel.Information);

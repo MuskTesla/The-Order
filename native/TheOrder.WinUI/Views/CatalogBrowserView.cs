@@ -144,8 +144,10 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
                 body.Children.Add(banner);
                 var content = Content();
                 content.ShowRelatedWorks = relationsReader is null;
-                workContent = content; content.Sources = SourceLinks(work, banner.Choice); content.SetWork(work, work.Title, collapseFacts: true); body.Children.Add(content);
-                ShowRelated(work, auth);
+                workContent = content; content.Sources = SourceLinks(cached.Work, banner.Choice); content.SetWork(cached.Work, work.Title, collapseFacts: true); body.Children.Add(content);
+                // A readable title is not identity evidence. Resolve related
+                // media only from the untouched provider detail snapshot.
+                ShowRelated(cached.Work, auth);
                 if (restore?.Related is { } state) relatedWorks?.RestoreBrowsing(state);
                 message.Text = UiText.Get("在线资料 · 未自动添加到书架");
                 if (CatalogPresentationService.NeedsPreparation(cached)) { message.Text += UiText.Get(" · 图片正在后台准备"); presentations.Queue([work.Id],priority:true); }
@@ -156,7 +158,13 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
                 current = detail.Entity; title.Text = CatalogLanguage.Name(detail.Entity);
                 if (detail.Entity.ImageUrl is { } url) body.Children.Add(new CoverPresenter { SourceKey = registry.Register(url, "entity"), Width = 180, Height = 220, PreserveEntireImage = true, HorizontalAlignment = HorizontalAlignment.Left });
                 if (!detail.Facts.IsEmpty) body.Children.Add(new TextBlock { Text = string.Join("\n", detail.Facts), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
-                if (detail.Description.Length > 0) body.Children.Add(new MarkdownView { Text = CatalogLanguage.Select(detail.Introductions)?.Value ?? detail.Description, Images = Images, Registry = registry, OpenLink = OpenLinkAsync });
+                if (detail.Description.Length > 0)
+                {
+                    var selected = ContentLanguage.Catalog(new("NextMoe", entity.Kind.ToString(), entity.Id), "synopsis", detail.Introductions, detail.Description,
+                        detail.Entity.Names?.FirstOrDefault(x => x.Source == "original")?.Language);
+                    body.Children.Add(new MarkdownView { Text = selected.Text, Images = Images, Registry = registry, OpenLink = OpenLinkAsync });
+                    var originalInfo = new ContentLanguageInfo(); originalInfo.Show(selected); body.Children.Add(originalInfo);
+                }
                 body.Children.Add(EntitySources(detail));
                 if (!detail.Related.IsEmpty) { var links = new TagFlowPanel(); foreach (var item in detail.Related) links.Children.Add(item.Kind == CatalogEntityKind.Trait ? CatalogTagChip.Create(CatalogLanguage.Name(item), item, e => OpenAsync(e)) : EntityLink(item)); body.Children.Add(links); }
                 if (entity.Kind == CatalogEntityKind.Trait)
@@ -202,7 +210,7 @@ public sealed partial class CatalogBrowserView : Grid, IImageHost
             currentPresentation = cached;
             hero.SetPresentation(cached);
             if (workContent is { } content) { content.Sources = SourceLinks(cached.Work, cached.Banner); content.SetWork(cached.Work, cached.Work.Title, collapseFacts: true); }
-            UpdateRelated(CatalogLanguage.Project(cached.Work), auth);
+            UpdateRelated(cached.Work, auth);
             message.Text = cached.Prepared ? UiText.Get("在线资料 · 未自动添加到书架") : UiText.Get("图片准备未完成，可通过来源中的刷新重试");
         } catch (OperationCanceledException) { } catch (Exception e) { App.TraceVisualFailure(e); }
     }

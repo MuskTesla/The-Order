@@ -157,6 +157,9 @@ public sealed partial class DetailsPage
         // The catalog replaces the main content area. The hidden game view retains its scroll
         // position and personal draft; browsing itself does not commit or discard anything.
         browserReturnFocus = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as Control;
+        // Leaving a book's nested history can keep the root media host active.
+        // Catalog and media are replacement bodies, never transparent overlays.
+        CloseRelatedMedia(false);
         BangumiRelated.SuspendNavigation();
         HeroStage.ReleaseBeforeLeave(); DetailsRoot.Visibility = Visibility.Collapsed;
         CatalogHost.Visibility = Visibility.Visible;
@@ -194,6 +197,7 @@ public sealed partial class DetailsPage
     {
         if (relatedMedia is null || card.Bangumi is not { } item || !IsLoaded || ViewModel.IsDetailsLoading) return;
         relatedReturnFocus = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as Control;
+        if (CatalogHost.Visibility == Visibility.Visible) CloseCatalogBrowser();
         BangumiRelated.SuspendNavigation(); HeroStage.ReleaseBeforeLeave();
         DetailsRoot.Visibility = Visibility.Collapsed; RelatedMediaHost.Visibility = Visibility.Visible;
         relatedMedia.RelationLabel = card.Label; relatedMedia.RelationEvidence = card.Evidence;
@@ -242,7 +246,8 @@ public sealed partial class DetailsPage
         BangumiRelated.SetContext(null, "番组计划访问方式已变化，请重新打开作品。");
         if (IsLoaded && ViewModel.Page == WorkspacePage.Details) SynchronizeBangumi();
     }
-    internal object BangumiEvidence => new { relations = BangumiRelated.Evidence, mediaVisible = RelatedMediaHost.Visibility == Visibility.Visible, media = relatedMedia?.Evidence, catalogVisible = CatalogHost.Visibility == Visibility.Visible, catalog = browser?.RelationEvidence, gameId = ViewModel.Draft?.Source.Id, gameScroll = DetailsScroll.VerticalOffset, releases = RichCatalog.ReleaseEvidence };
+    internal bool HasExclusiveContentBody => new[] { DetailsRoot.Visibility, CatalogHost.Visibility, RelatedMediaHost.Visibility }.Count(x => x == Visibility.Visible) == 1;
+    internal object BangumiEvidence => new { exclusiveContentBody = HasExclusiveContentBody, relations = BangumiRelated.Evidence, mediaVisible = RelatedMediaHost.Visibility == Visibility.Visible, media = relatedMedia?.Evidence, catalogVisible = CatalogHost.Visibility == Visibility.Visible, catalog = browser?.RelationEvidence, gameId = ViewModel.Draft?.Source.Id, gameScroll = DetailsScroll.VerticalOffset, contentLanguage = RichCatalog.LanguageEvidence, releases = RichCatalog.ReleaseEvidence };
     internal async Task BangumiFixtureAsync(string action, BangumiRelationKind? kind = null, string? subjectId = null)
     {
         if (action == "catalogEntityOpen")
@@ -281,6 +286,7 @@ public sealed partial class DetailsPage
                     || !BangumiRelationIdentityResolver.ValidSubjectId(subjectId) || relatedMedia is null
                     || kind is not (null or BangumiRelationKind.Anime or BangumiRelationKind.Book or BangumiRelationKind.Music)) throw new InvalidDataException("Isolated public subject fixture required.");
                 relatedMedia.Deactivate(); BangumiRelated.SuspendNavigation(); HeroStage.ReleaseBeforeLeave();
+                if (CatalogHost.Visibility == Visibility.Visible) CloseCatalogBrowser();
                 DetailsRoot.Visibility = Visibility.Collapsed; RelatedMediaHost.Visibility = Visibility.Visible;
                 relatedMedia.RelationLabel = "隔离只读验证"; relatedMedia.RelationEvidence = "Test fixture directly opens a public Bangumi identity; no synthetic relation is asserted as real.";
                 await relatedMedia.OpenAsync(new(subjectId, kind ?? BangumiRelationKind.Anime, kind == BangumiRelationKind.Book ? "书籍" : "动画", "", "隔离验证", null), "隔离只读验证");
@@ -296,9 +302,9 @@ public sealed partial class DetailsPage
             case "back": await GoBackCatalogAsync(); break;
             case "mediaCancel": relatedMedia?.CancelForFixture(); break;
             case "mediaRefresh": if (relatedMedia is not null) await relatedMedia.RefreshForFixtureAsync(); break;
-            case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack": case "musicEntity": case "musicEntityBack":
+            case "musicOriginal": case "musicPreview": case "musicConfirm": case "musicEditions": case "musicTracks": case "musicTrack": case "musicEntity": case "musicEntityBack":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.MusicFixtureAsync(action, subjectId); break;
-            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose": case "aniReview": case "aniSources": case "aniSynopsis":
+            case "aniPreview": case "aniConfirm": case "aniCharacters": case "aniStaff": case "aniRelations": case "aniExplore": case "aniMore": case "aniEpisodes": case "aniEpisodeFilter": case "aniEpisodeExpand": case "aniPV": case "aniPVLoad": case "aniPVStart": case "aniPVCollapse": case "aniPVPlay": case "aniPVStop": case "aniPVProbe": case "watchSources": case "watchShow": case "watchCollapse": case "aniChoose": case "aniReview": case "aniContentOriginal": case "aniSources": case "aniSynopsis":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;
             case "bookExpand": case "bookCollapse": case "bookRelations": case "bookOpen": case "bookSearch": case "bookPreview": case "bookConfirm": case "bookForget": case "bookReload": case "bookNext": case "bookBack": case "bookCancel": case "bookInspect":
                 if (RelatedMediaHost.Visibility == Visibility.Visible && relatedMedia is not null) await relatedMedia.AniListFixtureAsync(action, subjectId); break;

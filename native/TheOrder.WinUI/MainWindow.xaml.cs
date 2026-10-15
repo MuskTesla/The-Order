@@ -38,6 +38,7 @@ public sealed partial class MainWindow : Window
     private readonly CatalogBrowseSettings browsingSettings;
     private readonly CatalogBrowsePolicy browsingPolicy;
     private readonly LanguageSettings languageSettings;
+    private readonly ContentLanguageSettings contentLanguageSettings;
     private bool navigating, synchronizing;
     private Task? initialization;
     private DispatcherTimer? diagnosticsTimer;
@@ -48,7 +49,7 @@ public sealed partial class MainWindow : Window
     private readonly BangumiSettingsViewModel bangumiSettings;
     private readonly LibraryBackupViewModel backups;
     private readonly DispatcherTimer backupTimer = new() { Interval = TimeSpan.FromMinutes(5) };
-    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, IMusicBrainzEntityReader musicEntities, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
+    public MainWindow(WorkspaceViewModel workspace, NativeConfiguration configuration, FilesViewModel files, IImagePipeline images, IOfflineFilesClient filesClient, OnlineViewModel online, RecognitionViewModel recognition, LaunchViewModel launch, AppSessionHost sessions, IMaterialPreferencesStore materialPreferences, IPersonalBannerStore personalBanners, OnlineCoverSelectionClient coverSelection, IRemoteCoverRegistry coverRegistry, IOnlineCatalog catalog, IEntityCatalog entities, CatalogPresentationService presentations, OfflineLibraryClient library, CatalogBrowseClient browsing, CatalogBrowsePolicy browsingPolicy, CatalogBrowseSettings browsingSettings, LanguageSettings languages, ContentLanguageSettings contentLanguages, LaunchFileDiscovery launchFiles, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoeSettings, LibraryBackupViewModel backups, LibrarySourcesService sources, WindowsLibrarySourcesWatcher sourceWatcher, LibraryExtrasClient extras, MetadataSourceClient metadataSources, WindowsLocalResources resources, IBangumiRelationsReader bangumiRelations, IBangumiSubjectDetailsReader bangumiSubjects, IRelatedSemanticReader relationSemantics, IMusicBrainzReader musicBrainz, IAniListReader aniList, IWatchLinkPreferencesStore watchPreferences, IBangumiWatchLinksReader watchReader, BangumiSettingsViewModel bangumiSettings, IBookBibliographyReader bookBibliography, IBangumiBookRelationsReader bookRelations, IBangumiEpisodesReader episodes, ICatalogReleaseReader catalogReleases, IMusicBrainzEntityReader musicEntities, SyntheticScenario? scenario = null, SyntheticOnline? onlineFixture = null)
     {
         Sessions = sessions;
         this.nextMoeSettings = nextMoeSettings; this.bangumiSettings = bangumiSettings;
@@ -59,7 +60,7 @@ public sealed partial class MainWindow : Window
         this.recognition = recognition;
         this.launchFiles = launchFiles; this.launchFilesClient = filesClient;
         this.files = files; this.images = images; this.presentations = presentations;
-        this.browsingPolicy = browsingPolicy; this.browsingSettings = browsingSettings; languageSettings = languages;
+        this.browsingPolicy = browsingPolicy; this.browsingSettings = browsingSettings; languageSettings = languages; contentLanguageSettings = contentLanguages;
         recognition.PrepareImportedArtwork = presentations.PrepareAsync;
         presentations.Prepared += OnArtworkPrepared;
         this.materialPreferences = materialPreferences;
@@ -120,7 +121,7 @@ public sealed partial class MainWindow : Window
                 await Navigate(next is null ? WorkspacePage.Library : WorkspacePage.Details, next);
         };
         recognition.PropertyChanged += OnRecognitionState;
-        settingsPage = new(workspace, online, recognition, browsingSettings, languages, updates, nextMoeSettings, backups, bangumiSettings) { ChangeMaterialMode = SetMaterialModeAsync,
+        settingsPage = new(workspace, online, recognition, browsingSettings, languages, contentLanguages, updates, nextMoeSettings, backups, bangumiSettings) { ChangeMaterialMode = SetMaterialModeAsync,
             ChooseBackupDestination = PickBackupDestination, ChooseBackupFile = () => PickFile(".json"),
             PrepareBackupAction = ResolveUnsavedAsync, RestoreLibrary = preview => RestoreLibraryAsync(preview, library),
             InstallUpdate = package => App.Instance?.RequestUpgradeAsync(package) ?? Task.FromResult(false) };
@@ -396,6 +397,7 @@ public sealed partial class MainWindow : Window
         browsingPolicy.Changed -= OnBrowsingChanged;
         await browsingSettings.DisposeAsync();
         await languageSettings.DisposeAsync();
+        await contentLanguageSettings.DisposeAsync();
         await recognition.DisposeAsync();
         await presentations.DisposeAsync();
         await online.DisposeAsync();
@@ -466,6 +468,7 @@ public sealed partial class MainWindow : Window
             onlineState = online.SearchState.ToString(), onlineCount = online.Items.Count, onlineDetails = online.DetailState.ToString(), onlineWorkId = online.Details?.Id, onlineHasCover = online.DetailCoverKey is not null, onlineConnection = online.ConnectionState.ToString(),
             onlineAuthGeneration = online.AuthGeneration, onlineCredentialPresent = online.HasCredential, syntheticDetailRequests = onlineFixture?.DetailRequests,
             catalogBrowsing = new { showNsfw = browsingSettings.ShowNsfw, generation = browsingPolicy.Capture().Generation, canChange = browsingSettings.CanChange, message = browsingSettings.Message },
+            contentLanguage = new { preferred = ContentLanguage.Preferred, fallback = ContentLanguage.Current.Fallback, canChange = contentLanguageSettings.CanChange },
             language = new { effective = UiText.Language, selected = languageSettings.Selected, system = languageSettings.SystemLanguage, canChange = languageSettings.CanChange, restartRequired = UiText.Resolve(languageSettings.Selected, languageSettings.SystemLanguage) != UiText.Language },
             onlineQueryHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(online.Query.Trim()))),
             recognition = new {

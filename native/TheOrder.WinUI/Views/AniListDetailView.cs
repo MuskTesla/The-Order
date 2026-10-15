@@ -64,7 +64,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         bridgeSummary.Content = bridgeSynopsis;
         body.Children.Add(heading); body.Children.Add(relation); body.Children.Add(status); body.Children.Add(actions); body.Children.Add(watchLinks); body.Children.Add(availability); body.Children.Add(candidateSection);
         body.Children.Insert(4, matchReview);
-        body.Children.Add(synopsis); body.Children.Add(bridgeSummary); body.Children.Add(episodeList); body.Children.Add(publications); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
+        body.Children.Add(synopsis); body.Children.Add(languageInfo); body.Children.Add(bridgeSummary); body.Children.Add(episodeList); body.Children.Add(publications); body.Children.Add(genres); body.Children.Add(characters); body.Children.Add(staff); body.Children.Add(more); body.Children.Add(related); body.Children.Add(sources);
         scroll = new() { Content = body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalContentAlignment = HorizontalAlignment.Stretch }; Children.Add(scroll);
         // Observe even natively handled wheel input so a delayed navigation restore
         // cannot overwrite a user's scroll. Do not implement a second scroll path.
@@ -111,6 +111,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         scroll.ChangeView(null, 0, null); return model?.OpenAsync(item, cancellation) ?? Task.CompletedTask;
     }
     private void StateChanged(object? sender, PropertyChangedEventArgs e) { if (active && !disposed) Render(); }
+    private readonly ContentLanguageInfo languageInfo = new();
     private void Render()
     {
         var details = model?.Displayed?.Details; var media = model?.Media; var bridge = model?.IsBridge == true ? model?.Bridge?.Details : null;
@@ -131,8 +132,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         var linkData = watchIdentity is null ? [] : AniListWatchLinksAdapter.From(watchIdentity, details).Concat(watchResult?.Links ?? []).ToArray();
         watchLinks.Show(watchIdentity, linkData, watchResult); availability.Show(media?.Id, isAnime, details?.Trailer, model?.CanLoad == true);
         type.Text = media is null ? (model?.Item?.Kind == BangumiRelationKind.Anime ? "动画" : "书籍") + " · Bangumi" : media.TypeName + " · AniList";
-        title.Text = useBangumiSource && bridge?.Title is { Length: > 0 } bridgeTitle ? bridgeTitle : media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
-        alternate.Text = media is null ? bridge?.OriginalTitle ?? "" : string.Join(" / ", new[] { media.Title, media.NativeTitle }.Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
+        var localizedTitle = media is not null ? ContentLanguage.AniListTitle(media, bridge, useBangumiSource) : bridge is not null ? ContentLanguage.BangumiTitle(bridge) : null;
+        title.Text = localizedTitle?.Text is { Length: > 0 } chosenTitle ? chosenTitle : media?.Title ?? bridge?.Title ?? model?.Item?.Title ?? "关联作品";
+        alternate.Text = string.Join(" / ", (localizedTitle?.Variants.Select(x => x.Text) ?? []).Where(x => !string.IsNullOrWhiteSpace(x) && x != title.Text).Distinct());
         alternate.Visibility = Visible(alternate.Text.Length > 0); selection.Text = model?.State == AniListDetailState.Preview ? "预览 · 尚未确认对应作品" : model?.SelectionReason.StartsWith("用户核对", StringComparison.Ordinal) == true ? "已确认对应作品" : model?.SelectionReason ?? ""; selection.Visibility = Visible(selection.Text.Length > 0);
         facts.Children.Clear();
         if (media is not null)
@@ -158,7 +160,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         search.IsEnabled = searchText.IsEnabled = refresh.IsEnabled = model?.CanLoad == true;
         // Only an established bridge can supply the displayed work's primary synopsis.
         // A mismatched preview keeps the original subject clearly separate.
-        var bridgePrimary = useBangumiSource && bridge?.Summary is { Length: > 0 };
+        var localizedSynopsis = ContentLanguage.Synopsis(details, bridge, useBangumiSource);
+        var bridgePrimary = localizedSynopsis.Selected?.Identity.Provider == "Bangumi";
         var synopsisKey = media is not null ? "anilist/" + media.Id + "/" + preview : "bangumi/" + bridge?.Id;
         var previousState = (Main: synopsis.Expanded, Other: bridgeSynopsis.Expanded, OtherOpen: bridgeSummary.IsExpanded);
         if (synopsisIdentity != synopsisKey && synopsisIdentity is not null)
@@ -168,8 +171,10 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
         var restoredSynopsis = synopsisIdentity == synopsisKey ? previousState : synopsisStates.GetValueOrDefault(synopsisKey);
         synopsisIdentity = synopsisKey;
-        synopsis.Text = bridgePrimary ? bridge!.Summary : details?.Description is { Length: > 0 } text ? text : useBangumiSource && bridge?.Summary is { Length: > 0 } fallback ? fallback : "原站暂未提供简介。";
-        synopsis.Heading = bridgePrimary || media is null ? "简介 · Bangumi" : "简介 · AniList";
+        synopsis.Text = localizedSynopsis.Text.Length > 0 ? localizedSynopsis.Text : "原站暂未提供简介。";
+        languageInfo.Show(localizedTitle ?? ContentLanguage.Select([]), localizedSynopsis,
+            media is null ? ContentLanguage.Select([]) : ContentLanguage.Aliases(new("AniList", media.Kind.ToString(), media.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)), media.Synonyms));
+        synopsis.Heading = localizedSynopsis.Selected is null ? "简介" : "简介 · " + localizedSynopsis.Selected.Identity.Provider;
         bridgeSynopsis.Text = bridgePrimary ? details?.Description ?? "" : model?.IsBridge == true ? bridge?.Summary ?? "" : "";
         bridgeSummary.Header = bridgePrimary ? "其他简介 · AniList 原文" : preview ? "原条目简介 · Bangumi" : "其他简介 · Bangumi";
         bridgeSummary.Visibility = Visible(bridgeSynopsis.Text.Length > 0 && bridgeSynopsis.Text != synopsis.Text);
@@ -268,7 +273,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         characterCards.Children.Clear(); staffBody.Children.Clear(); tags.Children.Clear(); relatedCards.Children.Clear();
         foreach (var section in new[] { characters, staff, genres, related }) section.Visibility = Visible(details is not null);
         if (details is null) return;
-        foreach (var value in details.Genres.Concat(details.Tags).Distinct()) tags.Children.Add(new Border { Background = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"], CornerRadius = new(5), Padding = new(8, 4, 8, 4), Child = Text(13, value) });
+        foreach (var value in details.Genres.Concat(details.Tags).Distinct().Select(ContentLanguage.Term).Distinct()) tags.Children.Add(new Border { Background = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardBackgroundFillColorDefaultBrush"], CornerRadius = new(5), Padding = new(8, 4, 8, 4), Child = Text(13, value) });
         genres.Header = $"类型与标签 · {tags.Children.Count}";
         var allCharacters = (model?.PeoplePages ?? []).SelectMany(x => x.Details.Characters).DistinctBy(x => x.Person.Id).ToArray();
         var anime = details.Media.Kind == AniListMediaKind.Anime;
@@ -276,7 +281,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         foreach (var character in allCharacters)
         {
             var image = Picture(character.Person.ImageUrl, 54, 76);
-            var labels = new StackPanel { Spacing = 5, Children = { Text(15, PersonName(character.Person)), Text(12, Role(character.Role)) } };
+            var labels = new StackPanel { Spacing = 5, Children = { Text(15, ContentLanguage.Person(character.Person, "Character").Text), Text(12, Role(character.Role)) } };
+            if (character.Person.NativeName.Length > 0 && ContentLanguage.Person(character.Person, "Character").Text != character.Person.NativeName) labels.Children.Add(Text(12, character.Person.NativeName));
             if (anime) labels.Children.Add(Text(13, VoiceCaption(character)));
             characterCards.Children.Add(Frame(Row(image, labels), 255));
         }
@@ -285,12 +291,14 @@ public sealed class AniListDetailView : Grid, IDisposable
         {
             var role = Text(12, StaffRole(group.Key)); role.Opacity = .75;
             var card = new StackPanel { Spacing = 6, Children = { role, Text(15, string.Join(" / ", group.Select(x => PersonName(x.Person)))) } };
+            var nativeNames = string.Join(" / ", group.Select(x => x.Person.NativeName).Where(x => x.Length > 0).Distinct());
+            if (nativeNames.Length > 0 && nativeNames != string.Join(" / ", group.Select(x => PersonName(x.Person)))) card.Children.Add(Text(12, nativeNames));
             staffBody.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Child = card, Padding = new(12) });
         }
         related.Header = $"关联作品 · {details.Relations.Length}";
         foreach (var item in details.Relations.OrderBy(x => x.Relation is "SEQUEL" or "PREQUEL" ? 0 : x.Relation == "ADAPTATION" ? 1 : 2))
         {
-            var labels = new StackPanel { Spacing = 5, Children = { Text(16, item.Media.Title), Text(13, Relation(item.Relation) + " · " + item.Media.TypeName
+            var labels = new StackPanel { Spacing = 5, Children = { Text(16, ContentLanguage.AniListTitle(item.Media).Text), Text(13, Relation(item.Relation) + " · " + item.Media.TypeName
                 + (item.Media.Format.Length == 0 ? " · 发行形式待定" : "")) } };
             var button = Card(Row(Picture(item.Media.CoverUrl, 48, 68), labels), 320); AutomationProperties.SetAutomationId(button, "AniListRelation-" + item.Media.Id);
             button.Click += async (_, _) => { if (model is not null) { await model.ExploreAsync(item, scroll.VerticalOffset); scroll.ChangeView(null, 0, null, true); } }; relatedCards.Children.Add(button);
@@ -362,6 +370,9 @@ public sealed class AniListDetailView : Grid, IDisposable
             case "aniStaff": ShowSection(staff); break;
             case "aniRelations": ShowSection(related); break;
             case "aniReview": ShowSection(matchReview); break;
+            case "aniContentOriginal":
+                languageInfo.IsExpanded = !languageInfo.IsExpanded;
+                scroll.UpdateLayout(); scroll.ChangeView(null, languageInfo.TransformToVisual(body).TransformPoint(new(0, 0)).Y, null, true); return;
             case "aniSources": ShowSection(sources); break;
             case "aniSynopsis": synopsis.ExpandForFixture(); synopsis.StartBringIntoView(); break;
             case "aniPV": availability.ExpandForFixture(); availability.StartBringIntoView(); break;
@@ -380,10 +391,10 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
     }
     internal object Evidence => new { state = model?.State.ToString(), subjectId = model?.Item?.Id, mediaId = model?.Media?.Id, title = title.Text, kind = model?.Media?.Kind.ToString(), historyDepth = model?.HistoryDepth, canConfirm = model?.CanConfirm, confirmButtonEnabled = confirm.IsEnabled, fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, restoredOffset = model?.RestoreOffset,
-        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = model?.PeoplePages.SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).Count(), staffGroups = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = synopsis.Text, synopsis = synopsis.Evidence, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
+        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = model?.PeoplePages.SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).Count(), staffGroups = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = synopsis.Text, contentLanguage = languageInfo.Evidence, synopsis = synopsis.Evidence, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
     public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); publications.Deactivate(); episodeSource = null; episodeList.SetSource(null); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); publications.Dispose(); episodeList.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; bookSubjects = null; bookReader = null; bookRelations = null; }
-    private static string PersonName(AniListPerson p) => p.NativeName.Length > 0 ? p.NativeName : p.Name;
+    private static string PersonName(AniListPerson p) => ContentLanguage.Person(p, "Staff").Text;
     private static string VoiceCaption(AniListCharacter character) => character.VoiceRoles.Length > 0
         ? "日语配音 · " + string.Join(" / ", character.VoiceRoles.Select(x => PersonName(x.Person)
             + (x.RoleNotes is { Length: > 0 } note ? "（" + (note switch { "Child" => "幼年", "Old" => "老年", _ => note }) + "）" : "")

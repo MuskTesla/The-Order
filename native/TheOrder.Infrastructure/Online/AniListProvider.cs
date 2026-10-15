@@ -119,7 +119,8 @@ public sealed class AniListProvider(HttpClient client, AniListRateCoordinator? r
         var titles = Node(row, "title"); var native = Str(titles, "native"); var english = Str(titles, "english"); var romaji = Str(titles, "romaji");
         var result = new AniListMedia(Number(row, "id") ?? 0, Number(row, "idMal"), kind, english.Length > 0 ? english : romaji.Length > 0 ? romaji : native,
             native, english, Str(row, "format"), Str(row, "status"), Image(Node(row, "coverImage"), "large"), Date(Node(row, "startDate")), Date(Node(row, "endDate")),
-            Positive(row, "episodes"), Positive(row, "chapters"), Positive(row, "volumes"), Rows(row, "synonyms").Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).Where(x => x.Length > 0).Take(30).ToArray());
+            Positive(row, "episodes"), Positive(row, "chapters"), Positive(row, "volumes"), Rows(row, "synonyms").Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).Where(x => x.Length > 0).Take(30).ToArray())
+            { RomajiTitle = romaji.Length > 0 ? romaji : null };
         // Announced related works can legitimately have format:null. Keep the
         // typed relation without making unknown format a valid primary match.
         // Other malformed format values still follow the strict validation.

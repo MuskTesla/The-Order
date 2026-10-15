@@ -262,6 +262,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
         if (!musicActive || musicView is null) return Task.CompletedTask;
         return action switch
         {
+            "musicOriginal" => ShowMusicOriginal(),
             "musicPreview" when id is not null => musicView.PreviewForFixture(id),
             "musicConfirm" => musicView.ConfirmForFixture(),
             "musicEditions" => musicView.EditionsForFixture(),
@@ -271,6 +272,7 @@ public sealed class RelatedMediaDetailView : Grid, IDisposable
             "musicTracks" => ShowMusicTracks(id), _ => Task.CompletedTask
         };
     }
+    private Task ShowMusicOriginal() { musicView?.OriginalForFixture(); return Task.CompletedTask; }
     private Task BackMusicEntity() { musicView?.GoBack(); return Task.CompletedTask; }
     private Task ShowMusicTrack(string? id) { if (int.TryParse(id, out var position) && position is > 0 and <= 1000) musicView?.TrackForFixture(position); return Task.CompletedTask; }
     private Task ShowMusicTracks(string? id) { musicView?.TracksForFixture(int.TryParse(id, out var n) ? n : null); return Task.CompletedTask; }

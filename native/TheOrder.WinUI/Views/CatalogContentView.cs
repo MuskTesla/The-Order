@@ -29,6 +29,7 @@ public sealed class CatalogContentView : StackPanel,IImageHost
         if (reader is null) releases.Deactivate(); else { releases.Configure(reader, authGeneration); releases.SetSource(releasesWorkId); }
     }
     public void DeactivateReleases() { releasesWorkId = null; releases.Deactivate(); }
+    internal object LanguageEvidence => Children.OfType<ContentLanguageInfo>().Select(x => x.Evidence).ToArray();
     internal object ReleaseEvidence => releases.Evidence;
     internal async Task<object> ReleasesFixtureAsync(string action, string? value = null)
     {
@@ -75,7 +76,7 @@ public sealed class CatalogContentView : StackPanel,IImageHost
     public void SetWork(WorkMetadata? work,string? personalName=null,bool collapseFacts=false)
     {
         releasesWorkId = work?.Id; releases.OpenLink = OpenLink; releases.SetSource(releasesWorkId);
-        var fallback = work is null ? null : CatalogLanguage.Fallback(work);
+        var rawWork = work;
         if (work is not null) work = CatalogLanguage.Project(work);
         Children.Clear();artwork.Clear();if(work is null){Children.Add(Text(UiText.Get("尚未关联作品。可在更多操作中重新识别。")));return;}
         var p=work.Presentation;
@@ -108,7 +109,13 @@ public sealed class CatalogContentView : StackPanel,IImageHost
             }
         if (releasesReader is not null) Children.Add(releases);
         var intro=Section(UiText.Get("简介"));var description=Markdown(string.IsNullOrWhiteSpace(work.Description)?UiText.Get("暂无本版本简介。"):work.Description);description.MaxWidth=860;description.HorizontalAlignment=HorizontalAlignment.Left;intro.Children.Add(description);Children.Add(intro);
-        if (fallback is not null) Children.Add(Text(fallback, 12));
+        if (rawWork is not null)
+        {
+            var languageInfo = new ContentLanguageInfo();
+            languageInfo.Show(ContentLanguage.Catalog(new("NextMoe", "Work", rawWork.Id), "title", rawWork.Presentation?.Names, rawWork.OriginalTitle.Length > 0 ? rawWork.OriginalTitle : rawWork.Title),
+                ContentLanguage.CatalogSynopsis(rawWork), ContentLanguage.Aliases(new("NextMoe", "Work", rawWork.Id), rawWork.Aliases));
+            Children.Add(languageInfo);
+        }
         if (!work.Tags.IsEmpty)
         {
             var tags = Section(UiText.Get("标签"));

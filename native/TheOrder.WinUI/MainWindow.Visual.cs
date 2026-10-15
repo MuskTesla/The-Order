@@ -206,7 +206,7 @@ public sealed partial class MainWindow
         Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_CAPTURE_SKIP_TREE_PROBE") == "1";
     private object VisualEvidence() => new
     {
-        direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
+        contentLanguage = ContentLanguage.Current, direction, isolatedTest = visualFixtureTimer is not null, galleryVisible, visualScreen = galleryVisible ? visualScreen : ViewModel.Page.ToString(),
         material = materialPolicy?.Evidence(), gallery = gallery?.ResourceCounts, materialMode = materialMode.ToString(), effectiveMaterialMode = EffectiveMaterialMode.ToString(), controlledAdvanced,
         diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
         catalogPreparation = presentations.Metrics, stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence, online = onlinePage.StageEvidence }, shell = ShellEvidence(),
@@ -292,6 +292,10 @@ public sealed partial class MainWindow
                 case "scroll": libraryPage.ScrollTest(root.GetProperty("value").GetDouble()); break;
                 case "accentEvent": SimulateSystemAccentEvent(root.GetProperty("value").GetString() ?? ""); break;
                 case "selection": libraryPage.SetSelectionModeTest(root.GetProperty("value").GetBoolean()); break;
+                case "contentLanguage":
+                    var language = root.GetProperty("value");
+                    await contentLanguageSettings.ChangeAsync(new(language.GetProperty("preferred").GetString() ?? "", language.GetProperty("fallback").GetString() ?? "original"));
+                    break;
                 case "probe": break;
                 case "bangumi":
                     if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || ViewModel.Page != WorkspacePage.Details)
@@ -305,6 +309,7 @@ public sealed partial class MainWindow
                     }
                     await detailsPage.BangumiFixtureAsync(root.GetProperty("value").GetString() ?? "", relatedKind, root.TryGetProperty("subjectId", out var relatedSubject) ? relatedSubject.GetString() : null);
                     await File.WriteAllTextAsync(Path.Combine(fixtureDirectory, "bangumi-evidence.json"), JsonSerializer.Serialize(detailsPage.BangumiEvidence));
+                    if (!detailsPage.HasExclusiveContentBody) throw new InvalidOperationException("Details replacement bodies overlap.");
                     break;
                 case "checkUpdate": await Navigate(WorkspacePage.Settings); await updates.CheckAsync(); settingsPage.ShowUpdatesTest(); break;
                 case "automaticUpdate": await updates.CheckAutomaticallyAsync(); break;

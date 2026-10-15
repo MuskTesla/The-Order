@@ -6,6 +6,8 @@ public sealed record BangumiSubjectDetails(string Id, BangumiRelationKind Kind, 
     string OriginalTitle, string? CoverUrl, string Summary, string? ReleaseDate, string? Platform,
     int? EpisodeCount, double? Score, int? RatingCount, DateTimeOffset FetchedAtUtc)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChineseTitle { get; init; }
     public string Url => "https://bgm.tv/subject/" + Id;
     public BangumiMusicFacts? MusicFacts { get; init; }
     public BangumiBookFacts? BookFacts { get; init; }
@@ -42,6 +44,7 @@ public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider 
         => BangumiRelationIdentityResolver.ValidSubjectId(subjectId) && Enum.IsDefined(expectedKind)
         && value is not null && value.Id == subjectId && value.Kind == expectedKind
         && Text(value.Title, 2000, false) && Text(value.OriginalTitle, 2000) && Text(value.Summary, MaximumSummaryLength, multiline: true)
+        && (value.ChineseTitle is null || Text(value.ChineseTitle, 2000))
         && (value.CoverUrl is null || BangumiRelationsService.ValidCoverUrl(value.CoverUrl))
         && (value.ReleaseDate is null || DateOnly.TryParseExact(value.ReleaseDate, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.None, out _))

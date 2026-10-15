@@ -82,7 +82,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         renderVersion++; var source = model?.Source;
         Visibility = Visible(source is not null); if (model is null || source is null) return;
         syncing = true; section.IsExpanded = model.Expanded; syncing = false;
-        heading.Text = source.Title; heading.Visibility = Visible(model.CanBack);
+        heading.Text = model.Bangumi is { } titleSource ? ContentLanguage.BangumiTitle(titleSource).Text : model.AniList is { } aniTitle ? ContentLanguage.AniListTitle(aniTitle.Media).Text : source.Title; heading.Visibility = Visible(model.CanBack);
         identity.Text = source.Identity.Provider + (source.Identity.Level == BookEntityLevel.Unknown ? "" : " · " + LevelName(source.Identity.Level));
         incoming.Text = model.Incoming; incoming.Visibility = Visible(incoming.Text.Length > 0);
         message.Text = model.Message; message.Visibility = Visible(message.Text.Length > 0);
@@ -141,7 +141,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
             if (model.AniList is { } ani)
             {
                 foreach (var group in ani.Staff.GroupBy(x => x.Role))
-                    Fact(facts, RoleName(group.Key), group.Select(x => x.Person.NativeName.Length > 0 ? x.Person.NativeName : x.Person.Name).Distinct().ToArray());
+                    Fact(facts, RoleName(group.Key), group.Select(x => ContentLanguage.Person(x.Person, "Staff").Text).Distinct().ToArray());
                 Fact(facts, "开始日期", ani.Media.StartDate); Fact(facts, "卷 / 话数", string.Join(" · ", new[] { ani.Media.Volumes is > 0 ? $"{ani.Media.Volumes} 卷" : null, ani.Media.Chapters is > 0 ? $"{ani.Media.Chapters} 话" : null }.Where(x => x is not null)));
                 rawBody.Children.Add(SourceLink("AniList 书籍资料 ↗", ani.Media.Url, false));
                 if (ani.Staff.Length > 0) rawBody.Children.Add(SectionTitle("人员职责原文"));
@@ -206,7 +206,9 @@ public sealed class BookPublicationView : StackPanel, IDisposable
     private void RenderPreview()
     {
         previewBody.Children.Clear(); if (model?.Preview is not { } result) return;
-        var p = result.Publication; previewBody.Children.Add(SectionTitle("出版版本详情")); previewBody.Children.Add(Text(18, p.Title));
+        var p = result.Publication; var localizedTitle = ContentLanguage.PublicationTitle(p);
+        previewBody.Children.Add(SectionTitle("出版版本详情")); previewBody.Children.Add(Text(18, localizedTitle.Text));
+        var languageInfo = new ContentLanguageInfo(); languageInfo.Show(localizedTitle); previewBody.Children.Add(languageInfo);
         if (p.IsAggregate) previewBody.Children.Add(Text(13, "集合 / 汇总记录 · 不可确认为独立出版物"));
         Fact(previewBody, "卷次 / 版次", string.Join(" · ", new[] { p.Volume, p.Edition }.Where(x => !string.IsNullOrWhiteSpace(x))));
         Fact(previewBody, "出版日期", p.PublicationDate); Fact(previewBody, "出版社", p.Publishers); Fact(previewBody, "文库 / 丛书", p.BibliographicSeries);
@@ -304,7 +306,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         else if (action == "bookSearch") Bring(candidateCards);
         else Bring(section);
     }
-    internal object Evidence => new { source = model?.Source?.Identity, title = model?.Source?.Title, expanded = model?.Expanded, state = model?.State.ToString(), busy = model?.IsBusy,
+    internal object Evidence => new { source = model?.Source?.Identity, title = model?.Source?.Title, displayedTitle = heading.Text, contentLanguage = ContentLanguage.Current, expanded = model?.Expanded, state = model?.State.ToString(), busy = model?.IsBusy,
         historyDepth = model?.HistoryDepth, status = model?.Message, incoming = model?.Incoming, canConfirm = model?.CanConfirm, confirmationBlock = model?.ConfirmationBlock,
         relationExpanded = relations.IsExpanded, relations = model?.Relations?.Snapshot.Items.Where(x => x.Kind == BangumiRelationKind.Book).Select(x => new { x.Id, x.Relation }).ToArray(),
         candidates = model?.Candidates.Select(x => new { x.Id, x.Title, x.Isbns, x.IsAggregate }).ToArray(), nextStart = model?.Search?.Page.NextStart,

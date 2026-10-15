@@ -14,6 +14,7 @@ public sealed partial class SettingsPage : Page
     public RecognitionViewModel Recognition { get; }
     public CatalogBrowseSettings Browsing { get; }
     public LanguageSettings Languages { get; }
+    public ContentLanguageSettings ContentLanguages { get; }
     public AppUpdateViewModel Updates { get; }
     public NextMoeSettingsViewModel NextMoe { get; }
     public LibraryBackupViewModel Backups { get; }
@@ -41,9 +42,9 @@ public sealed partial class SettingsPage : Page
         if (synchronizing || MaterialChoice.SelectedIndex < 0) return;
         if (ChangeMaterialMode is { } change) await change((MaterialMode)MaterialChoice.SelectedIndex);
     }
-    public SettingsPage(WorkspaceViewModel viewModel, OnlineViewModel online, RecognitionViewModel recognition, CatalogBrowseSettings browsing, LanguageSettings languages, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoe, LibraryBackupViewModel backups, BangumiSettingsViewModel bangumi)
+    public SettingsPage(WorkspaceViewModel viewModel, OnlineViewModel online, RecognitionViewModel recognition, CatalogBrowseSettings browsing, LanguageSettings languages, ContentLanguageSettings contentLanguages, AppUpdateViewModel updates, NextMoeSettingsViewModel nextMoe, LibraryBackupViewModel backups, BangumiSettingsViewModel bangumi)
     {
-        ViewModel = viewModel; Online = online; Recognition = recognition; Browsing = browsing; Languages = languages; Updates = updates; NextMoe = nextMoe; Backups = backups; Bangumi = bangumi; InitializeComponent();
+        ViewModel = viewModel; Online = online; Recognition = recognition; Browsing = browsing; Languages = languages; ContentLanguages = contentLanguages; Updates = updates; NextMoe = nextMoe; Backups = backups; Bangumi = bangumi; InitializeComponent();
         Loaded += (_, _) => Bangumi.RefreshState();
         Unloaded += (_, _) => { Bangumi.Cancel(); BangumiToken.Password = ""; BangumiEditor.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed; };
         Loaded += (_, _) => { Backups.PropertyChanged += OnBackupState; SynchronizeBackups(); };
@@ -54,6 +55,8 @@ public sealed partial class SettingsPage : Page
         Unloaded += (_, _) => Updates.PropertyChanged -= OnUpdateState;
         Loaded += (_, _) => { Languages.PropertyChanged += OnLanguageState; SynchronizeLanguage(); };
         Unloaded += (_, _) => Languages.PropertyChanged -= OnLanguageState;
+        Loaded += (_, _) => { ContentLanguages.PropertyChanged += OnContentLanguageState; SynchronizeContentLanguage(); };
+        Unloaded += (_, _) => ContentLanguages.PropertyChanged -= OnContentLanguageState;
         Loaded += async (_, _) => { Online.PropertyChanged += OnCredentialState; await Online.CheckCredentialAsync(); if (IsLoaded) SynchronizeCredential(); };
         Loaded += (_, _) => { ViewModel.PropertyChanged += OnState; Synchronize(); };
         Loaded += (_, _) => { Browsing.PropertyChanged += OnBrowseState; SynchronizeBrowsing(); };
@@ -78,6 +81,19 @@ public sealed partial class SettingsPage : Page
     internal void ShowUpdatesTest() => UpdateSection.StartBringIntoView(new Microsoft.UI.Xaml.BringIntoViewOptions { VerticalAlignmentRatio = .5 });
     private void OnBrowseState(object? sender, PropertyChangedEventArgs e) => SynchronizeBrowsing();
     private void OnLanguageState(object? sender, PropertyChangedEventArgs e) => SynchronizeLanguage();
+    private void OnContentLanguageState(object? sender, PropertyChangedEventArgs e) => SynchronizeContentLanguage();
+    private void SynchronizeContentLanguage()
+    {
+        synchronizing = true;
+        ContentLanguageChoice.SelectedIndex = Array.IndexOf(ContentLanguage.Choices, ContentLanguages.Preference.Preferred);
+        ContentFallbackChoice.SelectedIndex = Array.IndexOf(ContentLanguage.Choices, ContentLanguages.Preference.Fallback);
+        synchronizing = false;
+    }
+    private async void OnContentLanguage(object sender, SelectionChangedEventArgs e)
+    {
+        if (!synchronizing && ContentLanguageChoice.SelectedIndex >= 0 && ContentFallbackChoice.SelectedIndex >= 0)
+            await ContentLanguages.ChangeAsync(new(ContentLanguage.Choices[ContentLanguageChoice.SelectedIndex], ContentLanguage.Choices[ContentFallbackChoice.SelectedIndex]));
+    }
     private void SynchronizeLanguage() { synchronizing = true; LanguageOptions.Visibility = Languages.SelectionAvailable ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed; LanguageChoice.SelectedIndex = Array.IndexOf(UiText.Choices, Languages.Selected); LanguageChoice.IsEnabled = Languages.CanChange; synchronizing = false; }
     private async void OnLanguage(object sender, SelectionChangedEventArgs e) { if (!synchronizing && LanguageChoice.SelectedIndex >= 0) await Languages.ChangeAsync(UiText.Choices[LanguageChoice.SelectedIndex]); }
     private void SynchronizeBrowsing() { synchronizing = true; NsfwSwitch.IsOn = Browsing.ShowNsfw; NsfwSwitch.IsEnabled = Browsing.CanChange; synchronizing = false; }

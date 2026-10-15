@@ -41,7 +41,10 @@ public partial class App : Microsoft.UI.Xaml.Application
 #endif
         var languages = new LanguageSettings(languageStore, WindowsUiLanguage.Current(), languageSelection);
         await languages.InitializeAsync(); // Before constructing any XAML or view-model labels.
-        host = Composition.Create(languages, languageStore);
+        var contentStore = new ContentLanguagePreferencesStore(configuration);
+        var contentLanguages = new ContentLanguageSettings(contentStore);
+        await contentLanguages.InitializeAsync();
+        host = Composition.Create(languages, languageStore, contentLanguages, contentStore);
         host.LogStarted();
         UnhandledException += (_, error) => host?.LogFatal(error.Exception);
         host.Window.AppWindow.Closing += (sender, close) =>

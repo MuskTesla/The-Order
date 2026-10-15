@@ -16,9 +16,11 @@ namespace TheOrder.WinUI.Views;
 public sealed class MusicBrainzAlbumView : Grid, IDisposable
 {
     private readonly TextBlock title = Text(28), type = Text(14), artist = Text(16);
+    private readonly TextBlock originalTitle = Text(14);
     private readonly ContentControl artistLinks = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private MusicBrainzArtistCredit[]? shownArtists;
     private readonly TextBlock relation = Text(14), status = Text(14), choiceReason = Text(13);
+    private readonly ContentLanguageInfo languageInfo = new();
     private readonly DetailSynopsis summary = new() { Heading = "简介 · Bangumi" };
     private readonly TagFlowPanel releaseFacts = MusicDetailFormatting.Facts();
     private readonly TextBlock coverCredit = Text(14);
@@ -71,7 +73,8 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         var coverFrame = new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = cover };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         header.Children.Add(coverFrame);
-        var info = new StackPanel { Spacing = 10, Children = { type, title, artist, artistLinks, releaseFacts, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
+        originalTitle.Opacity = .7;
+        var info = new StackPanel { Spacing = 10, Children = { type, title, originalTitle, artist, artistLinks, releaseFacts, choiceReason } }; SetColumn(info, 1); header.Children.Add(info);
         actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(showTracks); actions.Children.Add(editions);
         confirmActions.Children.Add(confirm); confirmActions.Children.Add(chooseAgain);
         actions.Children.Add(reject); AutomationProperties.SetAutomationId(reject, "MusicAlbumReject");
@@ -83,7 +86,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         credits.Content = personnel; summarySection.Children.Add(summary);
         raw.Content = rawBody; sourceBody.Children.Add(raw); sourceBody.Children.Add(refresh); sources.Content = sourceBody;
         var body = new StackPanel { Spacing = 24, MaxWidth = 1160, HorizontalAlignment = HorizontalAlignment.Stretch,
-            Children = { header, relation, status, actions, confirmActions, candidateSection, tracksSection, credits, summarySection, sources } };
+            Children = { header, relation, status, actions, confirmActions, candidateSection, tracksSection, credits, summarySection, languageInfo, sources } };
         scroll = new() { Content = body, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         Children.Add(scroll);
         scroll.Loaded += (_, _) => QueueStart(); body.SizeChanged += (_, _) => { QueueStart(); RestoreAlbumPosition(); };
@@ -132,7 +135,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     private void Render()
     {
         var album = model?.Displayed?.Album; var source = model?.SourceDetails?.Details; var item = model?.Item;
-        title.Text = album?.Release.Title ?? source?.Title ?? item?.Title ?? "音乐";
+        var localizedTitle = album is not null ? ContentLanguage.MusicTitle(album, source, model?.State == MusicAlbumState.Ready) : source is not null ? ContentLanguage.BangumiTitle(source) : null;
+        title.Text = localizedTitle?.Text is { Length: > 0 } selectedTitle ? selectedTitle : album?.Release.Title ?? source?.Title ?? item?.Title ?? "音乐";
+        originalTitle.Text = localizedTitle?.OriginalText ?? "";
+        originalTitle.Visibility = Visible(originalTitle.Text.Length > 0 && originalTitle.Text != title.Text);
         type.Text = album is null ? "音乐 · Bangumi" : (album.GroupType switch { "Album" => "专辑", "Single" => "单曲发行", "EP" => "EP", _ => "音乐发行" }) + " · MusicBrainz";
         artist.Text = album?.Release.Artist is { Length: > 0 } performer ? performer == "Various Artists" ? "Various Artists（合辑）" : performer
             : string.Join(" / ", source?.MusicFacts?.Artists ?? []);
@@ -165,7 +171,9 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         if (!ReferenceEquals(shownSearch, model?.Match?.Search)) { shownSearch = model?.Match?.Search; RenderCandidates(); }
         tracksSection.Visibility = Visible(album?.Discs.Length > 0);
         if (!ReferenceEquals(shownAlbum, album)) { shownAlbum = album; RenderDiscs(album); }
-        summary.Text = source?.Summary ?? ""; summarySection.Visibility = Visible(summary.Text.Length > 0);
+        var localizedSummary = ContentLanguage.Synopsis(null, source, true);
+        languageInfo.Show(localizedTitle ?? ContentLanguage.Select([]), localizedSummary);
+        summary.Text = localizedSummary.Text; summarySection.Visibility = Visible(summary.Text.Length > 0);
         RenderSources(album, item, source);
         SetCover(album?.CoverUrl ?? source?.CoverUrl ?? item?.CoverUrl, source?.CoverUrl ?? item?.CoverUrl);
         QueueStart();
@@ -395,6 +403,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         ? entityView?.FollowForFixture(reference) ?? Task.CompletedTask : OpenEntityAsync(reference);
     internal Task PreviewForFixture(string id) => model?.PreviewAsync(id) ?? Task.CompletedTask;
     internal Task ConfirmForFixture() => model?.ConfirmAsync() ?? Task.CompletedTask;
+    internal void OriginalForFixture() { languageInfo.IsExpanded = true; languageInfo.StartBringIntoView(); }
     internal Task EditionsForFixture() => model?.ChooseEditionAsync() ?? Task.CompletedTask;
     internal void TracksForFixture(int? position)
     {
@@ -413,7 +422,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     }
     internal object Evidence => new
     {
-        state = model?.State.ToString(), subjectId = model?.Item?.Id, title = title.Text, status = status.Text, model?.SelectionReason,
+        contentLanguage = languageInfo.Evidence, originalTitle = originalTitle.Text, state = model?.State.ToString(), subjectId = model?.Item?.Id, title = title.Text, status = status.Text, model?.SelectionReason,
         artistCredits = model?.Displayed?.Album.Release.ArtistCredits,
         artistLinks = (artistLinks.Content as TagFlowPanel)?.Children.OfType<HyperlinkButton>().Select(InteractiveCardEvidence.Hit).ToArray(),
         releaseId = model?.Displayed?.Album.Release.Id, releaseGroupId = model?.Displayed?.Album.Release.ReleaseGroupId,

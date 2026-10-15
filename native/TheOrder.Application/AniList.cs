@@ -53,6 +53,8 @@ public sealed record AniListMedia(int Id, int? MalId, AniListMediaKind Kind, str
     string EnglishTitle, string Format, string Status, string? CoverUrl, string? StartDate, string? EndDate,
     int? Episodes, int? Chapters, int? Volumes, string[] Synonyms)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RomajiTitle { get; init; }
     public string Url => new AniListReference(Id, Kind).Url;
     public string TypeName => Kind == AniListMediaKind.Anime ? "动画" : Format.Length == 0 ? "书籍" : Format == "NOVEL" ? "轻小说 / 小说" : "漫画";
 }
@@ -206,7 +208,7 @@ public static class AniListValidation
     public static bool Media(AniListMedia? m) => MediaCore(m, requireFormat: true);
     public static bool RelationMedia(AniListMedia? m) => MediaCore(m, requireFormat: false);
     private static bool MediaCore(AniListMedia? m, bool requireFormat) => m is not null && m.Id > 0 && Enum.IsDefined(m.Kind) && (m.MalId is null or > 0)
-        && Text(m.Title, 2000, false) && Text(m.NativeTitle, 2000) && Text(m.EnglishTitle, 2000)
+        && Text(m.Title, 2000, false) && Text(m.NativeTitle, 2000) && Text(m.EnglishTitle, 2000) && OptionalText(m.RomajiTitle, 2000)
         && (Text(m.Format, 64, false) || !requireFormat && m.Format == "")
         && Text(m.Status, 64) && (m.CoverUrl is null || Image(m.CoverUrl)) && (m.StartDate is null || Date(m.StartDate))
         && (m.EndDate is null || Date(m.EndDate)) && (m.Episodes is null or > 0 and <= 1000000)
