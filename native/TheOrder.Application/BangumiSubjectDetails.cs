@@ -26,10 +26,18 @@ public interface IBangumiSubjectDetailsReader
         bool forceRefresh, CancellationToken cancellation);
 }
 
-// One small cache per composition lifetime. No new database, private profile access,
-// or cache ownership ambiguity: only anonymously retrieved public display data lives here.
+public interface IBangumiSubjectDetailsCache
+{
+    Task<BangumiSubjectDetails?> ReadAsync(string scope, string subjectId, BangumiRelationKind kind, CancellationToken cancellation);
+    Task WriteAsync(string scope, BangumiSubjectDetails value, Func<bool> canCommit, CancellationToken cancellation);
+    Task RemoveAsync(string scope, string subjectId, BangumiRelationKind kind, Func<bool> canCommit, CancellationToken cancellation);
+}
+
+// Bounded display metadata, scoped to the active Bangumi access lease. The optional
+// disposable Profile cache survives restarts; it never contains user decisions or tokens.
 public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider provider,
-    Func<DateTimeOffset>? clock = null, BangumiAccessContext? access = null) : IBangumiSubjectDetailsReader
+    Func<DateTimeOffset>? clock = null, BangumiAccessContext? access = null,
+    IBangumiSubjectDetailsCache? cache = null) : IBangumiSubjectDetailsReader
 {
     private readonly BangumiAccessContext authorization = access ?? new();
     public const int MaximumEntries = 64, MaximumSummaryLength = 32768;
@@ -89,20 +97,37 @@ public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider 
         }
         try
         {
+            if (previous is null && cache is not null)
+            {
+                BangumiSubjectDetails? persisted = null;
+                try { persisted = await cache.ReadAsync(lease.Scope, subjectId, expectedKind, cancellation).ConfigureAwait(false); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { }
+                cancellation.ThrowIfCancellationRequested(); authorization.RequireCurrent(lease);
+                if (Valid(subjectId, expectedKind, persisted) && persisted!.FetchedAtUtc <= Now.AddMinutes(5)
+                    && Now - persisted.FetchedAtUtc <= MaximumStaleAge)
+                {
+                    previous = persisted;
+                    lock (sync) if (CanCommit()) Remember(persisted);
+                    if (!forceRefresh && Now - persisted.FetchedAtUtc < FreshFor)
+                        return new(persisted, true, false, null);
+                }
+            }
             var value = await provider.FetchAsync(subjectId, expectedKind, cancellation).ConfigureAwait(false);
             cancellation.ThrowIfCancellationRequested();
             authorization.RequireCurrent(lease);
             if (!Valid(subjectId, expectedKind, value) || value.FetchedAtUtc > Now.AddMinutes(5))
                 throw new BangumiRelationsException(BangumiRelationsFailure.InvalidResponse, "Bangumi 返回的作品身份或资料格式不一致。");
-            lock (sync)
+            string? warning = null;
+            if (cache is not null && CanCommit())
             {
-                if (latest.TryGetValue(key, out var active) && active == request)
-                {
-                    saved[key] = (value, ++sequence);
-                    while (saved.Count > MaximumEntries) saved.Remove(saved.MinBy(pair => pair.Value.Access).Key);
-                }
+                try { await cache.WriteAsync(lease.Scope, value, CanCommit, cancellation).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && !CanCommit()) { }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+                { warning = "资料已读取，但暂未保存离线缓存。"; }
             }
-            return new(value, false, false, null);
+            cancellation.ThrowIfCancellationRequested(); authorization.RequireCurrent(lease);
+            lock (sync) if (CanCommit()) Remember(value);
+            return new(value, false, false, warning);
         }
         catch (BangumiRelationsException e) when (e.Failure is BangumiRelationsFailure.Offline or BangumiRelationsFailure.Timeout
             or BangumiRelationsFailure.Server or BangumiRelationsFailure.RateLimited && previous is not null)
@@ -118,6 +143,12 @@ public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider 
             {
                 if (latest.TryGetValue(key, out var active) && active == request) saved.Remove(key);
             }
+            if (cache is not null && CanCommit())
+            {
+                try { await cache.RemoveAsync(lease.Scope, subjectId, expectedKind, CanCommit, cancellation).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && !CanCommit()) { }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            }
             throw;
         }
         finally
@@ -126,6 +157,16 @@ public sealed class BangumiSubjectDetailsService(IBangumiSubjectDetailsProvider 
             {
                 if (latest.TryGetValue(key, out var active) && active == request) latest.Remove(key);
             }
+        }
+        bool CanCommit()
+        {
+            if (cancellation.IsCancellationRequested || !authorization.IsCurrent(lease)) return false;
+            lock (sync) return latest.TryGetValue(key, out var active) && active == request;
+        }
+        void Remember(BangumiSubjectDetails value)
+        {
+            saved[key] = (value, ++sequence);
+            while (saved.Count > MaximumEntries) saved.Remove(saved.MinBy(pair => pair.Value.Access).Key);
         }
     }
 }

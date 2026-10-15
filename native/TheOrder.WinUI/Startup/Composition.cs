@@ -117,7 +117,8 @@ internal static class Composition
         services.AddSingleton<IRelatedSemanticReader>(p => p.GetRequiredService<BangumiRelationsProvider>());
         services.AddSingleton(p => new BangumiSubjectDetailsProvider(p.GetRequiredService<PublicArtworkNetwork>().Client, access: p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IBangumiSubjectDetailsProvider>(p => p.GetRequiredService<BangumiSubjectDetailsProvider>());
-        services.AddSingleton<IBangumiSubjectDetailsReader>(p => new BangumiSubjectDetailsService(p.GetRequiredService<IBangumiSubjectDetailsProvider>(), access: p.GetRequiredService<BangumiAccessContext>()));
+        services.AddSingleton<IBangumiSubjectDetailsCache, IsolatedBangumiSubjectDetailsCache>();
+        services.AddSingleton<IBangumiSubjectDetailsReader>(p => new BangumiSubjectDetailsService(p.GetRequiredService<IBangumiSubjectDetailsProvider>(), access: p.GetRequiredService<BangumiAccessContext>(), cache: p.GetRequiredService<IBangumiSubjectDetailsCache>()));
         services.AddSingleton<IBangumiEpisodesProvider>(p => p.GetRequiredService<BangumiSubjectDetailsProvider>());
         services.AddSingleton<IBangumiEpisodesReader>(p => new BangumiEpisodesService(p.GetRequiredService<IBangumiEpisodesProvider>(), access: p.GetRequiredService<BangumiAccessContext>()));
         services.AddSingleton<IMusicBrainzProvider>(p => new MusicBrainzProvider(p.GetRequiredService<PublicArtworkNetwork>().Client));
