@@ -12,18 +12,19 @@ namespace TheOrder.WinUI.Views;
 // containing detail page owns scrolling; episode rows do not create ScrollViewers.
 public sealed class BangumiEpisodesView : Grid, IDisposable
 {
-    private readonly Expander section = new() { Header = "章节目录 · Bangumi", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+    private readonly Expander section = new() { Header = "分集目录 · Bangumi", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly StackPanel body = new() { Spacing = 10 }, rows = new() { Spacing = 6 };
     private readonly TextBlock notice = Text(""), provenance = Text("保留 Bangumi 原始章节类型与同类排序；目录项数可能与作品集数不同。"), filterNotice = Text("", 12);
     private readonly TagFlowPanel filters = new() { HorizontalSpacing = 6, VerticalSpacing = 6 };
     private readonly Button refresh = Button("刷新目录"), more = Button("加载下一页"), cancel = Button("取消读取"), retry = Button("重试");
-    private readonly HyperlinkButton source = new() { Content = "在 Bangumi 查看章节目录 ↗", Padding = new(0), HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly HyperlinkButton source = new() { Content = "在 Bangumi 查看分集目录 ↗", Padding = new(0), HorizontalAlignment = HorizontalAlignment.Left };
     private BangumiEpisodesViewModel? model;
     private BangumiEpisode[]? shown;
     private int? shownType;
     private readonly Dictionary<int, Action> expandEpisode = [];
     private readonly HashSet<int> expandedEpisodes = [];
     private readonly List<HyperlinkButton> episodeLinks = [];
+    private Task expanding = Task.CompletedTask;
     private bool disposed;
 
     public BangumiEpisodesView()
@@ -33,7 +34,7 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
         var actions = new TagFlowPanel { HorizontalSpacing = 8, VerticalSpacing = 6, Children = { refresh, cancel, retry } };
         body.Children.Add(provenance); body.Children.Add(notice); body.Children.Add(actions); body.Children.Add(filters); body.Children.Add(filterNotice); body.Children.Add(rows); body.Children.Add(more); body.Children.Add(source);
         section.Content = body; Children.Add(section); Visibility = Visibility.Collapsed;
-        section.Expanding += async (_, _) => { if (model is not null) await model.ExpandAsync(); };
+        section.Expanding += async (_, _) => { if (model is not null) { expanding = model.ExpandAsync(); await expanding; } };
         section.Collapsed += (_, _) => model?.Cancel();
         refresh.Click += async (_, _) => { if (model is not null) await model.RefreshAsync(); };
         more.Click += async (_, _) => { if (model is not null) await model.MoreAsync(); };
@@ -57,7 +58,7 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
     {
         if (disposed) return;
         Visibility = model?.SubjectId is not null ? Visibility.Visible : Visibility.Collapsed;
-        section.Header = model?.Result is not null ? $"章节目录 · Bangumi · {model.Episodes.Length} / {model.Total} 项" : "章节目录 · Bangumi";
+        section.Header = model?.Result is not null ? $"分集目录 · Bangumi · {model.Episodes.Length} / {model.Total} 项" : "分集目录 · Bangumi";
         notice.Text = model?.Message ?? ""; notice.Visibility = notice.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         refresh.IsEnabled = retry.IsEnabled = model?.CanLoad == true;
         cancel.Visibility = model?.IsBusy == true ? Visibility.Visible : Visibility.Collapsed;
@@ -137,14 +138,16 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
         Padding = new(0), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left };
     private static TextBlock Text(string value, double size = 13) => new() { Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private static Button Button(string value) => new() { Content = value, Padding = new(12, 6, 12, 6), HorizontalAlignment = HorizontalAlignment.Left };
-    public async Task VisualExpandAsync()
+    public async Task ExpandAsync()
     {
         var current = model; var id = current?.SubjectId;
         if (current is null || id is null) return;
-        var operation = current.ExpandAsync(); var version = current.Version;
-        await operation;
-        if (!disposed && ReferenceEquals(model, current) && current.SubjectId == id && current.Version == version) section.IsExpanded = true;
+        // Reveal loading/cancel UI immediately, rather than making a jump action
+        // appear unresponsive until the remote directory finishes loading.
+        section.IsExpanded = true;
+        await expanding;
     }
+    internal Task VisualExpandAsync() => ExpandAsync();
     public bool FilterForFixture(int? type)
     {
         if (disposed || model is null || !BangumiEpisodeDisplay.ValidType(type)) return false;

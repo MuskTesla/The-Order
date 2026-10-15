@@ -148,6 +148,13 @@ public sealed partial class DetailsPage
         finally { if (Accept()) heroPresentation.SetPending(false); }
     }
     private Task OpenCatalogAsync(CatalogEntityRef entity) => OpenCatalogWithRelationAsync(entity, null);
+    private async void OnShowRelatedWorks(object sender, RoutedEventArgs args)
+    {
+        if (!IsLoaded || ViewModel.IsDetailsLoading || CatalogHost.Visibility == Visibility.Visible || RelatedMediaHost.Visibility == Visibility.Visible) return;
+        BangumiRelated.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = .1 });
+        try { await BangumiRelated.ExpandAsync(); }
+        catch (Exception error) { App.TraceVisualFailure(error); }
+    }
     private Task OpenRelatedCatalogAsync(RelatedWorkCard card) => card.Catalog is not { } entity ? Task.CompletedTask
         : OpenCatalogWithRelationAsync(entity, new CatalogIncomingRelation(ViewModel.Draft?.Source.Metadata?.Id ?? "",
             ViewModel.Draft?.Source.Personal.Name ?? "原作", card.Label, card.RawRelation, card.Evidence, card.Url));

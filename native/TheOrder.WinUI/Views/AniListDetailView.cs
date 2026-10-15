@@ -26,6 +26,7 @@ public sealed class AniListDetailView : Grid, IDisposable
     private string? synopsisIdentity;
     private readonly ProgressRing ring = new() { Width = 18, Height = 18 };
     private readonly Button cancel = Button("取消读取"), refresh = Button("刷新资料"), confirm = Button("确认使用此条目"), reject = Button("排除此条目"), choose = Button("选择其他条目"), search = Button("查找"), more = Button("更多角色与制作人员"), toCharacters = Button("角色与声优"), toStaff = Button("制作人员"), toRelations = Button("前后作");
+    private readonly Button toEpisodes = Button("分集目录"), toTrailer = Button("PV"), toWatch = Button("观看渠道");
     private readonly TextBox searchText = new() { PlaceholderText = "原文标题，或 AniList 作品链接", MaxLength = 2000, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Expander characters = Expand("角色与日语声优"), staff = Expand("制作人员"), genres = Expand("类型与标签"), related = Expand("前后作与其他关联"), sources = Expand("资料来源与对应关系");
     private readonly Expander bridgeSummary = Expand("Bangumi 简介");
@@ -57,6 +58,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         heading.Children.Add(cover); var labels = new StackPanel { Spacing = 9, Children = { type, title, alternate, facts, selection } }; SetColumn(labels, 1); heading.Children.Add(labels);
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
         actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(confirm); actions.Children.Add(reject); actions.Children.Add(choose); actions.Children.Add(toCharacters); actions.Children.Add(toStaff); actions.Children.Add(toRelations);
+        actions.Children.Add(toEpisodes); actions.Children.Add(toTrailer); actions.Children.Add(toWatch);
+        foreach (var (control, id) in new[] { (toCharacters, "AniListJumpCharacters"), (toStaff, "AniListJumpStaff"), (toRelations, "AniListJumpRelations"), (toEpisodes, "AniListJumpEpisodes"), (toTrailer, "AniListJumpPV"), (toWatch, "AniListJumpWatch") })
+            AutomationProperties.SetAutomationId(control, id);
         var searchRow = new Grid { ColumnSpacing = 8 }; searchRow.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) }); searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         searchRow.Children.Add(searchText); SetColumn(search, 1); searchRow.Children.Add(search);
         candidateSection.Children.Add(Text(20, "选择对应作品")); candidateSection.Children.Add(searchRow); candidateSection.Children.Add(candidates);
@@ -77,6 +81,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         reject.Click += async (_, _) => { if (model?.CanReject == true) await model.RejectAsync(); else if (model is not null) await model.RevokeAsync(); };
         choose.Click += async (_, _) => { if (model is not null) { await model.ChooseAgainAsync(); candidateSection.StartBringIntoView(); } }; more.Click += async (_, _) => { if (model is not null) await model.MoreAsync(); };
         toCharacters.Click += (_, _) => ShowSection(characters); toStaff.Click += (_, _) => ShowSection(staff); toRelations.Click += (_, _) => ShowSection(related);
+        toEpisodes.Click += async (_, _) => await ShowEpisodesAsync();
+        toTrailer.Click += (_, _) => { availability.Expand(); availability.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = .05 }); };
+        toWatch.Click += (_, _) => watchLinks.Expand();
         foreach (var panel in new[] { candidates, characterCards, relatedCards }) panel.SizeChanged += (_, _) => ClampCards(panel);
         search.Click += async (_, _) => await SearchAsync(); searchText.KeyDown += async (_, e) => { if (e.Key == Windows.System.VirtualKey.Enter) { e.Handled = true; await SearchAsync(); } };
         SizeChanged += (_, _) => { var narrow = ActualWidth < 520; cover.Width = narrow ? 96 : 136; cover.Height = narrow ? 136 : 190; title.FontSize = narrow ? 23 : 28; heading.ColumnSpacing = narrow ? 12 : 20; };
@@ -155,6 +162,9 @@ public sealed class AniListDetailView : Grid, IDisposable
         choose.Visibility = Visible(model?.IsBridge == true && details is not null); choose.IsEnabled = model?.CanLoad == true;
         foreach (var button in new[] { toCharacters, toStaff, toRelations }) { button.Visibility = Visible(details is not null); button.IsEnabled = model?.CanLoad == true; }
         toCharacters.Content = isAnime ? "角色与声优" : "角色"; toStaff.Content = isAnime ? "制作人员" : "作者与制作"; toRelations.Content = "关联作品";
+        toEpisodes.Visibility = Visible(episodeId is not null); toEpisodes.IsEnabled = model?.CanLoad == true;
+        toTrailer.Visibility = Visible(isAnime && details?.Trailer is not null); toTrailer.IsEnabled = model?.CanLoad == true;
+        toWatch.Visibility = Visible(isAnime); toWatch.IsEnabled = model?.CanLoad == true && !preview;
         actions.Visibility = Visible(actions.Children.OfType<FrameworkElement>().Any(x => x.Visibility == Visibility.Visible));
         candidateSection.Visibility = Visible(model?.IsBridge == true && details is null && model?.Bridge is not null);
         search.IsEnabled = searchText.IsEnabled = refresh.IsEnabled = model?.CanLoad == true;
@@ -343,6 +353,15 @@ public sealed class AniListDetailView : Grid, IDisposable
     private static Border Frame(UIElement child, double width) => new() { Child = child, Width = width, MaxWidth = width, Tag = width, Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new(12) };
     private static void ClampCards(TagFlowPanel panel) { if (panel.ActualWidth <= 0) return; foreach (var child in panel.Children.OfType<FrameworkElement>()) if (child.Tag is double width) child.MaxWidth = Math.Min(width, panel.ActualWidth); }
     private void ShowSection(Expander section) { section.IsExpanded = true; DispatcherQueue.TryEnqueue(() => { if (active && !disposed && section.IsLoaded) { scroll.UpdateLayout(); var y = section.TransformToVisual(body).TransformPoint(new(0, 0)).Y; scroll.ChangeView(null, y, null, true); } }); }
+    private async Task ShowEpisodesAsync()
+    {
+        var expected = episodeSource; var expectedModel = model; var restore = model?.RestoreVersion; var input = scrollInputVersion;
+        var loading = episodeList.ExpandAsync();
+        scroll.UpdateLayout(); scroll.ChangeView(null, episodeList.TransformToVisual(body).TransformPoint(new(0, 0)).Y, null, true);
+        await loading;
+        if (active && !disposed && expected is not null && episodeSource == expected && ReferenceEquals(model, expectedModel) && model?.RestoreVersion == restore && scrollInputVersion == input)
+        { scroll.UpdateLayout(); scroll.ChangeView(null, episodeList.TransformToVisual(body).TransformPoint(new(0, 0)).Y, null, true); }
+    }
     private void AddFact(string value) { if (value.Length > 0) facts.Children.Add(Text(13, value)); }
     private Task SearchAsync() => model?.SearchAsync(string.IsNullOrWhiteSpace(searchText.Text) ? null : searchText.Text.Trim()) ?? Task.CompletedTask;
     internal Task RefreshAsync() => model?.RefreshAsync() ?? Task.CompletedTask;

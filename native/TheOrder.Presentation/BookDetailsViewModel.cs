@@ -37,6 +37,11 @@ public sealed class BookDetailsViewModel(IBangumiSubjectDetailsReader subjects,
     public long Version => generation;
     public string DefaultTitle => Source?.OriginalTitle is { Length: > 0 } original ? original : Source?.Title ?? "";
     public string DefaultIsbn => Source?.Isbns.FirstOrDefault() ?? "";
+    // An aggregate count is not a navigable chapter directory. Use only the
+    // current, trusted book source; never borrow a count from a rejected preview.
+    public string ChapterDirectoryNotice => (Bangumi?.BookFacts?.Chapters ?? AniList?.Media.Chapters) is > 0 and var count
+        ? $"当前仅收录 {count} 章的总数，逐章目录暂不可用。"
+        : Source?.Format is "MANGA" or "ONE_SHOT" or "漫画" ? "逐章目录暂不可用，可继续浏览系列与单行本。" : "";
     public bool PreviewIsBound => Preview is { } p && Bindings.Any(x => x.PublicationId == p.Publication.Id && !x.NeedsReview);
     public string ConfirmationBlock => Preview is not { } p ? "请先预览一条出版记录。"
         : p.IsStale ? "当前显示旧资料，请刷新出版记录后再确认。"

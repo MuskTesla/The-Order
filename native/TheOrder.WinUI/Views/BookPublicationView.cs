@@ -16,6 +16,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
     private readonly Grid searchForm = new() { ColumnSpacing = 12, RowSpacing = 10 };
     private readonly List<Button> savedActions = [];
     private readonly TextBlock heading = Text(20), identity = Text(13), incoming = Text(13), message = Text(14), relationNotice = Text(13), searchNotice = Text(13), confirmation = Text(13);
+    private readonly TextBlock chapterNotice = Text(13);
     private readonly TextBox queryTitle = new() { Header = "原标题", PlaceholderText = "书名", MaxLength = 200, HorizontalAlignment = HorizontalAlignment.Stretch }, queryIsbn = new() { Header = "ISBN（可选）", PlaceholderText = "输入 ISBN 精确查找", MaxLength = 40, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Button back = Button("返回上一本"), cancel = Button("取消读取"), reloadSaved = Button("刷新已保存版本"), refreshRelations = Button("刷新关系"), search = Button("查找"), next = Button("查看更多版本"), confirm = Button("确认此出版版本"), refreshPreview = Button("刷新记录");
     private BookDetailsViewModel? model;
@@ -43,6 +44,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
         actions.Children.Add(back); actions.Children.Add(cancel); actions.Children.Add(reloadSaved);
         content.Children.Add(heading); content.Children.Add(identity); content.Children.Add(incoming); content.Children.Add(facts); content.Children.Add(actions); content.Children.Add(message);
+        content.Children.Insert(4, chapterNotice); chapterNotice.Opacity = .75;
         raw.Content = rawBody;
         var relationBody = new StackPanel { Spacing = 10, Children = { relationNotice, refreshRelations, relationCards } };
         relations.Content = relationBody; content.Children.Add(relations); content.Children.Add(savedBody);
@@ -86,6 +88,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         identity.Text = source.Identity.Provider + (source.Identity.Level == BookEntityLevel.Unknown ? "" : " · " + LevelName(source.Identity.Level));
         incoming.Text = model.Incoming; incoming.Visibility = Visible(incoming.Text.Length > 0);
         message.Text = model.Message; message.Visibility = Visible(message.Text.Length > 0);
+        chapterNotice.Text = model.ChapterDirectoryNotice; chapterNotice.Visibility = Visible(chapterNotice.Text.Length > 0);
         back.Visibility = Visible(model.CanBack); cancel.Visibility = Visible(model.IsBusy); back.IsEnabled = model.CanBack;
         reloadSaved.IsEnabled = model.CanLoad; reloadSaved.Visibility = Visible(model.Bindings.Length > 0 || !model.BindingsLoaded || model.State is BookDetailsState.Failed or BookDetailsState.Cancelled);
         if (shownSource != source.Fingerprint)
@@ -306,7 +309,7 @@ public sealed class BookPublicationView : StackPanel, IDisposable
         else if (action == "bookSearch") Bring(candidateCards);
         else Bring(section);
     }
-    internal object Evidence => new { source = model?.Source?.Identity, title = model?.Source?.Title, displayedTitle = heading.Text, contentLanguage = ContentLanguage.Current, expanded = model?.Expanded, state = model?.State.ToString(), busy = model?.IsBusy,
+    internal object Evidence => new { source = model?.Source?.Identity, title = model?.Source?.Title, displayedTitle = heading.Text, chapterNotice = chapterNotice.Text, contentLanguage = ContentLanguage.Current, expanded = model?.Expanded, state = model?.State.ToString(), busy = model?.IsBusy,
         historyDepth = model?.HistoryDepth, status = model?.Message, incoming = model?.Incoming, canConfirm = model?.CanConfirm, confirmationBlock = model?.ConfirmationBlock,
         relationExpanded = relations.IsExpanded, relations = model?.Relations?.Snapshot.Items.Where(x => x.Kind == BangumiRelationKind.Book).Select(x => new { x.Id, x.Relation }).ToArray(),
         candidates = model?.Candidates.Select(x => new { x.Id, x.Title, x.Isbns, x.IsAggregate }).ToArray(), nextStart = model?.Search?.Page.NextStart,

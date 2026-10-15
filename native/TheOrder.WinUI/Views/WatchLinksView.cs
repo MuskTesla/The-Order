@@ -73,7 +73,8 @@ internal sealed class WatchLinksView : StackPanel
     internal object Evidence => new { identity, sort, links = identity is null ? [] : WatchLinks.Merge(identity, values, sort), expanded = section.IsExpanded, visibleCards = section.IsExpanded ? cards.Children.Count : 0, totalCards = cards.Children.Count,
         sortControls = body.Children.OfType<ComboBox>().Count(), subtitles = cards.Children.OfType<Button>().Select(x => (x.Content as StackPanel)?.Children.OfType<TextBlock>().LastOrDefault()?.Text).ToArray(),
         sourceDetailsExpanded = sources.IsExpanded, hitTargets = cards.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), mapping };
-    internal void ShowForFixture() { section.IsExpanded = true; section.StartBringIntoView(); }
+    public void Expand() { section.IsExpanded = true; section.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = .05 }); }
+    internal void ShowForFixture() => Expand();
     internal void CollapseForFixture() { section.IsExpanded = false; section.StartBringIntoView(); }
     internal void SourcesForFixture() { section.IsExpanded = true; sources.IsExpanded = true; sources.StartBringIntoView(); }
     public void Dispose() { disposed = true; values = []; identity = null; cards.Children.Clear(); sourceBody.Children.Clear(); }

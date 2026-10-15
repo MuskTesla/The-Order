@@ -258,8 +258,9 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         credits.Visibility = Visible(personnel.Children.Count > 0);
         foreach (var disc in album.Discs)
         {
-            var expander = new Expander { Header = $"碟 {disc.Position}" + (disc.Title.Length > 0 ? " · " + disc.Title : "")
-                + $" · {disc.Format} · {disc.Tracks.Length} 首", IsExpanded = disc.Position == 1,
+            var digital = disc.Format == "Digital Media";
+            var expander = new Expander { Header = (digital ? $"曲目组 {disc.Position}" : $"碟 {disc.Position}") + (disc.Title.Length > 0 ? " · " + disc.Title : "")
+                + $" · {(digital ? "数字发行" : disc.Format)} · {disc.Tracks.Length} 首", IsExpanded = disc.Position == 1,
                 HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
             AutomationProperties.SetAutomationId(expander, "MusicDisc-" + disc.Position);
             bool populated = false;
@@ -269,7 +270,7 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
                 // The page owns the only scrolling viewport. EffectiveViewport-based realization
                 // keeps long discs bounded without an inner list scrollbar or trapped wheel input.
                 var list = new ItemsRepeater { Layout = new StackLayout(), HorizontalAlignment = HorizontalAlignment.Stretch,
-                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x, entityView is not null ? OpenEntityAsync : null)).ToArray(), ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["MusicTrackTemplate"] };
+                    ItemsSource = disc.Tracks.Select(x => new MusicTrackRow(x, entityView is not null ? OpenEntityAsync : null, disc.Position)).ToArray(), ItemTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["MusicTrackTemplate"] };
                 AutomationProperties.SetAutomationId(list, "MusicDiscTracks-" + disc.Position); expander.Content = list;
             }
             expander.Expanding += (_, _) => Populate(); if (expander.IsExpanded) Populate(); discs.Children.Add(expander);
@@ -457,9 +458,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
     """;
 }
 [Microsoft.UI.Xaml.Data.Bindable]
-public sealed class MusicTrackRow(MusicBrainzTrack track, Func<MusicBrainzReference, Task>? navigate = null)
+public sealed class MusicTrackRow(MusicBrainzTrack track, Func<MusicBrainzReference, Task>? navigate = null, int discPosition = 1)
 {
     public MusicBrainzTrack Track => track;
+    public int DiscPosition => discPosition;
     public Func<MusicBrainzReference, Task>? Navigate => navigate;
     public bool IsExpanded { get; set; }
     public string Number => track.Number;
@@ -506,7 +508,7 @@ public sealed class MusicTrackRowView : StackPanel
         var details = new StackPanel { Spacing = 12, Margin = new(38, 4, 0, 8), Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed };
         var track = row.Track;
         if (track.RecordingId is { } recording)
-            details.Children.Add(Link("查看录音资料 →", new(MusicBrainzEntityKind.Recording, recording), row.Navigate));
+            details.Children.Add(Link("查看录音资料 →", new(MusicBrainzEntityKind.Recording, recording), row.Navigate, $"MusicTrackRecording-{row.DiscPosition}-{track.Position}"));
         if (track.ArtistCredits.Length > 0)
             details.Children.Add(new StackPanel { Spacing = 3, Children = { Text("曲目署名", 12), MusicDetailFormatting.Artists(track.ArtistCredits, row.Navigate) } });
         // Credits retains the previous cache contract; linked Work credits appear once under their Work.
@@ -517,7 +519,7 @@ public sealed class MusicTrackRowView : StackPanel
         foreach (var work in track.Works)
         {
             var workBody = new StackPanel { Spacing = 8 };
-            workBody.Children.Add(Link("音乐作品 · " + work.Title + " →", new(MusicBrainzEntityKind.Work, work.Id), row.Navigate));
+            workBody.Children.Add(Link("音乐作品 · " + work.Title + " →", new(MusicBrainzEntityKind.Work, work.Id), row.Navigate, $"MusicTrackWork-{row.DiscPosition}-{track.Position}-{work.Id}"));
             var facts = string.Join(" · ", new[] { MusicDetailFormatting.WorkType(work.Type),
                 work.Languages.Length > 0 ? string.Join(" / ", work.Languages.Select(MusicDetailFormatting.Language)) : null }.Where(x => !string.IsNullOrWhiteSpace(x)));
             if (facts.Length > 0) { var fact = Text(facts, 12); fact.Opacity = .7; workBody.Children.Add(fact); }
@@ -529,6 +531,7 @@ public sealed class MusicTrackRowView : StackPanel
             var toggle = new HyperlinkButton { Content = row.IsExpanded ? "收起" : "详情", Padding = new(0), MinHeight = 30,
                 VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(toggle, row.Title + " · 制作与来源");
+            AutomationProperties.SetAutomationId(toggle, $"MusicTrackDetails-{row.DiscPosition}-{row.Track.Position}");
             toggle.Click += (_, _) => { row.IsExpanded = !row.IsExpanded; details.Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed; toggle.Content = row.IsExpanded ? "收起" : "详情"; };
             Grid.SetColumn(toggle, 4); grid.Children.Add(toggle);
         }
@@ -542,10 +545,11 @@ public sealed class MusicTrackRowView : StackPanel
         if (result is TextBlock) result.Margin = new(0, 6, 0, 6);
         ToolTipService.SetToolTip(result, credit.Role + " · " + credit.Name); return result;
     }
-    private static HyperlinkButton Link(string label, MusicBrainzReference reference, Func<MusicBrainzReference, Task>? navigate)
+    private static HyperlinkButton Link(string label, MusicBrainzReference reference, Func<MusicBrainzReference, Task>? navigate, string? automationId = null)
     {
         var link = new HyperlinkButton { Content = LinkText(label), Padding = new(0, 5, 0, 5), MinHeight = 30,
             HorizontalAlignment = HorizontalAlignment.Left, HorizontalContentAlignment = HorizontalAlignment.Left };
+        if (automationId is not null) AutomationProperties.SetAutomationId(link, automationId);
         link.Click += async (_, _) =>
         {
             try

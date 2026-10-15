@@ -9,6 +9,28 @@ public sealed class BookDetailsViewModelTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 15, 0, 0, 0, TimeSpan.Zero);
     private const string Isbn = "9784048677608", OtherIsbn = "9780306406157";
+    [Theory][InlineData(45)][InlineData(14)]
+    public void ChapterCountIsExplainedWithoutInventingAChapterDirectory(int count)
+    {
+        var f = new Fixture(); using var vm = f.Model(); var bg = Subject("10", true);
+        vm.SetSource(bg with { BookFacts = bg.BookFacts! with { Chapters = count } }, null, true);
+        Assert.Contains(count.ToString(), vm.ChapterDirectoryNotice);
+        Assert.Contains("逐章目录暂不可用", vm.ChapterDirectoryNotice);
+        Assert.Null(vm.Relations); Assert.Equal(0, f.Relations.Reads);
+    }
+    [Fact]
+    public void ChapterNoticeFollowsCurrentIdentityAndDoesNotBorrowAnUnconfirmedBook()
+    {
+        var f = new Fixture(); using var vm = f.Model(); var bg = Subject("10", true); var ani = Ani(50);
+        bg = bg with { BookFacts = bg.BookFacts! with { Chapters = 45 } };
+        ani = ani with { Media = ani.Media with { Chapters = 14 } };
+        vm.SetSource(bg, ani, true); Assert.Contains("45", vm.ChapterDirectoryNotice);
+        vm.SetSource(bg, ani, false); Assert.Contains("14", vm.ChapterDirectoryNotice); Assert.DoesNotContain("45", vm.ChapterDirectoryNotice);
+        vm.SetSource(Subject("11", false), null, true);
+        Assert.Contains("逐章目录暂不可用", vm.ChapterDirectoryNotice);
+        Assert.DoesNotContain("45", vm.ChapterDirectoryNotice); Assert.DoesNotContain("14", vm.ChapterDirectoryNotice);
+        vm.SetSource(Subject("12", true) with { Platform = "小说" }, null, true); Assert.Empty(vm.ChapterDirectoryNotice);
+    }
     [Fact]
     public async Task TrustedBangumiWorksWithoutAniListAndIsLazy()
     {

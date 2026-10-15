@@ -297,6 +297,7 @@ public sealed partial class MainWindow
                     await contentLanguageSettings.ChangeAsync(new(language.GetProperty("preferred").GetString() ?? "", language.GetProperty("fallback").GetString() ?? "original"));
                     break;
                 case "probe": break;
+                case "acgnControl": await RunAcgnControlFixtureAsync(root); break;
                 case "bangumi":
                     if (Program.Profile?.Manifest.ProfileKind != NativeProfileKind.Test || ViewModel.Page != WorkspacePage.Details)
                         throw new InvalidOperationException("Related works fixture requires isolated Test details.");

@@ -354,7 +354,8 @@ public sealed class BangumiRelatedView : StackPanel, IDisposable
     }
     internal void RestoreNavigationFocus()
     { if (navigationFocusKey is { } key) { navigationFocusKey = null; FocusKey(key); } }
-    internal Task ExpandForFixtureAsync() => model?.ExpandAsync() ?? Task.CompletedTask;
+    public Task ExpandAsync() => model?.ExpandAsync() ?? Task.CompletedTask;
+    internal Task ExpandForFixtureAsync() => ExpandAsync();
     internal void CollapseForFixture() => model?.Collapse();
     internal void SelectForFixture(BangumiRelationKind kind) => Select(kind);
     internal void AllForFixture() { complete = true; selected = null; limit = PageSize; Render(); }

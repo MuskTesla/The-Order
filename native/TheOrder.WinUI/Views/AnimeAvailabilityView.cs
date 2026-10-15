@@ -159,7 +159,8 @@ internal sealed class AnimeAvailabilityView : StackPanel, IDisposable
     internal object Evidence => new { state, error, hasPlayer = web?.CoreWebView2 is not null, inPrivate = web?.CoreWebView2?.Profile.IsInPrivateModeEnabled, mediaId, trailer,
         playerWidth = host.ActualWidth, playerHeight = host.ActualHeight, playerProbe, message = playerStatus.Text,
         expanded = pv.IsExpanded, initialLoadButton = false, playerCentered = host.HorizontalAlignment == HorizontalAlignment.Center, playerRounded = playerClip is not null, nativeWheels };
-    internal void ExpandForFixture() => pv.IsExpanded = true;
+    public void Expand() => pv.IsExpanded = true;
+    internal void ExpandForFixture() => Expand();
     internal void CollapseForFixture() => pv.IsExpanded = false;
     // Fixed action, available only through the existing Test-scoped fixture.
     internal async Task PlayForFixtureAsync() { if (web?.CoreWebView2 is { } core && state is "ready" or "paused") await core.ExecuteScriptAsync("if(typeof player!=='undefined'&&player&&player.playVideo){player.mute();player.playVideo();}"); }
