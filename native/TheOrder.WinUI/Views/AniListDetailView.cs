@@ -27,6 +27,7 @@ public sealed class AniListDetailView : Grid, IDisposable
     private readonly ProgressRing ring = new() { Width = 18, Height = 18 };
     private readonly Button cancel = Button("取消读取"), refresh = Button("刷新资料"), confirm = Button("确认使用此条目"), reject = Button("排除此条目"), choose = Button("选择其他条目"), search = Button("查找"), more = Button("更多角色与制作人员"), toCharacters = Button("角色与声优"), toStaff = Button("制作人员"), toRelations = Button("前后作");
     private readonly Button toEpisodes = Button("分集目录"), toTrailer = Button("PV"), toWatch = Button("观看渠道");
+    private readonly Button retry = Button("重试");
     private readonly TextBox searchText = new() { PlaceholderText = "原文标题，或 AniList 作品链接", MaxLength = 2000, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly Expander characters = Expand("角色与日语声优"), staff = Expand("制作人员"), genres = Expand("类型与标签"), related = Expand("前后作与其他关联"), sources = Expand("资料来源与对应关系");
     private readonly Expander bridgeSummary = Expand("Bangumi 简介");
@@ -57,7 +58,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); heading.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
         heading.Children.Add(cover); var labels = new StackPanel { Spacing = 9, Children = { type, title, alternate, facts, selection } }; SetColumn(labels, 1); heading.Children.Add(labels);
         confirm.Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"];
-        actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(confirm); actions.Children.Add(reject); actions.Children.Add(choose); actions.Children.Add(toCharacters); actions.Children.Add(toStaff); actions.Children.Add(toRelations);
+        actions.Children.Add(ring); actions.Children.Add(cancel); actions.Children.Add(retry); actions.Children.Add(confirm); actions.Children.Add(reject); actions.Children.Add(choose); actions.Children.Add(toCharacters); actions.Children.Add(toStaff); actions.Children.Add(toRelations);
+        AutomationProperties.SetAutomationId(retry, "AniListRetry");
         actions.Children.Add(toEpisodes); actions.Children.Add(toTrailer); actions.Children.Add(toWatch);
         foreach (var (control, id) in new[] { (toCharacters, "AniListJumpCharacters"), (toStaff, "AniListJumpStaff"), (toRelations, "AniListJumpRelations"), (toEpisodes, "AniListJumpEpisodes"), (toTrailer, "AniListJumpPV"), (toWatch, "AniListJumpWatch") })
             AutomationProperties.SetAutomationId(control, id);
@@ -75,6 +77,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         scroll.AddHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler((_, _) => scrollInputVersion++), true);
         scroll.PointerPressed += (_, _) => scrollInputVersion++; scroll.KeyDown += (_, _) => scrollInputVersion++;
         cancel.Click += (_, _) => model?.Cancel(); refresh.Click += async (_, _) => await RefreshAsync();
+        retry.Click += async (_, _) => await RefreshAsync();
         confirm.Click += async (_, _) => { if (model is not null) await model.ConfirmAsync(); };
         AutomationProperties.SetAutomationId(reject, "AniListReject");
         ToolTipService.SetToolTip(reject, "取消关联并排除自动匹配；仍可手动核对后重新确认。");
@@ -155,6 +158,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         status.Text = model?.Message ?? "";
         RenderMatchReview(media);
         status.Visibility = Visible(status.Text.Length > 0); ring.IsActive = model?.IsBusy == true; ring.Visibility = cancel.Visibility = Visible(ring.IsActive);
+        retry.Visibility = Visible(model?.State is AniListDetailState.Failed or AniListDetailState.Cancelled); retry.IsEnabled = model?.CanLoad == true;
         confirm.Visibility = Visible(model?.State == AniListDetailState.Preview); confirm.IsEnabled = model?.CanConfirm == true;
         reject.Visibility = Visible(model?.IsBridge == true && (details is not null || model?.SavedUserTargetId is not null));
         reject.IsEnabled = model?.CanReject == true || model?.CanRevoke == true;
@@ -182,6 +186,8 @@ public sealed class AniListDetailView : Grid, IDisposable
         var restoredSynopsis = synopsisIdentity == synopsisKey ? previousState : synopsisStates.GetValueOrDefault(synopsisKey);
         synopsisIdentity = synopsisKey;
         synopsis.Text = localizedSynopsis.Text.Length > 0 ? localizedSynopsis.Text : "原站暂未提供简介。";
+        // A failed/unloaded source is not an authoritative empty synopsis.
+        synopsis.Visibility = Visible(details is not null || bridge is not null);
         languageInfo.Show(localizedTitle ?? ContentLanguage.Select([]), localizedSynopsis,
             media is null ? ContentLanguage.Select([]) : ContentLanguage.Aliases(new("AniList", media.Kind.ToString(), media.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)), media.Synonyms));
         synopsis.Heading = localizedSynopsis.Selected is null ? "简介" : "简介 · " + localizedSynopsis.Selected.Identity.Provider;
@@ -410,7 +416,7 @@ public sealed class AniListDetailView : Grid, IDisposable
         }
     }
     internal object Evidence => new { state = model?.State.ToString(), subjectId = model?.Item?.Id, mediaId = model?.Media?.Id, title = title.Text, kind = model?.Media?.Kind.ToString(), historyDepth = model?.HistoryDepth, canConfirm = model?.CanConfirm, confirmButtonEnabled = confirm.IsEnabled, fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, restoredOffset = model?.RestoreOffset,
-        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = model?.PeoplePages.SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).Count(), staffGroups = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = synopsis.Text, contentLanguage = languageInfo.Evidence, synopsis = synopsis.Evidence, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
+        candidates = model?.Candidates.Select(x => x.Id).ToArray(), candidateHitTargets = candidates.Children.OfType<Button>().Select(InteractiveCardEvidence.Hit).ToArray(), peoplePage = model?.PeoplePages.LastOrDefault()?.Details.PeoplePage, characters = characterCards.Children.Count, characterImages = characterCards.Children.OfType<Border>().Select(x => ((Grid)x.Child).Children.OfType<CoverPresenter>().Select(i => new { i.SourceStatus, i.HasImage, i.ActualWidth }).FirstOrDefault()).ToArray(), staff = model?.PeoplePages.SelectMany(x => x.Details.Staff).DistinctBy(x => (x.Person.Id, x.Role)).Count(), staffGroups = staffBody.Children.Count, relations = model?.Displayed?.Details.Relations.Select(x => new { x.Media.Id, x.Relation }).ToArray(), summary = synopsis.Text, synopsisVisible = synopsis.Visibility == Visibility.Visible, retryVisible = retry.Visibility == Visibility.Visible, contentLanguage = languageInfo.Evidence, synopsis = synopsis.Evidence, status = status.Text, playback = availability.Evidence, watching = watchLinks.Evidence, books = publications.Evidence, episodes = episodeList.Inspect(), scrollOffset = scroll.VerticalOffset, scrollInputVersion, cover.HasImage, cover.SourceStatus, width = ActualWidth };
     public void Deactivate() { active = false; CancelWatchRead(); watchResult = null; availability.Stop(); publications.Deactivate(); episodeSource = null; episodeList.SetSource(null); coverVersion++; model?.Deactivate(); cover.SourceKey = null; ring.IsActive = false; characterCards.Children.Clear(); relatedCards.Children.Clear(); shownPages = null; }
     public void Dispose() { if (disposed) return; Deactivate(); disposed = true; availability.Dispose(); watchLinks.Dispose(); publications.Dispose(); episodeList.Dispose(); if (model is not null) { model.PropertyChanged -= StateChanged; model.Dispose(); } cover.Pipeline = null; images = null; registry = null; openBangumi = null; bookSubjects = null; bookReader = null; bookRelations = null; }
     private static string PersonName(AniListPerson p) => ContentLanguage.Person(p, "Staff").Text;

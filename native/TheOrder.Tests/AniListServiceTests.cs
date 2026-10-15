@@ -120,6 +120,38 @@ internal sealed class AniListBridgeReader : IBangumiSubjectDetailsReader
 public sealed class AniListDetailsViewModelTests
 {
     private static BangumiRelationItem Item(string id="51")=>new(id,BangumiRelationKind.Anime,"CLANNAD","CLANNAD -クラナド-","动画",null);
+    [Theory]
+    [InlineData(BangumiRelationsFailure.Unavailable)]
+    [InlineData(BangumiRelationsFailure.RateLimited)]
+    [InlineData(BangumiRelationsFailure.Timeout)]
+    [InlineData(BangumiRelationsFailure.Offline)]
+    public async Task InitialBridgeFailureDoesNotClaimReadableFallback(BangumiRelationsFailure failure)
+    {
+        var bridge=new AniListBridgeReader{Load=(_,_)=>throw new BangumiRelationsException(failure,"Bangumi 基础资料读取失败，请重试。")};
+        var provider=new AniListFakeProvider();using var vm=new AniListDetailsViewModel(bridge,new AniListService(provider));
+        await vm.OpenAsync(Item());
+        Assert.Equal(AniListDetailState.Failed,vm.State);Assert.Null(vm.Bridge);Assert.Null(vm.Source);
+        Assert.Equal("Bangumi 基础资料读取失败，请重试。",vm.Message);Assert.DoesNotContain("仍可浏览",vm.Message);
+        Assert.Equal(0,provider.Searches);Assert.True(vm.CanLoad);
+    }
+    [Fact] public async Task UnexpectedInitialFailureIsRedactedAndRetryRestoresOnlyCurrentIdentity()
+    {
+        var bridge=new AniListBridgeReader{Load=(_,_)=>throw new HttpRequestException("internal transport diagnostic")};
+        using var vm=new AniListDetailsViewModel(bridge,new AniListService(new AniListFakeProvider()));
+        await vm.OpenAsync(Item());Assert.Equal(AniListDetailState.Failed,vm.State);
+        Assert.Contains("基础资料",vm.Message);Assert.DoesNotContain("internal",vm.Message);Assert.DoesNotContain("仍可浏览",vm.Message);
+        bridge.Load=null;await vm.RefreshAsync();
+        Assert.Equal("51",vm.Bridge!.Details.Id);Assert.Equal(AniListDetailState.Choosing,vm.State);
+        Assert.Null(vm.Displayed);Assert.False(vm.IsBusy);Assert.False(vm.HasTrustedBridge);
+    }
+    [Fact] public async Task UnexpectedProfessionalFailureKeepsRealBridgeAndAccurateFallbackMessage()
+    {
+        var provider=new AniListFakeProvider{Fetch=(_,_,_)=>throw new HttpRequestException("internal transport diagnostic")};
+        using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(provider));
+        await vm.OpenAsync(Item());await vm.PreviewAsync(2167);
+        Assert.Equal(AniListDetailState.Failed,vm.State);Assert.NotNull(vm.Bridge);Assert.Null(vm.Displayed);
+        Assert.Contains("Bangumi 资料仍可浏览",vm.Message);Assert.DoesNotContain("internal",vm.Message);Assert.True(vm.CanLoad);
+    }
     [Fact] public async Task ExactTitleNeedsPreviewAndConfirmationBeforeSavedBinding()
     {
         var disk=new AniListMemoryCache();using var vm=new AniListDetailsViewModel(new AniListBridgeReader(),new AniListService(new AniListFakeProvider(),disk));

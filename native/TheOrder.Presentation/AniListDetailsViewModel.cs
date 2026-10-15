@@ -185,7 +185,8 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
     {
         if (disposed || !active || IsBusy) return;
         Stop(); var version = generation; using var pending = CancellationTokenSource.CreateLinkedTokenSource(cancellation); request = pending;
-        var oldState = State; resumeState = oldState; State = AniListDetailState.Loading; Message = "正在读取 AniList 资料…"; Notify();
+        var oldState = State; resumeState = oldState; State = AniListDetailState.Loading;
+        Message = Bridge is null ? "正在读取作品基础资料…" : "正在读取 AniList 资料…"; Notify();
         bool Owns() => active && !disposed && generation == version;
         try { await action(pending.Token); if (!Owns() || pending.IsCancellationRequested) return; }
         catch (OperationCanceledException) { if (Owns()) { State = AniListDetailState.Cancelled; Message = "已取消读取，已有资料保留。"; } }
@@ -198,7 +199,9 @@ public sealed class AniListDetailsViewModel(IBangumiSubjectDetailsReader subject
                 SelectionReason = unconfirmedPreview ? "条目预览 · 资料暂不可用" : "";
             }
             State = Displayed is not null ? oldState : AniListDetailState.Failed;
-            Message = e is AniListException or InvalidDataException or IOException ? e.Message : "AniList 资料暂时无法读取，Bangumi 资料仍可浏览。";
+            Message = e is AniListException or BangumiRelationsException or InvalidDataException or IOException ? e.Message
+                : Bridge is not null ? "AniList 资料暂时无法读取，Bangumi 资料仍可浏览。"
+                : "作品基础资料暂时无法读取，请重试或返回选择其他条目。";
         }
         finally { if (ReferenceEquals(request, pending)) request = null; if (Owns()) Notify(); }
     }

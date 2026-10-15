@@ -22,7 +22,7 @@ public sealed partial class MainWindow
             throw new InvalidOperationException("Isolated Test details required.");
         var id = request.GetProperty("id").GetString() ?? "";
         var mode = request.GetProperty("value").GetString() ?? "";
-        var allowed = id is "GoBack" or "GameRelatedJump" or "AniListConfirm" or "AniListCharacters" or "AniListStaff" or "AniListRelations"
+        var allowed = id is "GoBack" or "GameRelatedJump" or "AniListConfirm" or "AniListRetry" or "AniListCharacters" or "AniListStaff" or "AniListRelations"
             or "AniListJumpEpisodes" or "AniListJumpCharacters" or "AniListJumpStaff" or "AniListJumpRelations" or "AniListJumpPV" or "AniListJumpWatch"
             or "ContentLanguageOriginals" or "BangumiEpisodesExpander" or "WatchLinks" or "AnimePV"
             or "MusicAlbumEditions" or "MusicAlbumConfirm" or "MusicAlbumShowTracks"
