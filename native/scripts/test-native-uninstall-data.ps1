@@ -1,9 +1,11 @@
-param([Parameter(Mandatory)][string]$InnoCompiler)
+param([Parameter(Mandatory)][string]$InnoCompiler, [string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-$base = [IO.Path]::GetFullPath((Join-Path $repo '.artifacts/usability-20261011'))
-$root = Join-Path $base ('uninstall-check-' + [guid]::NewGuid().ToString('N'))
-if (!$root.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid test root.' }
+$base = [IO.Path]::GetFullPath((Join-Path $repo '.artifacts')).TrimEnd('\')
+$root = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) }
+    else { Join-Path $base ('usability-20261011/uninstall-check-' + [guid]::NewGuid().ToString('N')) }
+if (!$root.StartsWith($base + '\', [StringComparison]::OrdinalIgnoreCase) -or
+    (Test-Path -LiteralPath $root)) { throw 'Fresh workspace test root required.' }
 $null = New-Item -ItemType Directory -Path $root, "$root/ordinary/cache", "$root/linked", "$root/external", "$root/keep"
 [IO.File]::WriteAllText("$root/ordinary/cache/image.txt", 'synthetic cache')
 [IO.File]::WriteAllText("$root/external/game.txt", 'synthetic game sentinel')

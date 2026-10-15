@@ -12,7 +12,8 @@ $crt = Join-Path $vs "VC/Redist/MSVC/$redistVersion/x64"
 $crt = (Get-ChildItem -LiteralPath $crt -Directory | Where-Object Name -Like 'Microsoft.VC*.CRT' | Select-Object -First 1).FullName
 if (!$crt -or !(Test-Path -LiteralPath (Join-Path $crt 'vcruntime140.dll'))) { throw 'Installed licensed x64 VC redistributable directory required' }
 [IO.Directory]::CreateDirectory($output) | Out-Null
-Get-ChildItem -LiteralPath $source | Copy-Item -Destination $output -Recurse
+. (Join-Path $PSScriptRoot 'copy-native-publish-payload.ps1')
+Copy-NativePublishPayload -PublishedDirectory $source -OutputDirectory $output
 Copy-Item -LiteralPath (Join-Path $repo 'THIRD_PARTY_NOTICES.md') -Destination $output
 Get-ChildItem -LiteralPath $crt -Filter '*.dll' -File | Copy-Item -Destination $output
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'launch-portable-test.ps1') -Destination (Join-Path $output 'launch-test.ps1')

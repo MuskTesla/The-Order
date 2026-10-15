@@ -23,6 +23,9 @@ $install = Join-Path $output '安装程序 & app'
 $profile = Join-Path $output '测试资料 & profile'
 $results = [Collections.Generic.List[object]]::new()
 $manifest = Get-Content -LiteralPath (Join-Path $buildPath 'payload/files.json') -Raw | ConvertFrom-Json
+$releaseIdentity = Get-Content -LiteralPath (Join-Path $buildPath 'payload/release-identity.json') -Raw | ConvertFrom-Json
+$expectedVersion = $releaseIdentity.version
+if ($expectedVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Packaged release identity must provide a numeric version.' }
 $formalRoots = @((Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Production'),
     (Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Development'), (Join-Path $env:APPDATA 'KunGalManager'))
 $formalExistence = @($formalRoots | ForEach-Object { Test-Path -LiteralPath $_ })
@@ -54,13 +57,13 @@ function PayloadMatches {
     return (Get-FileHash -LiteralPath (Join-Path $install 'files.json')).Hash -eq
         (Get-FileHash -LiteralPath (Join-Path $buildPath 'payload/files.json')).Hash
 }
-Check 'setup-metadata-version' ((Get-Item -LiteralPath $setupPath).VersionInfo.ProductVersion.Trim() -eq '1.0.0')
+Check 'setup-metadata-version' ((Get-Item -LiteralPath $setupPath).VersionInfo.ProductVersion.Trim() -eq $expectedVersion)
 Check 'install-current-user-no-restart' ((Install 'install') -eq 0)
-Check 'published-655-files-unchanged-after-install' (PayloadMatches)
+Check 'published-files-unchanged-after-install' (PayloadMatches)
 Check 'native-gui-entry-installed' (Test-Path -LiteralPath (Join-Path $install 'TheOrder.exe'))
 $registration = Get-ItemProperty -LiteralPath $registryKey
 Check 'Windows-installed-apps-registration' ($registration.DisplayName -eq 'The Order' -and
-    $registration.DisplayVersion -eq '1.0.0' -and $registration.InstallLocation.TrimEnd('\') -eq $install) @{
+    $registration.DisplayVersion -eq $expectedVersion -and $registration.InstallLocation.TrimEnd('\') -eq $install) @{
         name=$registration.DisplayName;version=$registration.DisplayVersion;location=$registration.InstallLocation
     }
 $shortcutShell = New-Object -ComObject WScript.Shell
@@ -171,7 +174,7 @@ Check 'uninstall-keeps-Test-identity' (Test-Path -LiteralPath (Join-Path $profil
 Check 'uninstall-keeps-complete-synthetic-Test-profile' (ProfileMatches)
 Check 'no-formal-profile-created-or-removed' ((Compare-Object $formalExistence @($formalRoots | ForEach-Object { Test-Path -LiteralPath $_ })).Count -eq 0)
 $summary = [ordered]@{status='PASS';checks=$results.Count;failed=@($results | Where-Object { !$_.passed }).Count;
-    installerSha256=(Get-FileHash -LiteralPath $setupPath).Hash;TestProfile=$profile;installedPayloadFiles=655;
+    installerSha256=(Get-FileHash -LiteralPath $setupPath).Hash;TestProfile=$profile;installedPayloadFiles=@($manifest.files).Count;
     currentUserInstall=$true;ProductionOpened=$false;realGameLaunched=$false;cleanWindowsVerified=$false;
     userVisualConfirmation='Pending';installDirectory=$install;temporaryRegistrationRemoved=$true;
     runtimeSmoke='GUI entry and Test startup; owned empty process terminated afterwards, graceful exit not retested'}
