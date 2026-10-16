@@ -1,4 +1,14 @@
 # The Order：当前实现与评审交接
+## 详情排版与日用切换 Gate（2026-10-16，当前开发入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/detail-typography-daily-gate-20261016` / `codex/detail-typography-daily-gate-20261016`，从上轮完整 RC 检查点 `2fac66d` 隔离继续。排版修复 `3d171dc`：音乐曲目标题、署名/职责与作品层级对齐，展开区限制阅读宽度并移除巨幅内嵌卡片；动画分集分开集号、标题/播出信息和展开/来源操作，原文与说明分组，窄窗重排。保留全部来源、录音/Work/人物导航、过滤与取消行为。
+
+日用 Gate 实测发现长资料路径下缓存未写入：目标229字符、临时路径266字符，实际 WinUI manifest 未启用 longPathAware，原子替换返回 Win32 错误3；普通 .NET 测试宿主却能通过。修复 `f149f6b` 只在长路径的 MoveFileEx 调用处使用扩展路径，保留同目录 REPLACE_EXISTING / WRITE_THROUGH、pin/身份检查、取消与提交语义，不改 Profile schema/用户数据。相同 manifest 宿主失败/成功对照及原路径 WinUI 离线重启均留证，不靠缩短测试路径通过。
+
+最终客户端 **4020 passed / 0 failed / 0 skipped**（新增3项长路径回归，另有真实宿主复现），最终包原生交互 **16/0**、断网重启/恢复 **8/0**，最终独立安装身份演练 **37/0**；八项断网检查包括已知“分集会话缓存”失败提示的正确降级，不表示分集已支持重启离线。22项合成库未变；当前日用654项受管文件仅只读核对。实际截图为本机200% DPI、1160×820和640×780逻辑窗口、明暗主题，原生 automation peer/命中/焦点不是物理输入验收。
+
+产物 `.artifacts/detail-typography-daily-gate-20261016/`：`publish-v3` → `release-final` → `installer-final`；`screenshots-review.html`、`report.md`、`gate-ledger.json`、`completion.json` 绑定当前结果。日用切换 **CONDITIONAL GO**：可准备本机受控体验，实际替换仍须用户明确批准及托盘正常退出；真实鼠标滚轮体验由用户补验。不读取Production，不自动替换、推送或发布。公开RC仍保留上轮干净系统/物理输入/真实OAuth等未验收边界。旧阶段记录保留如下，不能拿修改前产物代替当前候选。
+
 ## ACGN RC 资格验证（2026-10-16，当前开发入口）
 
 当前源码 `D:/Projects/The-Order-worktrees/rc-qualification-20261016` / `codex/rc-qualification-20261016`，从完整未发布基线 `8e57662a6e5607bb4d9917963167118a6bc44edc` 隔离继续；不是回退到240e3a5。红队原8feede0不直接位于祖先链，但整合9becb20为祖先，两个tree逐字相同；人工身份决定组件、语言v1及全局启动策略均在当前源码。运行Provider仍为NextMoe、Bangumi、AniList、MusicBrainz、NDL。未新增Provider或媒体类型，不动原工作区、真实Production、日用安装、GitHub及公开更新源。此前已经完成的本机替换授权不适用于本轮。

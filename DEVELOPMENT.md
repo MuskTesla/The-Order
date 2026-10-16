@@ -1,5 +1,19 @@
 # 开发与维护
 
+## 详情排版与本机日用切换验证（2026-10-16，当前）
+
+当前入口 `D:/Projects/The-Order-worktrees/detail-typography-daily-gate-20261016`，基线2fac66d，代码检查点3d171dc、f149f6b；原dirty根工作区及前轮RC目录均保留。仅音乐展开区/动画分集排版与Gate发现的Win32原子临时路径问题，未增加Provider、迁移schema或更改辅助工具默认关闭策略。
+
+固定SDK10.0.401，locked restore，x64 Release publish仍用 `-p:NativeProductionCandidate=true -p:UseSharedCompilation=true -p:PathMap=<当前repo>=/_/TheOrder`。本轮最终 `publish-v3`，完整客户端通过 `services/bangumi-auth-worker/test/run-client-bridge.mjs --all-client-tests` 启动，4020/0/0及本地workerd合成授权契约均通过；不是新的真实账号授权验证。生成产物与日志在 `.artifacts/detail-typography-daily-gate-20261016/`。
+
+真实窗口由该目录 `Start-Test.ps1 -Run <全新ui-名称> -Payload release-final` 启动，固定自己的合成 `test-profile`；`Typography-QA.ps1` 使用既有Test受限原生peer，最终online16项、offline8项，`Session.ps1`/`capture-v3` 只对精确Test PID/EXE/Profile截图。验证结束所有Test实例与子进程网络注入器均停止；不能盲跑历史 `-Offline`，它需要重新创建并验证自己的注入器。无系统网络/代理/DPI变更，没有桌面输入或真实游戏执行。
+
+长路径宿主回归不能仅用测试宿主PASS代替应用事实：相同WinUI manifest的 `runner/Proof.exe cache-probe` 在修复前target229/temp266失败，修复后成功；3项普通测试覆盖229/244/300字符目标及重启/原文/主库不变，但普通测试宿主本身启用了长路径，修复前也会通过，不能称作红灯。`long-path-actual-host-before.json` / `after.json`、首次失败的原生离线控制记录均保留。最终WinUI在相同资料根重新在线写缓存、退出、阻断Test进程全部API连接后重开，动画与音乐恢复成功；分集目录仍是会话缓存，离线重启明确降级，无新持久化承诺。
+
+`release-final` 是完整待审安装载荷，`installer-final/distribution/The-Order-1.1.0-Setup-x64.exe` 仅构建未在日用安装运行。`install-lab-final` 采用独立AppID/Mutex/路径，无正式注册/快捷方式/自动启动；37项覆盖当前已安装载荷→最终候选、强制中断/修复、旧新实际WinUI、程序单独回退后原数据重开、再次升级、卸载保留合成资料与未知文件。真实Production从未参与；不能将此升级成标准安装器/干净Windows/所有DPI通过。
+
+日用切换CONDITIONAL GO，尚未执行：用户批准且托盘正常退出后，先备份并核对受管程序文件，保留未知文件，只切换程序；回退不自动恢复旧Profile快照。真实安装基线清单SHA256 `69F22D89C2A4CF810F08AF2BFA56B9747DABC65BCC62E7BAEBBB3DE88995604C`，可回退来源仍为 `launch-global-rc-20261016/installer-rc2/payload` 及对应addon/Setup。最新候选和证据哈希以本轮completion/gate-ledger为准，不依赖相同1.1.0显示版本判断身份，不动公开自动更新版本比较。
+
 ## ACGN RC qualification（2026-10-16，当前）
 
 使用 `D:/Projects/The-Order-worktrees/rc-qualification-20261016` / `codex/rc-qualification-20261016`；基线8e57662，运行修复5876b66。最终HEAD在本轮 `.artifacts/rc-qualification-20261016/completion.json`，只接受本轮自己的证据。本轮禁止真实Production、日用安装替换、推送和公开发布；下方历史安装授权已经完成，不可复用。
