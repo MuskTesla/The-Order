@@ -12,7 +12,7 @@ body:
     attributes:
       label: The Order 版本
       description: 请复制设置页面中的完整版本号，并注明 Beta 或稳定版。
-      placeholder: 1.2.0-beta.1
+      placeholder: 1.2.0-beta.2 / Beta 通道，或 1.1.1 / 正式通道
     validations:
       required: true
   - type: input

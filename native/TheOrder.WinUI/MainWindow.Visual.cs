@@ -211,7 +211,7 @@ public sealed partial class MainWindow
         diagnosticsPolling = diagnosticsTimer is not null, backdrop = SystemBackdrop?.GetType().Name ?? "Solid",
         catalogPreparation = presentations.Metrics, stages = new { library = libraryPage.StageEvidence, details = detailsPage.StageEvidence, online = onlinePage.StageEvidence }, shell = ShellEvidence(),
         round3 = Round3Evidence(), managed = MaterialManagedEvidence(), displayBitmaps = Views.DisplayBitmaps.Evidence(images), bitmapSurfaces = SkipCaptureTreeProbe ? (int?)null : bitmapTreeProbe.Read(() => CountMaterialBitmaps(Root)), pendingNavigation = navigating, pendingDetails = ViewModel.IsDetailsLoading, staleCovers = SkipCaptureTreeProbe ? (int?)null : staleTreeProbe.Read(() => CountStaleCoverSources(Root)), captureTreeProbeSkipped = SkipCaptureTreeProbe,
-        updates = new { updates.CurrentVersion, latest = updates.Latest?.Version, updates.Message, updates.Highlights, updates.CanCheck, updates.CanInstall, updates.CanCancel, updates.IsBusy, updates.Progress, badgeVisible = UpdateBadge.Visibility == Visibility.Visible },
+        updates = new { updates.SelectedChannel, updates.SupportsChannelSwitch, updates.InstallText, updates.IsChannelChange, updates.CurrentVersion, latest = updates.Latest?.Version, updates.Message, updates.Highlights, updates.CanCheck, updates.CanInstall, updates.CanCancel, updates.IsBusy, updates.Progress, badgeVisible = UpdateBadge.Visibility == Visibility.Visible },
         nextMoe = new { mode = nextMoeSettings.Status?.Mode.ToString(), nextMoeSettings.Status?.NeedsLogin, nextMoeSettings.TimeDirection, nextMoeSettings.StateDirection,
             nextMoeSettings.FolderDirection, nextMoeSettings.ReadRatings, nextMoeSettings.Automatic, nextMoeSettings.HasPending, nextMoeSettings.HasPreview, nextMoeSettings.PreviewSummary, nextMoeSettings.Message,
             rows = nextMoeSettings.Rows.Select(x => new { x.Title, x.Values, x.Explanation, x.Choice }) },
@@ -314,6 +314,11 @@ public sealed partial class MainWindow
                     if (!detailsPage.HasExclusiveContentBody) throw new InvalidOperationException("Details replacement bodies overlap.");
                     break;
                 case "checkUpdate": await Navigate(WorkspacePage.Settings); await updates.CheckAsync(); settingsPage.ShowUpdatesTest(); break;
+                case "updateChannel":
+                    if (!Enum.TryParse<AppUpdateChannel>(root.GetProperty("value").GetString(), false, out var requestedChannel) || !Enum.IsDefined(requestedChannel)) throw new InvalidDataException("Unknown channel");
+                    await Navigate(WorkspacePage.Settings); settingsPage.ChooseUpdateChannelTest((int)requestedChannel);
+                    for (var wait = 0; updates.IsBusy && wait < 100; wait++) await Task.Delay(20);
+                    settingsPage.ShowUpdatesTest(); break;
                 case "automaticUpdate": await updates.CheckAutomaticallyAsync(); break;
                 case "personalFixture": await RunPersonalFixtureAsync(root.GetProperty("value").GetString()); break;
                 case "opticalProbe":

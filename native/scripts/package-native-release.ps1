@@ -9,7 +9,7 @@ if (!$output.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase) -o
 $releaseVersion = [string]$versionProperties.Project.PropertyGroup.Version
 $fileVersion = [string]$versionProperties.Project.PropertyGroup.FileVersion
 $beta = $releaseVersion.Contains('-beta.')
-$product = if ($beta) { 'The Order Beta' } else { 'The Order' }
+$product = 'The Order'
 $documentation = if ($DocumentationDirectory) { [IO.Path]::GetFullPath($DocumentationDirectory) } else { Join-Path $repo ('docs/release/' + $releaseVersion) }
 if (!$documentation.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Release documentation must come from this source checkout.' }
 foreach ($name in @('README.md','CHANGELOG.md','BUILD.md','AUTHENTICATION.md')) {

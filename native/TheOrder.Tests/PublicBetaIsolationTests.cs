@@ -64,7 +64,7 @@ public sealed class PublicBetaIsolationTests
             await using var library = TransactionalLibrary.Open(NativeProfileTests.Codec, profile.CreateLibraryPersistence());
             await library.ImportAsync(NativeProfileTests.Codec.Encode([SessionTestRig.Entry(total: 0, count: 0)], SessionTestRig.Date));
             await library.UpdateAsync("g", new() { Notes = "synthetic-beta-note" });
-            Assert.Equal("dev.local.kungalmanager.beta", WindowsRecentGames.AppId(profile));
+            Assert.Equal("dev.local.kungalmanager", WindowsRecentGames.AppId(profile));
         }
         var before = fixture.Hashes();
         Assert.Throws<NativeProfileException>(() => fixture.Open());
@@ -95,6 +95,7 @@ public sealed class PublicBetaIsolationTests
     {
         Assert.False(AppUpdateIdentity.TryVersion(version, out _));
         Assert.False(AppUpdateIdentity.IsNewer(version, "1.1.0"));
-        Assert.False(AppUpdateIdentity.ValidDownload(new("https://github.com/Ph-Rank/The-Order/releases/download/v1.2.0-beta.1/The-Order-1.2.0-beta.1-Setup-x64.exe"), version));
+        Assert.True(AppUpdateIdentity.ValidDownload(new("https://github.com/Ph-Rank/The-Order/releases/download/v1.2.0-beta.1/The-Order-1.2.0-beta.1-Setup-x64.exe"), version.TrimStart('v')));
+        Assert.False(AppUpdateVersion.CanApply("1.1.1", AppUpdateTests.Release("1.2.0-beta.1")));
     }
 }

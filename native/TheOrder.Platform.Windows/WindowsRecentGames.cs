@@ -9,7 +9,7 @@ public static class WindowsRecentGames
 {
     public static string AppId(NativeProfileStore profile) => profile.Manifest.ProfileKind switch {
         NativeProfileKind.Production => "dev.local.kungalmanager",
-        NativeProfileKind.Beta => "dev.local.kungalmanager.beta",
+        NativeProfileKind.Beta => "dev.local.kungalmanager",
         _ => "dev.local.kungalmanager.test." + profile.Manifest.ProfileId.ToString("N") };
     public static void SetAppId(NativeProfileStore profile) => Marshal.ThrowExceptionForHR(SetCurrentProcessExplicitAppUserModelID(AppId(profile)));
     public static string[] Split(string value)

@@ -5,7 +5,7 @@ Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft
 $package = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
 $exe = Join-Path $package 'TheOrder.WinUI.exe'
 $identity = Get-Content -LiteralPath (Join-Path $package 'release-identity.json') -Raw | ConvertFrom-Json
-$normalKind = if ($identity.channel -eq 'beta') { 'Beta' } else { 'Production' }
+$normalKind = 'Production' # The application resolves an explicit legacy-Beta library choice.
 if (!$Test -and $DataDirectory) { throw 'A custom data directory is available only with -Test.' }
 $profile = $null
 if ($Test) {
@@ -54,8 +54,8 @@ $process = $null
 try {
     foreach ($name in $prior.Keys) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
     foreach ($name in $values.Keys) { [Environment]::SetEnvironmentVariable($name, $values[$name], 'Process') }
-    if ($Test -or $normalKind -eq 'Beta') { $process = Start-Process -FilePath $exe -WorkingDirectory $package -WindowStyle Hidden -PassThru }
-    else { $process = Start-Process -FilePath $exe -WorkingDirectory $package -ArgumentList '--allow-production-profile' -PassThru }
+    if ($Test) { $process = Start-Process -FilePath $exe -WorkingDirectory $package -WindowStyle Hidden -PassThru }
+    else { $process = Start-Process -FilePath $exe -WorkingDirectory $package -ArgumentList '--allow-production-profile' -WindowStyle Hidden -PassThru }
     [pscustomobject]@{pid=$process.Id;start=$process.StartTime.ToUniversalTime().ToString('o');program=$exe;profileKind=$values.THE_ORDER_NATIVE_PROFILE_KIND;diagnostics=$false} | ConvertTo-Json
 } finally {
     foreach ($name in $values.Keys) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }

@@ -15,23 +15,84 @@ function PlainPath([string]$Path) {
 function Same([string]$A,[string]$B) { return $A.Equals($B,[StringComparison]::OrdinalIgnoreCase) }
 function Overlap([string]$A,[string]$B) { return (Same $A $B) -or $A.StartsWith($B+'\',[StringComparison]::OrdinalIgnoreCase) -or $B.StartsWith($A+'\',[StringComparison]::OrdinalIgnoreCase) }
 function WriteJson([string]$Path,$Value) {
+    $null = PlainPath $Path
     $temporary = $Path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
-    [IO.File]::WriteAllText($temporary,($Value|ConvertTo-Json -Depth 4),[Text.UTF8Encoding]::new($false))
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($Value|ConvertTo-Json -Depth 8))
+    $file = [IO.File]::Open($temporary,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+    try { $file.Write($bytes,0,$bytes.Length); $file.Flush($true) } finally { $file.Dispose() }
     if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temporary,$Path,$null) } else { [IO.File]::Move($temporary,$Path) }
+}
+function ReleaseVersion([string]$Text) {
+    if ($Text -notmatch '\A((0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4}))(-beta\.([1-9][0-9]{0,4}))?\z') { throw 'InvalidVersion' }
+    $core = [version]$Matches[1]; $beta = $null
+    if ($Matches[6]) { $beta = [int]$Matches[6] }
+    if ($core.Major -gt 65535 -or $core.Minor -gt 65535 -or $core.Build -gt 65535 -or $beta -gt 65535) { throw 'InvalidVersion' }
+    $revision = if ($null -eq $beta) { 0 } else { $beta }
+    return [pscustomobject]@{core=$core;beta=$beta;file=($core.ToString(3)+'.'+$revision);text=$Text}
+}
+function CanApply($From,$To,[int]$Protocol) {
+    $same = ($null -eq $From.beta) -eq ($null -eq $To.beta)
+    $compare = $To.core.CompareTo($From.core)
+    if ($compare -eq 0) {
+        if ($null -eq $To.beta) { $compare = if ($null -eq $From.beta) { 0 } else { 1 } }
+        elseif ($null -eq $From.beta) { $compare = -1 }
+        else { $compare = $To.beta.CompareTo($From.beta) }
+    }
+    return ($compare -gt 0 -and ($same -or $Protocol -eq 1)) -or ($null -ne $From.beta -and $null -eq $To.beta -and $Protocol -eq 1)
+}
+function SnapshotProfile($Job) {
+    # Caller holds the native writer lease after the exact owner has saved/exited.
+    $root = PlainPath $Job.profile
+    $snapshot = PlainPath (Join-Path (Join-Path $root 'channel-backups') $Job.id)
+    if (Test-Path -LiteralPath $snapshot) { throw 'SnapshotAlreadyExists' }
+    [IO.Directory]::CreateDirectory($snapshot) | Out-Null
+    $data = Join-Path $snapshot 'data'; [IO.Directory]::CreateDirectory($data) | Out-Null
+    $pending = New-Object 'Collections.Generic.Stack[string]'; $pending.Push($root)
+    $records = New-Object 'Collections.Generic.List[object]'; [long]$total = 0
+    $excluded = @('updates','channel-backups','WebView2','webview2','PVWebView2','logs',
+        'native-bangumi-relations-v1','native-bangumi-subjects-v1','native-anilist-v1','native-musicbrainz-v1',
+        'native-book-bibliography-v1','native-watch-snapshots-v1')
+    while ($pending.Count -gt 0) {
+        $folder = $pending.Pop(); $null = PlainPath $folder
+        foreach ($entry in [IO.Directory]::GetFileSystemEntries($folder)) {
+            $null = PlainPath $entry; $name = [IO.Path]::GetFileName($entry)
+            if ((Same $folder $root) -and ($name -in $excluded -or $name -eq '.the-order-writer.lock')) { continue }
+            if ([IO.Directory]::Exists($entry)) { $pending.Push($entry); continue }
+            $info = [IO.FileInfo]::new($entry); $total += $info.Length
+            if ($total -gt 2147483648 -or $records.Count -ge 8192) { throw 'SnapshotLimit' }
+            $relative = $entry.Substring($root.Length + 1)
+            $target = PlainPath (Join-Path $data $relative)
+            if (!$target.StartsWith($data+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'SnapshotBoundary' }
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
+            $input = [IO.File]::Open($entry,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+            try {
+                $output = [IO.File]::Open($target,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+                try { $input.CopyTo($output); $output.Flush($true) } finally { $output.Dispose() }
+                $hash = (Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash
+                if ($hash -ne (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash) { throw 'SnapshotHash' }
+                $records.Add(@{path=$relative;bytes=$info.Length;sha256=$hash})
+            } finally { $input.Dispose() }
+        }
+    }
+    WriteJson (Join-Path $snapshot 'snapshot.json') @{schema=1;state='Ready';profileId=$Job.profileId;storeId=$Job.storeId;
+        physicalRoot=$Job.physicalRootHash;fromVersion=$Job.currentVersion;toVersion=$Job.version;files=@($records.ToArray());bytes=$total}
+    return $snapshot
 }
 function InstallerValid($Job) {
     $path=PlainPath $Job.installer
     if ((Get-Item -LiteralPath $path).Length -ne $Job.bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $Job.sha256) { throw 'InstallerHash' }
     $version=[Diagnostics.FileVersionInfo]::GetVersionInfo($path)
-    if ($version.ProductName.Trim() -ne 'The Order' -or ([version]$version.FileVersion.Trim()).ToString(3) -ne $Job.version) { throw 'InstallerIdentity' }
+    $offered = ReleaseVersion $Job.version
+    if ($version.ProductName.Trim() -ne 'The Order' -or ([version]$version.FileVersion.Trim()).ToString() -ne $offered.file -or $version.ProductVersion.Trim() -ne $Job.version) { throw 'InstallerIdentity' }
 }
 function LoadJob([string]$Path,[bool]$OnlyValidate) {
     $path=PlainPath $Path
     if ([IO.Path]::GetFileName($path) -ne 'plan.json' -or (Get-Item -LiteralPath $path).Length -gt 16384) { throw 'InvalidPlan' }
     $job=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json
-    if ($job.schema -ne 1 -or $job.id -notmatch '^[a-f0-9]{32}$' -or $job.version -notmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or $job.sha256 -notmatch '^[A-Fa-f0-9]{64}$' -or $job.workerSha256 -notmatch '^[A-Fa-f0-9]{64}$') { throw 'InvalidIdentity' }
-    $version=[version]$job.version
-    if ($version.Major -gt 65535 -or $version.Minor -gt 65535 -or $version.Build -gt 65535 -or $version -le [version]$job.currentVersion -or $job.bytes -lt 2 -or $job.bytes -gt 536870912) { throw 'InvalidVersion' }
+    if ($job.schema -notin @(1,2) -or $job.id -notmatch '^[a-f0-9]{32}$' -or $job.sha256 -notmatch '^[A-Fa-f0-9]{64}$' -or $job.workerSha256 -notmatch '^[A-Fa-f0-9]{64}$') { throw 'InvalidIdentity' }
+    $version=ReleaseVersion $job.version; $current=ReleaseVersion $job.currentVersion
+    $protocol = if ($job.schema -eq 2) { [int]$job.channelProtocol } else { 0 }
+    if (!(CanApply $current $version $protocol) -or ($job.schema -eq 1 -and ($null -ne $version.beta -or $null -ne $current.beta)) -or $job.bytes -lt 2 -or $job.bytes -gt 536870912) { throw 'InvalidVersion' }
     $profile=PlainPath $job.profile; $folder=Split-Path -LiteralPath $path
     $expected=Join-Path (Join-Path $profile 'updates') $job.id
     $installer=PlainPath $job.installer; $downloadFolder=Split-Path -LiteralPath $installer
@@ -46,10 +107,13 @@ function LoadJob([string]$Path,[bool]$OnlyValidate) {
     if ($stored.Version -ne 1 -or $stored.State -ne 'Ready' -or $job.physicalRootHash -notmatch '^[A-Fa-f0-9]{64}$' -or
         $stored.PhysicalRoot -ne $job.physicalRootHash -or $stored.ProfileId -ne $job.profileId -or $stored.StoreId -ne $job.storeId -or
         $job.profileId -notmatch '^[A-Fa-f0-9-]{36}$' -or $job.storeId -notmatch '^[A-Fa-f0-9-]{36}$') { throw 'ProfileIdentity' }
-    if (!$OnlyValidate -and ($stored.ProfileKind -ne 'Production' -or !(Same $profile (Join-Path $env:LOCALAPPDATA 'TheOrder\Profiles\Production')))) { throw 'ProductionOnly' }
-    if ($OnlyValidate -and $stored.ProfileKind -notin @('Test','Production')) { throw 'ProfileIdentity' }
+    if ($job.schema -eq 2 -and $job.profileKind -ne $stored.ProfileKind) { throw 'ProfileIdentity' }
+    $ownedFormal = ($stored.ProfileKind -eq 'Production' -and (Same $profile (Join-Path $env:LOCALAPPDATA 'TheOrder\Profiles\Production'))) -or
+        ($stored.ProfileKind -eq 'Beta' -and (Same $profile (Join-Path $env:LOCALAPPDATA 'TheOrder-Beta\Profiles\Beta')))
+    if (!$OnlyValidate -and !$ownedFormal) { throw 'ProductionOnly' }
+    if ($OnlyValidate -and $stored.ProfileKind -notin @('Test','Production','Beta')) { throw 'ProfileIdentity' }
     $target=PlainPath $job.target
-    foreach ($protected in @($profile,(Join-Path $env:LOCALAPPDATA 'TheOrder'),(Join-Path $env:APPDATA 'KunGalManager'))) {
+    foreach ($protected in @($profile,(Join-Path $env:LOCALAPPDATA 'TheOrder'),(Join-Path $env:LOCALAPPDATA 'TheOrder-Beta'),(Join-Path $env:APPDATA 'KunGalManager'))) {
         if (Overlap $target ([IO.Path]::GetFullPath($protected).TrimEnd('\'))) { throw 'TargetBoundary' }
     }
     if ($target.Length -le 3) { throw 'TargetBoundary' }
@@ -72,7 +136,7 @@ function RestartApp([string]$Directory) {
         Start-Process -FilePath $app -ArgumentList '--allow-production-profile' -WorkingDirectory $Directory -WindowStyle Hidden | Out-Null
     }
 }
-$job=$null; $parentExited=$false; $commitSignal=$null; $cancelSignal=$null
+$job=$null; $parentExited=$false; $commitSignal=$null; $cancelSignal=$null; $profileLease=$null
 try {
     $job=LoadJob $Plan ([bool]$ValidateOnly)
     $folder=Split-Path -LiteralPath ([IO.Path]::GetFullPath($Plan))
@@ -104,8 +168,10 @@ try {
     }
     # Revalidate after shutdown; hold a non-writable handle while installing.
     $job=LoadJob $Plan $false
-    $running=Get-CimInstance Win32_Process -Filter "Name='TheOrder.WinUI.exe'"
+    $running=@(Get-CimInstance Win32_Process -Filter "Name='TheOrder.WinUI.exe'" | Where-Object { !$_.ExecutablePath -or (Same ([IO.Path]::GetDirectoryName($_.ExecutablePath)) $job.target) })
     if ($running) { throw 'AnotherInstanceRunning' }
+    $profileLease=[IO.File]::Open((Join-Path $job.profile '.the-order-writer.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    $snapshot=SnapshotProfile $job
     $lock=[IO.File]::Open($job.installer,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
     try {
         InstallerValid $job
@@ -114,8 +180,11 @@ try {
         try { if ($setup.ExitCode -ne 0) { throw 'SetupFailed' } } finally { $setup.Dispose() }
     } finally { $lock.Dispose() }
     $app=Join-Path $job.target 'TheOrder.WinUI.exe'; $null=PlainPath $app
-    if (([version]([Diagnostics.FileVersionInfo]::GetVersionInfo($app).FileVersion.Trim())).ToString(3) -ne $job.version) { throw 'InstalledVersionMismatch' }
-    WriteJson $job.result @{schema=1;version=$job.version;success=$true;code='Installed'}
+    $installed=[Diagnostics.FileVersionInfo]::GetVersionInfo($app)
+    if ($installed.ProductVersion.Trim() -ne $job.version -or $installed.FileVersion.Trim() -ne (ReleaseVersion $job.version).file) { throw 'InstalledVersionMismatch' }
+    WriteJson (Join-Path $job.target 'active-profile.json') @{Version=1;Kind=$(if($job.schema -eq 2){[int]$(if($job.profileKind -eq 'Beta'){3}else{2})}else{2});ProfileId=$job.profileId;StoreId=$job.storeId}
+    WriteJson $job.result @{schema=1;version=$job.version;success=$true;code='Installed';snapshot=$snapshot}
+    $profileLease.Dispose(); $profileLease=$null
     try { RestartApp $job.target }
     catch { WriteJson $job.result @{schema=1;version=$job.version;success=$true;code='InstalledRestartUnavailable'} }
     # The installer download is owned cache, not user data. Retain the bounded log/receipt.
@@ -126,10 +195,12 @@ try {
     }
     if ($job) {
         try { $null=PlainPath $job.result; WriteJson $job.result @{schema=1;version=$job.version;success=$false;code='UpgradeFailed'} } catch {}
+        if ($profileLease) { $profileLease.Dispose(); $profileLease=$null }
         if ($parentExited) { try { RestartApp $PSScriptRoot } catch {} }
     }
     exit 1
 } finally {
     if ($commitSignal) { $commitSignal.Dispose() }
     if ($cancelSignal) { $cancelSignal.Dispose() }
+    if ($profileLease) { $profileLease.Dispose() }
 }

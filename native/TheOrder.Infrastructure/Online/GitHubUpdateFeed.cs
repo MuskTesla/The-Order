@@ -8,7 +8,7 @@ using TheOrder.Application;
 namespace TheOrder.Infrastructure.Online;
 
 // Public releases only; this separate transport never receives catalog or GitHub credentials.
-public sealed partial class GitHubUpdateFeed : IAppUpdateFeed, IAppUpdateDifferentialFeed, IDisposable
+public sealed partial class GitHubUpdateFeed : IAppUpdateChannelFeed, IAppUpdateDifferentialFeed, IDisposable
 {
     public static readonly Uri LatestUri = new($"https://api.github.com/repos/{AppUpdateIdentity.Repository}/releases/latest");
     private readonly HttpClient client;

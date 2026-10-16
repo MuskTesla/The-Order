@@ -36,7 +36,7 @@ internal static class Program
             // Existing Phase 1–5 raw synthetic fixtures remain an explicit tooling-only entry.
             var fixture = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_FIXTURE_PROFILE") == "1";
 #if NATIVE_PRODUCTION_CANDIDATE
-            var buildKind = AppReleaseIdentity.IsBeta ? NativeProfileKind.Beta : NativeProfileKind.Production;
+            const NativeProfileKind buildKind = NativeProfileKind.Production;
 #else
             const NativeProfileKind buildKind = NativeProfileKind.Development;
 #endif
@@ -53,6 +53,12 @@ internal static class Program
                 var root = NativeProfilePaths.Validate(request);
                 if (!File.Exists(Path.Combine(root, NativeProfileStore.ManifestName))) throw new NativeProfileException("JumpProfileMissing");
             }
+            if (request is not null && JumpActivation is null)
+                request = NativeChannelProfiles.Resolve(request, AppContext.BaseDirectory, () =>
+                {
+                    var result = MessageBox(IntPtr.Zero, "发现旧版 Beta 的独立书架。是否继续使用它？\n\n是：保留旧 Beta 书架、个人记录和账号。\n否：使用原正式版书架（没有则创建空书架）。\n取消：退出，不打开或合并资料。\n\n选定后，正式版与 Beta 切换都会沿用这份书架。", "选择继续使用的书架", 0x123);
+                    return result == 6 ? true : result == 7 ? false : null;
+                });
             var key = request is null ? NativeInstanceIdentity.ForProfile(directory) : NativeInstanceIdentity.ForNativeProfile(request);
             current = AppInstance.GetCurrent();
             current.Activated += Activated; // Subscribe before registration exposes us to a simultaneous secondary.
@@ -69,7 +75,11 @@ internal static class Program
                 try { redirect.GetAwaiter().GetResult(); return 0; }
                 catch { return 3; } // Failed forwarding still exits without creating an application/writer.
             }
-            if (request is not null) Profile = NativeProfileStore.Open(request, new NativeLibraryCodec());
+            if (request is not null)
+            {
+                Profile = NativeProfileStore.Open(request, new NativeLibraryCodec());
+                NativeChannelProfiles.Remember(Profile, AppContext.BaseDirectory);
+            }
             if (Profile is not null) WindowsRecentGames.SetAppId(Profile);
             ProfileOpenMilliseconds = StartupClock.Elapsed.TotalMilliseconds;
             Microsoft.UI.Xaml.Application.Start(p =>
@@ -79,6 +89,7 @@ internal static class Program
             });
             return 0;
         }
+        catch (NativeProfileException e) when (e.Code == "ChannelProfileChoiceCanceled") { return 0; }
         catch (Exception e) { MessageBox(IntPtr.Zero, UiText.Get("The Order 无法安全启动：") + e.GetType().Name + "。请核对启动入口和资料目录，退出仍在运行的旧版本后重试。没有打开第二个书架。", "The Order", 0x10); return 1; }
         finally { Profile?.Dispose(); if (current is not null) current.Activated -= Activated; if (primary?.IsCurrent == true) primary.UnregisterKey(); }
     }

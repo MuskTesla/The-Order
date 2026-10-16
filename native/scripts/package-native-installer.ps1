@@ -16,8 +16,8 @@ $originalHash = $null
 $releaseVersion = [string]$versionProperties.Project.PropertyGroup.Version
 $fileVersion = [string]$versionProperties.Project.PropertyGroup.FileVersion
 $beta = $releaseVersion.Contains('-beta.')
-$product = if ($beta) { 'The Order Beta' } else { 'The Order' }
-$setupIdentity = if ($beta) { 'TheOrder.Beta.Setup.51CA28EA-2533-4959-90D7-466839AE640F' } else { 'TheOrder.Setup.F7940B13-6814-42F7-AB71-69A9901D7DB3' }
+$product = 'The Order'
+$setupIdentity = 'TheOrder.Setup.F7940B13-6814-42F7-AB71-69A9901D7DB3'
 $CandidatePayload = [IO.Path]::GetFullPath($CandidatePayload)
 if (!$CandidatePayload.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Candidate must be a packaged workspace artifact.' }
 if ([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $CandidatePayload 'TheOrder.WinUI.exe')).ProductVersion -ne $releaseVersion) { throw 'Build and package the exact source-controlled application version before creating this installer.' }
@@ -86,7 +86,6 @@ Assert-ReleaseEntryPoints $payload
 $installerSource = Join-Path $repo 'native/installer'
 Copy-Item -LiteralPath (Join-Path $payload 'Assets/Brand.Light.ico') -Destination (Join-Path $build 'brand.ico')
 $resourceText = [IO.File]::ReadAllText((Join-Path $installerSource 'Launcher.rc')).Replace('1,1,0,0', $fileVersion.Replace('.', ',')).Replace('1.1.0.0', $fileVersion).Replace('1.1.0', $releaseVersion)
-if ($beta) { $resourceText = $resourceText.Replace('"The Order\0"', '"The Order Beta\0"') }
 [IO.File]::WriteAllText((Join-Path $build 'Launcher.rc'), $resourceText, [Text.UTF8Encoding]::new($false))
 $oldPath = $env:PATH
 Push-Location $build
@@ -122,9 +121,7 @@ Version=$releaseVersion
 PublishedArchiveSha256=$originalHash
 PublishedManifestSha256=$manifestHash
 "@ | Set-Content -LiteralPath (Join-Path $addon 'installer-identity.ini') -Encoding ascii
-if ($beta) {
-    Copy-Item -LiteralPath (Join-Path $repo ('docs/release/' + $releaseVersion + '/README.md')) -Destination (Join-Path $addon '安装版使用说明.txt')
-} else { Copy-Item -LiteralPath (Join-Path $installerSource '安装版使用说明.txt') -Destination $addon }
+Copy-Item -LiteralPath (Join-Path $repo ('docs/release/' + $releaseVersion + '/README.md')) -Destination (Join-Path $addon '安装版使用说明.txt')
 $distribution = Join-Path $output 'distribution'
 $null = New-Item -ItemType Directory -Path $distribution
 # Inno evaluates Check before extraction. Unchanged files keep their bytes and timestamps.
@@ -166,6 +163,9 @@ if ($beta) { $compilerArgs = @('/DPublicBeta=1') + $compilerArgs }
 & $compiler @compilerArgs 2>&1 | Tee-Object -FilePath (Join-Path $output 'installer-build.log') | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Setup compiler failed.' }
 $setup = Join-Path $distribution ('The-Order-' + $releaseVersion + '-Setup-x64.exe')
+@{schema=1;profileContract=1;version=$releaseVersion;installationIdentity=$setupIdentity} |
+    ConvertTo-Json | Set-Content -LiteralPath (Join-Path $distribution 'update-channel.json') -Encoding utf8
+
 # Publish the block map alongside Setup. Checks read only Release metadata; maps are fetched on explicit Install.
 if (!$Dotnet) { $Dotnet = Join-Path $repo '.artifacts/native-phase1/tools/dotnet/dotnet.exe' }
 if (!(Test-Path -LiteralPath $Dotnet -PathType Leaf) -or (& $Dotnet --version) -ne '10.0.401') { throw 'The pinned .NET SDK 10.0.401 is required for the block map.' }

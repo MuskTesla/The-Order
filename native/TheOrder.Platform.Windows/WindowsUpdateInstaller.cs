@@ -14,10 +14,12 @@ public sealed class WindowsUpdateInstaller(NativeConfiguration configuration, Wi
     {
         get
         {
-            if (configuration.Profile is NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Beta })
-                return new(false, "Beta 请从 GitHub Pre-release 手动更新，稳定版安装目录不会改变。");
-            if (configuration.Profile is not NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Production })
+            if (configuration.Profile is not NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Production or NativeProfileKind.Beta })
                 return new(false, "独立试用版只检查更新；请在正式使用的版本中安装更新。");
+            var native = (NativeProfileStore)configuration.Profile;
+            var expectedRoot = native.Manifest.ProfileKind == NativeProfileKind.Beta ? NativeProfilePaths.BetaRoot : NativeProfilePaths.ProductionRoot;
+            if (!string.Equals(native.Root, expectedRoot, StringComparison.OrdinalIgnoreCase))
+                return new(false, "隔离资料仅检查更新，不能执行正式安装。");
             try
             {
                 var current = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
@@ -25,7 +27,7 @@ public sealed class WindowsUpdateInstaller(NativeConfiguration configuration, Wi
                 WindowsUpdatePackages.EnsurePlainPath(target);
                 if (Directory.Exists(target) && Directory.EnumerateFileSystemEntries(target).Any() && !ManagedDirectory(target))
                     return new(false, "安装目录已有其他文件，无法直接升级；当前程序和数据不受影响。");
-                return new(true, "更新会保留使用数据，安装完成后重新打开程序。");
+                return new(true, "退出保存后先备份资料，再更新或切换通道；安装完成后沿用当前书架。");
             }
             catch { return new(false, "暂时无法确认安装目录，未启用自动升级。"); }
         }
@@ -43,16 +45,17 @@ public sealed class WindowsUpdateInstaller(NativeConfiguration configuration, Wi
         var available = Availability;
         if (!available.CanInstall || target is null) throw new AppUpdateException(available.Message);
         AppUpdateIdentity.Validate(package.Release);
-        var currentVersion = typeof(WindowsUpdateInstaller).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
-        if (!AppUpdateIdentity.IsNewer(package.Release.Version, currentVersion)) throw new AppUpdateException("这个安装包不是更新版本，未开始安装。");
+        var currentVersion = AppReleaseIdentity.Version;
+        if (!AppUpdateVersion.CanApply(currentVersion, package.Release)) throw new AppUpdateException("这个安装包不是更新版本，也不是已验证的通道切换，未开始安装。");
         var root = packages.Root; var folder = Path.GetDirectoryName(Path.GetFullPath(package.InstallerPath))!;
         if (Path.GetDirectoryName(folder) != root || !Guid.TryParseExact(Path.GetFileName(folder), "N", out _)
             || Path.GetFileName(package.InstallerPath) != AppUpdateIdentity.InstallerName(package.Release.Version)) throw new AppUpdateException("更新文件不在本次下载目录，未开始安装。");
         await WindowsUpdatePackages.ValidateAsync(package.InstallerPath, package.Release, cancellation).ConfigureAwait(false);
         var version = FileVersionInfo.GetVersionInfo(package.InstallerPath);
         // Inno Setup pads version-resource strings with spaces.
-        if (version.ProductName?.Trim() != "The Order" || !Version.TryParse(version.FileVersion?.Trim(), out var installerVersion)
-            || installerVersion.ToString(3) != package.Release.Version) throw new AppUpdateException("安装包的程序身份或版本不正确，未开始安装。");
+        if (version.ProductName?.Trim() != "The Order" || !AppUpdateVersion.TryParse(package.Release.Version, out var offered)
+            || !Version.TryParse(version.FileVersion?.Trim(), out var installerVersion) || installerVersion != offered.FileVersion
+            || version.ProductVersion?.Trim() != package.Release.Version) throw new AppUpdateException("安装包的程序身份或版本不正确，未开始安装。");
         var worker = Path.Combine(AppContext.BaseDirectory, "update-worker.ps1"); WindowsUpdatePackages.EnsurePlainPath(worker);
         if (!File.Exists(worker)) throw new AppUpdateException("更新组件缺失，未开始安装。");
         using var workerFile = IsolatedLibrarySource.OpenChecked(worker);
@@ -67,8 +70,9 @@ public sealed class WindowsUpdateInstaller(NativeConfiguration configuration, Wi
         try
         {
         var profile = (NativeProfileStore)configuration.Profile!; profile.ValidateAccess();
-        var plan = new { schema = 1, id, version = package.Release.Version, bytes = package.Release.Bytes, sha256 = package.Release.Sha256,
+        var plan = new { schema = 2, id, version = package.Release.Version, bytes = package.Release.Bytes, sha256 = package.Release.Sha256,
             installer = Path.GetFullPath(package.InstallerPath), target, profile = configuration.Profile!.Root,
+            profileKind = profile.Manifest.ProfileKind.ToString(), channelProtocol = package.Release.ChannelProtocol,
             profileId = profile.Manifest.ProfileId, storeId = profile.Manifest.StoreId, physicalRootHash = profile.Manifest.PhysicalRoot,
             parentPid = owner.Id, parentStartTicks = owner.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture),
             workerSha256 = workerHash, result = Path.Combine(root, "last-result.json"), currentVersion,
