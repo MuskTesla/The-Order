@@ -161,7 +161,7 @@ $payloadChecks = Join-Path $build 'verified-paths.iss'
 [IO.File]::WriteAllLines($payloadChecks, $checks, [Text.UTF8Encoding]::new($false))
 $compilerArgs = @('/Qp', ('/DPayloadDirectory=' + $payload), ('/DAddonDirectory=' + $addon),
     ('/DOutputDirectory=' + $distribution), ('/DPayloadEntries=' + $payloadEntries), ('/DPayloadChecks=' + $payloadChecks), (Join-Path $installerSource 'TheOrder.iss'))
-$compilerArgs = @('/DReleaseVersion=' + $releaseVersion, '/DReleaseFileVersion=' + $fileVersion) + $compilerArgs
+$compilerArgs = @(('/DReleaseVersion=' + $releaseVersion), ('/DReleaseFileVersion=' + $fileVersion)) + $compilerArgs
 if ($beta) { $compilerArgs = @('/DPublicBeta=1') + $compilerArgs }
 & $compiler @compilerArgs 2>&1 | Tee-Object -FilePath (Join-Path $output 'installer-build.log') | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Setup compiler failed.' }
