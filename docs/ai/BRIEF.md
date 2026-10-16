@@ -9,6 +9,8 @@
 
 证据根 `.artifacts/content-language-fix-20261016/`：修复前14项合成反例中5项失败，修复后语言／缓存定向156/0/0，版本调整并增加3项更新反例后完整客户端4102/0/0（含本地合成 Worker 契约，非真人账号）。实际匿名响应及当前缓存适配器往返证明 CLANNAD 直接采用既有中文译文，自建单条 Test 书架不含凭据或真实游戏。最终源码冻结、安装包、隔离窗口／安装验证与发布回执以该目录最终记录为准；不把模拟测试等同真人授权或干净 Windows 验收。
 
+隔离安装另复现 Inno InitializeSetup 过早展开 `{app}`，诊断探针的原始异常为 `An attempt was made to expand the "app" constant before it was initialized`。删除此过早调用，原进程路径校验完整留在 PrepareToInstall（写入前）和卸载检查。旧失败日志、首版包及冻结保留；安装器修复后使用新的 final 冻结及分发目录，不重写前一候选。
+
 ## 更新通道统一（2026-10-16，前一节点）
 
 本工作树交付Beta 1.2.0-beta.2，与另一通道共享The Order安装身份、入口及所选物理Profile。用户明确授权本轮更新GitHub程序；不授权代理切换本机日用或访问真实Production。旧Beta独立安装策略是历史版本行为，后续两包改为设置内通道切换；旧beta.1需一次手动安装，首次可明确继续旧Beta书架，不自动合并或复制物理绑定资料。
