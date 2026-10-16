@@ -15,18 +15,37 @@
 #ifndef PayloadChecks
   #error Verified PayloadChecks is required
 #endif
+#ifndef ReleaseVersion
+  #define ReleaseVersion "1.1.0"
+#endif
+#ifndef ReleaseFileVersion
+  #define ReleaseFileVersion "1.1.0.0"
+#endif
+#ifdef PublicBeta
+  #define ProductName "The Order Beta"
+  #define SetupId "{{51CA28EA-2533-4959-90D7-466839AE640F}"
+  #define SetupIdentity "TheOrder.Beta.Setup.51CA28EA-2533-4959-90D7-466839AE640F"
+  #define AppUserId "dev.local.kungalmanager.beta"
+  #define ProfileRoot "{localappdata}\TheOrder-Beta\Profiles\Beta"
+#else
+  #define ProductName "The Order"
+  #define SetupId "{{F7940B13-6814-42F7-AB71-69A9901D7DB3}"
+  #define SetupIdentity "TheOrder.Setup.F7940B13-6814-42F7-AB71-69A9901D7DB3"
+  #define AppUserId "dev.local.kungalmanager"
+  #define ProfileRoot "{localappdata}\TheOrder\Profiles\Production"
+#endif
 
 [Setup]
-AppId={{F7940B13-6814-42F7-AB71-69A9901D7DB3}
-AppName=The Order
-AppVersion=1.1.0
-AppVerName=The Order 1.1.0
+AppId={#SetupId}
+AppName={#ProductName}
+AppVersion={#ReleaseVersion}
+AppVerName={#ProductName} {#ReleaseVersion}
 AppPublisher=The Order Project
 AppPublisherURL=https://github.com/Ph-Rank/The-Order
 AppSupportURL=https://github.com/Ph-Rank/The-Order/issues
 AppUpdatesURL=https://github.com/Ph-Rank/The-Order/releases
-DefaultDirName={localappdata}\Programs\The Order
-DefaultGroupName=The Order
+DefaultDirName={localappdata}\Programs\{#ProductName}
+DefaultGroupName={#ProductName}
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
@@ -37,7 +56,7 @@ DirExistsWarning=no
 AllowUNCPath=no
 AllowNetworkDrive=no
 OutputDir={#OutputDirectory}
-OutputBaseFilename=The-Order-1.1.0-Setup-x64
+OutputBaseFilename=The-Order-{#ReleaseVersion}-Setup-x64
 SetupIconFile={#PayloadDirectory}\Assets\Brand.Light.ico
 UninstallDisplayIcon={app}\TheOrder.exe
 LicenseFile={#PayloadDirectory}\LICENSE-TheOrder.txt
@@ -48,26 +67,32 @@ SolidCompression=no
 DiskSpanning=no
 CloseApplications=no
 RestartApplications=no
-SetupMutex=TheOrder.Setup.1
-UninstallDisplayName=The Order
+SetupMutex={#SetupIdentity}
+UninstallDisplayName={#ProductName}
 UninstallLogMode=append
 UsePreviousAppDir=yes
 UsePreviousTasks=yes
-VersionInfoVersion=1.1.0.0
-VersionInfoDescription=The Order 安装程序
-VersionInfoProductName=The Order
-VersionInfoProductVersion=1.1.0
+VersionInfoVersion={#ReleaseFileVersion}
+VersionInfoDescription={#ProductName} 安装程序
+VersionInfoProductName={#ProductName}
+VersionInfoProductVersion={#ReleaseVersion}
 
 [Languages]
 Name: "zhHans"; MessagesFile: "languages\ChineseSimplified.isl"
 
 [Messages]
+#ifdef PublicBeta
+WelcomeLabel2=将安装独立的 The Order Beta，公开测试版功能仍可能调整。%n%n程序和资料与稳定版分离，从空书架开始，不自动导入稳定版资料。卸载 Beta 保留其资料；不会更改稳定版。
+FinishedLabel=The Order Beta 已安装完成。%n%n请从独立的 Beta 入口打开。问题反馈：github.com/Ph-Rank/The-Order/issues。关闭窗口后可在托盘选择“退出”。
+ConfirmUninstall=确定要卸载 The Order Beta 吗？%n%nBeta 资料会保留。稳定版程序、资料和游戏文件不受影响。
+#else
 WelcomeLabel2=将安装 The Order，所需运行文件会自动放入安装目录。%n%n安装后从桌面或开始菜单打开即可。升级保留书架、设置和游玩记录；卸载时可选择保留或删除使用数据。
 FinishedLabel=The Order 已安装完成。%n%n以后可从桌面或开始菜单打开。需要完全退出时，请在系统托盘选择“退出”。
 ConfirmUninstall=确定要卸载 The Order 吗？%n%n接下来可选择保留或删除使用数据，游戏文件不会删除。
+#endif
 
 [Tasks]
-Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："
+Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："; Flags: unchecked
 
 [Files]
 ; Every expected payload/entry/license hash is compiled locally. Only changed/missing files are copied.
@@ -77,9 +102,9 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 Source: "{srcexe}"; DestDir: "{app}"; DestName: "update-base.bin"; Flags: external ignoreversion
 
 [Icons]
-Name: "{group}\The Order"; Filename: "{app}\TheOrder.exe"; WorkingDir: "{app}"; IconFilename: "{code:ShortcutIcon}"; AppUserModelID: "dev.local.kungalmanager"
-Name: "{autodesktop}\The Order"; Filename: "{app}\TheOrder.exe"; WorkingDir: "{app}"; IconFilename: "{code:ShortcutIcon}"; AppUserModelID: "dev.local.kungalmanager"; Tasks: desktopicon
-Name: "{group}\卸载 The Order"; Filename: "{uninstallexe}"
+Name: "{group}\{#ProductName}"; Filename: "{app}\TheOrder.exe"; WorkingDir: "{app}"; IconFilename: "{code:ShortcutIcon}"; AppUserModelID: "{#AppUserId}"
+Name: "{autodesktop}\{#ProductName}"; Filename: "{app}\TheOrder.exe"; WorkingDir: "{app}"; IconFilename: "{code:ShortcutIcon}"; AppUserModelID: "{#AppUserId}"; Tasks: desktopicon
+Name: "{group}\卸载 {#ProductName}"; Filename: "{uninstallexe}"
 
 [Run]
 Filename: "{app}\TheOrder.exe"; Description: "打开 The Order"; Flags: nowait postinstall skipifsilent unchecked
@@ -101,15 +126,26 @@ end;
 
 function RunningError: String;
 var
-  Locator, Service, Processes: Variant;
+  Locator, Service, Processes, Process: Variant;
 begin
   Result := '';
   try
     Locator := CreateOleObject('WbemScripting.SWbemLocator');
     Service := Locator.ConnectServer('.', 'root\CIMV2');
-    Processes := Service.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name = ''TheOrder.WinUI.exe''');
+    Processes := Service.ExecQuery('SELECT ProcessId, ExecutablePath FROM Win32_Process WHERE Name = ''TheOrder.WinUI.exe''');
+#ifdef PublicBeta
+    for Process in Processes do begin
+      if VarIsNull(Process.ExecutablePath) then begin
+        Result := '无法确认运行中的程序路径，未开始安装。'; Exit;
+      end;
+      if CompareText(ExtractFileDir(Process.ExecutablePath), RemoveBackslashUnlessRoot(ExpandConstant('{app}'))) = 0 then begin
+        Result := '这个 Beta 仍在运行。请先从其托盘正常退出，再安装或卸载。'; Exit;
+      end;
+    end;
+#else
     if Processes.Count > 0 then
       Result := 'The Order 仍在运行。请在系统托盘选择“退出”，保存编辑后重新运行安装或卸载。';
+#endif
   except
     Result := '无法确认 The Order 是否已退出，本次操作未开始。请稍后重试。';
   end;
@@ -134,10 +170,16 @@ begin
   if (Length(Target) <= 3) or (Target[2] <> ':') or
      PathsOverlap(Target, ExpandConstant('{localappdata}\TheOrder')) or
      PathsOverlap(Target, ExpandConstant('{localappdata}\TheOrder-RC')) or
+     PathsOverlap(Target, ExpandConstant('{localappdata}\TheOrder-Beta')) or
      PathsOverlap(Target, ExpandConstant('{userappdata}\KunGalManager')) then begin
     Result := '请使用独立的程序目录，不能安装到资料目录或磁盘根目录。';
     Exit;
   end;
+#ifdef PublicBeta
+  if PathsOverlap(Target, ExpandConstant('{localappdata}\Programs\The Order')) then begin
+    Result := 'Beta 必须安装到独立目录，不能覆盖稳定版。'; Exit;
+  end;
+#endif
   Parent := Target;
   while Parent <> '' do begin
     Attributes := GetFileAttributesW(Parent);
@@ -168,7 +210,7 @@ begin
     end;
   end;
   if HasContents and (GetIniString('Installer', 'Identity', '',
-      AddBackslash(Target) + 'installer-identity.ini') <> 'TheOrder.Setup.F7940B13-6814-42F7-AB71-69A9901D7DB3') then
+      AddBackslash(Target) + 'installer-identity.ini') <> '{#SetupIdentity}') then
     Result := '这个目录已有其他文件。请选择新的程序目录，已有便携版无需删除，书架资料会继续保留。';
 end;
 
@@ -230,23 +272,25 @@ begin
     Log(Error);
     if not UninstallSilent then MsgBox(Error, mbError, MB_OK);
   end;
+  #ifndef PublicBeta
   if Result and not UninstallSilent then begin
     Choice := MsgBox('是否同时删除本机默认资料目录中的全部使用数据？' + #13#10 + #13#10 +
       '是：删除书架、个人编辑、安装记录、游玩记录、图片缓存、设置、登录令牌、API 密钥及同步记录。' + #13#10 +
       '否（默认）：保留全部使用数据，方便以后重装。' + #13#10 +
       '取消：退出卸载。' + #13#10 + #13#10 +
       '游戏文件、手动导出的备份和自定义 Test/Development 资料目录不受影响。' + #13#10 +
-      ExpandConstant('{localappdata}\TheOrder\Profiles\Production'), mbConfirmation, MB_YESNOCANCEL or MB_DEFBUTTON2);
+      ExpandConstant('{#ProfileRoot}'), mbConfirmation, MB_YESNOCANCEL or MB_DEFBUTTON2);
     DeleteUserData := Choice = IDYES;
     Result := Choice <> IDCANCEL;
   end;
+  #endif
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var Root: String;
 begin
   if (CurUninstallStep = usPostUninstall) and DeleteUserData then begin
-    Root := ExpandConstant('{localappdata}\TheOrder\Profiles\Production');
+    Root := ExpandConstant('{#ProfileRoot}');
     if not DataTreeSafe(Root) then
       MsgBox('程序已卸载，但资料目录含链接，已保留数据。请自行检查后清理：' + #13#10 + Root, mbError, MB_OK)
     else if DirExists(Root) and not DelTree(Root, True, True, True) then

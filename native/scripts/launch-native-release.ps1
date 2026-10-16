@@ -4,13 +4,15 @@ Import-Module (Join-Path $PSHOME 'Modules/Microsoft.PowerShell.Utility/Microsoft
 # Compatible with Windows PowerShell 5.1. Validation never opens a Production profile.
 $package = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
 $exe = Join-Path $package 'TheOrder.WinUI.exe'
+$identity = Get-Content -LiteralPath (Join-Path $package 'release-identity.json') -Raw | ConvertFrom-Json
+$normalKind = if ($identity.channel -eq 'beta') { 'Beta' } else { 'Production' }
 if (!$Test -and $DataDirectory) { throw 'A custom data directory is available only with -Test.' }
 $profile = $null
 if ($Test) {
     if (!$DataDirectory) { $DataDirectory = Join-Path $env:LOCALAPPDATA 'TheOrder-RC/Test' }
     if ($DataDirectory -notmatch '^[A-Za-z]:[\\/]' -or $DataDirectory.IndexOf(':', 2) -ge 0) { throw 'Use an absolute local Test directory.' }
     $profile = [IO.Path]::GetFullPath($DataDirectory).TrimEnd('\')
-    foreach ($formalRoot in @((Join-Path $env:APPDATA 'KunGalManager'), (Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Production'), (Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Development'))) {
+    foreach ($formalRoot in @((Join-Path $env:APPDATA 'KunGalManager'), (Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Production'), (Join-Path $env:LOCALAPPDATA 'TheOrder/Profiles/Development'), (Join-Path $env:LOCALAPPDATA 'TheOrder-Beta/Profiles/Beta'))) {
         $formal = [IO.Path]::GetFullPath($formalRoot).TrimEnd('\')
         if ($profile.Equals($formal, [StringComparison]::OrdinalIgnoreCase) -or $profile.StartsWith($formal + '\', [StringComparison]::OrdinalIgnoreCase) -or $formal.StartsWith($profile + '\', [StringComparison]::OrdinalIgnoreCase)) {
             throw 'A formal profile or its parent/child cannot be used as Test.'
@@ -41,18 +43,18 @@ foreach ($file in $manifest.files) {
     }
 }
 if ($ValidateOnly) {
-    [pscustomobject]@{version=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion;files=@($manifest.files).Count;validated=$true;profileKind=$(if($Test){'Test'}else{'Production'});profileOpened=$false} | ConvertTo-Json
+    [pscustomobject]@{version=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion;files=@($manifest.files).Count;validated=$true;profileKind=$(if($Test){'Test'}else{$normalKind});profileOpened=$false} | ConvertTo-Json
     return
 }
 $prior = @{}
 Get-ChildItem Env: | Where-Object { $_.Name.StartsWith('THE_ORDER_NATIVE_', [StringComparison]::OrdinalIgnoreCase) -or $_.Name -in @('KGM_DATA_DIR','KGM_TEST_EXECUTABLE','DOTNET_ROOT','DOTNET_ROOT_X64') } | ForEach-Object { $prior[$_.Name] = $_.Value }
-$values = @{THE_ORDER_NATIVE_PROFILE_KIND=$(if($Test){'Test'}else{'Production'});THE_ORDER_NATIVE_FIXTURE_PROFILE='0';THE_ORDER_NATIVE_DIAGNOSTICS='0';THE_ORDER_NATIVE_VISUAL_TEST='0';THE_ORDER_NATIVE_ADVANCED_TEST='0'}
+$values = @{THE_ORDER_NATIVE_PROFILE_KIND=$(if($Test){'Test'}else{$normalKind});THE_ORDER_NATIVE_FIXTURE_PROFILE='0';THE_ORDER_NATIVE_DIAGNOSTICS='0';THE_ORDER_NATIVE_VISUAL_TEST='0';THE_ORDER_NATIVE_ADVANCED_TEST='0'}
 if ($Test) { $values.THE_ORDER_NATIVE_DATA_DIR = $profile }
 $process = $null
 try {
     foreach ($name in $prior.Keys) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
     foreach ($name in $values.Keys) { [Environment]::SetEnvironmentVariable($name, $values[$name], 'Process') }
-    if ($Test) { $process = Start-Process -FilePath $exe -WorkingDirectory $package -PassThru }
+    if ($Test -or $normalKind -eq 'Beta') { $process = Start-Process -FilePath $exe -WorkingDirectory $package -WindowStyle Hidden -PassThru }
     else { $process = Start-Process -FilePath $exe -WorkingDirectory $package -ArgumentList '--allow-production-profile' -PassThru }
     [pscustomobject]@{pid=$process.Id;start=$process.StartTime.ToUniversalTime().ToString('o');program=$exe;profileKind=$values.THE_ORDER_NATIVE_PROFILE_KIND;diagnostics=$false} | ConvertTo-Json
 } finally {

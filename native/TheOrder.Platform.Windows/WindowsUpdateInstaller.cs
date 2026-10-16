@@ -14,6 +14,8 @@ public sealed class WindowsUpdateInstaller(NativeConfiguration configuration, Wi
     {
         get
         {
+            if (configuration.Profile is NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Beta })
+                return new(false, "Beta 请从 GitHub Pre-release 手动更新，稳定版安装目录不会改变。");
             if (configuration.Profile is not NativeProfileStore { Manifest.ProfileKind: NativeProfileKind.Production })
                 return new(false, "独立试用版只检查更新；请在正式使用的版本中安装更新。");
             try

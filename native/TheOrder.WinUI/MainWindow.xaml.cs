@@ -72,6 +72,7 @@ public sealed partial class MainWindow : Window
             && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PERFORMANCE_OUTPUT") is not null;
         installationNavigation = new(files);
         ViewModel = workspace; InitializeComponent();
+        AppTitleBar.Title = Title = AppReleaseIdentity.IsBeta ? $"The Order {AppReleaseIdentity.Version} · Beta" : "The Order";
         if (Program.Profile?.Manifest.ProfileKind == NativeProfileKind.Test && Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_READ_ONLY_OAUTH_ACCEPTANCE") == "1")
             AppTitleBar.Title = Title = $"The Order {typeof(App).Assembly.GetName().Version!.ToString(3)} Test · 只读登录验收";
         updates.PropertyChanged += OnAppUpdateState;

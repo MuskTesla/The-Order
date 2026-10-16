@@ -5,13 +5,18 @@ $source = [IO.Path]::GetFullPath($PublishedDirectory)
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $repo '.artifacts')).TrimEnd('\') + '\'
 if (!$output.StartsWith($artifactRoot, [StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $output)) { throw 'Fresh workspace artifact output required; existing candidates are immutable.' }
-$documentation = if ($DocumentationDirectory) { [IO.Path]::GetFullPath($DocumentationDirectory) } else { Join-Path $repo 'docs/release/1.1.0' }
+[xml]$versionProperties = Get-Content -LiteralPath (Join-Path $repo 'native/Directory.Build.props') -Raw
+$releaseVersion = [string]$versionProperties.Project.PropertyGroup.Version
+$fileVersion = [string]$versionProperties.Project.PropertyGroup.FileVersion
+$beta = $releaseVersion.Contains('-beta.')
+$product = if ($beta) { 'The Order Beta' } else { 'The Order' }
+$documentation = if ($DocumentationDirectory) { [IO.Path]::GetFullPath($DocumentationDirectory) } else { Join-Path $repo ('docs/release/' + $releaseVersion) }
 if (!$documentation.StartsWith($repo + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Release documentation must come from this source checkout.' }
 foreach ($name in @('README.md','CHANGELOG.md','BUILD.md','AUTHENTICATION.md')) {
     if (!(Test-Path -LiteralPath (Join-Path $documentation $name) -PathType Leaf)) { throw 'Complete, source-controlled release documentation is required.' }
 }
 $version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $source 'TheOrder.WinUI.exe'))
-if ($version.FileVersion -ne '1.1.0.0') { throw 'Publish the explicitly versioned 1.1.0 application before packaging.' }
+if ($version.FileVersion -ne $fileVersion -or $version.ProductVersion -ne $releaseVersion) { throw 'Publish the exact source-controlled application version before packaging.' }
 $sourceIdentity = $null
 if ($SourceManifest) {
     $sourceManifestPath = [IO.Path]::GetFullPath($SourceManifest)
@@ -64,16 +69,17 @@ Remove-Item -LiteralPath (Join-Path $output 'README-RC.txt')
 Remove-Item -LiteralPath (Join-Path $output 'launch-test.ps1')
 $identityPath = Join-Path $output 'release-identity.json'
 $identity = Get-Content -LiteralPath $identityPath -Raw | ConvertFrom-Json
-$identity | Add-Member -NotePropertyName version -NotePropertyValue '1.1.0'
-$identity | Add-Member -NotePropertyName product -NotePropertyValue 'The Order'
+$identity | Add-Member -NotePropertyName version -NotePropertyValue $releaseVersion
+$identity | Add-Member -NotePropertyName product -NotePropertyValue $product
+$identity | Add-Member -NotePropertyName channel -NotePropertyValue $(if($beta){'beta'}else{'stable'})
 $identity | Add-Member -NotePropertyName releaseState -NotePropertyValue 'STAGED_NOT_PUBLISHED'
 $identity | Add-Member -NotePropertyName codeSigning -NotePropertyValue 'unsigned'
 $identity | Add-Member -NotePropertyName sourceSnapshot -NotePropertyValue $sourceIdentity
-$identity | Add-Member -NotePropertyName correspondingSource -NotePropertyValue 'The-Order-1.1.0-source.zip'
+$identity | Add-Member -NotePropertyName correspondingSource -NotePropertyValue ('The-Order-' + $releaseVersion + '-source.zip')
 $identity.gate = 'See the separately bound release acceptance report; packaging does not certify acceptance.'
 $identity.cleanWindows = 'Current candidate clean Windows NOT VERIFIED; see bound validation report. Prior Win11 evidence is not Win10 evidence.'
 $identity.crtSource = 'Installed Visual Studio licensed x64 REDIST directory'
 $identity | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $identityPath -Encoding utf8
 $files=@(Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object Name -ne 'files.json' | Sort-Object FullName | ForEach-Object { @{path=[IO.Path]::GetRelativePath($output,$_.FullName);bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash} })
 @{schema=1;files=$files} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'files.json') -Encoding utf8
-[pscustomobject]@{package=$output;version='1.1.0';files=$files.Count;manifestSha256=(Get-FileHash -LiteralPath (Join-Path $output 'files.json')).Hash;releaseState='STAGED_NOT_PUBLISHED'} | ConvertTo-Json
+[pscustomobject]@{package=$output;version=$releaseVersion;files=$files.Count;manifestSha256=(Get-FileHash -LiteralPath (Join-Path $output 'files.json')).Hash;releaseState='STAGED_NOT_PUBLISHED'} | ConvertTo-Json

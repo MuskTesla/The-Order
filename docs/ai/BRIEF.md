@@ -1,4 +1,12 @@
 # The Order：当前实现与评审交接
+## Public Beta 发布准备（2026-10-16，当前）
+
+当前候选：`D:/Projects/The-Order-worktrees/public-beta-1-20261016` / `codex/public-beta-1-20261016`，基于完整32942db。用户本轮明确授权核实门槛后推送此Beta源码与Tag、在Ph-Rank/The-Order创建Pre-release；不授权日用替换、Production或云部署。旧阶段的禁止公开发布结论是正式RC标准，本轮采用单独Beta Gate，不能反向宣称正式RC通过。
+
+版本1.2.0-beta.1，Windows数字文件版本1.2.0.1。Beta独立安装ID、目录/快捷方式/任务栏与NativeProfileKind.Beta；默认`%LOCALAPPDATA%/TheOrder-Beta/Profiles/Beta`，直接主EXE也拒绝Production/Development及旧授权参数。没有用户库schema迁移。稳定更新器拒绝预发布；Beta不访问稳定安装通道，只提示GitHub手动更新。裸文件夹复制不是跨Profile迁移。
+
+新增隔离、重启、错误Kind/路径/授权及通道回归；最终结果与构建提交、分发包和公开Release核验绑定在本轮`.artifacts/beta1/`。实际运行Provider仍为NextMoe/Bangumi/AniList/MusicBrainz/NDL；MangaDex/MangaUpdates仅调研，漫画逐章、VGMdb、离线机器翻译未实现。以原release目录与GitHub发布说明公开真实限制。此前4020等是基线结果，不能代替本轮最终回归/最终包。
+
 ## 详情排版与日用切换 Gate（2026-10-16，当前开发入口）
 
 当前源码 `D:/Projects/The-Order-worktrees/detail-typography-daily-gate-20261016` / `codex/detail-typography-daily-gate-20261016`，从上轮完整 RC 检查点 `2fac66d` 隔离继续。排版修复 `3d171dc`：音乐曲目标题、署名/职责与作品层级对齐，展开区限制阅读宽度并移除巨幅内嵌卡片；动画分集分开集号、标题/播出信息和展开/来源操作，原文与说明分组，窄窗重排。保留全部来源、录音/Work/人物导航、过滤与取消行为。

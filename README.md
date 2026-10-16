@@ -1,4 +1,11 @@
-# The Order 1.1.0
+# The Order 1.2.0-beta.1 · Public Beta
+
+**公开测试版，与稳定版并存。** [Beta 下载与已知限制](https://github.com/Ph-Rank/The-Order/releases/tag/v1.2.0-beta.1) · [安装、独立资料、备份与回退](docs/release/1.2.0-beta.1/README.md) · [反馈问题](https://github.com/Ph-Rank/The-Order/issues/new/choose)
+
+新增 ACGN 跨媒体探索、动画/PV/观看入口、MusicBrainz 发行与曲目、漫画/轻小说及 NDL 出版资料、多语言显示。没有漫画逐章目录、VGMdb 或离线机器翻译。
+Beta 默认安装到 `The Order Beta`，资料位于 `%LOCALAPPDATA%\TheOrder-Beta\Profiles\Beta`；不自动导入稳定版资料或凭据，采用 GitHub Pre-release 手动更新。干净 Windows/DPI/真实授权到期等仍在公开测试范围。下方保留 1.1.0 稳定版说明，不能用于描述 Beta 的安装目录、资料或更新行为。
+
+## 1.1.0 稳定版
 
 Windows 本地 Galgame 书架，使用 C# / WinUI 3 原生界面，提供简体中文。
 

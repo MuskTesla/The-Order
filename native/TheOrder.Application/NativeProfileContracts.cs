@@ -1,6 +1,6 @@
 namespace TheOrder.Application;
 
-public enum NativeProfileKind { Development, Test, Production }
+public enum NativeProfileKind { Development, Test, Production, Beta }
 // Optional provenance for an explicitly restored authoritative main. Existing persistence
 // implementations keep the Phase 2 default (Main); restored history retains backup semantics.
 public interface ILibraryRecoveryProvenance { LibraryRecovery MainRecovery { get; } }

@@ -162,6 +162,7 @@
      <Expander x:Name="UpdateNotes" Header="完整更新说明" HorizontalAlignment="Stretch" Visibility="Collapsed"><TextBlock Text="{x:Bind Updates.Notes, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" /></Expander>
      <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8">
       <Button Click="OnCheckUpdate" Content="检查更新" IsEnabled="{x:Bind Updates.CanCheck, Mode=OneWay}" AutomationProperties.AutomationId="CheckAppUpdate" />
+      <HyperlinkButton Content="GitHub 发布与反馈 ↗" NavigateUri="https://github.com/Ph-Rank/The-Order/releases" AutomationProperties.AutomationId="PublicReleasePage" />
       <Button x:Name="InstallUpdateButton" Click="OnInstallUpdate" Content="立即更新" IsEnabled="{x:Bind Updates.CanInstall, Mode=OneWay}" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="InstallAppUpdate" />
       <Button x:Name="CancelUpdateButton" Click="OnCancelUpdate" Content="取消" Visibility="Collapsed" IsEnabled="{x:Bind Updates.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelAppUpdate" />
      </views:TagFlowPanel>

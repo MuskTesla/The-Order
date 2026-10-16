@@ -37,7 +37,7 @@ internal static class Composition
         services.AddSingleton<IAppUpdatePackages>(p => p.GetRequiredService<WindowsUpdatePackages>());
         services.AddSingleton<IAppUpdateInstaller, WindowsUpdateInstaller>();
         services.AddSingleton(p => new AppUpdateViewModel(p.GetRequiredService<IAppUpdateFeed>(), p.GetRequiredService<IAppUpdatePackages>(),
-            p.GetRequiredService<IAppUpdateInstaller>(), typeof(App).Assembly.GetName().Version!.ToString(3)));
+            p.GetRequiredService<IAppUpdateInstaller>(), AppReleaseIdentity.Version));
         services.AddSingleton<IMaterialPreferencesStore, MaterialPreferencesStore>();
         services.AddSingleton<ILibraryCodec, NativeLibraryCodec>();
         services.AddSingleton<ITransactionalLibraryFactory, IsolatedLibraryFactory>();

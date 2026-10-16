@@ -36,11 +36,12 @@ internal static class Program
             // Existing Phase 1–5 raw synthetic fixtures remain an explicit tooling-only entry.
             var fixture = Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_FIXTURE_PROFILE") == "1";
 #if NATIVE_PRODUCTION_CANDIDATE
-            const NativeProfileKind buildKind = NativeProfileKind.Production;
+            var buildKind = AppReleaseIdentity.IsBeta ? NativeProfileKind.Beta : NativeProfileKind.Production;
 #else
             const NativeProfileKind buildKind = NativeProfileKind.Development;
 #endif
             var authorizeProduction = args.Contains("--allow-production-profile", StringComparer.Ordinal);
+            if (AppReleaseIdentity.IsBeta && fixture) throw new NativeProfileException("BetaRawFixtureForbidden");
             if (fixture && authorizeProduction) throw new NativeProfileException("ProductionAuthorizationFixtureForbidden");
             var request = fixture ? null : NativeProfilePaths.Select(buildKind, Environment.GetEnvironmentVariable("THE_ORDER_NATIVE_PROFILE_KIND"), directory, authorizeProduction);
             JumpActivation = RecentGameActivation.Parse(args);

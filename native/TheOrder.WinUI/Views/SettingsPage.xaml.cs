@@ -22,7 +22,7 @@ public sealed partial class SettingsPage : Page
     public LibraryBackupViewModel Backups { get; }
     public BangumiSettingsViewModel Bangumi { get; }
     public Func<VerifiedAppUpdate, Task<bool>>? InstallUpdate { get; set; }
-    public string AppVersion => "The Order " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0");
+    public string AppVersion => "The Order " + AppReleaseIdentity.Version;
     private bool editingCredential;
     private bool synchronizing;
     public Func<Task>? CredentialSaved { get; set; }

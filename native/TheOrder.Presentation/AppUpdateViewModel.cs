@@ -10,21 +10,24 @@ public sealed class AppUpdateViewModel(IAppUpdateFeed feed, IAppUpdatePackages p
     private VerifiedAppUpdate? downloaded;
     public string CurrentVersion { get; } = currentVersion;
     public AppUpdateRelease? Latest { get; private set; }
-    public string Message { get; private set; } = "点击检查更新，获取最新正式版。";
+    private bool IsPreview => CurrentVersion.Contains('-', StringComparison.Ordinal);
+    private const string PreviewMessage = "Beta 使用独立测试通道，请从 GitHub Pre-release 页面手动更新；不会自动安装正式版或覆盖稳定版。";
+    public string Message { get; private set; } = currentVersion.Contains('-', StringComparison.Ordinal) ? PreviewMessage : "点击检查更新，获取最新正式版。";
     public string VersionText => Latest is { } release ? $"发现新版本 {release.Version}" : $"当前版本 {CurrentVersion}";
     public string Notes => Latest?.Notes ?? "";
     public string Highlights => Latest is { } release ? AppUpdateNotes.Highlights(release.Notes) : "";
     public bool HasUpdate => Latest is not null;
     public bool IsBusy => busy && !automatic;
     public bool CanCheck => !disposed && (!busy || automatic);
-    public bool CanInstall => !disposed && !busy && HasUpdate && installer.Availability.CanInstall;
+    public bool CanInstall => !IsPreview && !disposed && !busy && HasUpdate && installer.Availability.CanInstall;
     public bool CanCancel => busy && !automatic && !applying && !disposed;
-    public string InstallAvailability => installer.Availability.Message;
+    public string InstallAvailability => IsPreview ? PreviewMessage : installer.Availability.Message;
     public double Progress { get; private set; }
     public bool Downloading { get; private set; }
     public bool Indeterminate => IsBusy && !Downloading;
     public async Task ReadReceiptAsync()
     {
+        if (IsPreview) return;
         try { var receipt = await packages.ReadReceiptAsync(CancellationToken.None); if (!disposed && !busy && receipt is not null) { Message = receipt.Message; Notify(); } }
         catch { /* Optional update receipt never prevents ordinary startup. */ }
     }
@@ -32,6 +35,7 @@ public sealed class AppUpdateViewModel(IAppUpdateFeed feed, IAppUpdatePackages p
     public Task CheckAutomaticallyAsync() => CheckCoreAsync(true);
     private async Task CheckCoreAsync(bool background)
     {
+        if (IsPreview) { Latest = null; Message = PreviewMessage; Notify(); return; }
         if (disposed || busy && (!automatic || background)) return;
         if (busy) operation?.Cancel(); // A manual request replaces a quiet in-flight check.
         using var token = Begin(); var epoch = generation;

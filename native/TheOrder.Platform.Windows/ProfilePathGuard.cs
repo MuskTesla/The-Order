@@ -5,7 +5,7 @@ namespace TheOrder.Platform.Windows;
 // Pure namespace/authorization boundary. Filesystem identity/reparse checks run only after this returns.
 internal static class ProfilePathGuard
 {
-    internal sealed record KnownRoots(string Legacy, string Production, string Development);
+    internal sealed record KnownRoots(string Legacy, string Production, string Development, string? Beta = null);
     internal sealed record AccessProbe(KnownRoots Roots, Action BeforeFilesystem);
     // Internal, execution-context-local test seam; never configured by environment/command line.
     internal static readonly AsyncLocal<AccessProbe?> Probe = new();
@@ -21,6 +21,9 @@ internal static class ProfilePathGuard
             || !root.Equals(production, StringComparison.OrdinalIgnoreCase))) throw new NativeProfileException("ProductionAuthorizationRequired");
         if (NativeProfilePaths.Overlaps(root, development) && (kind != NativeProfileKind.Development
             || !root.Equals(development, StringComparison.OrdinalIgnoreCase))) throw new NativeProfileException("WrongProfileScope");
+        var beta = Canonicalize(roots.Beta ?? NativeProfilePaths.BetaRoot);
+        if (NativeProfilePaths.Overlaps(root, beta) && (kind != NativeProfileKind.Beta
+            || !root.Equals(beta, StringComparison.OrdinalIgnoreCase))) throw new NativeProfileException("WrongProfileScope");
         return root;
     }
 

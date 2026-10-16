@@ -1,4 +1,12 @@
 # 开发与维护
+## 1.2.0-beta.1 分发边界（2026-10-16）
+
+当前Beta源码树`D:/Projects/The-Order-worktrees/public-beta-1-20261016`，从32942db延续；`.artifacts/beta1`保存本轮证据。用户已单独授权通过Beta门槛后推送Tag与Pre-release，不等于授权修改Production、云服务或日用安装。
+
+`native/Directory.Build.props`控制SemVer/Windows文件版本。Release publish仍传`-p:NativeProductionCandidate=true`，但预发布应用默认NativeProfileKind.Beta并拒绝稳定Profile；受控Test入口仍要求显式合成根。公开默认Profile是`%LOCALAPPDATA%/TheOrder-Beta/Profiles/Beta`，禁止直接复制稳定Profile。测试必须使用合成目录，不能把Beta标记当Production授权。
+
+复用`package-native-release.ps1`与`package-native-installer.ps1`；它们从源属性和实际二进制校验版本，Beta安装ID/目标/任务栏独立，卸载保留Beta资料。稳定版更新feed和版本规则继续拒绝预发布；Beta仅手动下载Pre-release，无自动安装。本轮不生成Beta差分自动更新文件，完整Setup附SHA-256和对应源码。
+
 
 ## 详情排版与本机日用切换验证（2026-10-16，当前）
 
