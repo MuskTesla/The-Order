@@ -128,6 +128,7 @@ end;
 function RunningError: String;
 var
   Locator, Service, Processes, Process: Variant;
+  ProcessIndex: Integer;
 begin
   Result := '';
   try
@@ -135,7 +136,8 @@ begin
     Service := Locator.ConnectServer('.', 'root\CIMV2');
     Processes := Service.ExecQuery('SELECT ProcessId, ExecutablePath FROM Win32_Process WHERE Name = ''TheOrder.WinUI.exe''');
 #ifdef PublicBeta
-    for Process in Processes do begin
+    for ProcessIndex := 0 to Processes.Count - 1 do begin
+      Process := Processes.ItemIndex(ProcessIndex);
       if VarIsNull(Process.ExecutablePath) then begin
         Result := '无法确认运行中的程序路径，未开始安装。'; Exit;
       end;
