@@ -29,6 +29,12 @@ if ($SourceManifest) {
 }
 # Reuse the checked runtime/CRT/license assembly; the isolated RC launcher remains available.
 & (Join-Path $PSScriptRoot 'package-native-rc.ps1') -PublishedDirectory $source -OutputDirectory $output -Packages $Packages | Out-Null
+# The older stable RC packager also stages project symbols. Remove only symbols
+# from this newly validated artifact root before regenerating the release manifest.
+foreach ($symbol in @(Get-ChildItem -LiteralPath $output -Recurse -File -Filter '*.pdb')) {
+    if (!$symbol.FullName.StartsWith($output + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Symbol escaped the fresh package.' }
+    Remove-Item -LiteralPath $symbol.FullName
+}
 $licenseRoot = Join-Path $output 'licenses'
 $licenseIndexPath = Join-Path $licenseRoot 'dependency-license-index.json'
 $licenseIndex = Get-Content -LiteralPath $licenseIndexPath -Raw | ConvertFrom-Json
