@@ -1,4 +1,16 @@
 # The Order：当前实现与评审交接
+## ACGN RC 资格验证（2026-10-16，当前开发入口）
+
+当前源码 `D:/Projects/The-Order-worktrees/rc-qualification-20261016` / `codex/rc-qualification-20261016`，从完整未发布基线 `8e57662a6e5607bb4d9917963167118a6bc44edc` 隔离继续；不是回退到240e3a5。红队原8feede0不直接位于祖先链，但整合9becb20为祖先，两个tree逐字相同；人工身份决定组件、语言v1及全局启动策略均在当前源码。运行Provider仍为NextMoe、Bangumi、AniList、MusicBrainz、NDL。未新增Provider或媒体类型，不动原工作区、真实Production、日用安装、GitHub及公开更新源。此前已经完成的本机替换授权不适用于本轮。
+
+修复 `5876b6609fefefdb961a5b0314b9180c9df14a01`：真实WinUI复现在线读过CLANNAD后，同进程离线可用、离线重启却被仅有内存缓存的Bangumi入口挡住。新增可重建的 `native-bangumi-subjects-v1`，复用NativeProfile身份、目录pin与原子文件写入；128文件/32MiB上限，1小时新鲜、最多7天离线回退，按访问scope/Subject ID/媒体类型隔离。令牌不入缓存，不写人工确认或主库，不新增schema migration。拒绝/身份错误移除已验证旧项，迟到、取消和断开授权在提交前复查；未知/未来/外来文件保留。写缓存失败不丢弃成功的在线资料。
+
+完整客户端 **4017 passed / 0 failed / 0 skipped**（新增36项），独立Worker **24/0/0**，本地C#/DPAPI/workerd合成授权闭环交换1、刷新1、匿名/授权资料2；不是本轮真实账号OAuth复测。Release x64成功，最终UI绑定 `.artifacts/rc-qualification-20261016/payload-final`，不是任何正式安装目录。22项合成库+真实公开API，CLANNAD两季、原版OST3CD56曲、本地魔夜到真实漫画/小说系列和单卷、NDL ISBN均已验证。故障注入只改变子进程CONNECT代理，不改宿主网络/代理/DPI；Provider故障与恢复、实际NextMoe传输中断60ms后恢复、修复后的离线重启均留证。不是物理断网或WebView2完全离线证明。
+
+独立安装身份的Inno副本 **34/0**：准确公开版载荷首次启动、升级强制中断、修复、旧/新实际WinUI重开、程序回退、同一物理Profile根恢复快照、再次升级、卸载保留合成资料及未知文件。该副本无正式AppID注册/快捷方式/自动启动，不能代替原版安装器在干净VM的验收。未修改辅助工具默认关闭策略，也未启动真实游戏。
+
+最终 **RC NO-GO；仅可隔离人工试用**。仍缺干净Windows10/11原版Setup/真实更新交接、物理点击滚轮拖动键盘、实际100%/150%DPI及宿主完全断网；当前真实主机Windows11 Pro26300/x64、200%DPI，浅深主题与640/1160窗口已检查。版本仍1.1.0，与公开版相同，不具备自动更新资格，公开前必须完成版本身份决策。P2：分集/书籍关系仍仅会话缓存、部分冷门覆盖和漫画逐章目录缺口。报告、测试、截图与包哈希见本证据根 `report.md` / `completion.json`；人工清单更新在 `docs/release/candidate-20261016/HUMAN-CHECKS.md`。未冻结“已通过RC”标签，未替换或发布。
+
 ## 全局启动策略与 RC 收口（2026-10-16，当前开发入口）
 
 源码 `D:/Projects/The-Order-worktrees/launch-global-rc-20261016`，分支 `codex/launch-global-rc-20261016`，基线 `240e3a59e516a96f1de76e34e8a53490fef7f9a2`。已核实五领域、红队、人工身份决定与语言 v1 均在基线；长期根仓库的既有性能工作及上一工作树未改动。实际 Provider 仍是 NextMoe、Bangumi、AniList、MusicBrainz、NDL；没有新增 MangaDex/MangaUpdates/VGMdb 适配器。证据根 `.artifacts/launch-global-rc-20261016`，最终交付提交见 `completion.json`。

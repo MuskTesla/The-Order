@@ -1,5 +1,19 @@
 # 开发与维护
 
+## ACGN RC qualification（2026-10-16，当前）
+
+使用 `D:/Projects/The-Order-worktrees/rc-qualification-20261016` / `codex/rc-qualification-20261016`；基线8e57662，运行修复5876b66。最终HEAD在本轮 `.artifacts/rc-qualification-20261016/completion.json`，只接受本轮自己的证据。本轮禁止真实Production、日用安装替换、推送和公开发布；下方历史安装授权已经完成，不可复用。
+
+固定SDK10.0.401，`dotnet restore native/TheOrder.slnx --locked-mode`；x64 Release publish加 `-p:NativeProductionCandidate=true -p:UseSharedCompilation=true -p:PathMap=<当前repo>=/_/TheOrder`。本轮 `publish-final` → `payload-final`，实际窗口只用 `Start-Test.ps1 -Run <全新ui-名称> -Payload payload-final`，严格绑定新建 `test-profile`。它使用仅子进程生效的127.0.0.1 CONNECT故障注入，不拦截TLS，不修改系统代理/防火墙/DNS。`Control.ps1 -Control <该run> -Action exit` 正常结束；不得裸启动WinUI默认Production入口。
+
+新Bangumi入口缓存是可选、可清空的Profile旁目录，不改主库、人工映射或NativeProfile schema。服务读取和写入都验证媒体ID、授权epoch及世代；平台写入在BeforeReplace再次检查，已开始的原子替换完成后保持完整文件。未来/外来/损坏文件不收养不删除，权限/容量失败只使缓存不可用。最终完整套件中相关服务81/0，含36项新增，总计4017/0/0；Worker24/0/0是另一个测试套件，子集不可相加。
+
+完整客户端仍从 `services/bangumi-auth-worker` 运行 `node test/run-client-bridge.mjs --all-client-tests`，显式传本工作区固定SDK及新结果目录；本轮最终TRX为 `tests-full/client-full-with-worker-1792107143633.trx`。首次4项新增断言错误使用record内数组引用比较，修正为完整序列化结构比较；失败TRX保留，未删用例。Music重试不在原有受限controller白名单，使用仅识别准确Test PID/窗口/按钮的Windows UIA辅助调用；不是产品按钮失效或物理输入。
+
+`install-lab/` 仅是复制真实Inno源后加严格实验根限制的测试副本：独立AppID/Mutex，无卸载注册/快捷方式/自动启动，删除路径只能是本轮合成Profile。旧公开payload和新payload逐文件验证；中断只强杀写入标记并验证祖先链的这个副本子进程。34项通过不等于原版Setup/干净OS通过。合成旧Profile普通字段在新旧code中均可读；其他含新nativeExtras的旧版本安全拒绝行为仍由完整回归覆盖，不能推广成所有降级均可读。回退快照恢复到同一物理Root，不能把拷到新位置的Profile当作可用克隆。
+
+当前资格Gate为NO-GO。可发给用户的仅为明确标注未获RC资格的隔离试用ZIP；不能分发 `install-lab` 测试安装器冒充正式安装包。实际200%DPI/浅深/窄宽/公开五媒体已验证；100/150、物理输入、Windows10、干净Windows11、宿主断网、真实OAuth到期恢复和正式更新交接仍须补验。版本仍1.1.0，自动更新必须拒绝同版本；不得通过放宽Test安装或版本检查凑通过。
+
 ## 全局启动与本机体验候选（2026-10-16，当前）
 
 当前维护 worktree `D:/Projects/The-Order-worktrees/launch-global-rc-20261016` / `codex/launch-global-rc-20261016`，基线240e3a5；不要到根仓库的既有 dirty 性能工作或历史发布目录继续开发。应用行为 f82ad94，构建符号处理6338e60，RC2分发源码冻结5b23883；后续文档提交见本轮 `.artifacts/launch-global-rc-20261016/completion.json`。用户最终仅另行授权本机体验替换，不等于远端发布或真实资料操作授权。
