@@ -1,4 +1,10 @@
 # The Order：当前实现与评审交接
+## 启动目录兼容修复（2026-10-16，当前）
+
+用户明确授权修复并公开发布。当前分支 codex/stable-startup-hotfix-20261016，版本 1.1.2。正式版与 Beta 分别从各自已发布源码增量修改，不合并两套 Provider，不访问 Production 或替换日用安装。
+
+已用已发布 Beta3 DLL 在合成目录复现：旧 Beta 根不存在时 NativeChannelProfiles.ResolveAt → WindowsAtomicFile.CheckExisting 抛出 DirectoryNotFoundException。修复只针对可选旧目录读取；目录祖先和文件的链接、非目录、访问异常仍拒绝，已保存选择缺失仍 SelectedProfileMissing。已打开的旧 manifest 句柄保持至用户选择完成，书架 schema 及物理身份不变。新增13项启动边界回归及4项新版本通道判定；本轮完整回归2710/0/0，全部使用合成资料。完整测试、实际分发及发布结果见本工作树 `.artifacts/startup-hotfix-20261016/`，不能把构建或模拟通过当真实用户安装验收。
+
 ## Beta 3 发布与首页同步（2026-10-16）
 
 公开预发布 `v1.2.0-beta.3` 对应源码 `f43942829924977db8d92d798710553c3f0d4e9f`，维护于 `codex/beta3-language-20261016`。修复中文资料译文被排除、移除额外原文对照，并修复安装器目标目录初始化时序；完整客户端4102/0/0，真实WinUI与隔离升级／回退见该工作树 `.artifacts/content-language-fix-20261016/`。用户明确授权上传Beta3；默认分支本次仅同步README及本记录，继续保留正式版1.1.1应用源码，不混入Beta应用实现。稳定通道仍为1.1.1，旧Release及资产保留，本机日用与Production不改。

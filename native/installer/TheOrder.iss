@@ -202,15 +202,10 @@ begin
 end;
 
 function InitializeSetup: Boolean;
-var
-  Error: String;
 begin
-  Error := RunningError;
-  Result := Error = '';
-  if not Result then begin
-    Log(Error);
-    if not WizardSilent then MsgBox(Error, mbError, MB_OK);
-  end;
+  // {app} is not initialized here. Check the selected directory's processes in
+  // PrepareToInstall, after directory selection and before any payload writes.
+  Result := True;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
