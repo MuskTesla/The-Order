@@ -108,7 +108,14 @@ public sealed class CatalogContentView : StackPanel,IImageHost
                 Children.Add(organizations);
             }
         if (releasesReader is not null) Children.Add(releases);
-        var intro=Section(UiText.Get("简介"));var description=Markdown(string.IsNullOrWhiteSpace(work.Description)?UiText.Get("暂无本版本简介。"):work.Description);description.MaxWidth=860;description.HorizontalAlignment=HorizontalAlignment.Left;intro.Children.Add(description);Children.Add(intro);
+        var intro = Section(UiText.Get("简介"));
+        if (rawWork is not null && ContentLanguage.CatalogSynopsis(rawWork) is { Selected.IsMachine: true } selectedIntro)
+        {
+            var caption = Text(selectedIntro.Caption, 12); caption.Opacity = .7; intro.Children.Add(caption);
+        }
+        var description = Markdown(string.IsNullOrWhiteSpace(work.Description) ? UiText.Get("暂无本版本简介。") : work.Description);
+        description.MaxWidth = 860; description.HorizontalAlignment = HorizontalAlignment.Left;
+        intro.Children.Add(description); Children.Add(intro);
         if (rawWork is not null)
         {
             var languageInfo = new ContentLanguageInfo();

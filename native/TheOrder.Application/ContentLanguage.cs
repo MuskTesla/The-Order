@@ -6,11 +6,11 @@ namespace TheOrder.Application;
 // Display projections only. These identities describe the source of a field;
 // neither a language preference nor a translation establishes entity equality.
 public sealed record ContentIdentity(string Provider, string Resource, string Id);
-public enum ContentTextOrigin { ProviderOriginal, ProviderTranslation, HumanTranslation, MachineTranslation }
+public enum ContentTextOrigin { ProviderOriginal, ProviderTranslation, HumanTranslation, MachineTranslation, ProviderMachineTranslation }
 public sealed record ContentText(ContentIdentity Identity, string Field, string Text, string Language,
     ContentTextOrigin Origin = ContentTextOrigin.ProviderOriginal, bool IsOriginal = false, string? LanguageHint = null, string? Attribution = null)
 {
-    public bool IsMachine => Origin == ContentTextOrigin.MachineTranslation;
+    public bool IsMachine => Origin is ContentTextOrigin.MachineTranslation or ContentTextOrigin.ProviderMachineTranslation;
 }
 public sealed record ContentLanguagePreference(string Preferred = "zh-Hans", string Fallback = "original");
 public sealed record ContentLanguagePreferenceRead(ContentLanguagePreference Preference, string? Warning = null, bool ReadOnly = false);
@@ -26,7 +26,8 @@ public sealed record ContentSelection(ContentText? Selected, ContentText? Origin
     public bool HasAlternative => Variants.Any(x => x.Text != Text);
     public string Caption => Selected is null ? "" : ContentLanguage.SourceName(Selected) + " · " +
         (Selected.Language is "" or "und" ? "原文（语言未标注）" : ContentLanguage.LanguageName(Selected.Language)) +
-        (Selected.IsMachine ? " · 机器翻译" : Selected.Origin == ContentTextOrigin.HumanTranslation ? " · 人工翻译" : "");
+        (Selected.Origin == ContentTextOrigin.ProviderMachineTranslation ? " · 资料源机器译文"
+            : Selected.IsMachine ? " · 机器翻译" : Selected.Origin == ContentTextOrigin.HumanTranslation ? " · 人工翻译" : "");
 }
 
 public static class ContentLanguage
@@ -74,21 +75,26 @@ public static class ContentLanguage
         // promoted to a declared language in provenance or persisted source data.
         if (language == "und") language = Normalize(value.LanguageHint);
         var preferred = preference.Preferred;
-        if (preferred == Original) return value.IsOriginal ? 0 : 5;
-        if (language == preferred) return 0;
-        if (preferred.StartsWith("zh-", StringComparison.Ordinal) && (language == "zh" || language.StartsWith("zh-", StringComparison.Ordinal))) return 1;
-        if (preference.Fallback != Original && language == preference.Fallback) return 2;
-        if (value.IsOriginal) return 3;
-        return 4;
+        if (preferred == Original) return value.IsOriginal ? 0 : 8;
+        // Prefer existing non-machine Chinese in either script, then the
+        // provider's supplied translation, before falling back to foreign prose.
+        if (language == preferred) return value.IsMachine ? 2 : 0;
+        if (preferred.StartsWith("zh-", StringComparison.Ordinal) && (language == "zh" || language.StartsWith("zh-", StringComparison.Ordinal))) return value.IsMachine ? 3 : 1;
+        if (preference.Fallback != Original && language == preference.Fallback) return value.IsMachine ? 5 : 4;
+        if (value.IsOriginal) return 6;
+        return 8;
     }
     public static ContentSelection Select(IEnumerable<ContentText> variants, ContentLanguagePreference? preference = null)
     {
         var selectedPreference = preference ?? Current;
         if (!Valid(selectedPreference)) throw new ArgumentException("Unsupported content language");
         var all = variants.Where(x => x is not null && TextValid(x)).Distinct().Take(256).ToImmutableArray();
-        // Optional machine packages are not enabled in v1. Keep their records
-        // visible as alternatives but never silently choose them over human/original data.
-        var selected = all.Where(x => !x.IsMachine).OrderBy(x => Rank(x, selectedPreference))
+        // Translations already returned by the provider are display variants,
+        // including provider-labelled machine translations. Optional local packs
+        // remain disabled; source identities and unknown languages are not guessed.
+        var selected = all.Where(x => !x.IsMachine || x.Origin == ContentTextOrigin.ProviderMachineTranslation
+                && selectedPreference.Preferred != Original && Rank(x, selectedPreference) < 6)
+            .OrderBy(x => Rank(x, selectedPreference))
             .ThenBy(x => Normalize(x.Language) == "und" ? 1 : 0).FirstOrDefault();
         var original = all.FirstOrDefault(x => x.IsOriginal && !x.IsMachine);
         return new(selected, original, all);
@@ -102,7 +108,7 @@ public static class ContentLanguage
         ContentText Variant(CatalogLocalizedText x)
         {
             var isOriginal = !x.IsMachine && (x.Source == "original" || (hasOriginalLanguage ? Normalize(x.Language) == Normalize(originalLanguage) : x.Value == original));
-            return new(identity, field, x.Value, Normalize(x.Language), x.IsMachine ? ContentTextOrigin.MachineTranslation
+            return new(identity, field, x.Value, Normalize(x.Language), x.IsMachine ? ContentTextOrigin.ProviderMachineTranslation
                 : isOriginal ? ContentTextOrigin.ProviderOriginal : ContentTextOrigin.ProviderTranslation, isOriginal, Attribution: x.Source);
         }
         var rows = sourceRows.Select(Variant).ToList();

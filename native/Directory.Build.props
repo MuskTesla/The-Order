@@ -7,10 +7,10 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Version>1.2.0-beta.2</Version>
+    <Version>1.2.0-beta.3</Version>
     <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.2</FileVersion>
-    <InformationalVersion>1.2.0-beta.2</InformationalVersion>
+    <FileVersion>1.2.0.3</FileVersion>
+    <InformationalVersion>1.2.0-beta.3</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>The Order</Product>
     <Authors>The Order contributors</Authors>

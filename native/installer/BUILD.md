@@ -1,6 +1,6 @@
 # The Order 通道统一安装器
 
-版本来自 native/Directory.Build.props。正式版1.1.1与Beta1.2.0-beta.2共享原安装ID及程序入口，Beta标记只改变版本、说明与更新通道。
+版本来自 native/Directory.Build.props。正式版1.1.1与Beta1.2.0-beta.3共享原安装ID及程序入口，Beta标记只改变版本、说明与更新通道。
 以固定SDK10.0.401、锁定依赖、Release x64、NativeProductionCandidate=true发布，再用 package-native-release.ps1、package-native-installer.ps1 打包。
 安装器编译器固定为官方Inno6.7.3、现有VC C++/Windows SDK26100；脚本验证工具哈希和所有载荷哈希。
 `update-channel.json` 必须与Tag版本一致，GitHub附件摘要与下载字节校验通过后才允许跨通道。

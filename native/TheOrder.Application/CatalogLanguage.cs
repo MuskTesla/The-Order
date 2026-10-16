@@ -24,7 +24,7 @@ public static class CatalogLanguage
         var rows = (values ?? []).Where(v => !string.IsNullOrWhiteSpace(v.Value))
             .OrderBy(v => v.Source is "kungal" or "curated" ? 0 : 1).ToArray();
         var selected = ContentLanguage.Select(rows.Select((v, i) => new ContentText(new("NextMoe", "LocalizedProjection", i.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-            "display", v.Value, ContentLanguage.Normalize(v.Language), v.IsMachine ? ContentTextOrigin.MachineTranslation : v.Source == "original" ? ContentTextOrigin.ProviderOriginal : ContentTextOrigin.ProviderTranslation, v.Source == "original")),
+            "display", v.Value, ContentLanguage.Normalize(v.Language), v.IsMachine ? ContentTextOrigin.ProviderMachineTranslation : v.Source == "original" ? ContentTextOrigin.ProviderOriginal : ContentTextOrigin.ProviderTranslation, v.Source == "original" && !v.IsMachine)),
             language is null ? null : new(ContentLanguage.Normalize(language), ContentLanguage.Current.Fallback)).Selected;
         return selected is null ? null : rows[int.Parse(selected.Identity.Id, System.Globalization.CultureInfo.InvariantCulture)];
     }
@@ -87,7 +87,7 @@ public static class CatalogLanguage
     }
     public static string? Fallback(WorkMetadata work)
     {
-        var intro = Select(work.Presentation?.Introductions);
+        var intro = ContentLanguage.CatalogSynopsis(work).Selected;
         return intro is null || ContentLanguage.Preferred == ContentLanguage.Original || Normalize(intro.Language) == ContentLanguage.Preferred ? null : "简介 · " + LanguageName(intro.Language);
     }
     public static string LanguageName(string language) => Normalize(language) switch { "zh-Hans" => "简体中文", "zh-Hant" => "繁體中文", "ja" => "日本語", "en" => "English", _ => language };

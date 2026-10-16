@@ -1,4 +1,10 @@
 # 开发与维护
+## 2026-10-16 Beta 3 资料语言修复
+
+当前维护 `codex/beta3-language-20261016`，基于 Beta 2 的 `4918d0c`，版本1.2.0-beta.3。资料源既有译文与可选本地翻译包分开处理；只变更显示投影和来源说明，不迁移Profile、不清空远程缓存。真实NextMoe响应、修复前反例、4102项完整回归、缓存往返、自建Test书架与最终包证据位于 `.artifacts/content-language-fix-20261016/`，最终安装／发布状态看该目录回执。
+
+继续使用本工作区 `.artifacts/native-phase1/tools/dotnet/dotnet.exe`（10.0.401），锁定依赖。完整回归入口仍为 `services/bangumi-auth-worker/test/run-client-bridge.mjs --all-client-tests`，显式绑定SDK与新结果目录。Release x64 / NativeProductionCandidate=true 构建至全新候选目录；严禁裸启动默认Profile。当前匿名公开资料只用于自建Test记录，不能复制Production或真实凭据。
+
 ## 2026-10-16 更新通道开发边界
 
 新正式版1.1.1/Beta1.2.0-beta.2共享安装入口。详见对应docs/release目录，不照搬历史Beta独立入口或禁止自动更新说明。

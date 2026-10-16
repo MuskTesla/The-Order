@@ -35,7 +35,7 @@ public sealed class ContentLanguageSettings(IContentLanguagePreferencesStore sto
         {
             await store.SaveAsync(value);
             Preference = value; Apply(value);
-            Message = "已保存。重新进入详情页后按资料语言显示，原文与个人名称保持不变。";
+            Message = "已保存。重新进入详情页后按资料语言显示，个人名称保持不变。";
         }
         catch (Exception) { Message = "资料语言偏好未能保存，仍保留原选项；请重试。"; }
         finally { saving = false; if (!disposed) Notify(); }

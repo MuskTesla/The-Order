@@ -25,6 +25,9 @@ public sealed class UpdateChannelTests
     [InlineData("1.2.0-beta.10", "1.2.0-beta.9", 1, false)]
     [InlineData("1.2.0-beta.9", "1.2.0-beta.10", 1, true)]
     [InlineData("1.2.0-beta.2", "1.2.0-beta.2", 1, false)]
+    [InlineData("1.2.0-beta.2", "1.2.0-beta.3", 1, true)]
+    [InlineData("1.2.0-beta.3", "1.2.0-beta.2", 1, false)]
+    [InlineData("1.2.0-beta.3", "1.1.1", 1, true)]
     [InlineData("1.1.1", "1.1.0", 1, false)]
     public void OnlyVerifiedExplicitChannelRollbackMayDowngrade(string current, string offered, int protocol, bool expected)
         => Assert.Equal(expected, AppUpdateVersion.CanApply(current, Release(offered, protocol)));

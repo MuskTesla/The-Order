@@ -177,12 +177,14 @@ public sealed class ContentLanguageTests
         var cached = JsonSerializer.Deserialize<CachedCatalogWork>(raw)!.Work;
         using (ContentLanguage.ForPreference(new("zh-Hans"))) Assert.Equal("中文简介", CatalogLanguage.Project(cached).Description);
     }
-    [Fact] public void PreviouslySelectedMachineDescriptionCannotSneakBackAsUnlabelledOriginal()
+    [Fact] public void ProviderMachineDescriptionIsLabelledAndCannotMasqueradeAsOriginal()
     {
         var work = Game("""[{"lang":"zh-Hans","value":"机器简介","source":"bangumi","is_machine":true}]""");
         using var preference = ContentLanguage.ForPreference(new("zh-Hans"));
-        Assert.Empty(CatalogLanguage.Project(work).Description); var selection = ContentLanguage.CatalogSynopsis(work);
-        Assert.Null(selection.Selected); Assert.True(Assert.Single(selection.Variants).IsMachine);
+        Assert.Equal("机器简介", CatalogLanguage.Project(work).Description); var selection = ContentLanguage.CatalogSynopsis(work);
+        Assert.Equal(ContentTextOrigin.ProviderMachineTranslation, selection.Selected!.Origin);
+        Assert.Null(selection.Original); Assert.False(selection.Selected.IsOriginal);
+        Assert.Contains("资料源机器译文", selection.Caption); Assert.True(Assert.Single(selection.Variants).IsMachine);
     }
     [Fact] public void AggregatedFieldAttributionAndUntaggedAliasesAreNotLost()
     {
