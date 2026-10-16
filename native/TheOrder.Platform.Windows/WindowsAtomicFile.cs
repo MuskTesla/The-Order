@@ -29,7 +29,13 @@ internal static class WindowsAtomicFile
             await Reach(probe, PersistenceStage.Replace).ConfigureAwait(false);
             // Same-directory MoveFileEx REPLACE_EXISTING | WRITE_THROUGH, one atomic namespace switch.
             // No target is ever truncated or deleted first. The backup is the canonical lastGood.
-            if (!MoveFileEx(temp, target, 0x1 | 0x8)) throw new IOException(UiText.Get("原子替换失败。"), new Win32Exception());
+            // FileStream handles extended paths, but this Win32 call otherwise depends
+            // on the host manifest. A short target plus our GUID suffix can exceed
+            // MAX_PATH even when the Profile itself is ordinary. Keep the same paths,
+            // same-directory atomic switch and WRITE_THROUGH durability in every host.
+            var extended = temp.Length >= 260 || target.Length >= 260;
+            if (!MoveFileEx(extended ? ExtendedPath(temp) : temp, extended ? ExtendedPath(target) : target, 0x1 | 0x8))
+                throw new IOException(UiText.Get("原子替换失败。"), new Win32Exception());
             committed = true;
             await Reach(probe, PersistenceStage.AfterReplace).ConfigureAwait(false);
             return new();
@@ -43,6 +49,12 @@ internal static class WindowsAtomicFile
         finally { try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
     }
     private static Task Reach(Func<PersistenceStage, Task>? probe, PersistenceStage stage) => probe?.Invoke(stage) ?? Task.CompletedTask;
+    private static string ExtendedPath(string path)
+    {
+        path = Path.GetFullPath(path);
+        if (path.StartsWith(@"\\?\", StringComparison.Ordinal)) return path;
+        return path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path[2..] : @"\\?\" + path;
+    }
     internal static void CheckExisting(string path)
     {
         try { using var file = IsolatedLibrarySource.OpenChecked(path); }

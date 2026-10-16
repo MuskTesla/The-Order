@@ -19,10 +19,14 @@ public sealed class BangumiRelationsCacheTests
     private sealed class Fixture : IDisposable
     {
         public string Parent { get; } = Path.Combine(Path.GetTempPath(), "the-order-relations-test-" + Guid.NewGuid().ToString("N"));
-        public string Root => Path.Combine(Parent, "profile");
+        public string Root { get; }
         public string CacheRoot => Path.Combine(Root, IsolatedBangumiRelationsCache.DirectoryName);
         public NativeProfileStore Profile { get; private set; }
-        public Fixture() => Profile = NativeProfileStore.Open(new(NativeProfileKind.Test, Root), new NativeLibraryCodec());
+        public Fixture(int rootLength = 0)
+        {
+            Root = Path.Combine(Parent, rootLength == 0 ? "profile" : new string('p', rootLength - Parent.Length - 1));
+            Profile = NativeProfileStore.Open(new(NativeProfileKind.Test, Root), new NativeLibraryCodec());
+        }
         public IsolatedBangumiRelationsCache Store(Func<PersistenceStage, Task>? probe = null) => new(Profile.Configuration(), probe);
         public string PathFor(BangumiRelationIdentity identity) => Path.Combine(CacheRoot, identity.CacheKey + ".json");
         public void Reopen() { Profile.Dispose(); Profile = NativeProfileStore.Open(new(NativeProfileKind.Test, Root), new NativeLibraryCodec()); }
@@ -55,6 +59,26 @@ public sealed class BangumiRelationsCacheTests
         fixture.Reopen();
         SameSnapshot(snapshot, await fixture.Store().ReadAsync(identity with { Lifecycle = "session-2" }, default));
         Assert.Equal(before, ProfileFixture.Hashes(fixture.Root));
+    }
+
+    [Theory]
+    [InlineData(229)][InlineData(244)][InlineData(300)]
+    public async Task AtomicTemporaryPathPastMaxPathStillPersistsAndReopens(int targetLength)
+    {
+        // A normal, supported Profile path may be short enough while the hashed
+        // cache file plus same-directory GUID temporary suffix exceeds MAX_PATH.
+        using var fixture = new Fixture(targetLength - IsolatedBangumiRelationsCache.DirectoryName.Length - 71);
+        var identity = Identity(); var expected = Snapshot(); var path = fixture.PathFor(identity);
+        Assert.Equal(targetLength, path.Length);
+        Assert.True((path + "." + new string('A', 32) + ".tmp").Length >= 260);
+        var before = ProfileFixture.Hashes(fixture.Root);
+        await fixture.Store().WriteAsync(identity, expected, default);
+        SameSnapshot(expected, await fixture.Store().ReadAsync(identity, default));
+        await fixture.Store().WriteAsync(identity, Snapshot("更新后的原文・日本語 😀"), default);
+        fixture.Reopen();
+        SameSnapshot(Snapshot("更新后的原文・日本語 😀"), await fixture.Store().ReadAsync(identity with { Lifecycle = "restarted" }, default));
+        Assert.Equal(before, ProfileFixture.Hashes(fixture.Root));
+        Assert.Empty(Directory.GetFiles(fixture.CacheRoot, "*.tmp"));
     }
 
     [Theory]
