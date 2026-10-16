@@ -75,7 +75,8 @@ UsePreviousTasks=yes
 VersionInfoVersion={#ReleaseFileVersion}
 VersionInfoDescription={#ProductName} 安装程序
 VersionInfoProductName={#ProductName}
-VersionInfoProductVersion={#ReleaseVersion}
+VersionInfoProductVersion={#ReleaseFileVersion}
+VersionInfoProductTextVersion={#ReleaseVersion}
 
 [Languages]
 Name: "zhHans"; MessagesFile: "languages\ChineseSimplified.isl"
