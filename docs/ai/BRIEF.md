@@ -1,4 +1,10 @@
 # The Order：当前实现与评审交接
+## 启动目录兼容修复（2026-10-16，当前）
+
+用户明确授权修复并公开发布。当前分支 codex/startup-hotfix-20261016，版本 1.2.0-beta.4。正式版与 Beta 分别从各自已发布源码增量修改，不合并两套 Provider，不访问 Production 或替换日用安装。
+
+已用已发布 Beta3 DLL 在合成目录复现：旧 Beta 根不存在时 NativeChannelProfiles.ResolveAt → WindowsAtomicFile.CheckExisting 抛出 DirectoryNotFoundException。修复只针对可选旧目录读取；目录祖先和文件的链接、非目录、访问异常仍拒绝，已保存选择缺失仍 SelectedProfileMissing。已打开的旧 manifest 句柄保持至用户选择完成，书架 schema 及物理身份不变。新增13项启动边界回归及4项新版本通道判定；本轮完整回归4119/0/0，全部使用合成资料。完整测试、实际分发及发布结果见本工作树 `.artifacts/startup-hotfix-20261016/`，不能把构建或模拟通过当真实用户安装验收。
+
 ## Beta 3 资料语言修复（2026-10-16，当前）
 
 维护源码 `C:/Users/MUSK/.codex/worktrees/update-channels-20261016/The-Order`，分支 `codex/beta3-language-20261016`，基于已发布 Beta 2 的 `4918d0c` 增量修复；根仓库与正式版分支的既有工作不改。用户已明确授权完成后上传 GitHub Beta 3；这不包含本机日用替换、真实 Production 访问或云端服务部署。

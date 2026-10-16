@@ -33,17 +33,37 @@ public static class NativeChannelProfiles
             return new(choice.Kind, root, choice.Kind == NativeProfileKind.Production, choice.ProfileId, choice.StoreId);
         }
         catch (FileNotFoundException) { }
-        var old = Path.Combine(beta, NativeProfileStore.ManifestName); WindowsAtomicFile.CheckExisting(old);
-        if (!File.Exists(old)) return request;
+        using var input = OpenOptionalLegacyProfile(beta);
+        if (input is null) return request;
         var useLegacy = chooseLegacy();
         if (useLegacy is null) throw new NativeProfileException("ChannelProfileChoiceCanceled");
         if (!useLegacy.Value) return request;
-        using var input = IsolatedLibrarySource.OpenChecked(old);
         if (input.Length > 16384) throw new NativeProfileException("InvalidLegacyBetaProfile");
         using var json = JsonDocument.Parse(input); var value = json.RootElement;
         if (value.GetProperty("Version").GetInt32() != 1 || value.GetProperty("ProfileKind").GetString() != "Beta" || value.GetProperty("State").GetString() != "Ready")
             throw new NativeProfileException("InvalidLegacyBetaProfile");
         return new(NativeProfileKind.Beta, beta, false, value.GetProperty("ProfileId").GetGuid(), value.GetProperty("StoreId").GetGuid());
+    }
+    private static FileStream? OpenOptionalLegacyProfile(string root)
+    {
+        // Never installing beta.1 is normal. Only this optional legacy probe may
+        // accept missing parents; a missing explicitly selected profile above
+        // must still stop startup rather than create a different bookshelf.
+        ProfilePathGuard.BeforeFilesystem();
+        for (DirectoryInfo? directory = new(root); directory is not null; directory = directory.Parent)
+        {
+            FileAttributes attributes;
+            try { attributes = File.GetAttributes(directory.FullName); }
+            catch (FileNotFoundException) { continue; }
+            catch (DirectoryNotFoundException) { continue; }
+            if ((attributes & FileAttributes.ReparsePoint) != 0) throw new NativeProfileException("ProfileLinkForbidden");
+            if ((attributes & FileAttributes.Directory) == 0) throw new NativeProfileException("InvalidLegacyBetaProfileDirectory");
+        }
+        // Hold the checked file through the user's choice. Do not swallow access
+        // failures, malformed manifests, links, or missing installation paths.
+        try { return IsolatedLibrarySource.OpenChecked(Path.Combine(root, NativeProfileStore.ManifestName)); }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
     }
     public static void Remember(NativeProfileStore profile, string installation)
     {
