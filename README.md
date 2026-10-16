@@ -95,9 +95,10 @@ Bangumi 连接跨媒体作品，各专业来源补充深度信息。不同季度
 <details>
 <summary>安装、资料与使用边界</summary>
 
-- **稳定版升级**：先从托盘正常退出程序，再运行新安装包；覆盖升级保留原生书架。旧 Electron 资料不会自动迁移。
-- **Beta 资料隔离**：默认保存在 `%LOCALAPPDATA%\TheOrder-Beta\Profiles\Beta`。不自动导入稳定版资料或凭据，请勿直接复制两个通道的 Profile 文件夹。
-- **备份与回退**：重要操作前导出备份。退出并卸载 Beta 会保留其资料与游戏文件；回到稳定版只需打开原有程序。
+- **更新通道**：在「设置 → 程序更新 → 更新通道」选择正式版或 Beta，再检查更新并确认安装。默认只接收正式版，主动选择 Beta 后才会收到测试版。
+- **书架与资料**：切换通道继续使用所选书架，无需重新导入。已有的正式版与旧 Beta 书架不会自动合并，请勿直接复制 Profile 文件夹。
+- **备份与回退**：软件内安装更新前自动备份用户资料；在设置中切回「正式版」即可回退到兼容版本，最低为 **1.1.1**，保留 Beta 期间新增的个人记录。自动备份不含游戏本体与存档，请另行备份。详见 [备份与回退说明](docs/release/1.1.1/README.md#备份与回退)。
+- **旧版过渡**：`1.1.0` 用户先更新至 `1.1.1`；`1.2.0-beta.1` 用户需手动安装一次新 Beta，首次启动时选择原 Beta 书架。旧 Electron 资料不会自动迁移。手动安装前，请从托盘正常退出所有相关实例。
 - **账号与同步**：登录与个人同步相互独立，同步默认关闭。稳定版真实云端写入等未验证范围见 [认证与隐私说明](docs/release/1.1.1/AUTHENTICATION.md)。
 - **联网与播放**：资料覆盖、限流与可用性依各来源；PV 和观看入口受原平台版权、地区、年龄及订阅条件限制，链接存在不代表当前可播放。
 - **Beta 当前范围**：尚不包含漫画逐章目录、阅读器、VGMdb 接入或离线机器翻译。干净系统、多 DPI、完整物理输入、长期稳定性及最终 Beta 包的真实 OAuth 到期恢复仍待进一步验证。
@@ -113,7 +114,7 @@ Bangumi 连接跨媒体作品，各专业来源补充深度信息。不同季度
 ## 文档与开发
 
 - [稳定版使用指南](docs/release/1.1.1/README.md) · [稳定版更新记录](docs/release/1.1.1/CHANGELOG.md)
-- [Beta 发布说明](https://github.com/Ph-Rank/The-Order/releases/tag/v1.2.0-beta.2) · [Beta 验证结果与已知限制](https://github.com/Ph-Rank/The-Order/releases/download/v1.2.0-beta.2/VALIDATION.md)
+- [Beta 发布说明](https://github.com/Ph-Rank/The-Order/releases/tag/v1.2.0-beta.2) · [Beta 待验证项目](https://github.com/Ph-Rank/The-Order/blob/v1.2.0-beta.2/docs/release/1.2.0-beta.2/HUMAN-CHECKS.md)
 - [稳定版构建说明](docs/release/1.1.1/BUILD.md) · [Beta 源码与构建说明](https://github.com/Ph-Rank/The-Order/tree/v1.2.0-beta.2/docs/release/1.2.0-beta.2)
 - [开发与数据隔离](DEVELOPMENT.md) · [历史 Electron 文档](https://github.com/Ph-Rank/The-Order/blob/85f06e18976d7a97222d25e2a35bf4aa9d31a789/README.md)
 
