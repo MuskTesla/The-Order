@@ -135,10 +135,11 @@ public sealed class WindowsUpdatePackages : IAppUpdatePackages
             using var file = IsolatedLibrarySource.OpenChecked(path);
             if (file.Length > 4096) return Task.FromResult<AppUpdateReceipt?>(null);
             using var json = JsonDocument.Parse(file); var value = json.RootElement;
-            if (value.GetProperty("schema").GetInt32() != 1 || !AppUpdateIdentity.TryVersion(value.GetProperty("version").GetString(), out var version)) return Task.FromResult<AppUpdateReceipt?>(null);
+            if (value.GetProperty("schema").GetInt32() != 1 || !AppUpdateVersion.TryParse(value.GetProperty("version").GetString(), out var version)) return Task.FromResult<AppUpdateReceipt?>(null);
             var success = value.GetProperty("success").GetBoolean();
-            var message = success ? $"已完成更新至 {version.ToString(3)}。" : "上次升级没有完成，当前程序和使用数据已保留。请重新检查更新。";
-            return Task.FromResult<AppUpdateReceipt?>(new(success, version.ToString(3), message));
+            var message = success ? $"已完成更新至 {version.Text}。" : "上次更新没有完成，未自动改写书架资料。请重新检查更新；若程序无法启动，可重装所选版本修复。";
+            if (success && value.TryGetProperty("code", out var code) && code.GetString() == "InstalledRestartUnavailable") message += "请从开始菜单重新打开程序。";
+            return Task.FromResult<AppUpdateReceipt?>(new(success, version.Text, message));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or KeyNotFoundException or InvalidOperationException or AppUpdateException)
         { return Task.FromResult<AppUpdateReceipt?>(null); }

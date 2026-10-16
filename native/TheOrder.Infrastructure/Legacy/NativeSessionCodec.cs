@@ -12,7 +12,15 @@ internal static class NativeSessionCodec
     private static JsonSerializerOptions CreateOptions()
     {
         var resolver = new DefaultJsonTypeInfoResolver();
-        resolver.Modifiers.Add(info => { if (info.Type == typeof(NativeSession)) { var computed = info.Properties.FirstOrDefault(p => p.Name == "isTerminal"); if (computed is not null) info.Properties.Remove(computed); } });
+        resolver.Modifiers.Add(info => {
+            if (info.Type == typeof(NativeSession)) { var computed = info.Properties.FirstOrDefault(p => p.Name == "isTerminal"); if (computed is not null) info.Properties.Remove(computed); }
+            // Keep legacy v1 bytes readable by the old strict reader. Domain records
+            // remain serialization-independent; new overrides are emitted only in v2.
+            if (info.Type == typeof(LaunchCompatibility)) {
+                var auxiliaries = info.Properties.FirstOrDefault(p => p.Name == "auxiliaries");
+                if (auxiliaries is not null) auxiliaries.ShouldSerialize = (_, value) => value is not null;
+            }
+        });
         return new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, RespectRequiredConstructorParameters = true,
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, TypeInfoResolver = resolver,
             Converters = { new JsonStringEnumConverter(allowIntegerValues: false), new CompatibleString() } };

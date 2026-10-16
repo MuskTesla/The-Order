@@ -300,6 +300,8 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
         if (token.Epoch != epoch || token.GameId != id || !lifecycles.TryGetValue(id, out var s) || s.Generation != token.Generation || s.Request != token.Request || !s.Pending)
             throw new StaleLibraryRequestException();
     }
+    private static bool HasEnhancedData(LibraryEntry entry) => !entry.ManualPlaytime.IsEmpty || !entry.GuidePaths.IsEmpty || entry.MetadataMix is not null
+        || entry.Installations.Any(i => i.Compatibility is not null || i.SaveFolder is not null || i.SteamAppId is not null);
     // Immediate explicit user intent only. Delayed API/identification results MUST use CommitLinkAsync.
     public Task<CommitResult<LibraryEntry>> LinkAsync(string id, WorkMetadata work, bool preserveName = false, bool preserveMergedName = false, CancellationToken cancellation = default)
         => LinkCoreAsync(id, work, preserveName, preserveMergedName, null, cancellation);
@@ -323,6 +325,8 @@ public sealed partial class TransactionalLibrary : IDisposable, IAsyncDisposable
             var source = Find(games, id); var target = games.FirstOrDefault(e => e.Id != id && e.Metadata?.Id == work.Id);
             if (target is not null && lifecycles.TryGetValue(target.Id, out var life) && (life.Pending || token is not null && life.Revision > token.Revision)) throw new StaleLibraryRequestException();
             var keep = preserveName || codec.ProtectsName(source);
+            if (source.MetadataMix is not null || target is not null && (HasEnhancedData(source) || HasEnhancedData(target)))
+                throw new InvalidDataException("这些记录含 Beta 扩展资料，请切回 Beta 后刷新或合并；原资料已保留。");
             var mergedName = preserveMergedName && !keep && target?.Metadata is not null && codec.ProtectsName(target) ? target.Name : null;
             var e = source with { CoverChoice = source.CoverChoice?.WorkId == work.Id ? source.CoverChoice : null };
             if (target is not null)

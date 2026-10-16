@@ -18,6 +18,7 @@ public sealed partial class SettingsPage : Page
     public string AppVersion => "The Order " + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0");
     private bool editingCredential;
     private bool synchronizing;
+    private bool synchronizingUpdateChannel;
     public Func<Task>? CredentialSaved { get; set; }
     public Func<MaterialMode, Task>? ChangeMaterialMode { get; set; }
     // MainWindow owns persisted intent; system policy owns effective state.
@@ -55,6 +56,9 @@ public sealed partial class SettingsPage : Page
     private void OnUpdateState(object? sender, PropertyChangedEventArgs e) => SynchronizeUpdate();
     private void SynchronizeUpdate()
     {
+        synchronizingUpdateChannel = true;
+        UpdateChannelChoice.SelectedIndex = (int)Updates.SelectedChannel;
+        synchronizingUpdateChannel = false;
         var visible = Microsoft.UI.Xaml.Visibility.Visible; var collapsed = Microsoft.UI.Xaml.Visibility.Collapsed;
         UpdateNotes.Visibility = Updates.HasUpdate && Updates.Notes.Length != 0 ? visible : collapsed;
         UpdateHighlights.Visibility = Updates.HasUpdate ? visible : collapsed;
@@ -64,10 +68,23 @@ public sealed partial class SettingsPage : Page
         CancelUpdateButton.Visibility = Updates.CanCancel ? visible : collapsed;
     }
     private async void OnCheckUpdate(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => await Updates.CheckAsync();
+    private async void OnUpdateChannel(object sender, SelectionChangedEventArgs e)
+    { if (!synchronizingUpdateChannel && UpdateChannelChoice.SelectedIndex >= 0) await Updates.ChangeChannelAsync((AppUpdateChannel)UpdateChannelChoice.SelectedIndex); }
     private async void OnInstallUpdate(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    { if (InstallUpdate is { } install) await Updates.InstallAsync(install); }
+    {
+        if (InstallUpdate is not { } install || !Updates.CanInstall) return;
+        if (Updates.IsChannelChange)
+        {
+            var dialog = new ContentDialog { XamlRoot = XamlRoot, RequestedTheme = ActualTheme, Title = Updates.InstallText,
+                Content = "将切换到 " + Updates.Latest!.Version + "。退出保存后会先备份当前资料，再替换程序。当前书架、游玩记录和个人资料保留。正式版可能不提供 Beta 的跨媒体与辅助启动功能，但其资料和配置会保留。",
+                PrimaryButtonText = "确认切换", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        }
+        await Updates.InstallAsync(install);
+    }
     private void OnCancelUpdate(object sender, Microsoft.UI.Xaml.RoutedEventArgs e) => Updates.Cancel();
-    internal void ShowUpdatesTest() => UpdateSection.StartBringIntoView(new Microsoft.UI.Xaml.BringIntoViewOptions { VerticalAlignmentRatio = .5 });
+    internal void ChooseUpdateChannelTest(int index) => UpdateChannelChoice.SelectedIndex = index;
+    internal void ShowUpdatesTest() => UpdateSection.StartBringIntoView(new Microsoft.UI.Xaml.BringIntoViewOptions { VerticalAlignmentRatio = 0 });
     private void OnBrowseState(object? sender, PropertyChangedEventArgs e) => SynchronizeBrowsing();
     private void OnLanguageState(object? sender, PropertyChangedEventArgs e) => SynchronizeLanguage();
     private void SynchronizeLanguage() { synchronizing = true; LanguageOptions.Visibility = Languages.SelectionAvailable ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed; LanguageChoice.SelectedIndex = Array.IndexOf(UiText.Choices, Languages.Selected); LanguageChoice.IsEnabled = Languages.CanChange; synchronizing = false; }

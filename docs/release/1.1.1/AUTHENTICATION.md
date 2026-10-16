@@ -1,0 +1,6 @@
+# 账号与凭据
+
+更新通道不是新账号系统。沿用所选物理Profile的Windows加密凭据，不导出、不解密、不把凭据发往更新服务。
+切换前的快照包含加密文件但不包含明文Token；仅供当前Windows用户在原资料位置恢复，不作为跨电脑凭据迁移。
+Bangumi Client Secret仍只在既有Worker，本次不部署或修改服务。
+公开更新请求不携带NextMoe、Bangumi或GitHub登录凭据。合成OAuth回归不等于本轮真实账号到期测试。

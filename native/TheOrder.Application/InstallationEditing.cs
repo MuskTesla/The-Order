@@ -31,6 +31,7 @@ public sealed partial class TransactionalLibrary
             var duplicate = preflight.Check(prepared.Value.Folder, Existing(games, prepared.Value.Id, token.GameId), cancellation);
             if (!duplicate.CanAttach) throw new InvalidDataException(duplicate.Path.Message);
             var old = entry.Installations.FirstOrDefault(i => i.Id == prepared.Value.Id);
+            if (old is not null) prepared = prepared with { Value = prepared.Value with { SaveFolder = old.SaveFolder, SteamAppId = old.SteamAppId, Compatibility = old.Compatibility } };
             var items = old is null ? entry.Installations.Add(prepared.Value) : entry.Installations.Replace(old, prepared.Value);
             var preferred = makePreferred || !items.Any(i => i.Id == entry.PreferredInstallationId && i.Executable is not null) ? prepared.Value.Id : entry.PreferredInstallationId;
             var changed = entry with { Installations = items, PreferredInstallationId = preferred };

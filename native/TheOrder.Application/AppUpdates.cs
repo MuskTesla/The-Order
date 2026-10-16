@@ -4,7 +4,11 @@ using System.Text.RegularExpressions;
 namespace TheOrder.Application;
 
 public sealed record AppUpdateBlockMapAsset(Uri DownloadUri, long Bytes, string Sha256);
-public sealed record AppUpdateRelease(string Version, string Notes, Uri DownloadUri, long Bytes, string Sha256, AppUpdateBlockMapAsset? BlockMap = null);
+public sealed record AppUpdateRelease(string Version, string Notes, Uri DownloadUri, long Bytes, string Sha256, AppUpdateBlockMapAsset? BlockMap = null)
+{
+    // Only a verified unified-install manifest grants a cross-channel transition.
+    public int ChannelProtocol { get; init; }
+}
 public sealed record AppUpdateTransfer(long Received, long Total, bool Differential = false);
 public sealed record VerifiedAppUpdate(AppUpdateRelease Release, string InstallerPath, long DownloadedBytes = 0, long ReusedBytes = 0);
 public sealed record AppUpdateAvailability(bool CanInstall, string Message);
@@ -58,13 +62,13 @@ public static partial class AppUpdateIdentity
     public static bool ValidHash(string? hash) => hash is { Length: 64 } && hash.All(Uri.IsHexDigit);
     public static bool ValidDownload(Uri uri, string version)
     {
-        if (!TryVersion(version, out var parsed) || parsed.ToString(3) != version || !SafeHttps(uri) || uri.Query.Length != 0) return false;
+        if (!AppUpdateVersion.TryParse(version, out var parsed) || parsed.Text != version || !SafeHttps(uri) || uri.Query.Length != 0) return false;
         return ValidAsset(uri, version, InstallerName(version));
     }
     public static bool ValidAsset(Uri uri, string version, string name)
     {
-        if (!TryVersion(version, out var parsed) || parsed.ToString(3) != version || !SafeHttps(uri) || uri.Query.Length != 0) return false;
-        if (name != InstallerName(version) && name != BlockMapName(version)) return false;
+        if (!AppUpdateVersion.TryParse(version, out var parsed) || parsed.Text != version || !SafeHttps(uri) || uri.Query.Length != 0) return false;
+        if (name != InstallerName(version) && name != BlockMapName(version) && name != "update-channel.json") return false;
         var expected = $"/{Repository}/releases/download/v{version}/{name}";
         var withoutV = $"/{Repository}/releases/download/{version}/{name}";
         return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) && (uri.AbsolutePath == expected || uri.AbsolutePath == withoutV);

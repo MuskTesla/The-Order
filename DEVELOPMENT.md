@@ -1,4 +1,12 @@
 # 开发与维护
+## 2026-10-16 更新通道开发边界
+
+新正式版1.1.1/Beta1.2.0-beta.2共享安装入口。详见对应docs/release目录，不照搬历史Beta独立入口或禁止自动更新说明。
+默认构建仍不访问Profile；实际启动必须显式Test目录。NativeChannelProfiles对Test在任何正式目录探测前返回；正式与Beta仅由正常用户启动及固定命名空间身份选择打开，不能通过任意路径迁移。
+稳定桥接工作树codex/stable-channel-bridge-20261016保持原稳定功能，Beta工作树codex/update-channels-20261016保持ACGN成果。共享更新协议及codec测试分别通过；不要粗暴合并无共同祖先的两套历史。
+固定SDK/锁依赖；source checkpoint后创建全新publish/package/installer目录。发布附件含通道契约、校验和及完整对应源码；历史Release/资产不改写。实际更新执行权仍仅限已安装正常Profile，Test不得放宽为可正式安装。
+`.artifacts/channels/` 保留测试、双版本读写、原生UI与独立安装实验。原工作区及继承的行尾修改不纳入任务提交；禁止清理或覆盖。
+
 
 ## 1.1.0 GitHub 发布记录（2026-10-12）
 

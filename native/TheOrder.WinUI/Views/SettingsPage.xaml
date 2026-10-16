@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?><Page x:Class="TheOrder.WinUI.Views.SettingsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:l="using:TheOrder.WinUI.Localization" xmlns:p="using:TheOrder.Presentation" xmlns:views="using:TheOrder.WinUI.Views">
+<?xml version="1.0" encoding="utf-8"?><Page x:Class="TheOrder.WinUI.Views.SettingsPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:l="using:TheOrder.WinUI.Localization" xmlns:p="using:TheOrder.Presentation" xmlns:views="using:TheOrder.WinUI.Views">
  <Grid x:Name="SettingsRoot" SizeChanged="OnSettingsSizeChanged">
  <ScrollViewer HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
   <StackPanel x:Name="SettingsColumn" Padding="{StaticResource PagePadding}" Spacing="28" MaxWidth="900" HorizontalAlignment="Left">
@@ -70,20 +70,25 @@
    </StackPanel>
    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" l:Localize.Header="资料存储"><TextBlock Text="{x:Bind ViewModel.DataDirectory}" TextWrapping="Wrap" IsTextSelectionEnabled="True" AutomationProperties.AutomationId="DataDirectory" /></Expander>
    <Border Height="1" Background="{ThemeResource DividerBrush}" />
-   <StackPanel x:Name="UpdateSection" Spacing="12" AutomationProperties.AutomationId="AppUpdates">
-    <TextBlock Text="程序更新" Style="{StaticResource SectionTitleStyle}" />
-    <TextBlock Text="{x:Bind Updates.VersionText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="UpdateVersion" />
-    <TextBlock Text="{x:Bind Updates.Message, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="UpdateState" AutomationProperties.LiveSetting="Polite" />
-    <ProgressBar x:Name="UpdateProgress" Value="{x:Bind Updates.Progress, Mode=OneWay}" IsIndeterminate="{x:Bind Updates.Indeterminate, Mode=OneWay}" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateProgress" />
-    <TextBlock x:Name="UpdateHighlights" Text="{x:Bind Updates.Highlights, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateHighlights" />
-    <Expander x:Name="UpdateNotes" Header="完整更新说明" HorizontalAlignment="Stretch" Visibility="Collapsed"><TextBlock Text="{x:Bind Updates.Notes, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" /></Expander>
-    <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8">
-     <Button Click="OnCheckUpdate" Content="检查更新" IsEnabled="{x:Bind Updates.CanCheck, Mode=OneWay}" AutomationProperties.AutomationId="CheckAppUpdate" />
-     <Button x:Name="InstallUpdateButton" Click="OnInstallUpdate" Content="立即更新" IsEnabled="{x:Bind Updates.CanInstall, Mode=OneWay}" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="InstallAppUpdate" />
-     <Button x:Name="CancelUpdateButton" Click="OnCancelUpdate" Content="取消" Visibility="Collapsed" IsEnabled="{x:Bind Updates.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelAppUpdate" />
-    </views:TagFlowPanel>
-    <TextBlock x:Name="UpdateInstallNotice" Text="{x:Bind Updates.InstallAvailability}" TextWrapping="Wrap" Style="{StaticResource MetadataTextStyle}" Visibility="Collapsed" />
-   </StackPanel>
+    <StackPanel x:Name="UpdateSection" Spacing="12" AutomationProperties.AutomationId="AppUpdates">
+     <TextBlock Text="程序更新" Style="{StaticResource SectionTitleStyle}" />
+      <ComboBox x:Name="UpdateChannelChoice" Header="更新通道" HorizontalAlignment="Left" MinWidth="220" MaxWidth="420" HorizontalContentAlignment="Left" SelectionChanged="OnUpdateChannel" IsEnabled="{x:Bind Updates.CanChangeChannel, Mode=OneWay}" AutomationProperties.AutomationId="UpdateChannelChoice">
+       <ComboBoxItem Content="正式版（推荐）" /><ComboBoxItem Content="Beta 公开测试" />
+      </ComboBox>
+      <TextBlock Text="{x:Bind Updates.ChannelNotice, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" />
+     <TextBlock Text="{x:Bind Updates.VersionText, Mode=OneWay}" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="UpdateVersion" />
+     <TextBlock Text="{x:Bind Updates.Message, Mode=OneWay}" TextWrapping="Wrap" Style="{StaticResource SecondaryTextStyle}" AutomationProperties.AutomationId="UpdateState" AutomationProperties.LiveSetting="Polite" />
+     <ProgressBar x:Name="UpdateProgress" Value="{x:Bind Updates.Progress, Mode=OneWay}" IsIndeterminate="{x:Bind Updates.Indeterminate, Mode=OneWay}" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateProgress" />
+     <TextBlock x:Name="UpdateHighlights" Text="{x:Bind Updates.Highlights, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" Visibility="Collapsed" AutomationProperties.AutomationId="UpdateHighlights" />
+     <Expander x:Name="UpdateNotes" Header="完整更新说明" HorizontalAlignment="Stretch" Visibility="Collapsed"><TextBlock Text="{x:Bind Updates.Notes, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource SecondaryTextStyle}" /></Expander>
+     <views:TagFlowPanel HorizontalSpacing="8" VerticalSpacing="8">
+      <Button Click="OnCheckUpdate" Content="检查更新" IsEnabled="{x:Bind Updates.CanCheck, Mode=OneWay}" AutomationProperties.AutomationId="CheckAppUpdate" />
+      <HyperlinkButton Content="GitHub 发布与反馈 ↗" NavigateUri="https://github.com/Ph-Rank/The-Order/releases" AutomationProperties.AutomationId="PublicReleasePage" />
+       <Button x:Name="InstallUpdateButton" Click="OnInstallUpdate" Content="{x:Bind Updates.InstallText, Mode=OneWay}" IsEnabled="{x:Bind Updates.CanInstall, Mode=OneWay}" Visibility="Collapsed" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="InstallAppUpdate" />
+      <Button x:Name="CancelUpdateButton" Click="OnCancelUpdate" Content="取消" Visibility="Collapsed" IsEnabled="{x:Bind Updates.CanCancel, Mode=OneWay}" AutomationProperties.AutomationId="CancelAppUpdate" />
+     </views:TagFlowPanel>
+     <TextBlock x:Name="UpdateInstallNotice" Text="{x:Bind Updates.InstallAvailability}" TextWrapping="Wrap" Style="{StaticResource MetadataTextStyle}" Visibility="Collapsed" />
+    </StackPanel>
    <TextBlock Style="{StaticResource MetadataTextStyle}" Text="{x:Bind AppVersion}" AutomationProperties.AutomationId="AppVersion" IsTextSelectionEnabled="True" />
   </StackPanel>
  </ScrollViewer>

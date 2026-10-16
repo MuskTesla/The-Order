@@ -11,14 +11,17 @@ public static class NativeProfilePaths
     public static string LegacyRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KunGalManager");
     public static string ProductionRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TheOrder", "Profiles", "Production");
     public static string DevelopmentRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TheOrder", "Profiles", "Development");
+    public static string BetaRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TheOrder-Beta", "Profiles", "Beta");
     public static NativeProfileRequest Select(NativeProfileKind buildKind, string? explicitKind, string? explicitRoot, bool explicitProductionAuthorization = false)
     {
         var kind = buildKind;
         if (explicitKind is not null && (!Enum.TryParse(explicitKind, false, out kind) || !Enum.IsDefined(kind)))
             throw new NativeProfileException("InvalidProfileKind");
+        if (buildKind == NativeProfileKind.Beta && (kind is not (NativeProfileKind.Beta or NativeProfileKind.Test) || explicitProductionAuthorization))
+            throw new NativeProfileException("BetaCannotOpenStableProfile");
         if (kind == NativeProfileKind.Test && string.IsNullOrWhiteSpace(explicitRoot)) throw new NativeProfileException("TestRequiresExplicitRoot");
         if (explicitProductionAuthorization && kind != NativeProfileKind.Production) throw new NativeProfileException("ProductionAuthorizationKindMismatch");
-        return new(kind, explicitRoot ?? (kind == NativeProfileKind.Production ? ProductionRoot : DevelopmentRoot), explicitProductionAuthorization);
+        return new(kind, explicitRoot ?? (kind == NativeProfileKind.Beta ? BetaRoot : kind == NativeProfileKind.Production ? ProductionRoot : DevelopmentRoot), explicitProductionAuthorization);
     }
     public static string Validate(NativeProfileRequest request)
     {
