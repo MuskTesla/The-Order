@@ -1,0 +1,56 @@
+name: Bug 反馈 / Public Beta
+description: 报告能够复现的功能、界面或稳定性问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢帮助测试。请勿上传 API Token、登录凭据、未脱敏日志、个人书架备份、私密文件路径或私人数据。
+        日志及截图可选；请先遮盖账号、路径、令牌和无关内容。请勿上传游戏资源。
+  - type: input
+    id: version
+    attributes:
+      label: The Order 版本
+      description: 请复制设置页面中的完整版本号，并注明 Beta 或稳定版。
+      placeholder: 1.2.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows 版本与缩放
+      placeholder: Windows 11 24H2 / 200% / x64
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 从哪个页面开始，依次操作什么？涉及远程作品请提供公开作品编号或链接。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 是否每次发生，重试或重启是否有变化？网络是否可用？
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 可选证据（请先脱敏）
+      description: 截图、错误文字或相关短日志。不要提交完整 Profile、账号凭据或私人路径。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私检查
+      options:
+        - label: 我已检查本条反馈不包含 Token、账户凭据或未经处理的私人数据。
+          required: true
