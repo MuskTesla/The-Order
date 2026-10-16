@@ -431,6 +431,10 @@ public sealed class MusicBrainzAlbumView : Grid, IDisposable
         discs = model?.Displayed?.Album.Discs.Select(x => new { x.Position, x.Title, x.Format, tracks = x.Tracks.Length,
             recordings = x.Tracks.Count(t => t.RecordingId is not null), works = x.Tracks.Sum(t => t.Works.Length), personnel = x.Tracks.Sum(t => t.Credits.Length) }).ToArray(),
         fromCache = model?.Displayed?.FromCache, stale = model?.Displayed?.IsStale, trackDetail = fixtureTrack?.Evidence,
+        trackRows = discs.Children.OfType<Expander>().Select(x => x.Content).OfType<ItemsRepeater>()
+            .SelectMany(x => Enumerable.Range(0, Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(x))
+                .Select(n => (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(x, n) as Border)?.Child).OfType<MusicTrackRowView>())
+            .Select(x => x.Evidence).ToArray(),
         candidateIds = model?.Match?.Search.Candidates.Select(x => x.Id).ToArray(), canConfirm = model?.CanConfirm,
         cover.SourceStatus, cover.HasImage, coverUrl = model?.Displayed?.Album.CoverUrl, width = ActualWidth, titleWidth = title.ActualWidth,
         scrollOffset = scroll.VerticalOffset, visibleDiscs = discs.Children.OfType<Expander>().Where(x => x.IsExpanded).Select(x => AutomationProperties.GetAutomationId(x)).ToArray(),
@@ -473,6 +477,8 @@ public sealed class MusicTrackRow(MusicBrainzTrack track, Func<MusicBrainzRefere
 // The row expands in its parent's viewport. It never introduces another ScrollViewer.
 public sealed class MusicTrackRowView : StackPanel
 {
+    private StackPanel? detailBody;
+    private bool compact;
     public static readonly DependencyProperty RowProperty = DependencyProperty.Register(nameof(Row), typeof(MusicTrackRow), typeof(MusicTrackRowView),
         new PropertyMetadata(null, (sender, _) => ((MusicTrackRowView)sender).Render()));
     public MusicTrackRow? Row { get => GetValue(RowProperty) as MusicTrackRow; set => SetValue(RowProperty, value); }
@@ -480,6 +486,7 @@ public sealed class MusicTrackRowView : StackPanel
     internal void ExpandForFixture() { if (Row is { } row) { row.IsExpanded = true; Render(); } }
     internal object Evidence => new { position = Row?.Track.Position, expanded = Row?.IsExpanded, recording = Row?.Track.RecordingId,
         works = Row?.Track.Works.Select(x => new { x.Id, x.Title }).ToArray(),
+        compact, width = ActualWidth, detailWidth = detailBody?.ActualWidth,
         links = Descendants(this).OfType<HyperlinkButton>().Select(InteractiveCardEvidence.Hit).ToArray() };
     private void Render()
     {
@@ -489,42 +496,47 @@ public sealed class MusicTrackRowView : StackPanel
             grid.ColumnDefinitions.Add(new() { Width = width });
         grid.RowDefinitions.Add(new() { Height = GridLength.Auto }); grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var number = Text(row.Number, 13); number.Opacity = .65; number.Margin = new(0, 5, 0, 0); grid.Children.Add(number);
-        var name = Text(row.Title, 14); name.Margin = new(0, 5, 0, 0); Grid.SetColumn(name, 1); grid.Children.Add(name);
+        var name = Text(row.Title, 15); name.FontWeight = FontWeights.SemiBold; name.LineHeight = 23; name.Margin = new(0, 4, 0, 0); Grid.SetColumn(name, 1); grid.Children.Add(name);
         var artist = Text(row.Artist, 13); artist.Opacity = .72; artist.Visibility = row.Artist.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         Grid.SetColumn(artist, 2); grid.Children.Add(artist);
         var duration = Text(row.Duration, 13); duration.HorizontalAlignment = HorizontalAlignment.Right; duration.Opacity = .7; duration.Margin = new(0, 5, 0, 0);
         Grid.SetColumn(duration, 3); grid.Children.Add(duration);
-        bool? compact = null;
+        bool? previousCompact = null;
         void Reflow()
         {
             var next = grid.ActualWidth < 620;
-            if (compact == next) return; compact = next;
+            if (previousCompact == next) return; previousCompact = compact = next;
             grid.ColumnDefinitions[2].Width = next || row.Artist.Length == 0 ? new(0) : new(.38, GridUnitType.Star);
             Grid.SetColumn(artist, next ? 1 : 2); Grid.SetRow(artist, next ? 1 : 0);
             artist.Margin = next ? new(0, 4, 0, 0) : new(0, 5, 0, 0);
             Grid.SetColumnSpan(name, next ? 2 : 1);
         }
         grid.SizeChanged += (_, _) => Reflow(); Reflow();
-        var details = new StackPanel { Spacing = 12, Margin = new(38, 4, 0, 8), Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed };
+        var details = new StackPanel { Spacing = 12, MaxWidth = 780, HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new(38, 4, 0, 8), Visibility = row.IsExpanded ? Visibility.Visible : Visibility.Collapsed };
+        detailBody = details;
         var track = row.Track;
-        if (track.RecordingId is { } recording)
-            details.Children.Add(Link("查看录音资料 →", new(MusicBrainzEntityKind.Recording, recording), row.Navigate, $"MusicTrackRecording-{row.DiscPosition}-{track.Position}"));
+        var recordingBody = new StackPanel { Spacing = 8 };
         if (track.ArtistCredits.Length > 0)
-            details.Children.Add(new StackPanel { Spacing = 3, Children = { Text("曲目署名", 12), MusicDetailFormatting.Artists(track.ArtistCredits, row.Navigate) } });
+            recordingBody.Children.Add(Labeled("曲目署名", MusicDetailFormatting.Artists(track.ArtistCredits, row.Navigate)));
         // Credits retains the previous cache contract; linked Work credits appear once under their Work.
         var workCredits = track.Works.SelectMany(x => x.Credits).ToHashSet();
         var recordingCredits = track.Credits.Where(x => !workCredits.Contains(x)).ToArray();
         if (recordingCredits.Length > 0)
-            details.Children.Add(MusicDetailFormatting.Credits(recordingCredits, credit => Credit(credit, row.Navigate)));
+            recordingBody.Children.Add(MusicDetailFormatting.Credits(recordingCredits, credit => Credit(credit, row.Navigate)));
+        if (track.RecordingId is { } recording)
+            recordingBody.Children.Add(Link("录音资料 →", new(MusicBrainzEntityKind.Recording, recording), row.Navigate, $"MusicTrackRecording-{row.DiscPosition}-{track.Position}"));
+        if (recordingBody.Children.Count > 0) details.Children.Add(recordingBody);
         foreach (var work in track.Works)
         {
             var workBody = new StackPanel { Spacing = 8 };
-            workBody.Children.Add(Link("音乐作品 · " + work.Title + " →", new(MusicBrainzEntityKind.Work, work.Id), row.Navigate, $"MusicTrackWork-{row.DiscPosition}-{track.Position}-{work.Id}"));
+            workBody.Children.Add(Labeled("音乐作品", Link(work.Title + " →", new(MusicBrainzEntityKind.Work, work.Id), row.Navigate, $"MusicTrackWork-{row.DiscPosition}-{track.Position}-{work.Id}")));
             var facts = string.Join(" · ", new[] { MusicDetailFormatting.WorkType(work.Type),
                 work.Languages.Length > 0 ? string.Join(" / ", work.Languages.Select(MusicDetailFormatting.Language)) : null }.Where(x => !string.IsNullOrWhiteSpace(x)));
-            if (facts.Length > 0) { var fact = Text(facts, 12); fact.Opacity = .7; workBody.Children.Add(fact); }
+            if (facts.Length > 0) { var fact = Text(facts, 12); fact.Opacity = .7; fact.Margin = new(92, 0, 0, 0); workBody.Children.Add(fact); }
             if (work.Credits.Length > 0) workBody.Children.Add(MusicDetailFormatting.Credits(work.Credits, credit => Credit(credit, row.Navigate)));
-            details.Children.Add(new Border { Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["CatalogCreditCardStyle"], Padding = new(12), Child = workBody });
+            details.Children.Add(new Border { BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["DividerBrush"],
+                BorderThickness = new(2, 0, 0, 0), Padding = new(14, 4, 0, 4), Child = workBody });
         }
         if (details.Children.Count > 0)
         {
@@ -536,6 +548,13 @@ public sealed class MusicTrackRowView : StackPanel
             Grid.SetColumn(toggle, 4); grid.Children.Add(toggle);
         }
         Children.Add(grid); Children.Add(details);
+    }
+    private static Grid Labeled(string caption, FrameworkElement value)
+    {
+        var result = new Grid { ColumnSpacing = 14 };
+        result.ColumnDefinitions.Add(new() { Width = new(78) }); result.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+        var label = Text(caption, 13); label.Opacity = .65; label.Margin = new(0, 7, 0, 0); result.Children.Add(label);
+        Grid.SetColumn(value, 1); result.Children.Add(value); return result;
     }
     private static UIElement Credit(MusicBrainzCredit credit, Func<MusicBrainzReference, Task>? navigate)
     {

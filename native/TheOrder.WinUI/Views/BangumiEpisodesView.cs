@@ -13,7 +13,7 @@ namespace TheOrder.WinUI.Views;
 public sealed class BangumiEpisodesView : Grid, IDisposable
 {
     private readonly Expander section = new() { Header = "分集目录 · Bangumi", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-    private readonly StackPanel body = new() { Spacing = 10 }, rows = new() { Spacing = 6 };
+    private readonly StackPanel body = new() { Spacing = 12 }, rows = new() { Spacing = 8 };
     private readonly TextBlock notice = Text(""), provenance = Text("保留 Bangumi 原始章节类型与同类排序；目录项数可能与作品集数不同。"), filterNotice = Text("", 12);
     private readonly TagFlowPanel filters = new() { HorizontalSpacing = 6, VerticalSpacing = 6 };
     private readonly Button refresh = Button("刷新目录"), more = Button("加载下一页"), cancel = Button("取消读取"), retry = Button("重试");
@@ -24,6 +24,7 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
     private readonly Dictionary<int, Action> expandEpisode = [];
     private readonly HashSet<int> expandedEpisodes = [];
     private readonly List<HyperlinkButton> episodeLinks = [];
+    private readonly List<BangumiEpisodeRowView> episodeRows = [];
     private Task expanding = Task.CompletedTask;
     private bool disposed;
 
@@ -72,7 +73,7 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
         filterNotice.Visibility = filterNotice.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (ReferenceEquals(shown, model?.Episodes) && shownType == model?.SelectedType) return;
         shown = model?.Episodes; shownType = model?.SelectedType; rows.Children.Clear(); filters.Children.Clear();
-        expandEpisode.Clear(); expandedEpisodes.Clear(); episodeLinks.Clear();
+        expandEpisode.Clear(); expandedEpisodes.Clear(); episodeLinks.Clear(); episodeRows.Clear();
         foreach (var filter in model?.TypeFilters ?? [])
         {
             var chip = new ToggleButton { Content = $"{filter.Caption} {filter.Count}", IsChecked = filter.Type == model?.SelectedType,
@@ -92,35 +93,13 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
                 var header = Text(BangumiEpisodeDisplay.TypeName(episode.Type), 14); header.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
                 header.Margin = new(0, 6, 0, 2); rows.Children.Add(header); group = episode.Type;
             }
-            var name = episode.Title.Length > 0 ? episode.Title : "暂无标题";
-            var content = new StackPanel { Spacing = 4 };
-            var original = Link(BangumiEpisodeDisplay.TypeName(episode.Type) + " " + BangumiEpisodeDisplay.Number(episode) + " · " + name + " ↗");
-            original.FontSize = 13;
-            AutomationProperties.SetAutomationId(original, "BangumiEpisodeSource-" + episode.Id);
-            AutomationProperties.SetName(original, name + "，在 Bangumi 查看本集");
-            ToolTipService.SetToolTip(original, "在 Bangumi 查看本集");
-            original.Click += async (_, _) => await OpenSourceAsync(BangumiEpisodeDisplay.EpisodeUri(episode.Id));
-            content.Children.Add(original); episodeLinks.Add(original);
-            var facts = new[] { episode.AirDate, episode.Duration.Length > 0 ? "时长 · " + episode.Duration : null }.Where(x => !string.IsNullOrEmpty(x));
-            var factsText = string.Join(" · ", facts); if (factsText.Length > 0) content.Children.Add(Text(factsText, 12));
-            if (episode.Summary.Length > 0 || episode.OriginalTitle.Length > 0 && episode.OriginalTitle != episode.Title)
+            var row = new BangumiEpisodeRowView(episode, OpenSourceAsync, expanded =>
             {
-                var detail = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
-                if (episode.OriginalTitle.Length > 0 && episode.OriginalTitle != episode.Title) detail.Children.Add(Text(episode.OriginalTitle, 12));
-                if (episode.Summary.Length > 0) { detail.Children.Add(Text("章节说明（原文）", 12)); detail.Children.Add(Text(episode.Summary)); }
-                var toggle = Link(episode.Summary.Length > 0 ? "章节说明与原文" : "原标题");
-                var toggleLabel = (TextBlock)toggle.Content;
-                AutomationProperties.SetAutomationId(toggle, "BangumiEpisodeDescription-" + episode.Id);
-                void Expand() { detail.Visibility = Visibility.Visible; toggleLabel.Text = "收起"; expandedEpisodes.Add(episode.Id); }
-                toggle.Click += (_, _) =>
-                {
-                    if (detail.Visibility == Visibility.Collapsed) Expand();
-                    else { detail.Visibility = Visibility.Collapsed; toggleLabel.Text = episode.Summary.Length > 0 ? "章节说明与原文" : "原标题"; expandedEpisodes.Remove(episode.Id); }
-                };
-                expandEpisode[episode.Id] = Expand;
-                content.Children.Add(toggle); content.Children.Add(detail);
-            }
-            rows.Children.Add(new Border { Child = content, Padding = new(10, 7, 10, 7), CornerRadius = new(6), BorderThickness = new(1), BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardStrokeColorDefaultBrush"] });
+                if (expanded) expandedEpisodes.Add(episode.Id); else expandedEpisodes.Remove(episode.Id);
+            });
+            if (row.CanExpand) expandEpisode[episode.Id] = row.Expand;
+            episodeRows.Add(row); episodeLinks.Add(row.SourceLink);
+            rows.Children.Add(new Border { Child = row, Padding = new(14, 12, 14, 12), CornerRadius = new(6), BorderThickness = new(1), BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["CardStrokeColorDefaultBrush"] });
         }
     }
     private async Task OpenSourceAsync(Uri uri)
@@ -134,8 +113,6 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
             { notice.Text = "Bangumi 暂时无法打开，请稍后重试。"; notice.Visibility = Visibility.Visible; }
         }
     }
-    private static HyperlinkButton Link(string value) => new() { Content = new TextBlock { Text = value, IsHitTestVisible = false, TextWrapping = TextWrapping.Wrap },
-        Padding = new(0), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Left };
     private static TextBlock Text(string value, double size = 13) => new() { Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private static Button Button(string value) => new() { Content = value, Padding = new(12, 6, 12, 6), HorizontalAlignment = HorizontalAlignment.Left };
     public async Task ExpandAsync()
@@ -161,6 +138,87 @@ public sealed class BangumiEpisodesView : Grid, IDisposable
     public object Inspect() => new { SubjectId = model?.SubjectId, Expanded = section.IsExpanded, State = model?.State.ToString(), Count = model?.Episodes.Length ?? 0, Total = model?.Total ?? 0, Message = model?.Message, CanMore = model?.CanMore ?? false,
         SelectedType = model?.SelectedType, DisplayedCount = model?.VisibleEpisodes.Length ?? 0, HasUnloaded = model?.HasUnloadedEpisodes ?? false,
         Types = model?.TypeFilters, ExpandedEpisodes = expandedEpisodes.Order().ToArray(), VisibleEpisodes = model?.VisibleEpisodes.Select(x => new { x.Id, x.Type, x.Sort }).ToArray(),
-        Links = episodeLinks.Select(InteractiveCardEvidence.Hit).ToArray() };
-    public void Dispose() { if (disposed) return; disposed = true; if (model is not null) { model.PropertyChanged -= ModelChanged; model.Dispose(); } rows.Children.Clear(); filters.Children.Clear(); expandEpisode.Clear(); expandedEpisodes.Clear(); episodeLinks.Clear(); shown = null; }
+        Links = episodeLinks.Select(InteractiveCardEvidence.Hit).ToArray(), Rows = episodeRows.Select(x => x.Evidence).ToArray() };
+    public void Dispose() { if (disposed) return; disposed = true; if (model is not null) { model.PropertyChanged -= ModelChanged; model.Dispose(); } rows.Children.Clear(); filters.Children.Clear(); expandEpisode.Clear(); expandedEpisodes.Clear(); episodeLinks.Clear(); episodeRows.Clear(); shown = null; }
+}
+
+// A shared page scroller, a readable title column, and separate source/detail actions.
+// Provider prose stays verbatim: a staff list in the summary is not inferred as structured credits.
+internal sealed class BangumiEpisodeRowView : Grid
+{
+    private readonly StackPanel prose = new() { Spacing = 12, MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly HyperlinkButton toggle = Action("展开");
+    private readonly TextBlock title;
+    private readonly Border detail;
+    private readonly BangumiEpisode episode;
+    private readonly Action<bool> changed;
+    private bool compact, expanded;
+    internal HyperlinkButton SourceLink { get; } = Action("↗");
+    internal bool CanExpand { get; }
+
+    internal BangumiEpisodeRowView(BangumiEpisode episode, Func<Uri, Task> openSource, Action<bool> changed)
+    {
+        this.episode = episode; this.changed = changed; ColumnSpacing = 14; RowSpacing = 4;
+        ColumnDefinitions.Add(new() { Width = new(32) });
+        ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
+        ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        for (var i = 0; i < 4; i++) RowDefinitions.Add(new() { Height = GridLength.Auto });
+        var number = Text(BangumiEpisodeDisplay.Number(episode), 15); number.Opacity = .65; number.Margin = new(0, 3, 0, 0);
+        AutomationProperties.SetName(number, BangumiEpisodeDisplay.TypeName(episode.Type) + " " + number.Text);
+        Children.Add(number);
+        title = Text(episode.Title.Length > 0 ? episode.Title : "暂无标题", 15);
+        title.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; title.LineHeight = 23;
+        SetColumn(title, 1); Children.Add(title);
+        var facts = Text(string.Join("   ·   ", new[] { episode.AirDate, episode.Duration.Length > 0 ? episode.Duration : null }.Where(x => !string.IsNullOrEmpty(x))), 12);
+        facts.Opacity = .72; facts.Visibility = facts.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        SetColumn(facts, 1); SetRow(facts, 1); Children.Add(facts);
+        SourceLink.Padding = new(8, 0, 8, 0);
+        AutomationProperties.SetAutomationId(SourceLink, "BangumiEpisodeSource-" + episode.Id);
+        AutomationProperties.SetName(SourceLink, title.Text + "，在 Bangumi 查看本集");
+        ToolTipService.SetToolTip(SourceLink, "在 Bangumi 查看本集");
+        SourceLink.Click += async (_, _) => await openSource(BangumiEpisodeDisplay.EpisodeUri(episode.Id));
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Top, Children = { toggle, SourceLink } };
+        SetColumn(actions, 2); SetRowSpan(actions, 2); Children.Add(actions);
+        if (episode.OriginalTitle.Length > 0 && episode.OriginalTitle != episode.Title)
+            prose.Children.Add(Group("原标题", Text(episode.OriginalTitle, 14)));
+        if (episode.Summary.Length > 0)
+        {
+            var summary = Text(episode.Summary, 14); summary.LineHeight = 24;
+            prose.Children.Add(Group("本集说明 · 原文", summary));
+        }
+        CanExpand = prose.Children.Count > 0;
+        toggle.Visibility = CanExpand ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetAutomationId(toggle, "BangumiEpisodeDescription-" + episode.Id);
+        AutomationProperties.SetName(toggle, title.Text + " · 展开或收起原文与说明");
+        detail = new Border { Child = prose, HorizontalAlignment = HorizontalAlignment.Left, MaxWidth = 760,
+            BorderThickness = new(0, 1, 0, 0), BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["DividerBrush"],
+            Padding = new(0, 12, 0, 2), Margin = new(0, 8, 0, 0), Visibility = Visibility.Collapsed };
+        SetColumn(detail, 1); SetColumnSpan(detail, 2); SetRow(detail, 3); Children.Add(detail);
+        toggle.Click += (_, _) => SetExpanded(!expanded);
+        void Reflow()
+        {
+            compact = ActualWidth < 520;
+            SetColumn(actions, compact ? 1 : 2); SetRow(actions, compact ? 2 : 0); SetRowSpan(actions, compact ? 1 : 2);
+            SetColumnSpan(title, compact ? 2 : 1); SetColumnSpan(facts, compact ? 2 : 1);
+        }
+        SizeChanged += (_, _) => Reflow(); Reflow();
+    }
+    private void SetExpanded(bool value)
+    {
+        if (!CanExpand) return;
+        expanded = value; detail.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+        ((TextBlock)toggle.Content).Text = value ? "收起" : "展开"; changed(value);
+    }
+    internal void Expand() => SetExpanded(true);
+    private static StackPanel Group(string caption, TextBlock content)
+    {
+        var label = Text(caption, 12); label.Opacity = .65;
+        return new() { Spacing = 5, Children = { label, content } };
+    }
+    private static HyperlinkButton Action(string value) => new() { Content = new TextBlock { Text = value, FontSize = 13, IsHitTestVisible = false },
+        MinHeight = 32, Padding = new(0), HorizontalAlignment = HorizontalAlignment.Left };
+    private static TextBlock Text(string value, double size) => new() { Text = value, FontSize = size, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+    internal object Evidence => new { episode.Id, compact, expanded, width = ActualWidth, titleWidth = title.ActualWidth,
+        titleSize = title.FontSize, proseWidth = prose.ActualWidth, source = InteractiveCardEvidence.Hit(SourceLink),
+        toggle = CanExpand ? InteractiveCardEvidence.Hit(toggle) : null };
 }
