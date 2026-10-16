@@ -1,5 +1,9 @@
 # The Order：当前实现与评审交接
 
+## GitHub 首页整理（2026-10-16）
+
+用户授权调整 Ph-Rank/The-Order 默认分支首页并公开添加 Telegram 交流群 `https://t.me/+ONE-Lif0uZBiNzJh`。本轮仅更新 README、演示图片与此记录，不合并 Beta 应用代码、不改已有 Tag / Release / 安装包或用户资料。首页分别指向稳定版1.1.0与已发布的Public Beta1.2.0-beta.1；跨媒体功能明确标为Beta。演示图片来自既有隔离测试窗口，不是Production截图。旧Electron长文改为不可变历史链接，详细使用、构建、验证限制保留在原版本文档与发行说明中。Beta源码Tag `v1.2.0-beta.1` 对应 `50f2b226290bda03e2811a3499a3b8890e95b8d7`，本次主页文档修改不改变该冻结基线。新工作树检出时已有的脚本行尾差异单独保留，不纳入本次文档提交。
+
 ## 1.1.0 GitHub 发布记录（2026-10-12）
 
 用户明确授权将已验收的 1.1.0 上传 GitHub。本次公开入口为 https://github.com/Ph-Rank/The-Order/releases/tag/v1.1.0；安装器、完整对应源码、差量块表、校验与原验证报告一同发布。源码保持当前 native 实现、锁文件和必需数据，公开文档更新下载入口与范围；原开发编号 1.0.2 的真实 OAuth／完整回归按实际版本保留。
